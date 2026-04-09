@@ -10,18 +10,12 @@ def _block_name(block: str) -> str:
     return "SHORT BLOCK" if block == "SHORT" else "LONG BLOCK"
 
 
-def _consensus_text(direction: str, confidence: str, votes: str) -> str:
-    if direction not in ("LONG", "SHORT"):
-        return f"CONFLICTED | {confidence} ({votes})"
-    return f"{_arrow(direction)} {direction} | {confidence} ({votes})"
-
-
 def render_full_report(s):
     fc = s["forecast"]
     gin = s["ginarea"]
     entry_line = s["entry_type"] if s["entry_type"] else "NONE"
     trigger_text = s["trigger_type"] if s["trigger_type"] else "NONE"
-    if s.get("trigger_blocked"):
+    if s.get('trigger_blocked') and trigger_text != 'NONE':
         trigger_text = f"{trigger_text} ⚠️ ЗАБЛОКИРОВАН"
 
     lines = [
@@ -46,28 +40,28 @@ def render_full_report(s):
         f"TRIGGER: {trigger_text}",
         f"ПРИЧИНА: {s['trigger_note']}",
     ])
-    if s.get("trigger_blocked"):
-        lines.append(f"ПРИЧИНА БЛОКИРОВКИ: {s.get('trigger_block_reason') or 'нет данных'}")
-
+    if s.get('trigger_block_reason'):
+        lines.append(f"ПРИЧИНА БЛОКИРОВКИ: {s['trigger_block_reason']}")
     lines.extend([
         "",
         f"ACTION: {s['action']} | ENTRY: {entry_line}",
         f"CONTEXT: {s.get('context_label', 'NO CONTEXT')} ({s.get('context_score', 0)}/3)",
-        f"КОНСЕНСУС: {_consensus_text(s['consensus_direction'], s['execution_confidence'], s['consensus_votes'])}",
     ])
+    cdir = s['consensus_direction']
+    if cdir in {'LONG', 'SHORT'}:
+        lines.append(f"КОНСЕНСУС: {_arrow(cdir)} {cdir} | {s['consensus_confidence']} ({s['consensus_votes']})")
+    else:
+        lines.append(f"КОНСЕНСУС: CONFLICTED ({s['consensus_votes']})")
 
-    if s.get("block_flip_warning"):
+    if s.get('block_flip_warning'):
         lines.append(f"⚠️ {_block_name(s['active_block'])} под давлением — возможна смена активной зоны")
-        scenario = s.get("scenario") or {}
-        if scenario.get("active"):
-            lines.append(f"• инвалидация {_block_name(s['active_block'])}: {scenario.get('flip_condition_text')}")
+        lines.append(f"• инвалидация {_block_name(s['active_block'])}: {s['scenario_flip_trigger']}")
 
     if s["warnings"]:
         lines.append("")
         lines.append("⚠️ ПРЕДУПРЕЖДЕНИЯ:")
-        for idx, w in enumerate(s["warnings"]):
-            prefix = "" if idx == 0 and str(w).startswith("БЛОКИРОВКА:") else "• "
-            lines.append(f"{prefix}{w}")
+        for w in s["warnings"]:
+            lines.append(w)
 
     lines.extend([
         "",
@@ -77,19 +71,55 @@ def render_full_report(s):
         f"• СРЕДНЕСРОК: {_arrow(fc['medium']['direction'])} {fc['medium']['direction']} | {fc['medium']['strength']} | {fc['medium']['phase']} | {fc['medium']['note']}",
     ])
 
-    scenario = s.get("scenario") or {}
-    if scenario.get("active"):
-        base = scenario["base"]
-        alt = scenario["alternative"]
+    if s.get('scenario_base_probability') is not None:
         lines.extend([
             "",
             "СЦЕНАРИИ:",
-            f"• БАЗОВЫЙ ({base['probability']}%): {base['condition']} → {base['outcome']}",
-            f"• АЛЬТЕРНАТИВНЫЙ ({alt['probability']}%): {alt['condition']} → {alt['outcome']}",
+            f"• БАЗОВЫЙ ({s['scenario_base_probability']}%): {s['scenario_base_text']}",
+            f"• АЛЬТЕРНАТИВНЫЙ ({s['scenario_alt_probability']}%): {s['scenario_alt_text']}",
             "",
             "ТРИГГЕР СМЕНЫ СЦЕНАРИЯ:",
-            f"• {scenario['flip_condition_text']}",
+            f"• {s['scenario_flip_trigger']}",
         ])
+
+    if s.get('watch_side') in {'LONG', 'SHORT'}:
+        watch_side = s['watch_side']
+        lines.extend([
+            "",
+            f"{watch_side} WATCH:",
+            f"• {watch_side} пока не активен",
+            f"• триггер внимания: {s['scenario_flip_trigger']}",
+            f"• после подтверждения пробоя искать активацию {watch_side}-сценария",
+        ])
+
+    if s.get('flip_prep_status') and s.get('flip_prep_status') != 'IDLE':
+        lines.extend([
+            "",
+            "FLIP PREP:",
+            f"• статус: {s['flip_prep_status']}",
+            f"• новое направление: {s['flip_prep_side']}",
+            f"• уровень активации: {s['flip_prep_level']:.2f}" if s.get('flip_prep_level') is not None else "• уровень активации: нет данных",
+            f"• прогресс: {s.get('flip_prep_progress_bars', 0)}/{s.get('flip_prep_confirm_bars_needed', 2)} баров",
+        ])
+        if s.get('candidate_status') == 'PREPARED':
+            lines.append(f"• {s['flip_prep_side']} scenario prepared — при 3-м баре возможен полный block flip")
+
+    lines.extend([
+        "",
+        "ENTRY:",
+        f"• QUALITY: {s.get('entry_quality', 'NO_TRADE')}",
+        f"• PROFILE: {s.get('execution_profile', 'NO_ENTRY')}",
+        f"• RISK MODE: {s.get('risk_mode', 'MINIMAL')}",
+        f"• PARTIAL ENTRY: {'YES' if s.get('partial_entry_allowed') else 'NO'}",
+        f"• SCALE-IN: {'YES' if s.get('scale_in_allowed') else 'NO'}",
+        "",
+        "TRADE PLAN:",
+    ])
+    if s.get('trade_plan_active'):
+        lines.append(f"• MODE: {s.get('trade_plan_mode', 'GRID')}")
+    else:
+        lines.append("• ⏸️ ОЖИДАНИЕ — план не активен")
+        lines.append(f"• РЕЖИМ: {s.get('trade_plan_mode', 'GRID MONITORING')}")
 
     lines.extend([
         "",

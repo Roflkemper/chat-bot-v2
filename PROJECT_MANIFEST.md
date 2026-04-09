@@ -1,5 +1,6 @@
 # PROJECT MANIFEST
 
+
 ## DEVELOPMENT PROTOCOL (MANDATORY)
 
 - Отдавать пользователю только готовые файлы для замены в проекте.

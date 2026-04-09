@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 from datetime import datetime
+
 from market_data.price_feed import get_price
 from market_data.ohlcv import get_klines
 from services.timeframe_aggregator import aggregate_to_4h, aggregate_to_1d
 from features.trigger_detection import detect_trigger
 from features.forecast import short_term_forecast, session_forecast, medium_forecast, build_consensus
-from core.scenario_engine import build_wait_scenarios
+from core.scenario_handoff import compute_block_pressure, compute_scenario_weights, update_flip_prep
+from storage.market_state_store import load_market_state, save_market_state
 
 NEAR_EDGE_THRESHOLD_PCT = 15.0
 HEDGE_BUFFER_USD = 293.0
+BLOCK_FLIP_CONFIRM_BARS = 3
 
 
 def _depth_label(depth_pct: float) -> str:
@@ -28,56 +33,27 @@ def _build_range(candles_1h):
     return range_low, range_high, range_mid
 
 
-def _consensus_alignment(votes_text: str) -> int:
-    try:
-        return int(str(votes_text).split('/')[0])
-    except Exception:
-        return 0
-
-
-def _context_score(state: str, depth_label: str, scalp_direction: str, active_side: str, candles_1h) -> tuple[int, str, list[str]]:
-    score = 0
+def _context_flags(state: str, depth_label: str, scalp_direction: str, active_side: str, candles_1h) -> tuple[int, list[str]]:
+    checks = []
     details = []
-    if depth_label in ("EARLY", "WORK"):
-        score += 1
-        details.append("глубина подходит для работы")
+    checks.append(depth_label in ("EARLY", "WORK"))
+    if checks[-1]:
+        details.append('глубина блока рабочая')
     last3 = candles_1h[-3:] if len(candles_1h) >= 3 else candles_1h
-    if scalp_direction == active_side:
-        score += 1
-        details.append("скальп смотрит в сторону блока")
-    closes_in_side = 0
+    closes_with_side = 0
     for bar in last3:
-        if active_side == "LONG" and bar["close"] >= bar["open"]:
-            closes_in_side += 1
-        if active_side == "SHORT" and bar["close"] <= bar["open"]:
-            closes_in_side += 1
-    if closes_in_side >= 2:
-        score += 1
-        details.append("2 из 3 баров закрылись в сторону блока")
-    label = "NO CONTEXT"
-    if score == 3:
-        label = "STRONG"
-    elif score == 2:
-        label = "VALID"
-    elif score == 1:
-        label = "WEAK"
-    return score, label, details
-
-
-def _block_pressure(active_side: str, consensus_direction: str, consensus_alignment: int, session_fc: dict, medium_fc: dict):
-    if consensus_direction not in ("LONG", "SHORT") or consensus_direction == active_side:
-        return "NONE", "LOW", False, ""
-
-    session_high = session_fc.get("direction") == consensus_direction and session_fc.get("strength") == "HIGH"
-    medium_against = medium_fc.get("direction") == consensus_direction and medium_fc.get("phase") in ("MARKUP", "MARKDOWN")
-
-    if consensus_alignment == 3 and (session_high or medium_against):
-        return "AGAINST", "HIGH", True, "все ТФ против активного блока — возможна смена активной зоны"
-    if consensus_alignment == 3:
-        return "AGAINST", "MID", True, "все ТФ против активного блока — давление на смену зоны"
-    if consensus_alignment == 2 and medium_against:
-        return "AGAINST", "LOW", True, "большинство ТФ против блока — давление на смену зоны"
-    return "NONE", "LOW", False, ""
+        if bar['close'] > bar['open'] and active_side == 'LONG':
+            closes_with_side += 1
+        elif bar['close'] < bar['open'] and active_side == 'SHORT':
+            closes_with_side += 1
+    checks.append(scalp_direction == active_side)
+    if checks[-1]:
+        details.append('скальп совпадает с активным блоком')
+    checks.append(closes_with_side >= 2)
+    if checks[-1]:
+        details.append('2 из 3 баров закрылись в сторону блока')
+    score = sum(1 for x in checks if x)
+    return score, details
 
 
 def build_full_snapshot(symbol="BTCUSDT"):
@@ -90,18 +66,14 @@ def build_full_snapshot(symbol="BTCUSDT"):
     range_size = max(range_high - range_low, 1e-9)
 
     if price >= range_mid:
-        active_side = "SHORT"
-        active_block = "SHORT"
-        block_low = range_mid
-        block_high = range_high
+        active_side = active_block = "SHORT"
+        block_low, block_high = range_mid, range_high
         distance_to_upper_edge = range_high - price
         distance_to_lower_edge = price - range_low
         edge_distance_pct = max(0.0, ((block_high - price) / max(block_high - block_low, 1e-9)) * 100.0)
     else:
-        active_side = "LONG"
-        active_block = "LONG"
-        block_low = range_low
-        block_high = range_mid
+        active_side = active_block = "LONG"
+        block_low, block_high = range_low, range_mid
         distance_to_upper_edge = range_high - price
         distance_to_lower_edge = price - range_low
         edge_distance_pct = max(0.0, ((price - block_low) / max(block_high - block_low, 1e-9)) * 100.0)
@@ -113,152 +85,212 @@ def build_full_snapshot(symbol="BTCUSDT"):
 
     trigger, trigger_type, trigger_note = detect_trigger(candles_1h, active_block, range_low, range_high)
 
+    short_fc = short_term_forecast(candles_1h)
+    session_fc = session_forecast(candles_4h)
+    medium_fc = medium_forecast(candles_1d)
+    consensus_direction, consensus_confidence, consensus_votes, consensus_alignment_count = build_consensus(short_fc, session_fc, medium_fc)
+
+    block_pressure, block_pressure_strength, block_flip_warning, block_pressure_reason = compute_block_pressure(
+        active_block, consensus_direction, consensus_alignment_count, session_fc, medium_fc
+    )
+
+    scalp_direction = short_fc["direction"]
+    context_score, context_details = _context_flags('SEARCH_TRIGGER', depth_label, scalp_direction, active_side, candles_1h)
+    context_label = 'STRONG' if context_score == 3 else 'VALID' if context_score == 2 else 'WEAK' if context_score == 1 else 'NO CONTEXT'
+
     if price > range_high or price < range_low or block_depth_pct >= 100:
         state = "OVERRUN"
     elif trigger:
         state = "CONFIRMED"
     elif edge_distance_pct <= NEAR_EDGE_THRESHOLD_PCT:
         state = "PRE_ACTIVATION"
-    elif depth_label in ("WORK", "RISK"):
+    elif depth_label in ("WORK", "RISK", 'DEEP'):
         state = "SEARCH_TRIGGER"
     else:
         state = "MID_RANGE"
 
-    short_fc = short_term_forecast(candles_1h)
-    session_fc = session_forecast(candles_4h)
-    medium_fc = medium_forecast(candles_1d)
-    consensus_direction, consensus_confidence, consensus_votes = build_consensus(short_fc, session_fc, medium_fc)
-    consensus_alignment = _consensus_alignment(consensus_votes)
-
     conflict_flag = consensus_direction in ("LONG", "SHORT") and consensus_direction != active_side
-    scalp_direction = short_fc["direction"]
-    context_score, context_label, context_details = _context_score(state, depth_label, scalp_direction, active_side, candles_1h)
-    block_pressure, block_pressure_strength, block_flip_warning, block_pressure_reason = _block_pressure(
-        active_side, consensus_direction, consensus_alignment, session_fc, medium_fc
-    )
 
-    pre_activation_valid = (
-        state == "PRE_ACTIVATION"
-        and (not trigger)
-        and context_score >= 1
-        and block_pressure != "AGAINST"
-    )
+    if active_block == 'SHORT' and consensus_direction == 'LONG' and consensus_alignment_count >= 2 and block_flip_warning:
+        watch_side = 'LONG'
+    elif active_block == 'LONG' and consensus_direction == 'SHORT' and consensus_alignment_count >= 2 and block_flip_warning:
+        watch_side = 'SHORT'
+    else:
+        watch_side = 'NONE'
 
-    trigger_blocked = False
-    trigger_block_reason = ""
-    trigger_reason_display = trigger_note
+    base_snapshot = {
+        'symbol': symbol,
+        'timestamp': datetime.now().strftime('%H:%M'),
+        'tf': '1h',
+        'price': round(price, 2),
+        'range_low': round(range_low, 2),
+        'range_high': round(range_high, 2),
+        'range_mid': round(range_mid, 2),
+        'range_position_pct': round(range_position_pct, 2),
+        'active_block': active_block,
+        'active_side': active_side,
+        'block_low': round(block_low, 2),
+        'block_high': round(block_high, 2),
+        'block_depth_pct': round(block_depth_pct, 2),
+        'depth_label': depth_label,
+        'distance_to_upper_edge': round(distance_to_upper_edge, 2),
+        'distance_to_lower_edge': round(distance_to_lower_edge, 2),
+        'edge_distance_pct': round(edge_distance_pct, 2),
+        'state': state,
+        'trigger': trigger,
+        'trigger_type': trigger_type,
+        'trigger_note': trigger_note,
+        'forecast': {'short': short_fc, 'session': session_fc, 'medium': medium_fc},
+        'consensus_direction': consensus_direction,
+        'consensus_confidence': consensus_confidence,
+        'consensus_votes': consensus_votes,
+        'consensus_alignment_count': consensus_alignment_count,
+        'execution_side': active_side,
+        'block_pressure': block_pressure,
+        'block_pressure_strength': block_pressure_strength,
+        'block_flip_warning': block_flip_warning,
+        'block_pressure_reason': block_pressure_reason,
+        'watch_side': watch_side,
+    }
+
+    prev_market_state = load_market_state()
+    prep_state = update_flip_prep(prev_market_state, base_snapshot)
+    base_snapshot.update(prep_state)
+
+    base_prob, alt_prob, base_reasons, alt_reasons = compute_scenario_weights(base_snapshot)
+    flip_level = range_high if active_block == 'SHORT' else range_low
+    flip_condition_text = f"2 закрытия {'выше' if active_block == 'SHORT' else 'ниже'} {flip_level:.2f}"
+    scenario_base_text = (
+        f"отбой от {'верхнего' if active_block == 'SHORT' else 'нижнего'} края → {active_block} блок остаётся активным"
+    )
+    scenario_alt_text = (
+        f"пробой и закрепление {'выше' if active_block == 'SHORT' else 'ниже'} {flip_level:.2f} → {active_block} блок инвалидируется, сценарий смещается в {watch_side if watch_side != 'NONE' else ('LONG' if active_block == 'SHORT' else 'SHORT')}"
+    )
+    base_snapshot.update({
+        'scenario_base_probability': base_prob,
+        'scenario_alt_probability': alt_prob,
+        'scenario_weight_reason_base': base_reasons,
+        'scenario_weight_reason_alt': alt_reasons,
+        'scenario_base_text': scenario_base_text,
+        'scenario_alt_text': scenario_alt_text,
+        'scenario_flip_trigger': flip_condition_text,
+    })
+
     if state == "OVERRUN":
         action = "PROTECT"
         entry_type = None
-    elif trigger and state == "CONFIRMED":
-        if block_pressure == "AGAINST" or context_score == 0:
-            action = "WAIT"
-            entry_type = None
-            trigger_blocked = True
-            if block_pressure == "AGAINST":
-                trigger_block_reason = "давление против блока"
-            else:
-                trigger_block_reason = "нет подтверждённого направления"
-        else:
-            action = "ENTER"
-            entry_type = "ENTER"
-    elif pre_activation_valid:
+    elif trigger and state == "CONFIRMED" and context_score >= 2 and not (block_pressure == 'AGAINST' and block_pressure_strength in {'MID', 'HIGH'}):
+        action = "ENTER"
+        entry_type = "ENTER"
+    elif state in {"PRE_ACTIVATION", 'SEARCH_TRIGGER'} and context_score >= 1 and not conflict_flag and block_pressure != 'AGAINST':
         action = "PREPARE"
         entry_type = "PROBE"
     else:
         action = "WAIT"
         entry_type = None
 
-    hedge_state = "OFF"
     if block_depth_pct > 60:
         hedge_state = "PRE-TRIGGER"
     elif state in ("SEARCH_TRIGGER", "PRE_ACTIVATION"):
         hedge_state = "ARM"
     elif state == "OVERRUN":
         hedge_state = "TRIGGER"
+    else:
+        hedge_state = "OFF"
 
-    execution_side = active_side
-    execution_confidence = consensus_confidence
-    if conflict_flag and execution_confidence == "HIGH":
-        execution_confidence = "MID"
+    entry_quality = 'NO_TRADE'
+    execution_profile = 'NO_ENTRY'
+    risk_mode = 'MINIMAL'
+    partial_entry_allowed = False
+    scale_in_allowed = False
+    if action in {'PREPARE', 'ENTER'}:
+        entry_quality = 'A' if context_score == 3 else 'B' if context_score == 2 else 'C'
+        if action == 'ENTER' and entry_quality == 'A' and consensus_direction == active_side:
+            execution_profile = 'AGGRESSIVE'
+        elif entry_quality in {'A', 'B'}:
+            execution_profile = 'STANDARD' if consensus_direction == 'NONE' or consensus_direction == active_side else 'CONSERVATIVE'
+        else:
+            execution_profile = 'PROBE_ONLY'
+        risk_mode = 'FULL' if entry_quality == 'A' else 'REDUCED' if entry_quality == 'B' else 'MINIMAL'
+        partial_entry_allowed = entry_quality in {'B', 'C'}
+        scale_in_allowed = entry_quality in {'A', 'B'} and depth_label not in {'RISK', 'DEEP'} and block_depth_pct <= 70
 
     warnings = []
-    if trigger_blocked:
-        warnings.append(f"БЛОКИРОВКА: {trigger_block_reason}")
+    primary_blocker = None
+    secondary_warnings = []
+    context_warnings = []
+    trigger_blocked = False
+    trigger_block_reason = ''
+
+    if block_pressure == 'AGAINST' and block_pressure_strength in {'MID', 'HIGH'}:
+        primary_blocker = 'давление против блока'
+        secondary_warnings.append('forecast против активного блока')
+        if block_pressure_reason:
+            secondary_warnings.append(block_pressure_reason)
+        trigger_blocked = True
+        trigger_block_reason = 'давление против блока'
+    elif context_score == 0:
+        primary_blocker = 'нет рабочего контекста'
+        trigger_blocked = True
+        trigger_block_reason = 'нет рабочего контекста'
     elif conflict_flag:
-        warnings.append("forecast против активного блока — не форсировать")
+        primary_blocker = 'forecast против активного блока'
+        trigger_blocked = True
+        trigger_block_reason = 'forecast против активного блока'
+
     if scalp_direction != active_side:
-        if scalp_direction == "NEUTRAL":
-            warnings.append("скальп не подтверждает — краткосрочного импульса нет")
+        if scalp_direction == 'NEUTRAL':
+            secondary_warnings.append('скальп не подтверждает — краткосрочного импульса нет')
         else:
-            warnings.append("скальп против активного блока")
-    if trigger_type is None:
-        warnings.append("без trigger подтверждения вход запрещён")
+            secondary_warnings.append('скальп против активного блока')
     if range_position_pct > 80 or range_position_pct < 20:
-        warnings.append("край диапазона — повышенный риск резкого выноса")
+        context_warnings.append('край диапазона — повышенный риск резкого выноса')
     if block_depth_pct > 65:
-        warnings.append("глубоко в зоне — риск прошивки")
-    if block_pressure == "AGAINST":
-        warnings.append("среднесрок и большинство ТФ против блока")
+        context_warnings.append('глубоко в зоне — риск прошивки')
+    if block_pressure == 'AGAINST' and block_pressure_reason and block_pressure_reason not in secondary_warnings:
+        context_warnings.append(block_pressure_reason)
+    if context_score == 1:
+        secondary_warnings.append('только 1 из 3 условий контекста выполнено')
+
+    if primary_blocker:
+        warnings.append(f'БЛОКИРОВКА: {primary_blocker}')
+        warnings.extend([f'   • {x}' for x in (secondary_warnings + context_warnings)])
+    else:
+        warnings.extend([f'• {x}' for x in (secondary_warnings + context_warnings)])
 
     ginarea = {
-        "mode": "PRIORITY_GRID",
-        "long_grid": "REDUCE" if execution_side == "SHORT" else "WORK",
-        "short_grid": "WORK" if execution_side == "SHORT" else "REDUCE",
-        "aggression": "LOW" if action != "ENTER" else "MID",
-        "lifecycle": "REDUCE_GRID" if depth_label in ("RISK", "DEEP") else "ARM_GRID" if state in ("SEARCH_TRIGGER", "PRE_ACTIVATION") else "WAIT_GRID",
+        'mode': 'PRIORITY_GRID',
+        'long_grid': 'REDUCE' if execution_side == 'SHORT' else 'WORK',
+        'short_grid': 'WORK' if execution_side == 'SHORT' else 'REDUCE',
+        'aggression': 'LOW' if action != 'ENTER' else 'MID',
+        'lifecycle': 'REDUCE_GRID' if depth_label in ('RISK', 'DEEP') or prep_state['flip_prep_status'] in {'ARMED', 'CONFIRMED'} else 'ARM_GRID' if state in ('SEARCH_TRIGGER', 'PRE_ACTIVATION') else 'WAIT_GRID',
     }
 
     snapshot = {
-        "symbol": symbol,
-        "timestamp": datetime.now().strftime("%H:%M"),
-        "tf": "1h",
-        "price": round(price, 2),
-        "range_low": round(range_low, 2),
-        "range_high": round(range_high, 2),
-        "range_mid": round(range_mid, 2),
-        "range_position_pct": round(range_position_pct, 2),
-        "active_block": active_block,
-        "active_side": active_side,
-        "block_low": round(block_low, 2),
-        "block_high": round(block_high, 2),
-        "block_depth_pct": round(block_depth_pct, 2),
-        "depth_label": depth_label,
-        "distance_to_upper_edge": round(distance_to_upper_edge, 2),
-        "distance_to_lower_edge": round(distance_to_lower_edge, 2),
-        "edge_distance_pct": round(edge_distance_pct, 2),
-        "state": state,
-        "trigger": trigger,
-        "trigger_type": trigger_type,
-        "trigger_note": trigger_reason_display,
-        "trigger_blocked": trigger_blocked,
-        "trigger_block_reason": trigger_block_reason,
-        "action": action,
-        "entry_type": entry_type,
-        "hedge_state": hedge_state,
-        "hedge_arm_up": round(range_high + HEDGE_BUFFER_USD, 2),
-        "hedge_arm_down": round(range_low - HEDGE_BUFFER_USD, 2),
-        "forecast": {
-            "short": short_fc,
-            "session": session_fc,
-            "medium": medium_fc,
-        },
-        "consensus_direction": consensus_direction,
-        "consensus_confidence": consensus_confidence,
-        "consensus_votes": consensus_votes,
-        "consensus_alignment": consensus_alignment,
-        "execution_side": execution_side,
-        "execution_confidence": execution_confidence,
-        "conflict_flag": conflict_flag,
-        "context_score": context_score,
-        "context_label": context_label,
-        "context_details": context_details,
-        "block_pressure": block_pressure,
-        "block_pressure_strength": block_pressure_strength,
-        "block_flip_warning": block_flip_warning,
-        "block_pressure_reason": block_pressure_reason,
-        "warnings": warnings,
-        "ginarea": ginarea,
+        **base_snapshot,
+        'action': action,
+        'entry_type': entry_type,
+        'hedge_state': hedge_state,
+        'hedge_arm_up': round(range_high + HEDGE_BUFFER_USD, 2),
+        'hedge_arm_down': round(range_low - HEDGE_BUFFER_USD, 2),
+        'execution_side': active_side,
+        'execution_confidence': consensus_confidence,
+        'conflict_flag': conflict_flag,
+        'context_score': context_score,
+        'context_label': context_label,
+        'context_details': context_details,
+        'warnings': warnings,
+        'trigger_blocked': trigger_blocked,
+        'trigger_block_reason': trigger_block_reason,
+        'entry_quality': entry_quality,
+        'execution_profile': execution_profile,
+        'risk_mode': risk_mode,
+        'partial_entry_allowed': partial_entry_allowed,
+        'scale_in_allowed': scale_in_allowed,
+        'ginarea': ginarea,
+        'trade_plan_mode': 'GRID MONITORING' if action == 'WAIT' else 'GRID' if ginarea['mode'] == 'PRIORITY_GRID' else 'DIRECTIONAL',
+        'trade_plan_active': action != 'WAIT',
     }
-    snapshot["scenario"] = build_wait_scenarios(snapshot)
+
+    save_market_state(prep_state)
     return snapshot

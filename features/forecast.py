@@ -73,25 +73,11 @@ def build_consensus(short_fc, session_fc, medium_fc):
     alignment = max(long_votes, short_votes)
 
     if alignment == 0:
-        return "CONFLICTED", "LOW", "0/3"
+        return "NONE", "LOW", "0/3", 0
+    if long_votes == short_votes:
+        return "CONFLICTED", "LOW", f"{alignment}/3", alignment
     if long_votes > short_votes:
-        direction = "LONG"
-        if long_votes == 3:
-            confidence = "HIGH"
-        elif long_votes == 2:
-            confidence = "MID"
-        else:
-            confidence = "LOW"
-        return direction, confidence, f"{long_votes}/3"
-    if short_votes > long_votes:
-        direction = "SHORT"
-        if short_votes == 3:
-            confidence = "HIGH"
-        elif short_votes == 2:
-            confidence = "MID"
-        else:
-            confidence = "LOW"
-        return direction, confidence, f"{short_votes}/3"
-
-    # equal non-zero votes -> conflicted
-    return "CONFLICTED", "LOW", f"{alignment}/3"
+        confidence = "HIGH" if long_votes == 3 else "MID" if long_votes == 2 else "LOW"
+        return "LONG", confidence, f"{long_votes}/3", long_votes
+    confidence = "HIGH" if short_votes == 3 else "MID" if short_votes == 2 else "LOW"
+    return "SHORT", confidence, f"{short_votes}/3", short_votes
