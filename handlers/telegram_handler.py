@@ -1,12 +1,11 @@
-
 from core.execution import build_execution_snapshot
 from renderers.renderer import render
+from market_data.price_feed import get_price
 
 def run():
-    print("V17.8.7 ACTIVE")
+    print("V17.8.7.1 LIVE ACTIVE")
 
-    # mock price (replace with real data loader)
-    price = 72000
+    price = get_price()
 
     snapshot = build_execution_snapshot(price)
     msg = render(snapshot)

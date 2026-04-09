@@ -1,6 +1,5 @@
-
 def render(s):
-    return f"""⚡ BTC [1h]
+    return f"""⚡ BTC [LIVE]
 
 СТАТУС: {s['state']}
 СТОРОНА: {s['side']}
