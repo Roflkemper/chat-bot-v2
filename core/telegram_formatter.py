@@ -3,6 +3,8 @@ from typing import Dict, Any, List
 
 from core.grid_regime_manager_v1689 import derive_v1689_context
 from core.execution_advisor import build_v17_execution_plan
+from core.context_consensus_filter import evaluate_context_consensus
+from core.external_market_bias_flow import evaluate_external_market_bias, evaluate_flow_pressure
 
 
 def _fmt_price(value: float | int | None) -> str:
@@ -68,8 +70,83 @@ def _entry_mode_ru(value: str) -> str:
     }.get(str(value or '').upper(), str(value or ''))
 
 
+def _consensus_bias_ru(value: str) -> str:
+    return {
+        'STRONG_BULL': 'СИЛЬНО БЫЧИЙ',
+        'BULL': 'БЫЧИЙ',
+        'NEUTRAL': 'НЕЙТРАЛЬНЫЙ',
+        'BEAR': 'МЕДВЕЖИЙ',
+        'STRONG_BEAR': 'СИЛЬНО МЕДВЕЖИЙ',
+    }.get(str(value or '').upper(), str(value or ''))
+
+
+def _consensus_state_ru(value: str) -> str:
+    return {
+        'CONSENSUS_SUPPORTS_LONG': 'поддержка лонга',
+        'CONSENSUS_SUPPORTS_SHORT': 'поддержка шорта',
+        'CONSENSUS_NEUTRAL': 'нейтрально',
+        'CONSENSUS_BLOCKS_LONG': 'блок лонга',
+        'CONSENSUS_BLOCKS_SHORT': 'блок шорта',
+        'CONSENSUS_RISK_OFF': 'risk-off для сетки',
+        'CONSENSUS_CONFLICTED': 'конфликтный контекст',
+    }.get(str(value or '').upper(), str(value or ''))
+
+
+def _consensus_line_ru(consensus: Dict[str, Any]) -> list[str]:
+    c = consensus if isinstance(consensus, dict) else {}
+    htf = str(c.get('htf_state') or '')
+    htf_ru = 'выше EMA200 / RSI > 50' if htf == 'BULLISH_HTF' else 'ниже EMA200 / RSI < 50' if htf == 'BEARISH_HTF' else 'смешанный HTF'
+    trend = str(c.get('trend_pressure') or '')
+    trend_ru = 'трендовый риск для сетки' if trend == 'RISK_OFF_GRID' else 'направленное давление' if trend.startswith('TRENDING') else 'grid-friendly / без сильного тренда'
+    leader = str(c.get('leader_pressure') or '')
+    leader_ru = {
+        'BTC_DOWN_HARD': 'BTC резко давит вниз',
+        'BTC_DOWN': 'BTC давит вниз',
+        'BTC_UP_HARD': 'BTC резко тащит вверх',
+        'BTC_UP': 'BTC поддерживает рост',
+        'BTC_NEUTRAL': 'BTC нейтрален',
+    }.get(leader, leader or 'BTC нейтрален')
+    sentiment = str(c.get('sentiment_label') or '')
+    sentiment_ru = {
+        'LONG_CRODED': 'лонги перегреты',
+        'SHORT_CROWDED': 'шорты перегреты',
+        'TOP_TRADERS_LEAN_SHORT': 'топ-трейдеры склоняются к шорту',
+        'TOP_TRADERS_LEAN_LONG': 'топ-трейдеры склоняются к лонгу',
+        'NEUTRAL_SENTIMENT': 'сентимент нейтрален',
+    }.get(sentiment, 'сентимент нейтрален')
+    permission = str(c.get('permission_text') or 'обе стороны без блокировки')
+    bias_score = c.get('bias_score')
+    funding_regime = str(c.get('funding_regime') or 'NORMAL')
+    funding_ru = {'HIGH_POSITIVE': 'фандинг высокий / лонги перегреты', 'NEGATIVE': 'фандинг отрицательный / риск шорт-сквиза', 'NORMAL': 'фандинг нормальный'}.get(funding_regime, 'фандинг нормальный')
+    flow_hint = c.get('absorption_score')
+    flow_text = 'без явного поглощения'
+    try:
+        fv = float(flow_hint)
+        if fv >= 0.20:
+            flow_text = 'покупки поглощаются сверху'
+        elif fv <= -0.20:
+            flow_text = 'продажи поглощаются снизу'
+    except Exception:
+        pass
+    return [
+        '',
+        '🌐 КОНТЕКСТ РЫНКА',
+        '',
+        f"• bias: {_consensus_bias_ru(c.get('overall_bias'))}",
+        f"• HTF: {htf_ru}",
+        f"• trend pressure: {trend_ru}",
+        f"• BTC поводырь: {leader_ru}",
+        f"• sentiment: {sentiment_ru}",
+        f"• bias score: {bias_score}",
+        f"• funding: {funding_ru}",
+        f"• flow: {flow_text}",
+        f"• итог: {permission}",
+    ]
+
+
 def _execution_block_lines(payload: Dict[str, Any], view: Dict[str, Any]) -> List[str]:
     plan = build_v17_execution_plan(payload, view)
+    consensus = evaluate_context_consensus(payload, view)
     lines = ['', '🎯 УПРАВЛЕНИЕ СДЕЛКОЙ', '']
     side_ru = {'LONG': 'ЛОНГ', 'SHORT': 'ШОРТ', 'NEUTRAL': 'НЕТ АКТИВНОЙ СТОРОНЫ'}.get(str(plan.get('side') or '').upper(), str(plan.get('side') or 'НЕТ'))
     lines.append(f"• сторона: {side_ru}")
@@ -85,8 +162,146 @@ def _execution_block_lines(payload: Dict[str, Any], view: Dict[str, Any]) -> Lis
     lines.append(f"• не держать: {plan.get('do_not_hold_text', 'нет данных')}")
     lines.append(f"• полный выход: {plan.get('full_exit_text')}")
     lines.append(f"• что изменит решение: {plan.get('decision_trigger_text', 'нет данных')}")
+    lines.append(f"• защита / hedge: {plan.get('hedge_action_text', 'нет данных')}")
+    lines.append(f"• consensus: {_consensus_state_ru(plan.get('consensus_state'))} / {_consensus_bias_ru(plan.get('consensus_bias'))}")
     lines.append(f"• итог: {plan.get('execution_summary')}")
     return lines
+
+
+
+
+
+
+def _external_bias_ru(value: str) -> str:
+    return {
+        'RISK_OFF': 'RISK-OFF',
+        'RISK_ON': 'RISK-ON',
+        'BEARISH_SUPPORT': 'внешний медвежий фон',
+        'BULLISH_SUPPORT': 'внешний бычий фон',
+        'NEUTRAL_EXTERN': 'нейтральный внешний фон',
+        'CONFLICTED_EXTERN': 'внешний фон конфликтный',
+    }.get(str(value or '').upper(), str(value or ''))
+
+
+def _flow_pressure_ru(value: str) -> str:
+    return {
+        'BUY_PRESSURE': 'давление вверх',
+        'SELL_PRESSURE': 'давление вниз',
+        'ABSORBED_BUYING': 'покупки поглощаются сверху',
+        'ABSORBED_SELLING': 'продажи поглощаются снизу',
+        'BALANCED_FLOW': 'поток сбалансирован',
+        'FAKE_EXPANSION': 'риск ловушки / fake expansion',
+        'PRESSURE_BUILDING': 'скрытое давление копится',
+        'FLOW_EXHAUSTION': 'давление выдыхается',
+    }.get(str(value or '').upper(), str(value or ''))
+
+
+def _pre_hedge_block_lines(payload: Dict[str, Any], view: Dict[str, Any]) -> List[str]:
+    plan = build_v17_execution_plan(payload, view)
+    return [
+        '',
+        '⚠️ PRE-HEDGE WARNING',
+        '',
+        f"• статус: {plan.get('pre_hedge_status', 'нет данных')}",
+        f"• причина: {plan.get('pre_hedge_reason', 'нет данных')}",
+        f"• действие: {plan.get('pre_hedge_action', 'нет данных')}",
+        f"• hedge trigger: {_fmt_price(plan.get('hedge_trigger_price')) if plan.get('hedge_trigger_price') else 'нет данных'}",
+    ]
+
+
+def _extern_block_lines(payload: Dict[str, Any], view: Dict[str, Any]) -> List[str]:
+    plan = build_v17_execution_plan(payload, view)
+    return [
+        '',
+        '🌍 MARKET BIAS (EXTERN)',
+        '',
+        f"• внешний фон: {_external_bias_ru(plan.get('external_bias_state'))}",
+        f"• главный драйвер: {plan.get('external_bias_driver', 'нет данных')}",
+        f"• long: {plan.get('external_bias_long_text', 'нет данных')}",
+        f"• short: {plan.get('external_bias_short_text', 'нет данных')}",
+    ]
+
+
+def _flow_block_lines(payload: Dict[str, Any], view: Dict[str, Any]) -> List[str]:
+    plan = build_v17_execution_plan(payload, view)
+    return [
+        '',
+        '🌊 FLOW / LIQUIDITY PRESSURE',
+        '',
+        f"• поток: {_flow_pressure_ru(plan.get('flow_pressure_state'))}",
+        f"• смысл: {plan.get('flow_pressure_summary', 'нет данных')}",
+        f"• влияние на добор: {plan.get('flow_add_risk_modifier', 'NORMAL')}",
+    ]
+
+def _lifecycle_phase_ru(value: str) -> str:
+    return {
+        'IDLE': 'НЕ ГОТОВА',
+        'PREPARE': 'ПОДГОТОВКА',
+        'ARM': 'БОЕВАЯ ГОТОВНОСТЬ',
+        'ACTIVE': 'АКТИВНА',
+        'HOLD_ACTIVE': 'УДЕРЖАНИЕ БЕЗ РАСШИРЕНИЯ',
+        'DEFEND': 'ЗАЩИТА',
+        'REDUCE': 'РАЗГРУЗКА',
+        'EXIT': 'ВЫХОД',
+        'REARM_WAIT': 'ПАУЗА ПЕРЕЗАПУСКА',
+        'REARM_READY': 'ПОВТОРНЫЙ ЗАПУСК РАЗРЕШЁН',
+    }.get(str(value or '').upper(), str(value or ''))
+
+
+def _lifecycle_block_lines(payload: Dict[str, Any], view: Dict[str, Any]) -> List[str]:
+    plan = build_v17_execution_plan(payload, view)
+    return [
+        '',
+        '🔄 ЖИЗНЕННЫЙ ЦИКЛ СЕТКИ',
+        '',
+        f"• фаза: {_lifecycle_phase_ru(plan.get('lifecycle_phase'))}",
+        f"• authority: {plan.get('lifecycle_authority', 'нет данных')}",
+        f"• смысл: {plan.get('lifecycle_meaning_text', 'нет данных')}",
+        f"• что делать сейчас: {plan.get('lifecycle_action_text', 'нет данных')}",
+        f"• что запрещено: {plan.get('lifecycle_forbidden_text', 'нет данных')}",
+        f"• что переведёт дальше: {plan.get('lifecycle_next_text', 'нет данных')}",
+        f"• что сломает фазу: {plan.get('lifecycle_break_text', 'нет данных')}",
+    ]
+
+def _hedge_mode_ru(value: str) -> str:
+    return {
+        'OFF': 'ВЫКЛ',
+        'WATCH': 'НАБЛЮДЕНИЕ',
+        'ARM': 'ГОТОВИТЬ',
+        'READY': 'ГОТОВ',
+        'ACTIVE_ADVISORY': 'АКТИВНАЯ ЗАЩИТА',
+        'REDUCE': 'СНИЖАТЬ',
+        'EXIT': 'СНИМАТЬ',
+    }.get(str(value or '').upper(), str(value or ''))
+
+
+def _hedge_type_ru(value: str) -> str:
+    return {
+        'NONE': 'нет',
+        'LOCK': 'lock hedge',
+        'PARTIAL_DEFENSE': 'частичная защита',
+        'TRAILING_DEFENSE': 'trailing defense',
+        'CROSS_HEDGE_ADVISORY': 'cross-hedge advisory',
+    }.get(str(value or '').upper(), str(value or ''))
+
+
+def _hedge_block_lines(payload: Dict[str, Any], view: Dict[str, Any]) -> List[str]:
+    plan = build_v17_execution_plan(payload, view)
+    return [
+        '',
+        '🛡 ХЕДЖ / ЗАЩИТА',
+        '',
+        f"• режим защиты: {_hedge_mode_ru(plan.get('hedge_mode'))}",
+        f"• состояние: {plan.get('hedge_state', 'нет данных')}",
+        f"• тип защиты: {_hedge_type_ru(plan.get('hedge_type'))}",
+        f"• effective delta: {plan.get('effective_delta', 'нет данных')}",
+        f"• нагрузка сетки: {plan.get('grid_stress', 'нет данных')}",
+        f"• причина: {plan.get('hedge_reason', 'нет данных')}",
+        f"• что делать сейчас: {plan.get('hedge_action_text', 'нет данных')}",
+        f"• что запрещено: {plan.get('hedge_forbidden_text', 'нет данных')}",
+        f"• что усилит защиту: {plan.get('hedge_escalation_text', 'нет данных')}",
+        f"• что снимет защиту: {plan.get('hedge_release_text', 'нет данных')}",
+    ]
 
 def _authority_ru(value: str) -> str:
     mapping = {
@@ -412,6 +627,12 @@ def _pattern_confirmation_label(pattern_pct: float) -> str:
         return 'умеренное'
     return 'слабое'
 
+def _should_suppress_pattern_bias(ctx: Dict[str, Any], authority: Dict[str, Any] | None = None) -> bool:
+    authority = authority or {}
+    action_now = str(authority.get('action_now') or '').upper()
+    return bool(ctx.get('at_mid')) and str(ctx.get('structure') or '').upper() == 'CHOP' and str(ctx.get('breakout') or 'UNCONFIRMED').upper() in {'UNCONFIRMED', 'WEAK', 'FAILED', ''} and ('PAUSE' in action_now or 'WAIT' in action_now or 'NO ENTRY' in action_now)
+
+
 
 def _derive_clean_bot_context(payload: Dict[str, Any], decision: Dict[str, Any]) -> Dict[str, Any]:
     price = payload.get('price') or payload.get('last_price') or payload.get('current_price') or payload.get('close')
@@ -599,6 +820,8 @@ def _derive_v16_view(payload: Dict[str, Any]) -> Dict[str, Any]:
         master_locked = True
 
     pattern_side_raw = str(ctx['pattern_bias'] or decision.get('direction') or 'NEUTRAL').upper()
+    if _should_suppress_pattern_bias(ctx, authority):
+        pattern_side_raw = 'NEUTRAL'
     forecast_text = _forecast_text(pattern_side_raw, authority['action_now'], ctx['range_state'], rq['label'], authority['long_grid'], authority['short_grid'])
 
     target_text = _market_target_text(authority['action_now'], ctx['range_state'], payload.get('range_low'), payload.get('range_mid'), payload.get('range_high'), authority['long_grid'], authority['short_grid'])
@@ -607,6 +830,7 @@ def _derive_v16_view(payload: Dict[str, Any]) -> Dict[str, Any]:
     invalidation_text = _hard_invalidation_text(payload, authority['action_now'], authority['long_grid'], authority['short_grid'])
     scenario_confidence, scenario_confidence_ru = _scenario_confidence(authority['action_now'], rq['label'], scenario_text, impulse_text, authority['long_grid'], authority['short_grid'])
     auto_risk_mode = _auto_risk_mode(scenario_confidence, scenario_text, authority['action_now'])
+    consensus = evaluate_context_consensus(payload, {'ctx': ctx, 'long_grid': authority['long_grid'], 'short_grid': authority['short_grid'], 'scenario_confidence': scenario_confidence})
 
     return {
         'ctx': ctx,
@@ -624,9 +848,9 @@ def _derive_v16_view(payload: Dict[str, Any]) -> Dict[str, Any]:
         'lower_low': lower_low,
         'lower_high': lower_high,
         'pattern_side': _direction_ru(pattern_side_raw),
-        'pattern_pct': int(round(pattern_pct)) if pattern_pct else 0,
-        'pattern_expectation': pattern_expectation,
-        'pattern_confirmation': _pattern_confirmation_label(pattern_pct),
+        'pattern_pct': int(round(pattern_pct)) if pattern_side_raw in {'LONG', 'SHORT'} and pattern_pct else 0,
+        'pattern_expectation': 'context only / blocked by mid range' if pattern_side_raw == 'NEUTRAL' and _should_suppress_pattern_bias(ctx, authority) else pattern_expectation,
+        'pattern_confirmation': 'context only' if pattern_side_raw == 'NEUTRAL' and _should_suppress_pattern_bias(ctx, authority) else _pattern_confirmation_label(pattern_pct),
         'volume_line': volume_line,
         'integration_1': f"{ctx['structure']} + {ctx['volume_quality']}",
         'integration_2': 'направленный вход не подтверждён' if ctx['grid_mode'] == 'PREFER_GRID' else 'направленный сценарий активен',
@@ -654,6 +878,7 @@ def _derive_v16_view(payload: Dict[str, Any]) -> Dict[str, Any]:
         'runtime_line': _runtime_line(authority['long_grid'], authority['short_grid']),
         'long_grid_ru': _runtime_ru(authority['long_grid']),
         'short_grid_ru': _runtime_ru(authority['short_grid']),
+        'consensus': consensus,
     }
 
 
@@ -675,6 +900,10 @@ def format_v14_action_text(payload: Dict[str, Any], title: str = '⚡ ЧТО Д�
         f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}",
         f"• авто-риск: {v['auto_risk_mode']}",
         f"• слом сценария: {v['invalidation_text']}",
+        *_consensus_line_ru(v.get('consensus')),
+        *_extern_block_lines(payload, v),
+        *_flow_block_lines(payload, v),
+        *_pre_hedge_block_lines(payload, v),
         '',
         'ПЛАН:',
         f"• short: только у верхнего блока {_fmt_price(v['upper_low'])}–{_fmt_price(v['upper_high'])}",
@@ -702,6 +931,10 @@ def format_v14_summary_text(payload: Dict[str, Any], title: str = '📘 BTC SUMM
         f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}",
         f"• авто-риск: {v['auto_risk_mode']}",
         f"• слом сценария: {v['invalidation_text']}",
+        *_consensus_line_ru(v.get('consensus')),
+        *_extern_block_lines(payload, v),
+        *_flow_block_lines(payload, v),
+        *_pre_hedge_block_lines(payload, v),
         *( [f"• синхронизация: мастер-режим из {v['master_tf']}"] if v['master_locked'] and v['master_tf'] else [] ),
     ]
     return '\n'.join(lines)
@@ -724,6 +957,10 @@ def format_v14_forecast_text(payload: Dict[str, Any], title: str = '🔮 BTC FOR
         f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}",
         f"• авто-риск: {v['auto_risk_mode']}",
         f"• слом сценария: {v['invalidation_text']}",
+        *_consensus_line_ru(v.get('consensus')),
+        *_extern_block_lines(payload, v),
+        *_flow_block_lines(payload, v),
+        *_pre_hedge_block_lines(payload, v),
         *( [f"• синхронизация: мастер-режим из {v['master_tf']}"] if v['master_locked'] and v['master_tf'] else [] ),
         *([f"• reclaim: {v['reclaim']['state']}"] if v['reclaim']['visible'] else []),
         *([f"• дивергенция: {v['divergence_text']}"] if v['divergence']['visible'] else []),
@@ -750,6 +987,10 @@ def format_v14_decision_text(payload: Dict[str, Any], title: str = '🧠 FINAL D
         f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}",
         f"• авто-риск: {v['auto_risk_mode']}",
         f"• слом сценария: {v['invalidation_text']}",
+        *_consensus_line_ru(v.get('consensus')),
+        *_extern_block_lines(payload, v),
+        *_flow_block_lines(payload, v),
+        *_pre_hedge_block_lines(payload, v),
         *( [f"• синхронизация: мастер-режим из {v['master_tf']}"] if v['master_locked'] and v['master_tf'] else [] ),
     ]
     return '\n'.join(lines)
@@ -772,11 +1013,17 @@ def format_v14_ginarea_text(payload: Dict[str, Any], title: str = '🧩 BTC GINA
         f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}",
         f"• авто-риск: {v['auto_risk_mode']}",
         f"• слом сценария: {v['invalidation_text']}",
+        *_consensus_line_ru(v.get('consensus')),
+        *_extern_block_lines(payload, v),
+        *_flow_block_lines(payload, v),
+        *_pre_hedge_block_lines(payload, v),
         '• агрессия: низкая',
     ]
     if payload.get('range_low') or payload.get('range_mid') or payload.get('range_high'):
         lines.append(f"• зоны: низ {_fmt_price(payload.get('range_low'))}  | середина {_fmt_price(payload.get('range_mid'))}  | верх {_fmt_price(payload.get('range_high'))}")
     lines += _execution_block_lines(payload, v)
+    lines += _lifecycle_block_lines(payload, v)
+    lines += _hedge_block_lines(payload, v)
     return '\n'.join(lines)
 
 
@@ -798,15 +1045,21 @@ def format_v14_best_trade_text(payload: Dict[str, Any], title: str = '🏆 ЛУ�
         f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}",
         f"• авто-риск: {v['auto_risk_mode']}",
         f"• слом сценария: {v['invalidation_text']}",
+        *_consensus_line_ru(v.get('consensus')),
+        *_extern_block_lines(payload, v),
+        *_flow_block_lines(payload, v),
+        *_pre_hedge_block_lines(payload, v),
     ])
 
 
 def format_v14_trade_manager_text(payload: Dict[str, Any], title: str = '🛠 BTC TRADE MANAGER') -> str:
     v = _derive_v16_view(payload)
-    lines = [title, '', f"• режим менеджера: {v['manager_action_ru']}", f"• причина: {v['manager_reason']}", f"• лонг-сетка: {_runtime_icon(v['long_grid'])} {_runtime_state_ru(v['long_grid'])} — {v['long_grid_ru']}", f"• шорт-сетка: {_runtime_icon(v['short_grid'])} {_runtime_state_ru(v['short_grid'])} — {v['short_grid_ru']}", f"• режим: {v['integration_3']}", f"• качество диапазона: {v['range_quality_text']}", f"• прогноз рынка: {v['forecast_text']}", f"• цель движения: {v['target_text']}", f"• импульс: {v['impulse_text']}", f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}", f"• авто-риск: {v['auto_risk_mode']}", f"• слом сценария: {v['invalidation_text']}"]
+    lines = [title, '', f"• режим менеджера: {v['manager_action_ru']}", f"• причина: {v['manager_reason']}", f"• лонг-сетка: {_runtime_icon(v['long_grid'])} {_runtime_state_ru(v['long_grid'])} — {v['long_grid_ru']}", f"• шорт-сетка: {_runtime_icon(v['short_grid'])} {_runtime_state_ru(v['short_grid'])} — {v['short_grid_ru']}", f"• режим: {v['integration_3']}", f"• качество диапазона: {v['range_quality_text']}", f"• прогноз рынка: {v['forecast_text']}", f"• цель движения: {v['target_text']}", f"• импульс: {v['impulse_text']}", f"• уверенность сценария: {v['scenario_confidence']}% — {v['scenario_confidence_ru']}", f"• авто-риск: {v['auto_risk_mode']}", f"• слом сценария: {v['invalidation_text']}", *_consensus_line_ru(v.get('consensus')), *_extern_block_lines(payload, v), *_flow_block_lines(payload, v), *_pre_hedge_block_lines(payload, v)]
     if payload.get('range_low') or payload.get('range_mid') or payload.get('range_high'):
         lines.append(f"• зоны: низ {_fmt_price(payload.get('range_low'))}  | середина {_fmt_price(payload.get('range_mid'))}  | верх {_fmt_price(payload.get('range_high'))}")
     lines += _execution_block_lines(payload, v)
+    lines += _lifecycle_block_lines(payload, v)
+    lines += _hedge_block_lines(payload, v)
     return '\n'.join(lines)
 
 
@@ -836,6 +1089,10 @@ def format_v16_bots_status_text(payload: Dict[str, Any], title: str = '🤖 СТ
         f"• авто-риск: {v['auto_risk_mode']}",
         f"• слом сценария: {v['invalidation_text']}",
         '• активация: только у края',
+        *_consensus_line_ru(v.get('consensus')),
+        *_extern_block_lines(payload, v),
+        *_flow_block_lines(payload, v),
+        *_pre_hedge_block_lines(payload, v),
     ]
     if v['reclaim']['visible']:
         lines.append(f"• reclaim / возврат: {v['reclaim']['state']}")
@@ -844,6 +1101,8 @@ def format_v16_bots_status_text(payload: Dict[str, Any], title: str = '🤖 СТ
     if payload.get('range_low') or payload.get('range_mid') or payload.get('range_high'):
         lines.append(f"• зоны: низ {_fmt_price(payload.get('range_low'))} | середина {_fmt_price(payload.get('range_mid'))} | верх {_fmt_price(payload.get('range_high'))}")
     lines += _execution_block_lines(payload, v)
+    lines += _lifecycle_block_lines(payload, v)
+    lines += _hedge_block_lines(payload, v)
     return '\n'.join(lines)
 
 

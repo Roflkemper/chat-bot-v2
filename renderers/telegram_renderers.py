@@ -4,7 +4,7 @@ from typing import Any, Dict, Union
 
 from core.btc_plan import fmt_pct, fmt_price
 from core.grid_regime_manager_v1689 import derive_v1689_context
-from core.telegram_formatter import _derive_v16_view, _range_quality_ru, _divergence_ru, _execution_block_lines
+from core.telegram_formatter import _derive_v16_view, _range_quality_ru, _divergence_ru, _execution_block_lines, _hedge_block_lines
 from core.ux_mode import build_ultra_wait_block, is_no_trade_context
 from models.snapshots import AnalysisSnapshot, JournalSnapshot, PositionSnapshot
 from storage.position_store import load_position_state
@@ -1604,6 +1604,36 @@ def _pattern_companion_lines(data_dict: Dict[str, Any]) -> list[str]:
     legacy_dir = data_dict.get('history_pattern_direction') or data_dict.get('pattern_forecast_direction') or 'НЕЙТРАЛЬНО'
     legacy_conf = _normalize_pct(data_dict.get('history_pattern_confidence') or data_dict.get('pattern_forecast_confidence'), 0.0)
     legacy_summary = str(data_dict.get('history_pattern_summary') or data_dict.get('pattern_forecast_move') or '').strip()
+
+    price = _safe_float(data_dict.get('price') or data_dict.get('current_price'), 0.0)
+    low = data_dict.get('range_low')
+    mid = data_dict.get('range_mid')
+    high = data_dict.get('range_high')
+    if low is not None and high is not None and high != low:
+        pos_pct = max(0.0, min(100.0, (price - _safe_float(low, price)) / max(1e-9, _safe_float(high, price) - _safe_float(low, price)) * 100.0))
+    else:
+        pos_pct = _safe_float(data_dict.get('range_position_pct'), 50.0)
+    at_mid = 30.0 <= pos_pct <= 70.0
+
+    decision = data_dict.get('decision') if isinstance(data_dict.get('decision'), dict) else {}
+    impulse = data_dict.get('impulse_character') if isinstance(data_dict.get('impulse_character'), dict) else {}
+    structure = str(impulse.get('state') or data_dict.get('structure_state') or data_dict.get('market_state') or 'CHOP').upper()
+    volume = data_dict.get('volume_confirmation') if isinstance(data_dict.get('volume_confirmation'), dict) else {}
+    analysis = data_dict.get('analysis') if isinstance(data_dict.get('analysis'), dict) else {}
+    if not volume and isinstance(analysis.get('volume_confirmation'), dict):
+        volume = analysis.get('volume_confirmation')
+    breakout = str((volume or {}).get('breakout_quality') or (volume or {}).get('breakout_state') or 'UNCONFIRMED').upper()
+    action_now = str(((data_dict.get('master_authority') or {}).get('action_now')) or ((data_dict.get('bot_authority_v2') or {}).get('action_now')) or decision.get('action') or '').upper()
+    entry_forbidden = 'NO ENTRY' in action_now or 'PAUSE' in action_now or 'WAIT' in action_now
+    suppress = at_mid and structure == 'CHOP' and breakout in {'UNCONFIRMED', 'WEAK', 'FAILED', ''} and entry_forbidden
+
+    if suppress:
+        summary = legacy_summary or 'локальный перевес меняется, но в середине диапазона не даёт рабочего directional edge'
+        return [
+            '• pattern-memory: CONTEXT ONLY / BLOCKED BY MID RANGE',
+            f'• статус: локальные совпадения есть, но master decision не разрешает вход | {summary}',
+        ]
+
     if not pattern:
         if legacy_summary or legacy_dir != 'НЕЙТРАЛЬНО':
             conf_txt = int(round(legacy_conf or 0.0))
@@ -1898,6 +1928,7 @@ def _build_companion_analysis_text(snapshot: AnalysisSnapshot, data_dict: Dict[s
     lines.append('• активация: только у края')
     lines.append('• агрессия: низкая')
     lines += _execution_block_lines(data_dict, authority)
+    lines += _hedge_block_lines(data_dict, authority)
 
     return '\n'.join(lines)
 

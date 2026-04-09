@@ -3,47 +3,44 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo =====================================
-echo CHAT BOT VERSION 2 - ONE CLICK PUSH
+echo CHAT BOT VERSION 2 - ZERO CLICK PUSH
 echo =====================================
 echo.
 
-where git >nul 2>nul
-if errorlevel 1 (
-  echo [ERROR] Git was not found in PATH.
-  pause
-  exit /b 1
-)
-
-if not exist ".git" (
-  echo [ERROR] This folder is not a git repository yet.
-  echo Run INIT_GITHUB_PRIVATE_REPO.bat first.
-  pause
-  exit /b 1
-)
-
-set "COMMIT_MSG=Project update"
-if exist VERSION.txt (
-  set /p FIRST_LINE=<VERSION.txt
-  if not "%FIRST_LINE%"=="" set "COMMIT_MSG=%FIRST_LINE%"
-)
-
-echo [INFO] Adding changed files...
-git add .
+call "%~dp0_GITHUB_RUNTIME.bat"
 if errorlevel 1 goto :fail
 
-git diff --cached --quiet
+if not exist ".git" (
+  echo [INFO] Repo was not initialized yet. Running auto-init...
+  call "%~dp0INIT_GITHUB_PRIVATE_REPO.bat"
+  if errorlevel 1 goto :fail
+)
+
+"%GIT_EXE%" remote get-url origin >nul 2>nul
 if errorlevel 1 (
-  echo [INFO] Creating commit: %COMMIT_MSG%
-  git commit -m "%COMMIT_MSG%"
+  echo [INFO] Origin was missing. Restoring...
+  "%GIT_EXE%" remote add origin %REPO_URL%
   if errorlevel 1 goto :fail
+)
 
+"%GIT_EXE%" branch -M %DEFAULT_BRANCH%
+if errorlevel 1 goto :fail
+
+echo [INFO] Adding changed files...
+"%GIT_EXE%" add .
+if errorlevel 1 goto :fail
+
+"%GIT_EXE%" diff --cached --quiet
+if errorlevel 1 (
+  echo [INFO] Creating commit: %AUTO_COMMIT_MSG%
+  "%GIT_EXE%" commit -m "%AUTO_COMMIT_MSG%"
+  if errorlevel 1 goto :fail
   echo [INFO] Pushing changes to GitHub...
-  git push
+  "%GIT_EXE%" push
   if errorlevel 1 goto :fail
-
   echo.
   echo [OK] Changes were pushed to GitHub.
-  echo [OK] If GitHub Actions is enabled, ZIP build starts automatically.
+  echo [OK] GitHub Actions should build ZIP automatically.
   pause
   exit /b 0
 ) else (
@@ -54,6 +51,6 @@ if errorlevel 1 (
 
 :fail
 echo.
-echo [ERROR] Push failed.
+echo [ERROR] Zero click push failed.
 pause
 exit /b 1

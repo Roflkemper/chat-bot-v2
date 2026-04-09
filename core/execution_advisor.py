@@ -5,6 +5,14 @@ from typing import Any, Dict
 from core.trade_flow import build_trade_flow_summary
 from core.liquidation_character import analyze_fast_move
 from core.final_signal_model_v177 import evaluate_signal_model
+from core.context_consensus_filter import evaluate_context_consensus
+from core.hedge_action_refinement import evaluate_hedge_action
+from core.grid_lifecycle_manager import evaluate_grid_lifecycle
+from core.external_market_bias_flow import (
+    evaluate_external_market_bias,
+    evaluate_flow_pressure,
+    evaluate_pre_hedge_warning,
+)
 
 
 def _f(v: Any, default: float = 0.0) -> float:
@@ -136,6 +144,14 @@ def build_v17_execution_plan(payload: Dict[str, Any], view: Dict[str, Any] | Non
     decision = payload.get('decision') if isinstance(payload.get('decision'), dict) else {}
     price = _f(view.get('price') or payload.get('price') or payload.get('current_price'))
     signal_ctx = evaluate_signal_model({**payload, 'long_grid': long_grid, 'short_grid': short_grid, 'scenario_confidence': conf})
+    consensus = evaluate_context_consensus(payload, view)
+    external_bias = evaluate_external_market_bias(payload, view)
+    flow_pressure = evaluate_flow_pressure(payload, view)
+    hedge_trigger_price = None
+    if range_low and (str(view.get('suggested_side') or payload.get('suggested_side') or '').upper() == 'LONG' or str(signal_ctx.get('master_direction') or '').upper() == 'LONG'):
+        hedge_trigger_price = range_low
+    elif range_high and (str(view.get('suggested_side') or payload.get('suggested_side') or '').upper() == 'SHORT' or str(signal_ctx.get('master_direction') or '').upper() == 'SHORT'):
+        hedge_trigger_price = range_high
 
     side = 'NEUTRAL'
     side_grid = 'PAUSE'
@@ -156,6 +172,8 @@ def build_v17_execution_plan(payload: Dict[str, Any], view: Dict[str, Any] | Non
 
     blocked_by_master = signal_ctx.get('alignment_status') == 'BLOCKED_BY_MASTER'
     blocked_reason = _clean_text(signal_ctx.get('blocked_reason'))
+    consensus_block_long = consensus.get('blocked_side') == 'LONG'
+    consensus_block_short = consensus.get('blocked_side') == 'SHORT'
     no_entry_text = 'НЕ ВХОДИТЬ: середина диапазона'
     no_add_text = 'НЕ ДОБИРАТЬ: нет подтверждения'
     hold_residual_text = 'нет активного остатка'
@@ -169,7 +187,8 @@ def build_v17_execution_plan(payload: Dict[str, Any], view: Dict[str, Any] | Non
             no_entry_text = 'НЕ ВХОДИТЬ ИЗ СЕРЕДИНЫ ДИАПАЗОНА'
         else:
             no_entry_text = 'НЕ ВХОДИТЬ БЕЗ MASTER DECISION'
-        return {
+        pre_hedge = evaluate_pre_hedge_warning(payload, view, consensus, external_bias, flow_pressure)
+        base_plan = {
             'side': 'NEUTRAL',
             'entry_mode': 'NO_ENTRY',
             'entry_zone_text': no_entry_text.lower().replace('не ', 'вход запрещён: ').capitalize(),
@@ -191,13 +210,61 @@ def build_v17_execution_plan(payload: Dict[str, Any], view: Dict[str, Any] | Non
             'signal_state': signal_ctx.get('signal_state'),
             'edge_state': signal_ctx.get('edge_state'),
             'alignment_status': signal_ctx.get('alignment_status'),
+            'consensus_state': consensus.get('consensus_state'),
+            'consensus_bias': consensus.get('overall_bias'),
+            'external_bias_state': external_bias.get('state'),
+            'external_bias_driver': external_bias.get('driver'),
+            'external_bias_long_text': external_bias.get('long_text'),
+            'external_bias_short_text': external_bias.get('short_text'),
+            'flow_pressure_state': flow_pressure.get('state'),
+            'flow_pressure_summary': flow_pressure.get('summary'),
+            'flow_add_risk_modifier': flow_pressure.get('add_risk_modifier'),
+            'pre_hedge_status': pre_hedge.get('status'),
+            'pre_hedge_reason': pre_hedge.get('reason'),
+            'pre_hedge_action': pre_hedge.get('action'),
+        'hedge_trigger_price': hedge_trigger_price,
         }
+        hedge = evaluate_hedge_action(payload, view, base_plan, consensus)
+        base_plan.update({
+            'hedge_action_text': hedge.get('action_text'),
+            'hedge_mode': hedge.get('mode'),
+            'hedge_state': hedge.get('hedge_state'),
+            'hedge_type': hedge.get('hedge_type'),
+            'hedge_size_hint': hedge.get('size_hint'),
+            'effective_delta': hedge.get('effective_delta'),
+            'grid_stress': hedge.get('grid_stress'),
+            'hedge_reason': hedge.get('reason'),
+            'hedge_forbidden_text': hedge.get('forbidden_text'),
+            'hedge_escalation_text': hedge.get('escalation_text'),
+            'hedge_release_text': hedge.get('release_text'),
+        })
+        lifecycle = evaluate_grid_lifecycle(payload, view, consensus, hedge, base_plan)
+        base_plan.update({
+            'lifecycle_phase': lifecycle.get('phase'),
+            'lifecycle_authority': lifecycle.get('lifecycle_authority'),
+            'lifecycle_meaning_text': lifecycle.get('meaning_text'),
+            'lifecycle_action_text': lifecycle.get('action_text'),
+            'lifecycle_forbidden_text': lifecycle.get('forbidden_text'),
+            'lifecycle_next_text': lifecycle.get('next_text'),
+            'lifecycle_break_text': lifecycle.get('break_text'),
+        })
+        return base_plan
+
+    if side == 'LONG' and consensus_block_long:
+        blocked_by_master = True
+        blocked_reason = 'лонг заблокирован контекстом рынка'
+    elif side == 'SHORT' and consensus_block_short:
+        blocked_by_master = True
+        blocked_reason = 'шорт заблокирован контекстом рынка'
 
     entry_mode = 'NORMAL'
     if conf < 60 or 'СЛАБ' in scenario_text.upper() or signal_ctx.get('signal_state') == 'WATCH':
         entry_mode = 'PROBE'
     elif conf >= 70 and side_grid == 'RUN' and 'ПАУЗА' not in scenario_text.upper() and signal_ctx.get('signal_state') in {'ARMED', 'ACTIONABLE', 'MANAGE'}:
         entry_mode = 'CONFIRMED'
+
+    if blocked_by_master:
+        entry_mode = 'NO_ENTRY'
 
     chase_risk = 'HIGH' if price and ((side == 'LONG' and range_mid and price > range_mid) or (side == 'SHORT' and range_mid and price < range_mid)) else 'LOW'
     fading = 'ЗАТУХ' in impulse_text.upper() or 'СЛАБ' in impulse_text.upper()
@@ -231,6 +298,26 @@ def build_v17_execution_plan(payload: Dict[str, Any], view: Dict[str, Any] | Non
         no_add_text = 'НЕ ДОБИРАТЬ ПОСЛЕ УХОДА ИЗ ВЕРХНЕЙ ЗОНЫ'
         master_trigger_text = 'что изменит решение: реакция от верхнего блока и удержание сценария вниз'
 
+    if blocked_by_master and blocked_reason:
+        no_entry_text = f'НЕ ВХОДИТЬ: {blocked_reason.upper()}'
+        summary = blocked_reason.capitalize()
+
+    if external_bias.get('blocked_side') == side:
+        blocked_by_master = True
+        blocked_reason = 'сторона ослаблена внешним bias рынка'
+        entry_mode = 'NO_ENTRY'
+
+    if consensus.get('aggression_modifier') == 'REDUCE' and entry_mode == 'CONFIRMED':
+        entry_mode = 'PROBE'
+    if consensus.get('aggression_modifier') in {'REDUCE', 'LIGHT_REDUCE'}:
+        no_add_text = 'НЕ ДОБИРАТЬ: контекст рынка режет агрессию'
+    if flow_pressure.get('add_risk_modifier') == 'REDUCE_LONG' and side == 'LONG':
+        add_allowed = False
+        no_add_text = 'НЕ ДОБИРАТЬ: покупки поглощаются, long-side под давлением'
+    elif flow_pressure.get('add_risk_modifier') == 'REDUCE_SHORT' and side == 'SHORT':
+        add_allowed = False
+        no_add_text = 'НЕ ДОБИРАТЬ: продажи поглощаются, short-side под давлением'
+
     add_allowed = entry_mode != 'NO_ENTRY' and conf >= 58 and 'ПАУЗА' not in impulse_text.upper() and signal_ctx.get('edge_state') in {'ARM EDGE', 'ACTION READY', 'MANAGE ONLY'}
     if fading or chase_risk == 'HIGH' or signal_ctx.get('alignment_status') == 'BLOCKED_BY_MASTER':
         add_allowed = False
@@ -242,7 +329,23 @@ def build_v17_execution_plan(payload: Dict[str, Any], view: Dict[str, Any] | Non
     elif chase_risk == 'HIGH':
         no_add_text = 'НЕ ДОБИРАТЬ В УХУДШЕНИЕ СРЕДНЕЙ'
 
-    return {
+    hedge_action_text = 'ХЕДЖ НЕ НУЖЕН'
+    pre_hedge = evaluate_pre_hedge_warning(payload, view, consensus, external_bias, flow_pressure)
+    if side == 'LONG' and range_low:
+        hedge_trigger_price = range_low
+    elif side == 'SHORT' and range_high:
+        hedge_trigger_price = range_high
+
+    if pre_hedge.get('status') == 'PRE_HEDGE_TRIGGER_ZONE':
+        hedge_action_text = 'PRE-HEDGE: зона триггера защиты уже рядом'
+    elif pre_hedge.get('status') == 'PRE_HEDGE_ARMED':
+        hedge_action_text = 'PRE-HEDGE: защита вооружена у опасного края'
+    elif consensus.get('hedge_pressure_modifier') == 'HIGH':
+        hedge_action_text = 'ГОТОВИТЬ ХЕДЖ: контекст усиливает риск против сетки'
+    elif consensus.get('hedge_pressure_modifier') == 'ELEVATED':
+        hedge_action_text = 'ПОДГОТОВИТЬ ХЕДЖ: поводырь рынка усиливает давление'
+
+    result = {
         'side': side,
         'entry_mode': entry_mode,
         'entry_zone_text': entry_zone,
@@ -264,4 +367,43 @@ def build_v17_execution_plan(payload: Dict[str, Any], view: Dict[str, Any] | Non
         'signal_state': signal_ctx.get('signal_state'),
         'edge_state': signal_ctx.get('edge_state'),
         'alignment_status': signal_ctx.get('alignment_status'),
+        'consensus_state': consensus.get('consensus_state'),
+        'consensus_bias': consensus.get('overall_bias'),
+        'external_bias_state': external_bias.get('state'),
+        'external_bias_driver': external_bias.get('driver'),
+        'external_bias_long_text': external_bias.get('long_text'),
+        'external_bias_short_text': external_bias.get('short_text'),
+        'flow_pressure_state': flow_pressure.get('state'),
+        'flow_pressure_summary': flow_pressure.get('summary'),
+        'flow_add_risk_modifier': flow_pressure.get('add_risk_modifier'),
+        'pre_hedge_status': pre_hedge.get('status'),
+        'pre_hedge_reason': pre_hedge.get('reason'),
+        'pre_hedge_action': pre_hedge.get('action'),
+        'hedge_trigger_price': hedge_trigger_price,
+        'hedge_action_text': hedge_action_text,
     }
+    hedge = evaluate_hedge_action(payload, view, result, consensus)
+    result.update({
+        'hedge_action_text': hedge.get('action_text'),
+        'hedge_mode': hedge.get('mode'),
+        'hedge_state': hedge.get('hedge_state'),
+        'hedge_type': hedge.get('hedge_type'),
+        'hedge_size_hint': hedge.get('size_hint'),
+        'effective_delta': hedge.get('effective_delta'),
+        'grid_stress': hedge.get('grid_stress'),
+        'hedge_reason': hedge.get('reason'),
+        'hedge_forbidden_text': hedge.get('forbidden_text'),
+        'hedge_escalation_text': hedge.get('escalation_text'),
+        'hedge_release_text': hedge.get('release_text'),
+    })
+    lifecycle = evaluate_grid_lifecycle(payload, view, consensus, hedge, result)
+    result.update({
+        'lifecycle_phase': lifecycle.get('phase'),
+        'lifecycle_authority': lifecycle.get('lifecycle_authority'),
+        'lifecycle_meaning_text': lifecycle.get('meaning_text'),
+        'lifecycle_action_text': lifecycle.get('action_text'),
+        'lifecycle_forbidden_text': lifecycle.get('forbidden_text'),
+        'lifecycle_next_text': lifecycle.get('next_text'),
+        'lifecycle_break_text': lifecycle.get('break_text'),
+    })
+    return result

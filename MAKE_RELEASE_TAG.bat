@@ -3,71 +3,52 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo =====================================
-echo CHAT BOT VERSION 2 - RELEASE TAG
+echo CHAT BOT VERSION 2 - ZERO CLICK RELEASE
 echo =====================================
 echo.
 
-where git >nul 2>nul
-if errorlevel 1 (
-  echo [ERROR] Git was not found in PATH.
-  pause
-  exit /b 1
-)
+call "%~dp0_GITHUB_RUNTIME.bat"
+if errorlevel 1 goto :fail
 
 if not exist ".git" (
-  echo [ERROR] This folder is not a git repository yet.
-  echo Run INIT_GITHUB_PRIVATE_REPO.bat first.
-  pause
-  exit /b 1
+  echo [INFO] Repo was not initialized yet. Running auto-init...
+  call "%~dp0INIT_GITHUB_PRIVATE_REPO.bat"
+  if errorlevel 1 goto :fail
 )
 
-set "TAG_NAME=v17.7.2"
-if exist VERSION.txt (
-  set /p RAW_TAG=<VERSION.txt
-  if not "%RAW_TAG%"=="" set "TAG_NAME=%RAW_TAG%"
-)
-
-set "TAG_NAME=%TAG_NAME: =%"
-for /f "tokens=1 delims=-" %%i in ("%TAG_NAME%") do set "TAG_NAME=%%~i"
-if "%TAG_NAME%"=="" set "TAG_NAME=v17.7.2"
-
-set /p TAG_INPUT=Release tag [%TAG_NAME%]: 
-if not "%TAG_INPUT%"=="" set "TAG_NAME=%TAG_INPUT%"
-
-echo [INFO] Adding files before tag...
-git add .
+"%GIT_EXE%" add .
 if errorlevel 1 goto :fail
 
-git diff --cached --quiet
+"%GIT_EXE%" diff --cached --quiet
 if errorlevel 1 (
-  echo [INFO] Creating commit before tag: %TAG_NAME%
-  git commit -m "%TAG_NAME%"
+  echo [INFO] Creating commit before tag: %AUTO_TAG_NAME%
+  "%GIT_EXE%" commit -m "%AUTO_TAG_NAME%"
   if errorlevel 1 goto :fail
 )
 
-git tag --list "%TAG_NAME%" | findstr /r /c:"^%TAG_NAME%$" >nul
+"%GIT_EXE%" tag --list "%AUTO_TAG_NAME%" | findstr /r /c:"^%AUTO_TAG_NAME%$" >nul
 if not errorlevel 1 (
-  echo [WARN] Tag %TAG_NAME% already exists locally.
+  echo [WARN] Tag %AUTO_TAG_NAME% already exists locally.
 ) else (
-  echo [INFO] Creating tag %TAG_NAME%...
-  git tag %TAG_NAME%
+  echo [INFO] Creating tag %AUTO_TAG_NAME%...
+  "%GIT_EXE%" tag %AUTO_TAG_NAME%
   if errorlevel 1 goto :fail
 )
 
-echo [INFO] Pushing branch and tag to GitHub...
-git push
+echo [INFO] Pushing branch and tag...
+"%GIT_EXE%" push
 if errorlevel 1 goto :fail
-git push origin %TAG_NAME%
+"%GIT_EXE%" push origin %AUTO_TAG_NAME%
 if errorlevel 1 goto :fail
 
 echo.
-echo [OK] Tag %TAG_NAME% was pushed.
-echo [OK] If release workflow is enabled, GitHub creates ZIP release automatically.
+echo [OK] Tag %AUTO_TAG_NAME% was pushed.
+echo [OK] GitHub Release should be created automatically.
 pause
 exit /b 0
 
 :fail
 echo.
-echo [ERROR] Release tag step failed.
+echo [ERROR] Zero click release failed.
 pause
 exit /b 1

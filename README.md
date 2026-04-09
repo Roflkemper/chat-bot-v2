@@ -72,3 +72,10 @@
 - `INIT_GITHUB_PRIVATE_REPO.bat`
 - `PUSH_UPDATE.bat`
 - `MAKE_RELEASE_TAG.bat`
+
+
+## GitHub Zero Click Mode
+
+- Run `INIT_GITHUB_PRIVATE_REPO.bat` once.
+- Then use `PUSH_UPDATE.bat` for normal sync.
+- Use `MAKE_RELEASE_TAG.bat` to push a release tag and trigger GitHub release automation.
