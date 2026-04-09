@@ -1,9 +1,16 @@
-# Chat Bot Version 2
+# V17.8.7.1 LIVE DATA (Binance)
 
-Трейдерский ассистент для управления сетками.
+Минимальный модуль для получения текущей цены BTCUSDT с Binance.
 
-## Запуск
-START.bat
+## Использование
+```python
+from market_data.price_feed import get_price
 
-## Обновление
-PUSH_UPDATE.bat
+price = get_price()  # float
+```
+
+## Зависимости
+- requests
+
+## Поведение при ошибке
+Бросает RuntimeError с понятным сообщением.
