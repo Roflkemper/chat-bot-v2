@@ -1,36 +1,23 @@
-from __future__ import annotations
-
-from typing import Dict, Iterable, List
-
-Candle = Dict[str, float]
-
-
-def aggregate_candles(candles_1h: Iterable[Candle], tf: str) -> List[Candle]:
-    """Aggregate closed 1h candles into closed 4h or 1d candles.
-
-    Expected keys per candle: ts, open, high, low, close, volume
-    The function only aggregates full groups and silently drops the tail.
-    """
-    step_map = {"4h": 4, "1d": 24}
-    if tf not in step_map:
-        raise ValueError(f"Unsupported tf: {tf}")
-
-    step = step_map[tf]
-    candles = list(candles_1h)
-    full_count = len(candles) // step
-    out: List[Candle] = []
-
-    for i in range(full_count):
-        chunk = candles[i * step : (i + 1) * step]
-        out.append(
-            {
-                "ts": chunk[0]["ts"],
-                "open": chunk[0]["open"],
-                "high": max(c["high"] for c in chunk),
-                "low": min(c["low"] for c in chunk),
-                "close": chunk[-1]["close"],
-                "volume": sum(float(c.get("volume", 0.0)) for c in chunk),
-            }
-        )
-
+def aggregate_candles(candles_1h, step: int):
+    closed = candles_1h[:len(candles_1h) - (len(candles_1h) % step)]
+    out = []
+    for i in range(0, len(closed), step):
+        group = closed[i:i+step]
+        if len(group) < step:
+            continue
+        out.append({
+            "open_time": group[0]["open_time"],
+            "open": group[0]["open"],
+            "high": max(x["high"] for x in group),
+            "low": min(x["low"] for x in group),
+            "close": group[-1]["close"],
+            "volume": sum(x["volume"] for x in group),
+            "close_time": group[-1]["close_time"],
+        })
     return out
+
+def aggregate_to_4h(candles_1h):
+    return aggregate_candles(candles_1h, 4)
+
+def aggregate_to_1d(candles_1h):
+    return aggregate_candles(candles_1h, 24)

@@ -1,12 +1,10 @@
-from core.execution import build_execution_snapshot
-from renderers.renderer import render
-from market_data.price_feed import get_price
+from core.pipeline import build_full_snapshot
+from renderers.renderer import render_full_report
 
 def run():
-    print("V17.8.7.1.2 ACTIVE")
-    price = get_price()
-    snapshot = build_execution_snapshot(price)
-    msg = render(snapshot)
+    print("V17.8.7.8 FINAL ACTIVE")
+    snapshot = build_full_snapshot(symbol="BTCUSDT")
+    message = render_full_report(snapshot)
 
     print("\n=== TELEGRAM OUTPUT ===\n")
-    print(msg)
+    print(message)

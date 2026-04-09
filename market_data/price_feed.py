@@ -1,10 +1,12 @@
 import requests
 
+BINANCE_PRICE_URL = "https://api.binance.com/api/v3/ticker/price"
+
 def get_price(symbol: str = "BTCUSDT") -> float:
     try:
-        url = "https://api.binance.com/api/v3/ticker/price"
-        r = requests.get(url, params={"symbol": symbol}, timeout=5)
-        r.raise_for_status()
-        return float(r.json()["price"])
+        resp = requests.get(BINANCE_PRICE_URL, params={"symbol": symbol}, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        return float(data["price"])
     except Exception as e:
-        raise RuntimeError(f"[market_data] error: {e}")
+        raise RuntimeError(f"[market_data.price_feed] не удалось получить цену {symbol}: {e}")

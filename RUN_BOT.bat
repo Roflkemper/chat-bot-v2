@@ -1,6 +1,10 @@
 @echo off
-cd /d "%~dp0"
-if not exist ".venv\Scripts\python.exe" python -m venv .venv
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
-".venv\Scripts\python.exe" -u main.py
+setlocal
+title CHAT BOT VERSION 2 - FINAL
+if not exist .venv (
+    py -m venv .venv
+)
+call .venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+python main.py
 pause
