@@ -1,49 +1,47 @@
-name: Release ZIP on Tag
+name: Release On Tag
 
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
-  release-zip:
+  create-release:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare release folder
+      - name: Read version
+        id: version
+        shell: bash
         run: |
-          repo_name="chat-bot-v2"
-          tag_name="${GITHUB_REF_NAME:-manual}"
-          out_dir="$RUNNER_TEMP/${repo_name}"
-          mkdir -p "$out_dir"
-          rsync -a ./ "$out_dir/" \
-            --exclude ".git" \
-            --exclude ".github" \
-            --exclude "__pycache__" \
-            --exclude "*.pyc" \
-            --exclude ".venv" \
-            --exclude "venv" \
-            --exclude "logs" \
-            --exclude "exports" \
-            --exclude "state" \
-            --exclude "*.zip"
-          cd "$RUNNER_TEMP"
-          zip -r "${repo_name}-${tag_name}.zip" "$repo_name"
-          echo "ZIP_PATH=$RUNNER_TEMP/${repo_name}-${tag_name}.zip" >> $GITHUB_ENV
-          echo "TAG_NAME=$tag_name" >> $GITHUB_ENV
-
-      - name: Create or update GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh release view "$TAG_NAME" > /dev/null 2>&1; then
-            gh release upload "$TAG_NAME" "$ZIP_PATH" --clobber
+          REF_NAME="${GITHUB_REF_NAME}"
+          if [ -f VERSION.txt ]; then
+            VERSION_RAW="$(head -n 1 VERSION.txt | tr -d '\r')"
           else
-            gh release create "$TAG_NAME" "$ZIP_PATH" --title "$TAG_NAME" --notes "Automated ZIP release for $TAG_NAME"
+            VERSION_RAW="$REF_NAME"
           fi
+          VERSION_SAFE="$(echo "$VERSION_RAW" | sed 's/[^A-Za-z0-9._-]/_/g')"
+          echo "raw=$VERSION_RAW" >> "$GITHUB_OUTPUT"
+          echo "safe=$VERSION_SAFE" >> "$GITHUB_OUTPUT"
+          echo "tag=$REF_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build zip
+        shell: bash
+        run: |
+          ZIP_NAME="chat_bot_v2_${{ steps.version.outputs.safe }}.zip"
+          mkdir -p dist
+          zip -r "dist/$ZIP_NAME" .             -x ".git/*"             -x ".github/workflows/*"             -x "__pycache__/*"             -x "*.pyc"             -x ".venv/*"             -x "logs/*"             -x ".env"             -x ".env.*"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.raw }}
+          files: dist/*.zip
+          generate_release_notes: true

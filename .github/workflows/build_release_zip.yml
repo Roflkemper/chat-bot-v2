@@ -1,4 +1,4 @@
-name: Build ZIP Artifact
+name: Build Release ZIP
 
 on:
   push:
@@ -12,32 +12,34 @@ permissions:
 jobs:
   build-zip:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare release folder
+      - name: Read version
+        id: version
+        shell: bash
         run: |
-          repo_name="chat-bot-v2"
-          out_dir="$RUNNER_TEMP/${repo_name}"
-          mkdir -p "$out_dir"
-          rsync -a ./ "$out_dir/" \
-            --exclude ".git" \
-            --exclude ".github" \
-            --exclude "__pycache__" \
-            --exclude "*.pyc" \
-            --exclude ".venv" \
-            --exclude "venv" \
-            --exclude "logs" \
-            --exclude "exports" \
-            --exclude "state" \
-            --exclude "*.zip"
-          cd "$RUNNER_TEMP"
-          zip -r "${repo_name}-${GITHUB_SHA::7}.zip" "$repo_name"
+          if [ -f VERSION.txt ]; then
+            VERSION_RAW="$(head -n 1 VERSION.txt | tr -d '\r')"
+          else
+            VERSION_RAW="dev-build"
+          fi
+          VERSION_SAFE="$(echo "$VERSION_RAW" | sed 's/[^A-Za-z0-9._-]/_/g')"
+          echo "raw=$VERSION_RAW" >> "$GITHUB_OUTPUT"
+          echo "safe=$VERSION_SAFE" >> "$GITHUB_OUTPUT"
 
-      - name: Upload ZIP artifact
+      - name: Create release zip
+        shell: bash
+        run: |
+          ZIP_NAME="chat_bot_v2_${{ steps.version.outputs.safe }}.zip"
+          mkdir -p dist
+          zip -r "dist/$ZIP_NAME" .             -x ".git/*"             -x ".github/workflows/*"             -x "__pycache__/*"             -x "*.pyc"             -x ".venv/*"             -x "logs/*"             -x ".env"             -x ".env.*"
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chat-bot-v2-zip-${{ github.sha }}
-          path: ${{ runner.temp }}/chat-bot-v2-${{ github.sha }}.zip
-          retention-days: 14
+          name: release-zip-${{ steps.version.outputs.safe }}
+          path: dist/*.zip
+          if-no-files-found: error
