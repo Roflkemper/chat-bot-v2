@@ -10,78 +10,17 @@ def _block_name(block: str) -> str:
     return "SHORT BLOCK" if block == "SHORT" else "LONG BLOCK"
 
 
-def _render_warning_block(s):
-    primary = s.get("primary_warning")
-    secondary = s.get("secondary_warnings") or []
-    context = s.get("context_warnings") or []
-    if not primary and not secondary and not context:
-        return []
-    lines = ["", "⚠️ ПРЕДУПРЕЖДЕНИЯ:"]
-    if primary:
-        title = f"БЛОКИРОВКА: {primary}" if s.get("trigger_blocked") else primary
-        lines.append(title)
-    for w in secondary:
-        lines.append(f"   • {w}" if primary else f"• {w}")
-    for w in context:
-        lines.append(f"   • {w}" if primary else f"• {w}")
-    return lines
-
-
-def _render_entry_block(s):
-    lines = [
-        "",
-        "ENTRY:",
-        f"• QUALITY: {s.get('entry_quality', 'NO_TRADE')} | {s.get('entry_quality_reason', '')}",
-        f"• PROFILE: {s.get('execution_profile', 'NO_ENTRY')} | {s.get('execution_profile_reason', '')}",
-        f"• RISK MODE: {s.get('entry_risk_mode', 'MINIMAL')}",
-        f"• PARTIAL ENTRY: {'YES' if s.get('partial_entry_allowed') else 'NO'}" + (f" ({s.get('partial_entry_size')})" if s.get('partial_entry_allowed') and s.get('partial_entry_size') else ""),
-        f"• SCALE-IN: {'YES' if s.get('scale_in_allowed') else 'NO'}",
-    ]
-    return lines
-
-
-def _render_trade_plan(s):
-    plan = s.get("trade_plan")
-    if not isinstance(plan, dict):
-        return []
-    lines = ["", "TRADE PLAN:"]
-    if plan.get("mode") == "GRID":
-        lines.extend([
-            f"• MODE: GRID",
-            f"• ENTRY ZONE: {plan.get('entry_zone_low')} – {plan.get('entry_zone_high')}",
-            f"• ENTRY TYPE: {plan.get('entry_type')}",
-            f"• INVALIDATION: {plan.get('invalidation_level')}",
-            f"• PROFIT TARGET $: {plan.get('profit_target_usd')}",
-            f"• REDUCE TRIGGER: {plan.get('reduce_trigger')}",
-            f"• CLOSE TRIGGER: {plan.get('grid_close_trigger')}",
-            f"• LIFECYCLE: {plan.get('lifecycle_mode')}",
-            f"• SUMMARY: {plan.get('summary')}",
-        ])
-        return lines
-
-    lines.extend([
-        f"• MODE: DIRECTIONAL",
-        f"• ENTRY TYPE: {plan.get('entry_type')}",
-        f"• ENTRY ZONE: {plan.get('entry_zone_low')} – {plan.get('entry_zone_high')}",
-        f"• COMMENT: {plan.get('entry_comment')}",
-        f"• TP1: {plan.get('tp1_price')}",
-        f"• TP2: {plan.get('tp2_price')}",
-        f"• STOP: {plan.get('sl_price')} (buffer {plan.get('sl_buffer')})",
-        f"• INVALIDATION: {plan.get('invalidation_type')}",
-        f"• BE AFTER: {plan.get('be_trigger_r')}R",
-        f"• MANAGEMENT: {plan.get('management_mode')}",
-        f"• SUMMARY: {plan.get('trade_plan_summary')}",
-    ])
-    return lines
+def _yes_no(flag: bool) -> str:
+    return "YES" if flag else "NO"
 
 
 def render_full_report(s):
     fc = s["forecast"]
     gin = s["ginarea"]
-    entry_line = s["entry_type"] if s["entry_type"] else "NONE"
     trigger_text = s["trigger_type"] if s["trigger_type"] else "NONE"
     if s.get("trigger_blocked") and trigger_text != "NONE":
         trigger_text = f"{trigger_text} ⚠️ ЗАБЛОКИРОВАН"
+    entry_line = s["entry_type"] if s["entry_type"] else "NONE"
 
     lines = [
         f"⚡ {s['symbol']} [{s['tf']} | {s['timestamp']}]",
@@ -105,17 +44,28 @@ def render_full_report(s):
         f"TRIGGER: {trigger_text}",
         f"ПРИЧИНА: {s['trigger_note']}",
     ])
-    if s.get("trigger_blocked"):
-        lines.append(f"ПРИЧИНА БЛОКИРОВКИ: {s.get('trigger_block_reason_text')}")
+    if s.get("trigger_block_reason_text"):
+        lines.append(f"ПРИЧИНА БЛОКИРОВКИ: {s['trigger_block_reason_text']}")
 
     lines.extend([
         "",
         f"ACTION: {s['action']} | ENTRY: {entry_line}",
-        f"CONTEXT: {s.get('trigger_context_label', 'NO CONTEXT')} ({s.get('trigger_context_score', 0)}/3)" + (" ⚠️" if s.get('trigger_context_score') == 1 else ""),
-        f"КОНСЕНСУС: {_arrow(s['consensus_direction'])} {s['consensus_direction']} | {s['execution_confidence']} ({s['consensus_votes']})",
+        f"CONTEXT: {s['context_label']} ({s['context_score']}/3)",
+        f"КОНСЕНСУС: {_arrow(s['consensus_direction'])} {s['consensus_direction']} | {s['execution_confidence']} ({s['consensus_votes']}/3)",
     ])
 
-    lines.extend(_render_warning_block(s))
+    if s.get("block_flip_warning"):
+        lines.append(f"⚠️ {s.get('active_block')} BLOCK под давлением — возможна смена активной зоны")
+
+    if s.get("primary_blocker") or s.get("secondary_factors") or s.get("context_risks"):
+        lines.append("")
+        lines.append("⚠️ ПРЕДУПРЕЖДЕНИЯ:")
+        if s.get("primary_blocker"):
+            lines.append(f"БЛОКИРОВКА: {s['primary_blocker']}")
+        for w in s.get("secondary_factors") or []:
+            lines.append(f"   • {w}")
+        for w in s.get("context_risks") or []:
+            lines.append(f"   • {w}")
 
     lines.extend([
         "",
@@ -123,10 +73,48 @@ def render_full_report(s):
         f"• СКАЛЬП: {_arrow(fc['short']['direction'])} {fc['short']['direction']} | {fc['short']['strength']} | {fc['short']['note']}",
         f"• СЕССИЯ: {_arrow(fc['session']['direction'])} {fc['session']['direction']} | {fc['session']['strength']} | {fc['session']['note']}",
         f"• СРЕДНЕСРОК: {_arrow(fc['medium']['direction'])} {fc['medium']['direction']} | {fc['medium']['strength']} | {fc['medium']['phase']} | {fc['medium']['note']}",
+        "",
+        "ENTRY:",
+        f"• QUALITY: {s['entry_quality']}",
+        f"• PROFILE: {s['execution_profile']}",
+        f"• RISK MODE: {s['entry_risk_mode']}",
+        f"• PARTIAL ENTRY: {_yes_no(s['partial_entry_allowed'])}",
+        f"• SCALE-IN: {_yes_no(s['scale_in_allowed'])}",
     ])
 
-    lines.extend(_render_entry_block(s))
-    lines.extend(_render_trade_plan(s))
+    fb = s.get("feedback") or {}
+    lines.extend([
+        "",
+        "FEEDBACK:",
+        f"• setup key: {s.get('setup_key', '-')}",
+        f"• setup history: {fb.get('history', 'INSUFFICIENT DATA')}",
+        f"• confidence: {fb.get('confidence', 'LOW')}",
+    ])
+    if fb.get("note"):
+        lines.append(f"• note: {fb['note']}")
+
+    plan = s.get("trade_plan") or {}
+    lines.extend(["", "TRADE PLAN:"])
+    if plan.get("mode") == "GRID":
+        lines.extend([
+            f"• MODE: GRID",
+            f"• ENTRY ZONE: {plan.get('entry_zone_low')} – {plan.get('entry_zone_high')}",
+            f"• PROFIT TARGET $: {plan.get('profit_target_usd')}",
+            f"• INVALIDATION: {plan.get('invalidation_level')}",
+            f"• REDUCE: {plan.get('reduce_trigger')}",
+            f"• CLOSE: {plan.get('grid_close_trigger')}",
+        ])
+    else:
+        lines.extend([
+            f"• MODE: DIRECTIONAL",
+            f"• ENTRY TYPE: {plan.get('entry_type')}",
+            f"• ENTRY ZONE: {plan.get('entry_zone_low')} – {plan.get('entry_zone_high')}",
+            f"• TP1: {plan.get('tp1_price')}",
+            f"• TP2: {plan.get('tp2_price')}",
+            f"• SL: {plan.get('sl_price')}",
+            f"• BE: {plan.get('be_trigger_r') if plan.get('be_trigger_r') is not None else 'NONE'}R",
+            f"• INVALIDATION: {plan.get('invalidation_type')}",
+        ])
 
     lines.extend([
         "",
