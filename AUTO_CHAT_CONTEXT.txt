@@ -1,0 +1,51 @@
+CHAT BOT VERSION 2 - CONTEXT
+
+=== PROMPT ===
+Продолжаем проект «чат бот версия 2».
+
+Используй PROJECT_MANIFEST.md как основу.
+
+Работаем поверх:
+V17.8.4.4
+
+Фокус:
+- убрать шум
+- улучшить execution
+- усилить hedge
+
+=== MANIFEST ===
+# CHAT BOT VERSION 2 — PROJECT MANIFEST
+
+## ЦЕЛЬ ПРОЕКТА
+Бот — трейдерский ассистент и менеджер сеток (GinArea).
+
+Главная задача:
+- управление сетками
+- контроль риска
+- защита и разгрузка
+- четкие действия
+
+## АРХИТЕКТУРА
+data → features → context → decision → execution → render
+
+## ПРАВИЛА
+НЕ делать:
+- ML
+- автоторговлю
+- ломать архитектуру
+
+ДЕЛАТЬ:
+- улучшать execution
+- улучшать hedge
+- уменьшать шум
+
+## СТИЛЬ
+- одно действие
+- без противоречий
+- практическая польза
+
+=== CHANGELOG ===
+## V17.8.4.4
+- project manifest system
+- github integration
+- next chat prompt system
