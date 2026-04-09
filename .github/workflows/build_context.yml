@@ -1,0 +1,36 @@
+name: Build Chat Context
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build context file
+        run: |
+          echo "CHAT BOT VERSION 2 - CONTEXT" > AUTO_CHAT_CONTEXT.txt
+          echo "" >> AUTO_CHAT_CONTEXT.txt
+
+          echo "=== PROMPT ===" >> AUTO_CHAT_CONTEXT.txt
+          cat NEXT_CHAT_PROMPT.txt >> AUTO_CHAT_CONTEXT.txt
+          echo "" >> AUTO_CHAT_CONTEXT.txt
+
+          echo "=== MANIFEST ===" >> AUTO_CHAT_CONTEXT.txt
+          cat docs/PROJECT_MANIFEST.md >> AUTO_CHAT_CONTEXT.txt
+          echo "" >> AUTO_CHAT_CONTEXT.txt
+
+          echo "=== CHANGELOG ===" >> AUTO_CHAT_CONTEXT.txt
+          head -n 50 CHANGELOG.md >> AUTO_CHAT_CONTEXT.txt
+
+      - name: Commit context
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add AUTO_CHAT_CONTEXT.txt
+          git commit -m "update AUTO_CHAT_CONTEXT" || echo "no changes"
+          git push
