@@ -34,31 +34,25 @@ def build_full_snapshot(symbol="BTCUSDT"):
     range_size = max(range_high - range_low, 1e-9)
 
     if price >= range_mid:
-        side = "SHORT"
+        active_side = "SHORT"
         active_block = "SHORT"
         block_low = range_mid
         block_high = range_high
-        active_edge = range_high
-        distance_to_active_edge = active_edge - price
+        distance_to_upper_edge = range_high - price
+        distance_to_lower_edge = price - range_low
+        edge_distance_pct = max(0.0, ((block_high - price) / max(block_high - block_low, 1e-9)) * 100.0)
     else:
-        side = "LONG"
+        active_side = "LONG"
         active_block = "LONG"
         block_low = range_low
         block_high = range_mid
-        active_edge = range_low
-        distance_to_active_edge = price - active_edge
+        distance_to_upper_edge = range_high - price
+        distance_to_lower_edge = price - range_low
+        edge_distance_pct = max(0.0, ((price - block_low) / max(block_high - block_low, 1e-9)) * 100.0)
 
     block_size = max(block_high - block_low, 1e-9)
     block_depth_pct = ((price - block_low) / block_size) * 100.0
     range_position_pct = ((price - range_low) / range_size) * 100.0
-    distance_to_upper_edge = range_high - price
-    distance_to_lower_edge = price - range_low
-
-    if active_block == "SHORT":
-        active_edge_distance_pct = max(0.0, ((block_high - price) / block_size) * 100.0)
-    else:
-        active_edge_distance_pct = max(0.0, ((price - block_low) / block_size) * 100.0)
-
     depth_label = _depth_label(block_depth_pct)
 
     trigger, trigger_type, trigger_note = detect_trigger(candles_1h, active_block, range_low, range_high)
@@ -67,55 +61,74 @@ def build_full_snapshot(symbol="BTCUSDT"):
         state = "OVERRUN"
     elif trigger:
         state = "CONFIRMED"
-    elif active_edge_distance_pct <= NEAR_EDGE_THRESHOLD_PCT:
+    elif edge_distance_pct <= NEAR_EDGE_THRESHOLD_PCT:
         state = "PRE_ACTIVATION"
     elif depth_label in ("WORK", "RISK"):
         state = "SEARCH_TRIGGER"
     else:
         state = "MID_RANGE"
 
-    action_map = {
-        "MID_RANGE": "WAIT",
-        "SEARCH_TRIGGER": "PREPARE",
-        "PRE_ACTIVATION": "READY",
-        "CONFIRMED": "ENTER",
-        "OVERRUN": "PROTECT",
-    }
-    entry_map = {
-        "MID_RANGE": None,
-        "SEARCH_TRIGGER": "PROBE",
-        "PRE_ACTIVATION": "PROBE",
-        "CONFIRMED": "ENTER",
-        "OVERRUN": None,
-    }
-    action = action_map[state]
-    entry_type = entry_map[state]
-
-    hedge_state = "OFF"
-    if state in ("SEARCH_TRIGGER", "PRE_ACTIVATION"):
-        hedge_state = "ARM"
-    elif state == "OVERRUN":
-        hedge_state = "TRIGGER"
-
     short_fc = short_term_forecast(candles_1h)
     session_fc = session_forecast(candles_4h)
     medium_fc = medium_forecast(candles_1d)
     consensus_direction, consensus_confidence, consensus_votes = build_consensus(short_fc, session_fc, medium_fc)
 
-    # execution must still respect active side even if consensus conflicts
-    if consensus_direction == "CONFLICT":
-        execution_side = side
-        execution_confidence = "LOW"
+    conflict_flag = consensus_direction in ("LONG", "SHORT") and consensus_direction != active_side
+    scalp_direction = short_fc["direction"]
+
+    pre_activation_valid = (
+        state == "PRE_ACTIVATION"
+        and (not trigger)
+        and depth_label in ("EARLY", "WORK")
+        and (not conflict_flag)
+        and scalp_direction == active_side
+    )
+
+    if state == "OVERRUN":
+        action = "PROTECT"
+        entry_type = None
+    elif trigger and state == "CONFIRMED":
+        action = "ENTER"
+        entry_type = "ENTER"
+    elif pre_activation_valid:
+        action = "PREPARE"
+        entry_type = "PROBE"
     else:
-        execution_side = side
-        execution_confidence = consensus_confidence if consensus_direction == side else "LOW"
+        action = "WAIT"
+        entry_type = None
+
+    hedge_state = "OFF"
+    if block_depth_pct > 60:
+        hedge_state = "PRE-TRIGGER"
+    elif state in ("SEARCH_TRIGGER", "PRE_ACTIVATION"):
+        hedge_state = "ARM"
+    elif state == "OVERRUN":
+        hedge_state = "TRIGGER"
+
+    execution_side = active_side
+    execution_confidence = "LOW" if conflict_flag else consensus_confidence
+
+    warnings = []
+    if conflict_flag:
+        warnings.append("forecast против активного блока — не форсировать")
+    if scalp_direction != active_side:
+        if scalp_direction == "NEUTRAL":
+            warnings.append("скальп не подтверждает — краткосрочного импульса нет")
+        else:
+            warnings.append("скальп против активного блока")
+    if trigger_type is None:
+        warnings.append("без trigger подтверждения вход запрещён")
+    if range_position_pct > 80:
+        warnings.append("край диапазона — повышенный риск резкого выноса")
+    if block_depth_pct > 65:
+        warnings.append("глубоко в зоне — риск прошивки")
 
     ginarea = {
         "mode": "PRIORITY_GRID",
         "long_grid": "REDUCE" if execution_side == "SHORT" else "WORK",
         "short_grid": "WORK" if execution_side == "SHORT" else "REDUCE",
-        "aggression": "LOW" if state != "CONFIRMED" else "MID",
-        "lifecycle": "REDUCE_GRID" if depth_label == "RISK" else "ARM_GRID" if state in ("SEARCH_TRIGGER", "PRE_ACTIVATION") else "WAIT_GRID",
+        "aggression": "LOW" if action != "ENTER" else "MID",
+        "lifecycle": "REDUCE_GRID" if depth_label in ("RISK", "DEEP") else "ARM_GRID" if state in ("SEARCH_TRIGGER", "PRE_ACTIVATION") else "WAIT_GRID",
     }
 
     snapshot = {
@@ -130,15 +143,15 @@ def build_full_snapshot(symbol="BTCUSDT"):
         "range_position_pct": round(range_position_pct, 2),
 
         "active_block": active_block,
+        "active_side": active_side,
         "block_low": round(block_low, 2),
         "block_high": round(block_high, 2),
         "block_depth_pct": round(block_depth_pct, 2),
         "depth_label": depth_label,
 
-        "distance_to_active_edge": round(distance_to_active_edge, 2),
         "distance_to_upper_edge": round(distance_to_upper_edge, 2),
         "distance_to_lower_edge": round(distance_to_lower_edge, 2),
-        "active_edge_distance_pct": round(active_edge_distance_pct, 2),
+        "edge_distance_pct": round(edge_distance_pct, 2),
 
         "state": state,
         "trigger": trigger,
@@ -163,6 +176,8 @@ def build_full_snapshot(symbol="BTCUSDT"):
 
         "execution_side": execution_side,
         "execution_confidence": execution_confidence,
+        "conflict_flag": conflict_flag,
+        "warnings": warnings,
 
         "ginarea": ginarea,
     }

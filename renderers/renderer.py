@@ -14,36 +14,54 @@ def render_full_report(s):
     entry_line = s["entry_type"] if s["entry_type"] else "NONE"
     trigger_text = s["trigger_type"] if s["trigger_type"] else "NONE"
 
-    return f"""⚡ {s['symbol']} [{s['tf']} | {s['timestamp']}]
+    lines = [
+        f"⚡ {s['symbol']} [{s['tf']} | {s['timestamp']}]",
+        "",
+        f"СТАТУС: {s['state']}",
+        f"АКТИВНЫЙ БЛОК: {_block_name(s['active_block'])}",
+        f"СТОРОНА: {s['execution_side']} | ГЛУБИНА В БЛОКЕ: {s['block_depth_pct']}% [{s['depth_label']}]",
+        "",
+        f"ПОЗИЦИЯ В ДИАПАЗОНЕ: {s['range_position_pct']}%",
+    ]
 
-СТАТУС: {s['state']}
-АКТИВНЫЙ БЛОК: {_block_name(s['active_block'])}
-СТОРОНА: {s['execution_side']} | ГЛУБИНА В БЛОКЕ: {s['block_depth_pct']}% [{s['depth_label']}]
+    if s["active_block"] == "SHORT":
+        lines.append(f"ДО ВЕРХНЕГО КРАЯ: {s['distance_to_upper_edge']}$ ({s['edge_distance_pct']}% блока)")
+        lines.append(f"ДО НИЖНЕГО КРАЯ: {s['distance_to_lower_edge']}$")
+    else:
+        lines.append(f"ДО НИЖНЕГО КРАЯ: {s['distance_to_lower_edge']}$ ({s['edge_distance_pct']}% блока)")
+        lines.append(f"ДО ВЕРХНЕГО КРАЯ: {s['distance_to_upper_edge']}$")
 
-ПОЗИЦИЯ В ДИАПАЗОНЕ: {s['range_position_pct']}%
-ДО АКТИВНОГО КРАЯ: {s['distance_to_active_edge']}$ ({s['active_edge_distance_pct']}% блока)
-ДО ВЕРХНЕГО КРАЯ: {s['distance_to_upper_edge']}$
-ДО НИЖНЕГО КРАЯ: {s['distance_to_lower_edge']}$
+    lines.extend([
+        "",
+        f"TRIGGER: {trigger_text}",
+        f"ПРИЧИНА: {s['trigger_note']}",
+        "",
+        f"ACTION: {s['action']} | ENTRY: {entry_line}",
+        f"КОНСЕНСУС: {_arrow(s['consensus_direction'])} {s['consensus_direction']} | {s['execution_confidence']} ({s['consensus_votes']})",
+    ])
 
-TRIGGER: {trigger_text}
-ПРИЧИНА: {s['trigger_note']}
+    if s["warnings"]:
+        lines.append("")
+        lines.append("⚠️ ПРЕДУПРЕЖДЕНИЯ:")
+        for w in s["warnings"]:
+            lines.append(f"• {w}")
 
-ACTION: {s['action']} | ENTRY: {entry_line}
-КОНСЕНСУС: {_arrow(s['consensus_direction'])} {s['consensus_direction']} | {s['execution_confidence']} ({s['consensus_votes']})
-
-ПРОГНОЗ:
-• СКАЛЬП: {_arrow(fc['short']['direction'])} {fc['short']['direction']} | {fc['short']['strength']} | {fc['short']['note']}
-• СЕССИЯ: {_arrow(fc['session']['direction'])} {fc['session']['direction']} | {fc['session']['strength']} | {fc['session']['note']}
-• СРЕДНЕСРОК: {_arrow(fc['medium']['direction'])} {fc['medium']['direction']} | {fc['medium']['strength']} | {fc['medium']['phase']} | {fc['medium']['note']}
-
-GINAREA:
-• LONG GRID: {gin['long_grid']}
-• SHORT GRID: {gin['short_grid']}
-• AGGRESSION: {gin['aggression']}
-• LIFECYCLE: {gin['lifecycle']}
-
-HEDGE:
-• STATE: {s['hedge_state']}
-• ARM UP: {s['hedge_arm_up']}
-• ARM DOWN: {s['hedge_arm_down']}
-"""
+    lines.extend([
+        "",
+        "ПРОГНОЗ:",
+        f"• СКАЛЬП: {_arrow(fc['short']['direction'])} {fc['short']['direction']} | {fc['short']['strength']} | {fc['short']['note']}",
+        f"• СЕССИЯ: {_arrow(fc['session']['direction'])} {fc['session']['direction']} | {fc['session']['strength']} | {fc['session']['note']}",
+        f"• СРЕДНЕСРОК: {_arrow(fc['medium']['direction'])} {fc['medium']['direction']} | {fc['medium']['strength']} | {fc['medium']['phase']} | {fc['medium']['note']}",
+        "",
+        "GINAREA:",
+        f"• LONG GRID: {gin['long_grid']}",
+        f"• SHORT GRID: {gin['short_grid']}",
+        f"• AGGRESSION: {gin['aggression']}",
+        f"• LIFECYCLE: {gin['lifecycle']}",
+        "",
+        "HEDGE:",
+        f"• STATE: {s['hedge_state']}",
+        f"• ARM UP: {s['hedge_arm_up']}",
+        f"• ARM DOWN: {s['hedge_arm_down']}",
+    ])
+    return "\n".join(lines)

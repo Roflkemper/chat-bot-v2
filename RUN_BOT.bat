@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title CHAT BOT VERSION 2 - FINAL
+title CHAT BOT VERSION 2 - V17.8.7.9
 if not exist .venv (
     py -m venv .venv
 )

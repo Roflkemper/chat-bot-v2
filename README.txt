@@ -1,16 +1,17 @@
-V17.8.7.8 FINAL
+V17.8.7.9 FULL READY
 
 Что внутри:
 - Live Binance price
 - 1h OHLCV
 - 4h / 1d aggregation
-- Full state engine
-- Trigger detection
-- Execution layer
-- Smart hedge (advisory)
-- Multi-TF forecast
-- Consensus
-- Ginarea control
+- full state engine
+- trigger detection
+- hard risk logic
+- trigger gate
+- advisory hedge
+- multi-tf forecast
+- consensus
+- ginarea control
 
 Запуск:
 1. Распаковать
