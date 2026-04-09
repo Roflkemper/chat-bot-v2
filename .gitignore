@@ -1,0 +1,44 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+bot_local_config.json
+*.pem
+*.key
+*.crt
+
+# Runtime and generated files
+app.log
+errors.log
+logs/*
+!logs/.gitkeep
+exports/*
+!exports/.gitkeep
+state/*
+!state/.gitkeep
+*.bak
+*.tmp
+*.zip
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

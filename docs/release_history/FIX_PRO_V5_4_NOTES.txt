@@ -1,0 +1,16 @@
+FIX PRO V5.4 — REAL LIQUIDITY ENGINE
+
+Что добавлено:
+- новый core/exchange_liquidity_engine.py
+- background real-liq поток без CoinGlass API
+- Binance forceOrder WebSocket
+- Bybit allLiquidation WebSocket
+- Binance/Bybit funding + OI polling
+- fallback без websocket-client: метрики funding/OI продолжают работать
+- analysis_service теперь подменяет coinglass_context на exchange_real_liquidity, если CoinGlass API недоступен
+- ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС теперь показывает источник ликвидности и время последнего real-liq event
+
+Что еще нужно пользователю:
+- установить зависимости из requirements.txt
+- для полного real-time режима дать процессу доступ в интернет
+- не нужен COINGLASS_API_KEY

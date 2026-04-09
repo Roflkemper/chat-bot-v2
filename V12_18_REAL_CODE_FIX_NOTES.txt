@@ -1,0 +1,7 @@
+V12.18 REAL CODE FIX
+
+Что реально исправлено:
+- core/decision_engine.py: soft_allowed / bot_authorized больше не схлопываются в NO_EDGE через _force_neutral_decision.
+- core/btc_plan.py: truth lock и compact off учитывают execution_verdict (soft_allowed, trade_edge_score, bot_edge_score).
+- advisors/bot_control_advisor.py: soft-авторизация больше не превращается автоматически в WATCH_ONLY.
+- core/ux_mode.py: верхние блоки берут effective edge из execution_verdict и могут показать PROBE/WATCH раньше.

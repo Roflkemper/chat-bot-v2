@@ -1,0 +1,23 @@
+FIX PRO V5.2
+
+Что добавлено:
+- SOFT SIGNAL layer: ранний мягкий directional сигнал при слабом, но уже формирующемся перевесе.
+- MOVE PROJECTION: оценка вероятного хода, target zone, invalidation, mode (CONTINUATION / MEAN_REVERT / SOFT_SIGNAL / NO_EDGE).
+- FAKE MOVE DETECTOR: отдельный блок для ложного выноса / реального продолжения.
+- BEST TRADE расширен новыми блоками V5.2.
+- BTC ANALYSIS расширен новыми блоками V5.2.
+
+Что исправлено:
+- Исправлен critical bug в core/btc_plan.py: _synced_forecast_strength теперь считает confidence числом, а не строкой.
+- Усилен polling loop Telegram: timeout=20, long_polling_timeout=20, перезапуск уже сохраняется.
+
+Файлы:
+- core/move_projection.py
+- core/soft_signal.py
+- core/fake_move_detector.py
+- services/analysis_service.py
+- core/decision_engine.py
+- core/btc_plan.py
+- renderers/telegram_renderers.py
+- handlers/command_actions.py
+- main.py

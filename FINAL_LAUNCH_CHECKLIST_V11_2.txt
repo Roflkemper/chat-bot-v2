@@ -1,0 +1,5 @@
+1. Launch bot
+2. Verify top blocks show bias side + bias % + execution state
+3. Verify SUMMARY/FORECAST no longer show neutral when manager shows strong LONG/SHORT bias
+4. Verify manual/open bot state is labeled as open position source
+5. Verify no-trade context does not advertise fresh add/entry in ginarea

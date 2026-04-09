@@ -1,0 +1,5 @@
+V11.0 launch checklist
+- Проверить, что верхний WAIT не конфликтует с нижними bot-status блоками.
+- Проверить, что в BTC TRADE MANAGER при no-trade появляется SCENARIO MAP.
+- Проверить, что в alerts нет повторяющегося спама без смены priority/phase.
+- Проверить, что главный приоритет и фаза рынка появляются в action-first / manager блоках.

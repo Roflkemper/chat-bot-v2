@@ -1,0 +1,13 @@
+V15.2 FINAL FIX
+
+Что исправлено:
+- V14 authority больше не участвует в финальном решении; takeover теперь использует только V15 authority.
+- Добавлены реальные V15 модули: pattern history, liquidity blocks, liquidation reaction, pinbar, volume confirmation, reversal, grid execution authority.
+- BTC ANALYSIS [15m]/[1h] переведён на companion-render вместо ultra-wait legacy render.
+- Pattern history больше не заглушка: safe_pattern_memory_v2 использует pattern_history_engine_v15.
+- Grid actions синхронизируются с V15 authority и не зависят от legacy edge.
+
+Что проверено:
+- py_compile по проекту проходит.
+- Synthetic smoke test: trap/reclaim case -> EXECUTE_PROBE_LONG + ENABLE_SMALL.
+- Companion renderer для 15m рендерится без обращения к legacy ultra-wait path.

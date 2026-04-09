@@ -1,0 +1,1 @@
+Downstream sync hotfix: synced probe/reduced authorization into Best Trade, Ginarea, bot authority, and edge display.

@@ -1,0 +1,40 @@
+FIX 171-180 — AUTO ALERTS / CHARACTER SHIFT / POSITION PROTECTION
+
+Что добавлено в этом релизе:
+- Auto Alerts Engine:
+  - смена характера движения
+  - fake -> continuation
+  - continuation -> exhaustion
+  - exhaustion -> reclaim watch
+- Character Shift layer:
+  - BULL_TRAP_RISK
+  - BEAR_TRAP_RISK
+  - SQUEEZE_CONTINUES
+  - MOVE_EXHAUSTING
+  - ACCEPTANCE_CONFIRMED
+  - ACCEPTANCE_FAILED
+- Position Protection layer:
+  - long_partial_take
+  - short_partial_take
+  - reduce_countertrend
+  - hold_with_trailing_bias
+- Live message templates:
+  - короткие алерты при смене характера движения
+  - советы по лонгам / шортам / ботам
+- Bot reaction layer:
+  - disable_adds
+  - reduced_only
+  - arm_countertrend
+  - cancel_countertrend
+
+Цель:
+- бот должен не только оценивать быстрый вынос,
+  но и сам сообщать, когда характер движения уже изменился
+  и нужно менять тактику.
+
+Рекомендуемое направление следующего этапа:
+- FIX 181-190:
+  - auto alert throttling / anti-spam
+  - stronger invalidation zones
+  - better zone memory
+  - signal priority queue

@@ -1,0 +1,22 @@
+V17.7.2 — ONE CLICK GITHUB PUSH + AUTO RELEASE PACK
+
+Что добавлено:
+- INIT_GITHUB_PRIVATE_REPO.bat
+- PUSH_UPDATE.bat
+- MAKE_RELEASE_TAG.bat
+- docs/github/ONE_CLICK_SETUP.md
+- .github/workflows/build_release_zip.yml
+- .github/workflows/release_on_tag.yml
+
+Что это даёт:
+- первый push и привязка к private GitHub в один BAT
+- обычные обновления в GitHub в один BAT
+- релизный tag и автосборка ZIP почти без ручной работы
+- GitHub Actions автоматически собирает ZIP после push в main
+- при push тега вида v* GitHub создаёт Release и прикладывает ZIP
+
+Что не менялось:
+- торговая архитектура
+- decision / execution / render логика
+- источники данных
+- ML не добавлялся

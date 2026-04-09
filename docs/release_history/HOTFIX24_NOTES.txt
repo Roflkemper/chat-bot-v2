@@ -1,0 +1,15 @@
+HOTFIX 24 — Text Quality Layer
+
+Changes:
+- Added TEXT QUALITY LAYER in analysis/decision output.
+- Output now separates:
+  * what supports the scenario
+  * what blocks the scenario
+  * what invalidates the idea
+- Added cleaner quality summary line for forecast/setup context.
+- Added bias label in BTC SUMMARY / BTC FORECAST.
+- Fixed missing pattern_regime / pattern_style variables in btc_plan forecast renderer.
+
+Files changed:
+- renderers/telegram_renderers.py
+- core/btc_plan.py

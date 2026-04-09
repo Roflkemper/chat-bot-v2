@@ -1,0 +1,14 @@
+V6.5 — BOT CONTROL CENTER BTC/XRP
+
+Что добавлено:
+- новый модуль core/bot_control_center.py
+- BOT CONTROL CENTER V6.5 в BTC плане
+- для BTC и XRP строятся long/short слои 1/2/3
+- слои разделены на volume-layer / profit-layer / panic-layer
+- каждому слою даются:
+  status, score, action, entry, exit, zone, invalidation
+- используется существующая логика bot_cards без ломки текущих советов
+
+Назначение:
+- быстрее видеть какой long/short слой включать, готовить, уменьшать или не трогать
+- получить единый центр управления слоями BTC и XRP поверх уже существующей ginarea/bot-card логики

@@ -1,0 +1,43 @@
+name: Build ZIP Artifact
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare release folder
+        run: |
+          repo_name="chat-bot-v2"
+          out_dir="$RUNNER_TEMP/${repo_name}"
+          mkdir -p "$out_dir"
+          rsync -a ./ "$out_dir/" \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "__pycache__" \
+            --exclude "*.pyc" \
+            --exclude ".venv" \
+            --exclude "venv" \
+            --exclude "logs" \
+            --exclude "exports" \
+            --exclude "state" \
+            --exclude "*.zip"
+          cd "$RUNNER_TEMP"
+          zip -r "${repo_name}-${GITHUB_SHA::7}.zip" "$repo_name"
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-bot-v2-zip-${{ github.sha }}
+          path: ${{ runner.temp }}/chat-bot-v2-${{ github.sha }}.zip
+          retention-days: 14

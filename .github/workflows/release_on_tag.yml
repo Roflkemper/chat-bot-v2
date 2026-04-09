@@ -1,0 +1,49 @@
+name: Release ZIP on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare release folder
+        run: |
+          repo_name="chat-bot-v2"
+          tag_name="${GITHUB_REF_NAME:-manual}"
+          out_dir="$RUNNER_TEMP/${repo_name}"
+          mkdir -p "$out_dir"
+          rsync -a ./ "$out_dir/" \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "__pycache__" \
+            --exclude "*.pyc" \
+            --exclude ".venv" \
+            --exclude "venv" \
+            --exclude "logs" \
+            --exclude "exports" \
+            --exclude "state" \
+            --exclude "*.zip"
+          cd "$RUNNER_TEMP"
+          zip -r "${repo_name}-${tag_name}.zip" "$repo_name"
+          echo "ZIP_PATH=$RUNNER_TEMP/${repo_name}-${tag_name}.zip" >> $GITHUB_ENV
+          echo "TAG_NAME=$tag_name" >> $GITHUB_ENV
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$TAG_NAME" > /dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "$ZIP_PATH" --clobber
+          else
+            gh release create "$TAG_NAME" "$ZIP_PATH" --title "$TAG_NAME" --notes "Automated ZIP release for $TAG_NAME"
+          fi
