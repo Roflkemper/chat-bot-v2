@@ -1,1 +1,2 @@
-# telegram cutover handler placeholder
+def run():
+    print('NEW PIPELINE ACTIVE')
