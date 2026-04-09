@@ -122,6 +122,11 @@ def _context_details(candles_1h: List[Dict[str, Any]], depth_label: str, scalp_d
 
 
 def _consensus_alignment(votes: Any) -> int:
+    if isinstance(votes, str) and "/" in votes:
+        try:
+            return int(votes.split("/", 1)[0])
+        except Exception:
+            return 0
     try:
         return int(votes)
     except Exception:
@@ -483,6 +488,11 @@ def build_full_snapshot(symbol="BTCUSDT"):
         trigger_block_reason_code = "PRESSURE_AGAINST_BLOCK"
         trigger_block_reason_text = "давление против блока"
         primary_blocker = "давление против блока"
+    elif trigger_detected and consensus_votes == 0:
+        trigger_blocked = True
+        trigger_block_reason_code = "NO_CONFIRMED_DIRECTION"
+        trigger_block_reason_text = "нет подтверждённого направления"
+        primary_blocker = "нет подтверждённого направления"
     elif conflict_flag and trigger_detected and context_score == 0:
         trigger_blocked = True
         trigger_block_reason_code = "FORECAST_AGAINST_BLOCK"
@@ -556,16 +566,18 @@ def build_full_snapshot(symbol="BTCUSDT"):
             partial_entry_allowed = False
             scale_in_allowed = False
 
-    trade_plan = _trade_plan({
-        "ginarea": {"mode": "PRIORITY_GRID" if entry_quality == "NO_TRADE" else "DIRECTIONAL"},
-        "depth_label": depth_label,
-        "range_mid": range_mid,
-        "range_high": range_high,
-        "range_low": range_low,
-        "block_low": block_low,
-        "block_high": block_high,
-        "active_side": active_side,
-    }, candles_1h, execution_profile, entry_quality)
+    trade_plan = {}
+    if action != "WAIT":
+        trade_plan = _trade_plan({
+            "ginarea": {"mode": "PRIORITY_GRID" if entry_quality == "NO_TRADE" else "DIRECTIONAL"},
+            "depth_label": depth_label,
+            "range_mid": range_mid,
+            "range_high": range_high,
+            "range_low": range_low,
+            "block_low": block_low,
+            "block_high": block_high,
+            "active_side": active_side,
+        }, candles_1h, execution_profile, entry_quality)
 
     ginarea = {
         "mode": "PRIORITY_GRID",
@@ -616,7 +628,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
         "consensus_confidence": consensus_confidence,
         "consensus_votes": consensus_votes,
         "execution_side": active_side,
-        "execution_confidence": "LOW" if conflict_flag else consensus_confidence,
+        "execution_confidence": consensus_confidence,
         "conflict_flag": conflict_flag,
         "warnings": secondary_factors + context_risks,
         "primary_blocker": primary_blocker,
@@ -639,6 +651,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
         "partial_entry_allowed": partial_entry_allowed,
         "scale_in_allowed": scale_in_allowed if depth_label not in {"RISK", "DEEP"} and block_depth_pct <= 70 else False,
         "trade_plan": trade_plan,
+        "trade_plan_active": action != "WAIT",
         "ginarea": ginarea,
     }
 

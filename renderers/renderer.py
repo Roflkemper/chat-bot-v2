@@ -51,7 +51,7 @@ def render_full_report(s):
         "",
         f"ACTION: {s['action']} | ENTRY: {entry_line}",
         f"CONTEXT: {s['context_label']} ({s['context_score']}/3)",
-        f"КОНСЕНСУС: {_arrow(s['consensus_direction'])} {s['consensus_direction']} | {s['execution_confidence']} ({s['consensus_votes']}/3)",
+        (f"КОНСЕНСУС: CONFLICTED ({s['consensus_votes']}/3)" if s.get('consensus_votes', 0) == 0 or s.get('consensus_direction') in {'NONE', 'CONFLICT'} else f"КОНСЕНСУС: {_arrow(s['consensus_direction'])} {s['consensus_direction']} | {s['execution_confidence']} ({s['consensus_votes']}/3)"),
     ])
 
     if s.get("block_flip_warning"):
@@ -95,7 +95,12 @@ def render_full_report(s):
 
     plan = s.get("trade_plan") or {}
     lines.extend(["", "TRADE PLAN:"])
-    if plan.get("mode") == "GRID":
+    if not s.get("trade_plan_active"):
+        lines.extend([
+            "• ⏸️ ОЖИДАНИЕ — план не активен",
+            "• РЕЖИМ: GRID MONITORING" if gin.get('lifecycle') else "• РЕЖИМ: MONITORING",
+        ])
+    elif plan.get("mode") == "GRID":
         lines.extend([
             f"• MODE: GRID",
             f"• ENTRY ZONE: {plan.get('entry_zone_low')} – {plan.get('entry_zone_high')}",

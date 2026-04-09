@@ -66,13 +66,20 @@ def medium_forecast(candles_1d):
     }
 
 def build_consensus(short_fc, session_fc, medium_fc):
-    dirs = [short_fc["direction"], session_fc["direction"], medium_fc["direction"]]
+    dirs = [
+        str(short_fc.get("direction") or "NEUTRAL").upper(),
+        str(session_fc.get("direction") or "NEUTRAL").upper(),
+        str(medium_fc.get("direction") or "NEUTRAL").upper(),
+    ]
     long_votes = sum(1 for d in dirs if d == "LONG")
     short_votes = sum(1 for d in dirs if d == "SHORT")
-    if long_votes >= 2 and short_votes == 0:
-        return "LONG", "HIGH" if long_votes == 3 else "MID", f"{long_votes}/3"
-    if short_votes >= 2 and long_votes == 0:
-        return "SHORT", "HIGH" if short_votes == 3 else "MID", f"{short_votes}/3"
-    if long_votes == short_votes:
-        return "CONFLICT", "LOW", "1/3"
-    return ("LONG", "LOW", f"{long_votes}/3") if long_votes > short_votes else ("SHORT", "LOW", f"{short_votes}/3")
+
+    if long_votes == 0 and short_votes == 0:
+        return "NONE", "LOW", "0/3"
+    if long_votes > short_votes:
+        confidence = "HIGH" if long_votes == 3 else "MID" if long_votes == 2 else "LOW"
+        return "LONG", confidence, f"{long_votes}/3"
+    if short_votes > long_votes:
+        confidence = "HIGH" if short_votes == 3 else "MID" if short_votes == 2 else "LOW"
+        return "SHORT", confidence, f"{short_votes}/3"
+    return "NONE", "LOW", "0/3"
