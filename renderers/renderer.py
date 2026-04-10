@@ -13,6 +13,9 @@ def _block_name(block: str) -> str:
 def render_full_report(s):
     fc = s["forecast"]
     gin = s["ginarea"]
+    structural = s.get('structural_context', {})
+    grid = s.get('grid_context', {})
+
     entry_line = s["entry_type"] if s["entry_type"] else "NONE"
     trigger_text = s["trigger_type"] if s["trigger_type"] else "NONE"
     if s.get('trigger_blocked') and trigger_text != 'NONE':
@@ -63,6 +66,19 @@ def render_full_report(s):
         for w in s["warnings"]:
             lines.append(w)
 
+    if structural:
+        lines.extend([
+            "",
+            "СТРУКТУРА 1H:",
+            f"• BIAS: {_arrow(structural.get('bias', 'NEUTRAL'))} {structural.get('bias', 'NEUTRAL')} | {structural.get('strength', 'LOW')}",
+            f"• PHASE: {structural.get('phase', 'BALANCE')}",
+            f"• DETAIL: {structural.get('reason', 'нет данных')}",
+        ])
+        if structural.get('upper_cluster_level') is not None:
+            lines.append(f"• UPPER SWEEP: {structural['upper_cluster_level']} | шипов: {structural.get('upper_rejections_count', 0)}")
+        if structural.get('lower_cluster_level') is not None:
+            lines.append(f"• LOWER SWEEP: {structural['lower_cluster_level']} | шипов: {structural.get('lower_rejections_count', 0)}")
+
     lines.extend([
         "",
         "ПРОГНОЗ:",
@@ -103,6 +119,19 @@ def render_full_report(s):
         ])
         if s.get('candidate_status') == 'PREPARED':
             lines.append(f"• {s['flip_prep_side']} scenario prepared — при 3-м баре возможен полный block flip")
+
+    if grid:
+        lines.extend([
+            "",
+            "GRID CONTEXT:",
+            f"• PRIORITY SIDE: {grid.get('priority_side', 'NONE')}",
+            f"• DOWN IMPULSE: {grid.get('impulse_down_pct', 0)}% | GRID LAYERS: {grid.get('grid_trigger_down', 0)}",
+            f"• UP IMPULSE: {grid.get('impulse_up_pct', 0)}% | GRID LAYERS: {grid.get('grid_trigger_up', 0)}",
+        ])
+        if grid.get('liquidity_below') is not None:
+            lines.append(f"• LIQUIDITY BELOW: {grid['liquidity_below']}")
+        if grid.get('liquidity_above') is not None:
+            lines.append(f"• LIQUIDITY ABOVE: {grid['liquidity_above']}")
 
     lines.extend([
         "",

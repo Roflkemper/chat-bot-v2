@@ -2,8 +2,6 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-set "CURRENT_BRANCH="
-
 echo =====================================
 echo CHAT BOT VERSION 2 - ZERO CLICK INIT
 echo =====================================
@@ -21,7 +19,7 @@ if errorlevel 1 (
   echo [INFO] Git repository already exists.
 )
 
-call :prepare_git_state
+"%GIT_EXE%" branch -M %DEFAULT_BRANCH%
 if errorlevel 1 goto :fail
 
 "%GIT_EXE%" config user.name >nul 2>nul
@@ -81,42 +79,6 @@ echo.
 echo [OK] Repository is ready.
 echo [OK] Next time use PUSH_UPDATE.bat only.
 pause
-exit /b 0
-
-:prepare_git_state
-if exist ".git\rebase-merge" (
-  echo [WARN] Found unfinished rebase. Trying to abort it...
-  "%GIT_EXE%" rebase --abort >nul 2>nul
-)
-if exist ".git\rebase-apply" (
-  echo [WARN] Found unfinished apply/rebase. Trying to abort it...
-  "%GIT_EXE%" rebase --abort >nul 2>nul
-)
-if exist ".git\MERGE_HEAD" (
-  echo [WARN] Found unfinished merge. Trying to abort it...
-  "%GIT_EXE%" merge --abort >nul 2>nul
-)
-
-for /f "delims=" %%i in ('"%GIT_EXE%" symbolic-ref --quiet --short HEAD 2^>nul') do set "CURRENT_BRANCH=%%i"
-if defined CURRENT_BRANCH goto :ensure_default_branch
-
-"%GIT_EXE%" rev-parse --verify HEAD >nul 2>nul
-if errorlevel 1 (
-  echo [INFO] Creating orphan branch %DEFAULT_BRANCH%...
-  "%GIT_EXE%" checkout --orphan %DEFAULT_BRANCH%
-) else (
-  echo [INFO] Restoring branch %DEFAULT_BRANCH% from detached HEAD...
-  "%GIT_EXE%" checkout -B %DEFAULT_BRANCH%
-)
-if errorlevel 1 exit /b 1
-set "CURRENT_BRANCH=%DEFAULT_BRANCH%"
-
-:ensure_default_branch
-if /I not "%CURRENT_BRANCH%"=="%DEFAULT_BRANCH%" (
-  echo [INFO] Switching branch %CURRENT_BRANCH% ^> %DEFAULT_BRANCH%...
-  "%GIT_EXE%" branch -M %DEFAULT_BRANCH%
-  if errorlevel 1 exit /b 1
-)
 exit /b 0
 
 :fail

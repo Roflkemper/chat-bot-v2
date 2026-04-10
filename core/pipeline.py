@@ -7,6 +7,7 @@ from market_data.ohlcv import get_klines
 from services.timeframe_aggregator import aggregate_to_4h, aggregate_to_1d
 from features.trigger_detection import detect_trigger
 from features.forecast import short_term_forecast, session_forecast, medium_forecast, build_consensus
+from features.structural_context import analyze_structural_context
 from core.scenario_handoff import compute_block_pressure, compute_scenario_weights, update_flip_prep
 from storage.market_state_store import load_market_state, save_market_state
 
@@ -88,6 +89,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
     short_fc = short_term_forecast(candles_1h)
     session_fc = session_forecast(candles_4h)
     medium_fc = medium_forecast(candles_1d)
+    structural = analyze_structural_context(candles_1h)
     consensus_direction, consensus_confidence, consensus_votes, consensus_alignment_count = build_consensus(short_fc, session_fc, medium_fc)
 
     block_pressure, block_pressure_strength, block_flip_warning, block_pressure_reason = compute_block_pressure(
@@ -109,7 +111,8 @@ def build_full_snapshot(symbol="BTCUSDT"):
     else:
         state = "MID_RANGE"
 
-    conflict_flag = consensus_direction in ("LONG", "SHORT") and consensus_direction != active_side
+    structural_conflict = structural['bias'] in ('LONG', 'SHORT') and structural['bias'] != active_side and structural['strength'] in {'MID', 'HIGH'}
+    conflict_flag = (consensus_direction in ("LONG", "SHORT") and consensus_direction != active_side) or structural_conflict
 
     if active_block == 'SHORT' and consensus_direction == 'LONG' and consensus_alignment_count >= 2 and block_flip_warning:
         watch_side = 'LONG'
@@ -117,6 +120,8 @@ def build_full_snapshot(symbol="BTCUSDT"):
         watch_side = 'SHORT'
     else:
         watch_side = 'NONE'
+
+    execution_side = active_side
 
     base_snapshot = {
         'symbol': symbol,
@@ -145,12 +150,13 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'consensus_confidence': consensus_confidence,
         'consensus_votes': consensus_votes,
         'consensus_alignment_count': consensus_alignment_count,
-        'execution_side': active_side,
+        'execution_side': execution_side,
         'block_pressure': block_pressure,
         'block_pressure_strength': block_pressure_strength,
         'block_flip_warning': block_flip_warning,
         'block_pressure_reason': block_pressure_reason,
         'watch_side': watch_side,
+        'structural_context': structural,
     }
 
     prev_market_state = load_market_state()
@@ -176,18 +182,31 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'scenario_flip_trigger': flip_condition_text,
     })
 
+    structural_bias = structural['bias']
+    structural_strength = structural['strength']
+
     if state == "OVERRUN":
         action = "PROTECT"
         entry_type = None
-    elif trigger and state == "CONFIRMED" and context_score >= 2 and not (block_pressure == 'AGAINST' and block_pressure_strength in {'MID', 'HIGH'}):
+    elif trigger and state == "CONFIRMED" and context_score >= 2 and not (block_pressure == 'AGAINST' and block_pressure_strength in {'MID', 'HIGH'}) and not structural_conflict:
         action = "ENTER"
         entry_type = "ENTER"
-    elif state in {"PRE_ACTIVATION", 'SEARCH_TRIGGER'} and context_score >= 1 and not conflict_flag and block_pressure != 'AGAINST':
+    elif (
+        state == "PRE_ACTIVATION"
+        and trigger
+        and context_score >= 2
+        and not conflict_flag
+        and block_pressure != 'AGAINST'
+        and depth_label in {'EARLY', 'WORK'}
+    ):
         action = "PREPARE"
         entry_type = "PROBE"
     else:
         action = "WAIT"
         entry_type = None
+
+    if structural_bias in {'LONG', 'SHORT'} and structural_strength in {'MID', 'HIGH'}:
+        execution_side = structural_bias
 
     if block_depth_pct > 60:
         hedge_state = "PRE-TRIGGER"
@@ -233,6 +252,10 @@ def build_full_snapshot(symbol="BTCUSDT"):
         primary_blocker = 'нет рабочего контекста'
         trigger_blocked = True
         trigger_block_reason = 'нет рабочего контекста'
+    elif structural_conflict:
+        primary_blocker = 'структура 1h против активного блока'
+        trigger_blocked = True
+        trigger_block_reason = 'структура 1h против активного блока'
     elif conflict_flag:
         primary_blocker = 'forecast против активного блока'
         trigger_blocked = True
@@ -251,6 +274,8 @@ def build_full_snapshot(symbol="BTCUSDT"):
         context_warnings.append(block_pressure_reason)
     if context_score == 1:
         secondary_warnings.append('только 1 из 3 условий контекста выполнено')
+    if structural_bias in {'LONG', 'SHORT'}:
+        secondary_warnings.append(f"структура 1h: {structural_bias} | {structural['phase']} | {structural['reason']}")
 
     if primary_blocker:
         warnings.append(f'БЛОКИРОВКА: {primary_blocker}')
@@ -258,12 +283,14 @@ def build_full_snapshot(symbol="BTCUSDT"):
     else:
         warnings.extend([f'• {x}' for x in (secondary_warnings + context_warnings)])
 
+    grid_priority = execution_side if execution_side in {'LONG', 'SHORT'} else active_side
     ginarea = {
         'mode': 'PRIORITY_GRID',
-        'long_grid': 'REDUCE' if execution_side == 'SHORT' else 'WORK',
-        'short_grid': 'WORK' if execution_side == 'SHORT' else 'REDUCE',
+        'long_grid': 'REDUCE' if grid_priority == 'SHORT' else 'WORK',
+        'short_grid': 'WORK' if grid_priority == 'SHORT' else 'REDUCE',
         'aggression': 'LOW' if action != 'ENTER' else 'MID',
         'lifecycle': 'REDUCE_GRID' if depth_label in ('RISK', 'DEEP') or prep_state['flip_prep_status'] in {'ARMED', 'CONFIRMED'} else 'ARM_GRID' if state in ('SEARCH_TRIGGER', 'PRE_ACTIVATION') else 'WAIT_GRID',
+        'priority_side': grid_priority,
     }
 
     snapshot = {
@@ -273,7 +300,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'hedge_state': hedge_state,
         'hedge_arm_up': round(range_high + HEDGE_BUFFER_USD, 2),
         'hedge_arm_down': round(range_low - HEDGE_BUFFER_USD, 2),
-        'execution_side': active_side,
+        'execution_side': execution_side,
         'execution_confidence': consensus_confidence,
         'conflict_flag': conflict_flag,
         'context_score': context_score,
@@ -289,6 +316,16 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'scale_in_allowed': scale_in_allowed,
         'ginarea': ginarea,
         'trade_plan_mode': 'GRID MONITORING' if action == 'WAIT' else 'GRID' if ginarea['mode'] == 'PRIORITY_GRID' else 'DIRECTIONAL',
+        'grid_context': {
+            'priority_side': grid_priority,
+            'impulse_up_pct': structural['impulse_up_pct'],
+            'impulse_down_pct': structural['impulse_down_pct'],
+            'grid_trigger_up': structural['grid_trigger_up'],
+            'grid_trigger_down': structural['grid_trigger_down'],
+            'liquidity_above': structural['liquidity_above'],
+            'liquidity_below': structural['liquidity_below'],
+            'nearest_liquidity_side': structural['nearest_liquidity_side'],
+        },
         'trade_plan_active': action != 'WAIT',
     }
 

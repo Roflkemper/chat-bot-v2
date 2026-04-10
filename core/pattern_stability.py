@@ -83,16 +83,6 @@ def stabilize_pattern_signal(
                 note="new pattern not meaningful; keep previous direction",
             )
 
-        if unstable_context and delta < flip_threshold:
-            return StablePatternResult(
-                direction="NEUTRAL",
-                strength=min(previous.strength, current.strength),
-                confidence=max(previous.confidence, current.confidence),
-                stability_state="CONFLICT_SOFT",
-                flipped=False,
-                note="recent opposite pattern too weak to flip; downgrade to neutral/low",
-            )
-
         if persistence_bars_seen < min_persistence_bars:
             return StablePatternResult(
                 direction=previous.direction,
@@ -101,6 +91,16 @@ def stabilize_pattern_signal(
                 stability_state="WAIT_PERSISTENCE",
                 flipped=False,
                 note=f"opposite pattern needs persistence >= {min_persistence_bars} bars",
+            )
+
+        if unstable_context and delta < flip_threshold:
+            return StablePatternResult(
+                direction="NEUTRAL",
+                strength=min(previous.strength, current.strength),
+                confidence=max(previous.confidence, current.confidence),
+                stability_state="CONFLICT_SOFT",
+                flipped=False,
+                note="recent opposite pattern too weak to flip; downgrade to neutral/low",
             )
 
         return StablePatternResult(
