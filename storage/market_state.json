@@ -1,0 +1,13 @@
+{
+  "flip_prep_active": false,
+  "flip_prep_side": "NONE",
+  "flip_prep_reason": "",
+  "flip_prep_level": null,
+  "flip_prep_confirm_bars_needed": 2,
+  "flip_prep_progress_bars": 0,
+  "flip_prep_status": "IDLE",
+  "flip_prep_cooldown_bars": 0,
+  "candidate_side": "NONE",
+  "candidate_status": "NONE",
+  "candidate_reason": ""
+}
