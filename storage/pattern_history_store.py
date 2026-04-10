@@ -47,12 +47,14 @@ class PatternHistoryStore:
 
     def append(self, record: PatternRecord) -> None:
         with self.path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
+            fh.write(json.dumps(asdict(record), ensure_ascii=False) + "
+")
 
     def extend(self, records: Iterable[PatternRecord]) -> None:
         with self.path.open("a", encoding="utf-8") as fh:
             for record in records:
-                fh.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
+                fh.write(json.dumps(asdict(record), ensure_ascii=False) + "
+")
 
     def iter_records(self, tf: str | None = None) -> Iterator[PatternRecord]:
         with self.path.open("r", encoding="utf-8") as fh:

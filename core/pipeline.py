@@ -7,7 +7,9 @@ from market_data.ohlcv import get_klines
 from services.timeframe_aggregator import aggregate_to_4h, aggregate_to_1d
 from features.trigger_detection import detect_trigger
 from features.forecast import short_term_forecast, session_forecast, medium_forecast, build_consensus
-from features.grid_context import build_grid_context
+from features.liquidity_structure import detect_liquidity_structure
+from core.grid_adapter import snapshot_to_grid_input
+from core.grid_action_engine import build_grid_action
 from core.scenario_handoff import compute_block_pressure, compute_scenario_weights, update_flip_prep
 from storage.market_state_store import load_market_state, save_market_state
 
@@ -95,6 +97,8 @@ def build_full_snapshot(symbol="BTCUSDT"):
         active_block, consensus_direction, consensus_alignment_count, session_fc, medium_fc
     )
 
+    structure_flags = detect_liquidity_structure(candles_1h)
+
     scalp_direction = short_fc["direction"]
     context_score, context_details = _context_flags('SEARCH_TRIGGER', depth_label, scalp_direction, active_side, candles_1h)
     context_label = 'STRONG' if context_score == 3 else 'VALID' if context_score == 2 else 'WEAK' if context_score == 1 else 'NO CONTEXT'
@@ -128,6 +132,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'range_high': round(range_high, 2),
         'range_mid': round(range_mid, 2),
         'range_position_pct': round(range_position_pct, 2),
+        'range_width_pct': round((range_size / max(price, 1e-9)) * 100.0, 2),
         'active_block': active_block,
         'active_side': active_side,
         'block_low': round(block_low, 2),
@@ -152,6 +157,12 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'block_flip_warning': block_flip_warning,
         'block_pressure_reason': block_pressure_reason,
         'watch_side': watch_side,
+        'market_regime': 'RANGE' if 20 <= range_position_pct <= 80 else 'CHOP',
+        'range_quality': 'GOOD' if range_size / max(price, 1e-9) >= 0.05 else 'OK',
+        'trend_pressure_side': consensus_direction if consensus_direction in {'LONG', 'SHORT'} else 'NEUTRAL',
+        'trend_pressure_strength': block_pressure_strength if block_pressure_strength in {'LOW', 'MID', 'HIGH'} else 'LOW',
+        'forecast_conflict': conflict_flag,
+        **structure_flags,
     }
 
     prev_market_state = load_market_state()
@@ -183,7 +194,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
     elif trigger and state == "CONFIRMED" and context_score >= 2 and not (block_pressure == 'AGAINST' and block_pressure_strength in {'MID', 'HIGH'}):
         action = "ENTER"
         entry_type = "ENTER"
-    elif state == "PRE_ACTIVATION" and context_score >= 1 and not conflict_flag and block_pressure != 'AGAINST':
+    elif state in {"PRE_ACTIVATION", 'SEARCH_TRIGGER'} and context_score >= 1 and not conflict_flag and block_pressure != 'AGAINST':
         action = "PREPARE"
         entry_type = "PROBE"
     else:
@@ -259,21 +270,32 @@ def build_full_snapshot(symbol="BTCUSDT"):
     else:
         warnings.extend([f'• {x}' for x in (secondary_warnings + context_warnings)])
 
-    ginarea = {
-        'mode': 'PRIORITY_GRID',
-        'long_grid': 'REDUCE' if active_side == 'SHORT' else 'WORK',
-        'short_grid': 'WORK' if active_side == 'SHORT' else 'REDUCE',
-        'aggression': 'LOW' if action != 'ENTER' else 'MID',
-        'lifecycle': 'REDUCE_GRID' if depth_label in ('RISK', 'DEEP') or prep_state['flip_prep_status'] in {'ARMED', 'CONFIRMED'} else 'ARM_GRID' if state in ('SEARCH_TRIGGER', 'PRE_ACTIVATION') else 'WAIT_GRID',
-    }
+    hedge_arm_up = round(range_high + HEDGE_BUFFER_USD, 2)
+    hedge_arm_down = round(range_low - HEDGE_BUFFER_USD, 2)
+    down_target = hedge_arm_down
+    up_target = hedge_arm_up
+    down_impulse_pct = max(0.0, ((price - down_target) / max(price, 1e-9)) * 100.0)
+    up_impulse_pct = max(0.0, ((up_target - price) / max(price, 1e-9)) * 100.0)
+
+    def _layers_from_impulse(impulse_pct: float) -> int:
+        if impulse_pct >= 2.9:
+            return 3
+        if impulse_pct >= 2.2:
+            return 2
+        if impulse_pct >= 1.3:
+            return 1
+        return 0
+
+    down_layers = _layers_from_impulse(down_impulse_pct)
+    up_layers = _layers_from_impulse(up_impulse_pct)
 
     snapshot = {
         **base_snapshot,
         'action': action,
         'entry_type': entry_type,
         'hedge_state': hedge_state,
-        'hedge_arm_up': round(range_high + HEDGE_BUFFER_USD, 2),
-        'hedge_arm_down': round(range_low - HEDGE_BUFFER_USD, 2),
+        'hedge_arm_up': hedge_arm_up,
+        'hedge_arm_down': hedge_arm_down,
         'execution_side': active_side,
         'execution_confidence': consensus_confidence,
         'conflict_flag': conflict_flag,
@@ -288,21 +310,36 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'risk_mode': risk_mode,
         'partial_entry_allowed': partial_entry_allowed,
         'scale_in_allowed': scale_in_allowed,
-        'ginarea': ginarea,
-        'trade_plan_mode': 'GRID MONITORING' if action == 'WAIT' else 'GRID' if ginarea['mode'] == 'PRIORITY_GRID' else 'DIRECTIONAL',
+        'trade_plan_mode': 'GRID MONITORING' if action == 'WAIT' else 'GRID',
         'trade_plan_active': action != 'WAIT',
+        'down_target': round(down_target, 2),
+        'up_target': round(up_target, 2),
+        'down_impulse_pct': round(down_impulse_pct, 2),
+        'up_impulse_pct': round(up_impulse_pct, 2),
+        'down_layers': down_layers,
+        'up_layers': up_layers,
     }
-    snapshot['grid_context'] = build_grid_context(snapshot, candles_1h)
-    priority_side = snapshot['grid_context'].get('priority_side', 'NEUTRAL')
-    if priority_side == 'NEUTRAL':
-        snapshot['ginarea']['long_grid'] = 'WORK'
-        snapshot['ginarea']['short_grid'] = 'WORK'
-    elif priority_side == 'LONG':
-        snapshot['ginarea']['long_grid'] = 'WORK'
-        snapshot['ginarea']['short_grid'] = 'REDUCE'
-    elif priority_side == 'SHORT':
-        snapshot['ginarea']['long_grid'] = 'REDUCE'
-        snapshot['ginarea']['short_grid'] = 'WORK'
+
+    grid_input = snapshot_to_grid_input(snapshot)
+    grid_action = build_grid_action(grid_input)
+
+    action_map = {
+        'BOOST': 'WORK',
+        'ENABLE': 'WORK',
+        'HOLD': 'WORK',
+        'REDUCE': 'REDUCE',
+        'PAUSE': 'PAUSE',
+    }
+    ginarea = {
+        'mode': 'PRIORITY_GRID',
+        'long_grid': action_map.get(grid_action['long_action'], 'WORK'),
+        'short_grid': action_map.get(grid_action['short_action'], 'WORK'),
+        'aggression': 'LOW' if grid_action['grid_regime'] == 'DANGER' else 'MID' if grid_action['priority_side'] != 'NEUTRAL' else 'LOW',
+        'lifecycle': 'REDUCE_GRID' if grid_action['grid_regime'] == 'DANGER' else 'ARM_GRID' if state in ('SEARCH_TRIGGER', 'PRE_ACTIVATION') else 'WAIT_GRID',
+    }
+
+    snapshot['ginarea'] = ginarea
+    snapshot['grid_action'] = grid_action
 
     save_market_state(prep_state)
     return snapshot
