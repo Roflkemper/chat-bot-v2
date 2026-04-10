@@ -1,56 +1,56 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from datetime import datetime
+from typing import Mapping
 
-from core.pipeline_integration_fix import build_pipeline_fields
 
+def build_execution_snapshot(payload: Mapping[str, float]):
+    price = float(payload.get('price', 0.0))
+    range_low = float(payload.get('range_low', 0.0))
+    range_mid = float(payload.get('range_mid', (range_low + float(payload.get('range_high', 0.0))) / 2.0))
+    range_high = float(payload.get('range_high', 0.0))
 
-def build_execution_snapshot(payload: Dict[str, Any]) -> Dict[str, Any]:
-    price = float(payload['price'])
-    range_low = float(payload['range_low'])
-    range_mid = float(payload['range_mid'])
-    range_high = float(payload['range_high'])
-
-    if price >= range_mid:
+    if price > range_mid:
         side = 'SHORT'
-        active_block_low = float(payload.get('upper_block_low', range_mid))
-        active_block_high = float(payload.get('upper_block_high', range_high))
-        distance_to_active_edge = max(0.0, active_block_high - price)
+        active_block = 'SHORT'
+        block_low = float(payload.get('upper_block_low', range_mid))
+        block_high = float(payload.get('upper_block_high', range_high))
     else:
         side = 'LONG'
-        active_block_low = float(payload.get('lower_block_low', range_low))
-        active_block_high = float(payload.get('lower_block_high', range_mid))
-        distance_to_active_edge = max(0.0, price - active_block_low)
+        active_block = 'LONG'
+        block_low = float(payload.get('lower_block_low', range_low))
+        block_high = float(payload.get('lower_block_high', range_mid))
 
-    block_size = max(active_block_high - active_block_low, 1e-9)
-    block_depth_pct = ((price - active_block_low) / block_size) * 100.0
-    overrun_flag = block_depth_pct >= 97.0 or price > range_high or price < range_low
+    block_size = max(block_high - block_low, 1e-9)
+    range_size = max(range_high - range_low, 1e-9)
+    block_depth_pct = ((price - block_low) / block_size) * 100.0
+    range_position_pct = ((price - range_low) / range_size) * 100.0
 
-    state = 'OVERRUN' if overrun_flag else 'MID_RANGE'
-    result = build_pipeline_fields(
-        price=price,
-        existing_state=state,
-        execution_side=side,
-        state_machine_snapshot={
-            'state': state,
-            'active_block_side': side,
-            'active_block_low': active_block_low,
-            'active_block_high': active_block_high,
-            'block_depth_pct': block_depth_pct,
-            'distance_to_active_edge': distance_to_active_edge,
-            'distance_to_upper_edge': max(0.0, range_high - price),
-            'distance_to_lower_edge': max(0.0, price - range_low),
-            'overrun_flag': overrun_flag,
-        },
-        pattern_snapshot={
-            'avg_move_pct': payload.get('pattern_avg_move_pct'),
-            'sample_count': payload.get('pattern_sample_count', 12),
-        },
-        consensus_snapshot={
-            'direction': payload.get('pattern_direction'),
-            'confidence': payload.get('consensus_confidence'),
-        },
-    )
-    out = result.to_dict()
-    out['side'] = side
-    return out
+    if block_depth_pct < 15:
+        depth_label = 'EARLY'
+    elif block_depth_pct < 50:
+        depth_label = 'WORK'
+    elif block_depth_pct < 85:
+        depth_label = 'RISK'
+    else:
+        depth_label = 'DEEP'
+
+    state = 'OVERRUN' if block_depth_pct >= 85 else 'SEARCH_TRIGGER'
+    pattern_avg_move_pct = float(payload.get('pattern_avg_move_pct', 0.0) or 0.0)
+    pattern_direction = str(payload.get('pattern_direction', 'NEUTRAL') or 'NEUTRAL')
+
+    return {
+        'timestamp': datetime.now().strftime('%H:%M'),
+        'tf': '1h',
+        'price': round(price, 2),
+        'state': state,
+        'side': side,
+        'active_block': active_block,
+        'block_depth_pct': round(block_depth_pct, 2),
+        'depth_label': depth_label,
+        'range_position_pct': round(range_position_pct, 2),
+        'consensus_direction': side,
+        'consensus_confidence': 'LOW',
+        'consensus_votes': '1/3',
+        'pattern_visible': abs(pattern_avg_move_pct) >= 0.2 and pattern_direction in {'LONG', 'SHORT'},
+    }
