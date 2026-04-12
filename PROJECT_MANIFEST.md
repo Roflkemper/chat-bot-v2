@@ -41,6 +41,8 @@ Regression Shield внедрён и проходит зелёный прогон
 Regression Shield закреплён на уровне commit/push/release.
 Cleanup base выполнен: корень репозитория очищен, история вынесена в docs/history/, README/CHANGELOG/NEXT_CHAT_PROMPT приведены в рабочее состояние.
 
+- Git/release flow: single-owner mode, local branch is source of truth, push via force-with-lease, no pull --rebase.
+
 ## Следующий этап
 1. Держать Regression Shield зелёным перед каждым изменением.
 2. Дальше делать только согласованный следующий функциональный этап поверх cleanup base.

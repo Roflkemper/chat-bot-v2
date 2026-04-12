@@ -21,6 +21,19 @@ if "%VERSION_TAG%"=="" (
     for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format ''yyyy.MM.dd-HHmmss''"') do set "VERSION_TAG=build-%%I"
 )
 
+if exist ".git\rebase-merge" (
+    echo [WARN] Unfinished rebase detected. Auto-abort...
+    git rebase --abort >nul 2>nul
+)
+if exist ".git\rebase-apply" (
+    echo [WARN] Unfinished rebase apply detected. Auto-abort...
+    git rebase --abort >nul 2>nul
+)
+if exist ".git\MERGE_HEAD" (
+    echo [WARN] Unfinished merge detected. Auto-abort...
+    git merge --abort >nul 2>nul
+)
+
 echo [OK] Version tag: %VERSION_TAG%
 
 echo.

@@ -1,3 +1,12 @@
+## V17.10.45-single-owner-release-flow
+
+- release/push flow переведён под правило: один владелец репозитория, локальная ветка — источник истины
+- `PUSH_RELEASE.bat` больше не делает `git pull --rebase`
+- push теперь идёт через `git push --force-with-lease origin <branch>`
+- добавлен авто-abort незавершённого `rebase`/`merge` перед релизным прогоном
+- `MAKE_RELEASE.bat` теперь тоже автоматически чистит незавершённый rebase/merge перед локальной сборкой
+- `tools/release_runner.ps1` синхронизирован с тем же single-owner release flow
+
 ## V17.10.44-if-then-plan
 
 - Added a dedicated `IF-THEN PLAN` layer after decision assembly, without mixing it into the decision logic.

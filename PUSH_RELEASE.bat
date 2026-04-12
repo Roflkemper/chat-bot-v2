@@ -46,22 +46,31 @@ if /I "%CURRENT_BRANCH%"=="HEAD" (
 echo [OK] Current branch: %CURRENT_BRANCH%
 
 if exist ".git\rebase-merge" (
-    echo [ERROR] Unfinished rebase detected.
-    echo Run: git rebase --abort
-    pause
-    exit /b 1
+    echo [WARN] Unfinished rebase detected. Auto-abort...
+    "%GIT_EXE%" rebase --abort
+    if errorlevel 1 (
+        echo [ERROR] Could not abort rebase.
+        pause
+        exit /b 1
+    )
 )
 if exist ".git\rebase-apply" (
-    echo [ERROR] Unfinished rebase detected.
-    echo Run: git rebase --abort
-    pause
-    exit /b 1
+    echo [WARN] Unfinished rebase apply detected. Auto-abort...
+    "%GIT_EXE%" rebase --abort
+    if errorlevel 1 (
+        echo [ERROR] Could not abort rebase apply.
+        pause
+        exit /b 1
+    )
 )
 if exist ".git\MERGE_HEAD" (
-    echo [ERROR] Unfinished merge detected.
-    echo Run: git merge --abort
-    pause
-    exit /b 1
+    echo [WARN] Unfinished merge detected. Auto-abort...
+    "%GIT_EXE%" merge --abort
+    if errorlevel 1 (
+        echo [ERROR] Could not abort merge.
+        pause
+        exit /b 1
+    )
 )
 
 if not exist "%RELEASES_DIR%" mkdir "%RELEASES_DIR%"
@@ -75,6 +84,8 @@ if "%VERSION_TAG%"=="" (
 )
 
 echo [OK] Version tag: %VERSION_TAG%
+echo [INFO] Repo mode: single-owner / local branch is source of truth
+echo [INFO] Push mode: force-with-lease ^(no pull --rebase^)
 
 set "COMMIT_MSG=%~1"
 if "%COMMIT_MSG%"=="" set "COMMIT_MSG=%VERSION_TAG%"
@@ -156,7 +167,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [INFO] Syncing with origin/%CURRENT_BRANCH% before push...
+echo [INFO] Fetching origin for lease safety...
 "%GIT_EXE%" fetch origin
 if errorlevel 1 (
     echo [ERROR] git fetch failed.
@@ -164,18 +175,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%GIT_EXE%" pull --rebase origin %CURRENT_BRANCH%
-if errorlevel 1 (
-    echo [ERROR] git pull --rebase failed. Resolve conflicts and retry.
-    pause
-    exit /b 1
+for /f "delims=" %%A in ('"%GIT_EXE%" rev-parse HEAD 2^>nul') do set "LOCAL_HEAD=%%A"
+for /f "delims=" %%A in ('"%GIT_EXE%" rev-parse origin/%CURRENT_BRANCH% 2^>nul') do set "REMOTE_HEAD=%%A"
+
+echo [INFO] Local HEAD : %LOCAL_HEAD%
+if not "%REMOTE_HEAD%"=="" (
+    echo [INFO] Remote HEAD: %REMOTE_HEAD%
+) else (
+    echo [WARN] Remote branch origin/%CURRENT_BRANCH% not found yet. First push is OK.
 )
 
 echo.
-echo [INFO] Pushing local branch to GitHub...
-"%GIT_EXE%" push origin %CURRENT_BRANCH%
+echo [INFO] Pushing local branch to GitHub with force-with-lease...
+"%GIT_EXE%" push --force-with-lease origin %CURRENT_BRANCH%
 if errorlevel 1 (
-    echo [ERROR] git push failed.
+    echo [ERROR] git push --force-with-lease failed.
+    echo [ERROR] Remote changed after fetch. Run the script again.
     pause
     exit /b 1
 )
@@ -192,7 +207,6 @@ if errorlevel 1 (
 echo.
 echo [INFO] Verifying ZIP...
 powershell -NoProfile -ExecutionPolicy Bypass -File "tools\verify_release_zip.ps1" -ZipPath "%ZIP_PATH%"
-
 if errorlevel 1 (
     echo [ERROR] ZIP verification failed.
     pause

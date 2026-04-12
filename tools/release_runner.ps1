@@ -282,6 +282,8 @@ function Commit-And-Push {
     }
 
     Invoke-Git @('fetch','origin')
+    Write-Log "Fetch completed"
+    Write-Log "Push mode: single-owner / force-with-lease / no rebase"
     Invoke-Git @('push','--force-with-lease','origin','main')
     Write-Log "GitHub updated with local state"
 }
