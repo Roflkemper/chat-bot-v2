@@ -1,0 +1,7 @@
+FIX 88-94
+- Added soft bot states: SOFT_READY / READY_SMALL / READY_SMALL_REDUCED / WATCHLIST semantics.
+- Separated trade authorization from bot authorization in execution verdict.
+- Added candidate priority layers: strong / soft / watchlist.
+- Synced range small reduced mode into bot manager state.
+- Cleaner execution UX in FINAL DECISION and GINAREA blocks.
+- Learning output now states when only context collection exists and closed trades are still zero.

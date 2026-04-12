@@ -1,0 +1,14 @@
+FIX 57 — position-aware manager
+
+Что изменено:
+- manager_action теперь учитывает, есть ли уже открытая позиция
+- если позиция уже открыта по той же стороне, WAIT/WATCH переводятся в HOLD_LONG / HOLD_SHORT
+- если новая активная сторона противоположна текущей позиции, manager_action переводится в REDUCE_LONG / REDUCE_SHORT
+- если рынок нейтральный и edge исчез, менеджер больше не делает вид, что позицию надо просто игнорировать
+- execution plan теперь показывает position state и position side
+
+Логика:
+- FLAT: ведём себя как в FIX 56
+- IN POSITION + same side: hold first, add only after confirmation
+- IN POSITION + opposite side: reduce risk, не усреднять против нового bias
+- IN POSITION + neutral market: hold only cautiously when сценарий ещё не сломан, otherwise reduce

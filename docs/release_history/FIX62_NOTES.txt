@@ -1,0 +1,27 @@
+FIX 62 — auto journal learning from closed trades
+
+Что добавлено:
+- personal bot learning теперь обновляется после закрытой сделки (EXIT)
+- статистика копится по:
+  - bot type
+  - scenario
+  - setup quality
+  - timeframe
+  - exit reason
+- добавлены поля:
+  - closed_trades
+  - wins / losses / breakeven
+  - avg_result_pct
+  - avg_rr
+  - setup_qualities
+  - exit_reasons
+  - timeframes
+  - scenarios
+- добавлен dedupe по trade_id, чтобы одна и та же закрытая сделка не учитывалась повторно
+- после EXIT бот шлёт отдельный LEARNING UPDATE alert
+
+Логика:
+- win / loss / breakeven определяется по result_pct и типу выхода
+- положительные закрытия: TARGET_COMPLETED / PROTECTED_MANAGEMENT_EXIT
+- отрицательные закрытия: STOP_OR_INVALIDATION / STRUCTURE_BREAK
+- остальное уходит в breakeven / neutral bucket

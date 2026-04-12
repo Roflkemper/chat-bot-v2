@@ -1,0 +1,10 @@
+V16.8 STAGE 1 — Pattern Intelligence
+
+- pattern_memory upgraded from plain direction summary to richer pattern intelligence context
+- added pattern_type / pattern_note / match_quality / expected_path / invalidation
+- added long_prob / short_prob / neutral_prob and signed pattern_bias
+- wired safe_pattern_memory_v2 to use analyze_history_pattern instead of vector-only fallback
+- analysis_service fallback now passes symbol/timeframe into pattern fallback
+- telegram formatter now surfaces pattern type, expected path, invalidation
+
+Scope of this patch: patterns only. Volume / fusion / HTF filter are not changed in this stage.

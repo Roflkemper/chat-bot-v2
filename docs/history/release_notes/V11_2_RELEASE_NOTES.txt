@@ -1,0 +1,5 @@
+V11.2
+- bias visibility added to top WAIT/NO-ENTRY blocks
+- summary/forecast/final decision now show unified bias + execution
+- trade manager now shows new entry state and open position source
+- ginarea no-trade lock converts open bot states to manage-only and blocks fresh add/ready language

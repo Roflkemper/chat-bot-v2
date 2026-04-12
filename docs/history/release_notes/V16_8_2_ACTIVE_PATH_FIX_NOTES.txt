@@ -1,0 +1,4 @@
+V16.8.2 ACTIVE PATH FIX
+- fixed active BTC ANALYSIS route losing pattern_memory_v2 inside AnalysisSnapshot
+- models/snapshots.py now preserves pattern_memory_v2 through from_dict/to_dict
+- renderers/telegram_renderers.py can now see the new pattern block on live AnalysisSnapshot payloads

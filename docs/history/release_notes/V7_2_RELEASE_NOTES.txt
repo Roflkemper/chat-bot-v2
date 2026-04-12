@@ -1,0 +1,12 @@
+V7.2 — TACTICAL EDGE PRO
+
+Что изменено:
+- добавлен новый модуль core/tactical_edge.py
+- команда "⚡ ЧТО ДЕЛАТЬ СЕЙЧАС" получила новый блок TACTICAL EDGE V7.2
+- усилено различение режимов: FADE_SETUP / CONTINUATION / EXHAUSTION / NO_CHASE
+- формулировки стали жёстче и короче: вход сейчас, next trigger, invalidation, risk
+- BTC TRADE MANAGER теперь тоже показывает tactical summary и posture
+
+Проверка:
+- py_compile: OK
+- health_check: OK

@@ -1,0 +1,18 @@
+V17.8.4.1 - HOTFIX PRE_HEDGE INIT
+
+Что исправлено:
+- исправлен runtime-crash в core/execution_advisor.py
+- pre_hedge теперь инициализируется до использования в no-entry / pause ветке
+- убран дублирующий повторный вызов pre_hedge в том же блоке
+
+Симптом до фикса:
+- команда BTC 1H могла падать с ошибкой:
+  UnboundLocalError: local variable 'pre_hedge' referenced before assignment
+
+Результат после фикса:
+- Telegram render снова собирается корректно
+- блок PRE-HEDGE WARNING не ломает analysis output в pause / no-entry сценариях
+
+Примечание:
+- предупреждения exchange_liquidity.binance_ws_failed / bybit_ws_failed в логах не связаны с этим падением
+- это отдельные timeout-предупреждения websocket-слоя

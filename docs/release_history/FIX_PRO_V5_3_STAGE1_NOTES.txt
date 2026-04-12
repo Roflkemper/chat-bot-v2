@@ -1,0 +1,15 @@
+FIX PRO V5.3 STAGE 1
+
+Сделано поверх текущего архива:
+1) Добавлен optional CoinGlass client (API key через COINGLASS_API_KEY) с fallback на локальные swing/liquidity данные.
+2) Усилен derivatives/liquidation context: OI/funding/squeeze/liquidity magnet.
+3) Добавлена команда и кнопка: ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС.
+4) Усилен intraday execution advisor: size mode / action now / trap reclaim / soft intraday entry.
+5) XGBoost layer: добавлен xgboost-based ML v2 scaffold + rule fallback без падения, если обученных весов нет.
+6) Частичная RU-чистка основных кнопок и help/position текстов.
+7) Синхронизированы новые RU-кнопки с command registry.
+
+Честно:
+- Полноценная CoinGlass интеграция зависит от валидного API ключа и реальных endpoint params.
+- Без COINGLASS_API_KEY слой работает в fallback режиме от локальной рыночной структуры.
+- XGBoost слой пока scaffold/fallback: trained models xgb_trend.joblib / xgb_countertrend.joblib / xgb_range.joblib можно положить в models/.

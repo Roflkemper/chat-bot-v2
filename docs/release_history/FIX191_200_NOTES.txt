@@ -1,0 +1,21 @@
+FIX191_200 — ACCEPTANCE MEMORY + LIVE CHARACTER ACTIONS
+
+Что добавлено:
+- Память по acceptance / failed acceptance
+- Память по последнему fake breakout и последнему continuation shift
+- Улучшен storage/transition_alerts.py:
+  - отдельные live-alerts на смену fast move classification
+  - отдельные alerts на acceptance confirmed / failed
+  - более понятные действия по лонгам/шортам в live-режиме
+  - исправлено сохранение cooldown/priority в _store()
+- Новый модуль: core/live_context_memory.py
+- Новый state-файл: state/live_context_memory.json
+
+Практический эффект:
+- бот лучше различает fake → continuation и continuation → exhaustion
+- в live-alerts чаще появляется человеческая формулировка:
+  - вынос вверх похож на ложный
+  - шорты лучше прикрывать
+  - движение принимают выше/ниже
+  - агрессивное продолжение лучше не преследовать
+- есть память по последнему характеру движения, чтобы следующий alert был логичнее

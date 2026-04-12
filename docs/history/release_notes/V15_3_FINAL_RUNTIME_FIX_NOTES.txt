@@ -1,0 +1,1 @@
+Final runtime fix: V15-only formatter, narrower liquidity blocks, adaptive pattern history, stronger reaction logic, synced grid authority.

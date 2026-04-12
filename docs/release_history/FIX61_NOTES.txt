@@ -1,0 +1,22 @@
+FIX 61 — auto alerts по lifecycle transitions
+
+Что добавлено:
+- auto alerts по переходам lifecycle_state прямо в TelegramResponder
+- отдельный dedupe-слой LAST_LIFECYCLE_ALERTS, чтобы один и тот же transition не спамился повторно
+- alert-сообщения для переходов:
+  - ENTRY
+  - TP1
+  - PARTIAL_DONE
+  - BE_MOVED
+  - HOLD_RUNNER
+  - EXIT
+
+Как работает:
+- если payload содержит journal_snapshot с новым lifecycle_history[-1], бот отправляет отдельный alert
+- alert идёт один раз на конкретный transition trade_id + state + at
+- обычный основной рендер после этого сохраняется
+
+Что даёт:
+- теперь переходы сделки видно отдельными сообщениями
+- TP1 / PARTIAL / BE / RUNNER / EXIT не теряются внутри длинного analysis-рендера
+- lifecycle стал не только внутренней state machine, но и отдельным Telegram event stream

@@ -1,0 +1,13 @@
+V17.8.3 - GRID LIFECYCLE MANAGER
+
+Что добавлено:
+- core/grid_lifecycle_manager.py
+- lifecycle state machine: IDLE / PREPARE / ARM / ACTIVE / HOLD_ACTIVE / DEFEND / REDUCE / EXIT / REARM_WAIT / REARM_READY
+- lifecycle authority в execution advisor
+- блок "ЖИЗНЕННЫЙ ЦИКЛ СЕТКИ" в Telegram-выводах
+- синхронизация lifecycle с consensus и hedge layer
+- запреты на add/реарм в защитных и выходных фазах
+
+Главная цель:
+- превратить сетку из двоичной модели в управляемый жизненный цикл
+- убрать серую зону между активацией, защитой, разгрузкой и повторным запуском

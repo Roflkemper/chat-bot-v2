@@ -1,0 +1,16 @@
+V17.7.3 - ZERO CLICK MODE
+
+What changed:
+- shared runtime helper for Git and GitHub CLI autodetection
+- zero-click init with auto git identity setup for this repo
+- push script now auto-initializes repo if needed
+- release tag script now uses VERSION.txt automatically
+- support for GitHub Desktop bundled Git fallback
+- optional GitHub CLI browser login when gh is available
+- open-actions shortcut added
+- no changes to trading logic
+
+Goal:
+- minimum manual work
+- keep private repo sync in one click
+- reduce dependency on PATH being perfect

@@ -1,0 +1,6 @@
+V16.8.7 — MANAGER LAYER
+- BTC TRADE MANAGER переведён в action-first формат без простыней
+- Жёсткие manager-action статусы: HOLD / PARTIAL / BREAKEVEN / HOLD RUNNER / EXIT / WAIT
+- Для активной позиции выводятся только ключевые поля: действие, причина, TP1, TP2, BE, next, отмена
+- Для отсутствующей позиции manager больше не имитирует активное ведение: теперь пишет NO POSITION
+- JOURNAL MANAGER синхронизирован с manager layer и показывает только ключевые journal-флаги

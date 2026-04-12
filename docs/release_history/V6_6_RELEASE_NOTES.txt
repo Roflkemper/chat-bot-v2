@@ -1,0 +1,15 @@
+V6.6 — MULTI-TF + FINAL DECISION 2.0
+
+Что добавлено:
+- новый слой core/multi_tf_fusion.py
+- analysis_service теперь строит multi_tf_context и мягко корректирует confidence
+- FINAL DECISION и BTC ANALYSIS показывают блок MULTI-TF FUSION V6.6
+- в decision добавлены alignment / action / risk modifier / summary
+
+Смысл релиза:
+- видно, синхронизирован ли локальный сигнал с forecast / pattern / HTF
+- при конфликте ТФ confidence режется и бот пишет о снижении агрессии
+- при хорошем alignment confidence слегка усиливается
+
+Ограничение:
+- это слой синхронизации существующих сигналов проекта, а не отдельный полный повторный прогон всех ТФ в одном вызове

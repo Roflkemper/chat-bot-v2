@@ -1,0 +1,8 @@
+FINAL LAUNCH CHECKLIST V7.4
+
+1. Распаковать архив
+2. Заполнить .env или bot_local_config.json
+3. Запустить RUN_BOT.bat
+4. Проверить команду BTC 15M
+5. Проверить, что в ответе виден блок LEARNING ENGINE PRO V7.4
+6. Если trade_journal.jsonl пока пустой, влияние learning будет слабым — это нормально

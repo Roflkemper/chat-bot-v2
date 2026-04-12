@@ -1,0 +1,14 @@
+V12 AUTO EDGE ALERTS
+
+Что добавлено:
+- фоновый авто-мониторинг 15m/1h по CHAT_ID из конфига
+- алерт отправляется только когда edge реально собирается или становится actionable
+- anti-spam cooldown для повторов одинакового сигнала
+- WAIT/NO ENTRY больше не спамится как live-alert
+- в алерте выводятся: сторона, edge, действие, цена, trigger, invalidation
+
+Новые env-параметры:
+- AUTO_EDGE_ALERTS_ENABLED=true
+- AUTO_EDGE_ALERTS_INTERVAL_SEC=45
+- AUTO_EDGE_ALERTS_COOLDOWN_SEC=300
+- AUTO_EDGE_ALERTS_TIMEFRAMES=15m,1h

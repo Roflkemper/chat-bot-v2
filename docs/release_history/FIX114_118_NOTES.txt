@@ -1,0 +1,5 @@
+FIX 114-118
+- FINAL DECISION remap for operational soft candidate
+- BEST TRADE reads bot_cards and range_volume_bot fallback
+- BOTS STATUS promotes WATCHLIST to SOFT_READY when small-entry context exists
+- cleanup of final operator wording

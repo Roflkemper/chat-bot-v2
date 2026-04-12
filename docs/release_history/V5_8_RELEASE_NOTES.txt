@@ -1,0 +1,13 @@
+V5.8 — CORE STABILITY + ACTION-FIRST + ANTI-TRASH FILTER
+
+Что изменено:
+- Усилен ACTION-FIRST блок в BTC ANALYSIS и FINAL DECISION
+- Уплотнен вывод команды ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС
+- Усилен anti-trash filter: середина диапазона без edge больше не получает soft-range authorisation
+- Жестче учитываются trap risk и late entry risk при execution verdict
+- Исправлен текст ошибки запуска: теперь явно указаны .env и bot_local_config.json
+
+Практический эффект:
+- меньше мусорных входов из середины диапазона
+- быстрее видно: что делать, где зона, что ломает идею
+- меньше шансов на вход в догонку при слабом edge

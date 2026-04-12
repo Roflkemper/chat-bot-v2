@@ -1,0 +1,20 @@
+FIX 63 — learning-weighted bot ranking
+
+Что добавлено:
+- learning_rank_delta для каждого bot card
+- ranking_score = raw score + activation bonus + learning rank delta
+- best_bot теперь выбирается по ranking_score, а не только по raw score
+- execution_priority строится по learning-weighted ranking
+- learning_ranking_summary добавлен в вывод
+
+Что учитывает ranking слой:
+- closed_trades
+- wins / losses / breakeven
+- avg_rr
+- avg_result_pct
+- learned_mode / samples
+
+Эффект:
+- боты с лучшей личной историей по закрытым сделкам поднимаются выше при прочих равных
+- боты со слабой историей охлаждаются даже если raw score близкий
+- best_bot, BOT MATRIX и execution priority становятся learning-aware

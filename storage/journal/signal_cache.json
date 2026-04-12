@@ -1,0 +1,4 @@
+{
+  "signature": "{\"action\": \"WAIT\", \"block_pressure\": \"AGAINST\", \"context_label\": \"NO CONTEXT\", \"entry_quality\": \"NO_TRADE\", \"execution_profile\": \"NO_ENTRY\", \"setup_key\": \"SHORT_RECLAIM_RISK_NO\", \"trigger_blocked\": true}",
+  "ts": "2026-04-09T22:15:47.387257+00:00"
+}

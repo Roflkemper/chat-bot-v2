@@ -1,0 +1,21 @@
+V17.8.4 - EXTERNAL MARKET BIAS + FLOW PRESSURE
+
+Что добавлено:
+- внешний блок MARKET BIAS (EXTERN)
+- оценка risk-on / risk-off по DXY, SPX/SPY, BTC dominance и BTC leader pressure
+- FLOW / LIQUIDITY PRESSURE
+- delta / taker pressure proxy
+- absorption detector: absorbed buying / absorbed selling
+- fake expansion risk через OI + слабое продвижение цены
+- PRE-HEDGE WARNING foundation
+- интеграция extern/flow в execution advisor
+- новые Telegram-блоки:
+  * MARKET BIAS (EXTERN)
+  * FLOW / LIQUIDITY PRESSURE
+  * PRE-HEDGE WARNING
+
+Смысл релиза:
+- бот должен видеть не только локальный диапазон
+- бот должен видеть внешний risk-фон
+- бот должен видеть скрытое давление внутри mid-range
+- бот должен заранее предупреждать о переходе в defend / hedge, не дожидаясь поздней перегрузки

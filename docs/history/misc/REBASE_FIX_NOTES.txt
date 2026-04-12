@@ -1,0 +1,5 @@
+Rebase-safe push update:
+- auto-detects unfinished rebase
+- tries git rebase --abort
+- removes stale .git\rebase-merge or .git\rebase-apply if needed
+- then continues normal add/commit/pull --rebase/push flow

@@ -1,0 +1,4 @@
+V8.5.1
+- top decision sync with ginarea/probe
+- fast wait blocks unlock to PROBE when soft-ready / ready-small context exists
+- no-trade gate no longer suppresses probe-ready contexts

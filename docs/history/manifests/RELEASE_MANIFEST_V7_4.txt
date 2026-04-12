@@ -1,0 +1,12 @@
+chat_bot_version_2_FIX_PRO_V7_4
+
+Изменённые файлы:
+- core/setup_stats.py
+- renderers/telegram_renderers.py
+- core/trade_manager.py
+- VERSION.txt
+- V7_4_RELEASE_NOTES.txt
+
+Проверки:
+- py_compile
+- tools/health_check.py

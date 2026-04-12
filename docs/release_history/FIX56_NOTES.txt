@@ -1,0 +1,8 @@
+FIX 56 — manager action от activation_state
+
+Что изменено:
+- manager_action теперь пересчитывается после edge activation filter
+- OFF -> WAIT (активной стороны нет)
+- WAIT -> WAIT_CONFIRMATION / WAIT_RANGE_EDGE / WAIT_PULLBACK по edge_action и location
+- ARMED -> сохраняет более точный execution workflow, не форсируя вход в середине диапазона
+- в execution/telegram рендеры добавлены manager action и manager note

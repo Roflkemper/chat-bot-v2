@@ -1,0 +1,14 @@
+V17.8.1 - CONTEXT CONSENSUS FILTER
+
+Что добавлено:
+- HTF trend filter (EMA200 / RSI context через доступные поля payload)
+- Trend pressure filter (ADX / breakout pressure)
+- BTC / ETH leader filter
+- Sentiment overlay (funding / long-short / OI, если доступны в payload)
+- Execution modifiers: side weaken / side block / no add / prepare hedge
+- Telegram block: КОНТЕКСТ РЫНКА
+
+Что не делалось:
+- нет автоторговли
+- нет обязательной новой внешней зависимости
+- нет сложного orderbook / Coinglass mirror

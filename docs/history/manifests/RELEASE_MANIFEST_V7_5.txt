@@ -1,0 +1,15 @@
+RELEASE MANIFEST V7.5
+
+Основные изменённые файлы:
+- core/live_alert_policy.py
+- core/smart_alerts.py
+- storage/transition_alerts.py
+- VERSION.txt
+- V7_5_RELEASE_NOTES.txt
+- RELEASE_MANIFEST_V7_5.txt
+- FINAL_LAUNCH_CHECKLIST_V7_5.txt
+
+Назначение релиза:
+- повысить полезность live-алертов
+- уменьшить шум второстепенных уведомлений
+- добавить более прикладную классификацию событий для Telegram

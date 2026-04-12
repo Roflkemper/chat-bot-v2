@@ -1,0 +1,6 @@
+V13.2 SHADOW HARD WIRING
+- strengthened NEW ENGINE so it no longer prints placeholder-neutral liquidity/history all the time
+- normalized UP/DOWN liquidity and pattern directions into LONG/SHORT logic for scoring
+- added fake-move, liquidity, history and range-position influence into NEW ENGINE edge/execution ladder
+- differentiated NEW ENGINE output by block role: forecast / action now / best trade / trade manager / ginarea / bots status
+- added shadow bot-state lifecycle and earlier ginarea L1 readiness near range edge

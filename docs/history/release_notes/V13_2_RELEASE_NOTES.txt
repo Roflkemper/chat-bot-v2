@@ -1,0 +1,14 @@
+V13.2 FIX - FAKE MOVE + ENTRY TRIGGER ENGINE
+
+Что добавлено:
+- реальный entry state: НЕ ГОТОВО / НАБЛЮДАТЬ / ГОТОВО / АКТИВНО
+- fake move trigger: reclaim / слабая реакция / follow-through cancel
+- action output теперь меняется не только от зоны, но и от trigger engine
+- execution в V13 CORE теперь поднимается до PROBE/SMALL, если trigger реально собран
+- в вывод добавлена строка entry с trigger strength и конкретным условием входа
+
+Что должно появиться в боевом выводе:
+- entry: ГОТОВО | trigger ... | SHORT/LONG trigger ...
+- ГОТОВИТЬ SHORT / ГОТОВИТЬ LONG
+- ВХОД SHORT АКТИВЕН / ВХОД LONG АКТИВЕН
+- отмена идеи по reclaim / invalidation

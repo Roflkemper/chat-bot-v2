@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+releases
+*.pyc
+*.pyo
+*.log
+.DS_Store
+Thumbs.db
+docs/history
+releases/*.zip

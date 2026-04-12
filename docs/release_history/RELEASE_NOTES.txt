@@ -1,0 +1,38 @@
+FIX 32 — render safety + confidence sync + text cleanup
+
+Что исправлено:
+- безопасный fallback для BTC SUMMARY / BTC FORECAST / BTC GINAREA / FINAL DECISION,
+  чтобы единичный сбой рендера не валил команду целиком
+- дополнительное логирование render-fail по имени команды
+- выровнено отображение confidence в основном analysis-блоке с финальным decision confidence
+- убрана конфликтная фраза про «середину диапазона», если контекст на верхней/нижней части диапазона
+- impulse/range комментарии сделаны нейтральнее и контекстнее
+
+Изменённые файлы:
+- handlers/command_actions.py
+- renderers/telegram_renderers.py
+- core/decision_engine.py
+- core/signal_engine.py
+
+FIX 33
+- added transition alerts engine for entry/add/reduce/exit state changes
+- attached alerts to analysis/summary/forecast/ginarea/final decision/execution plan outputs
+- strengthened decision rescue by feeding bot-context proxy scores into decision engine
+- passed range_position/bot context through inject_new_decision so top-layer decision follows ginarea state better
+
+FIX 35
+- actionable alert engine: ENTRY READY / ENTRY BLOCKED / ADD ALERT / REDUCE ALERT / EXIT ALERT
+- transition alerts now use live setup/structure state (setup_valid, structure_status, CHOCH risk)
+- fixed false WATCH->WATCH signal-change alerts by requiring real readiness/confidence transition
+
+
+FIX 38 — clean integration patch
+- dynamic keyboard + position-aware UI integrated into main.py
+- compact MAIN / DEBUG menus
+- live UI state built from BotResponsePayload snapshots
+- FORCE REFRESH UI added
+
+FIX45 - scaling ladder + ginarea deviation bots
+- added 60m deviation ladder: 1.3% / 2.5% / 3.5% for long and short bot activation
+- added range bias action hints for when to strengthen or weaken range bots
+- Telegram BTC GINAREA now shows mean deviation, active ladder tiers, and aggressive tier hints

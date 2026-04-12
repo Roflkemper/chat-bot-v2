@@ -1,0 +1,12 @@
+V17.10.34 — SESSION DOMINANCE FIX
+
+Что исправлено:
+- session HIGH противоположной стороны теперь блокирует ранний PREPARE/PROBE у края блока.
+- ENTER против доминирующей сессии запрещён без сильного reclaim-исключения и absorption.
+- grid engine больше не даёт BOOST/ENABLE по активной стороне у края, если session HIGH смотрит в обратную сторону.
+- live decision authority больше не толкает bot_action в BOOST при session guard / WAIT.
+- top signal и warnings теперь явно показывают блокировку со стороны старшей сессии.
+
+Цель:
+- убрать конфликт вида PREPARE LONG / LONG BOOST при SESSION SHORT HIGH.
+- сделать жёсткую иерархию: session -> trigger/context -> grid.
