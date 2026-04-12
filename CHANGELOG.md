@@ -1,3 +1,11 @@
+- V17.10.43 hotfix1: fixed MAKE_RELEASE/PUSH_RELEASE manifest rebuild path; removed BOM issues from BAT files.
+# Changelog
+
+## V17.10.43 — EXIT STRATEGY DYNAMIC
+- exit strategy теперь обновляется по streak состояния momentum
+- правило `NEUTRAL x2 => momentum иссяк` вынесено в state и в рендер
+- добавлены regression tests на double neutral streak и динамический exhaustion update
+
 ## V17.10.42-smoke-test-gate
 - Added `SMOKE_TEST.bat` for one live API run before release.
 - Added `tools/smoke_test.py` to run the bot once, verify non-empty Telegram output, and block release on Traceback/Exception.

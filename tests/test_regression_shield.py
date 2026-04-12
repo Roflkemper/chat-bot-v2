@@ -218,3 +218,39 @@ def test_position_control_block_is_rendered_for_real_position_state():
     assert 'POSITION CONTROL:' in text
     assert '• STATUS: LONG MANAGE' in text
     assert '• ACTION: REDUCE / PROTECT' in text
+
+
+def test_exit_strategy_marks_momentum_exhausted_on_double_neutral_streak():
+    lines = pipeline._build_exit_strategy({
+        'active_block': 'LONG',
+        'forecast': {
+            'short': {'direction': 'NEUTRAL', 'strength': 'LOW'},
+            'session': {'direction': 'NEUTRAL', 'strength': 'LOW'},
+        },
+        'hedge_arm_up': 74200.0,
+        'hedge_arm_down': 71200.0,
+        'break_level': 71200.0,
+        'absorption': {'is_active': False, 'bars_at_edge': 6},
+        'bias_score': -1,
+        'volatility': {'atr_ratio': 1.05},
+        'double_neutral_streak': 2,
+        'momentum_exhausted': True,
+    })
+    text = '\n'.join(lines)
+    assert 'NEUTRAL x2' in text
+    assert 'momentum иссяк' in text
+    assert 'шорт частями' in text
+
+
+def test_update_momentum_state_counts_double_neutral_streak():
+    state1 = pipeline._update_momentum_state({}, {'direction': 'NEUTRAL'}, {'direction': 'NEUTRAL'})
+    assert state1['double_neutral_streak'] == 1
+    assert state1['momentum_exhausted'] is False
+
+    state2 = pipeline._update_momentum_state(state1, {'direction': 'NEUTRAL'}, {'direction': 'NEUTRAL'})
+    assert state2['double_neutral_streak'] == 2
+    assert state2['momentum_exhausted'] is True
+
+    state3 = pipeline._update_momentum_state(state2, {'direction': 'LONG'}, {'direction': 'NEUTRAL'})
+    assert state3['double_neutral_streak'] == 0
+    assert state3['momentum_exhausted'] is False

@@ -16,6 +16,10 @@ DEFAULT_MARKET_STATE: Dict[str, Any] = {
     'candidate_side': 'NONE',
     'candidate_status': 'NONE',
     'candidate_reason': '',
+    'short_neutral_streak': 0,
+    'session_neutral_streak': 0,
+    'double_neutral_streak': 0,
+    'momentum_exhausted': False,
 }
 
 

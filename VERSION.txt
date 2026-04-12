@@ -1,1 +1,1 @@
-V17.10.42-smoke-test-gate
+V17.10.43-exit-strategy-dynamic-hotfix2

@@ -24,6 +24,31 @@ HEDGE_BUFFER_USD = 293.0
 BLOCK_FLIP_CONFIRM_BARS = 3
 
 
+def _update_momentum_state(prev_state: dict, short_fc: dict, session_fc: dict) -> dict:
+    state = dict(prev_state or {})
+    short_side = str((short_fc or {}).get('direction') or 'NEUTRAL').upper()
+    session_side = str((session_fc or {}).get('direction') or 'NEUTRAL').upper()
+
+    short_streak = int(state.get('short_neutral_streak') or 0)
+    session_streak = int(state.get('session_neutral_streak') or 0)
+    double_streak = int(state.get('double_neutral_streak') or 0)
+
+    short_streak = short_streak + 1 if short_side == 'NEUTRAL' else 0
+    session_streak = session_streak + 1 if session_side == 'NEUTRAL' else 0
+    if short_side == 'NEUTRAL' and session_side == 'NEUTRAL':
+        double_streak += 1
+    else:
+        double_streak = 0
+
+    state.update({
+        'short_neutral_streak': short_streak,
+        'session_neutral_streak': session_streak,
+        'double_neutral_streak': double_streak,
+        'momentum_exhausted': double_streak >= 2,
+    })
+    return state
+
+
 
 def _true_range(bar: dict, prev_close: float | None = None) -> float:
     high = float(bar.get('high') or 0.0)
@@ -250,6 +275,11 @@ def _build_exit_strategy(snapshot: dict) -> list[str]:
     bias_score = int(snapshot.get('bias_score') or 0)
     vol_ctx = snapshot.get('volatility') or {}
     atr_ratio = float(vol_ctx.get('atr_ratio') or 1.0)
+    double_neutral_streak = int(snapshot.get('double_neutral_streak') or 0)
+    neutral_now = short_side == 'NEUTRAL' and session_side == 'NEUTRAL'
+    soft_exhaustion = neutral_now and ((active_block == 'LONG' and bias_score >= 3 and atr_ratio <= 0.8) or (active_block == 'SHORT' and bias_score <= -3 and atr_ratio <= 0.8))
+    momentum_exhausted = bool(snapshot.get('momentum_exhausted')) or double_neutral_streak >= 2 or soft_exhaustion
+    exhaustion_count = max(double_neutral_streak, 2) if momentum_exhausted and neutral_now else double_neutral_streak
 
     if active_block == 'LONG' or (session_side == 'SHORT' and session_strength in {'MID', 'HIGH'}):
         tp1 = max(0.0, (break_level + hedge_down) / 2.0)
@@ -260,9 +290,9 @@ def _build_exit_strategy(snapshot: dict) -> list[str]:
             f'• TP2: {tp2:.2f} — добирать остаток / hedge arm',
             f'• ВЫХОД: reclaim выше {break_level:.2f} (2 бара) → закрыть SHORT',
         ]
-        if short_side == 'NEUTRAL' and session_side == 'NEUTRAL' and bias_score >= 3 and atr_ratio <= 0.8:
+        if neutral_now and momentum_exhausted:
             lines.append(f'• CLIMAX: нет | движение остановилось, {bars_at_edge} баров у края')
-            lines.append('• ⚠️ скальп и сессия NEUTRAL — momentum иссяк')
+            lines.append(f'• ⚠️ скальп и сессия NEUTRAL x{exhaustion_count} — momentum иссяк')
             lines.append('• ФИКСАЦИЯ: шорт частями, не ждать полного добоя')
         else:
             lines.append(f"• CLIMAX: {'есть absorption снизу' if absorption_active else 'нет climax, давление ещё рабочее'} | {bars_at_edge} баров у края")
@@ -276,9 +306,9 @@ def _build_exit_strategy(snapshot: dict) -> list[str]:
         f'• TP2: {tp2:.2f} — добирать остаток / hedge arm',
         f'• ВЫХОД: reclaim ниже {break_level:.2f} (2 бара) → закрыть LONG',
     ]
-    if short_side == 'NEUTRAL' and session_side == 'NEUTRAL' and bias_score <= -3 and atr_ratio <= 0.8:
+    if neutral_now and momentum_exhausted:
         lines.append(f'• CLIMAX: нет | движение остановилось, {bars_at_edge} баров у края')
-        lines.append('• ⚠️ скальп и сессия NEUTRAL — momentum иссяк')
+        lines.append(f'• ⚠️ скальп и сессия NEUTRAL x{exhaustion_count} — momentum иссяк')
         lines.append('• ФИКСАЦИЯ: лонг частями, не ждать полного добоя')
     else:
         lines.append(f"• CLIMAX: {'есть absorption сверху' if absorption_active else 'нет climax, импульс ещё рабочий'} | {bars_at_edge} баров у края")
@@ -456,6 +486,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
 
     prev_market_state = load_market_state()
     prep_state = update_flip_prep(prev_market_state, base_snapshot)
+    prep_state = _update_momentum_state(prep_state, short_fc, session_fc)
     base_snapshot.update(prep_state)
 
     hedge_state = "PRE-TRIGGER" if block_depth_pct > 60 else "ARM" if state in ("SEARCH_TRIGGER", "PRE_ACTIVATION") else "TRIGGER" if state == "OVERRUN" else "OFF"
