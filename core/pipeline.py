@@ -12,6 +12,7 @@ from features.structural_context import analyze_structural_context
 from core.grid_adapter import snapshot_to_grid_input
 from core.grid_action_engine import build_grid_action
 from core.scenario_handoff import compute_block_pressure, compute_scenario_weights, update_flip_prep
+from core.if_then_plan import build_if_then_plan as _compose_if_then_plan
 from storage.market_state_store import load_market_state, save_market_state
 try:
     from storage.position_state_store import load_position_state
@@ -191,25 +192,7 @@ def _build_absorption(active_block: str, candles_1h: list[dict], block_low: floa
 
 
 def _build_if_then_plan(snapshot: dict) -> list[str]:
-    active_block = snapshot['active_block']
-    range_high = snapshot['range_high']
-    range_low = snapshot['range_low']
-    watch_side = snapshot.get('watch_side') or ('LONG' if active_block == 'SHORT' else 'SHORT')
-    trigger_level = range_high if active_block == 'SHORT' else range_low
-    reclaim_level = trigger_level + 117.0 if active_block == 'SHORT' else trigger_level - 117.0
-    mid = snapshot['range_mid']
-    pullback_zone = (mid - 150.0, mid + 150.0)
-    if active_block == 'SHORT':
-        return [
-            f"▶ ПРОБОЙ: закрытие > {trigger_level:.2f} ({snapshot.get('flip_prep_confirm_bars_needed', 2)} бара) → LONG | цель {snapshot['hedge_arm_up']:.2f}",
-            f"▶ SWEEP: укол > {reclaim_level:.2f} + быстрый возврат → SHORT осторожно | цель {mid:.2f}",
-            f"▶ ОТКАТ: к {pullback_zone[0]:.0f}–{pullback_zone[1]:.0f} + удержание → LONG на откате",
-        ]
-    return [
-        f"▶ ПРОБОЙ: закрытие < {trigger_level:.2f} ({snapshot.get('flip_prep_confirm_bars_needed', 2)} бара) → SHORT | цель {snapshot['hedge_arm_down']:.2f}",
-        f"▶ SWEEP: укол < {reclaim_level:.2f} + быстрый возврат → LONG осторожно | цель {mid:.2f}",
-        f"▶ УДЕРЖАНИЕ: выше {pullback_zone[0]:.0f}–{pullback_zone[1]:.0f} + разворот → LONG-блок жив",
-    ]
+    return (_compose_if_then_plan(snapshot) or {}).get('lines') or []
 
 
 def _build_top_signal(snapshot: dict) -> str:
@@ -736,6 +719,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'danger_to_active_side': danger_to_active_side,
         'top_signal': '',
         'if_then_plan': [],
+        'if_then_layer': {},
         'current_action_lines': [],
         'exit_strategy_lines': [],
     })
@@ -750,7 +734,8 @@ def build_full_snapshot(symbol="BTCUSDT"):
     if active_block == 'LONG' and near_breakout and grid_action.get('short_action') in {'ENABLE', 'BOOST'}:
         snapshot['current_action_lines'][2] = f"• SHORT сетки: готовить к активации при пробое {round(range_low, 2)}"
 
-    snapshot['if_then_plan'] = _build_if_then_plan(snapshot)
+    snapshot['if_then_layer'] = _compose_if_then_plan(snapshot)
+    snapshot['if_then_plan'] = (snapshot['if_then_layer'] or {}).get('lines') or []
     snapshot['exit_strategy_lines'] = _build_exit_strategy(snapshot)
     snapshot['top_signal'] = _build_top_signal(snapshot)
 

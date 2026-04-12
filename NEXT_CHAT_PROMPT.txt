@@ -1,3 +1,7 @@
+Текущая версия: V17.10.44-if-then-plan.
+Реализован отдельный слой IF-THEN PLAN после Decision Layer: primary + flip сценарии, structured if_then_layer + renderer lines, покрыто тестами.
+Следующий приоритет: Backtesting 90 дней.
+
 Продолжаем проект «чат бот версия 2» с последнего рабочего архива.
 Текущая база стабильна: Regression Shield, release gate, hooks и smoke test уже внедрены.
 Последний внедрённый логический этап: V17.10.43 — EXIT STRATEGY DYNAMIC.

@@ -1,3 +1,10 @@
+## V17.10.44-if-then-plan
+
+- Added a dedicated `IF-THEN PLAN` layer after decision assembly, without mixing it into the decision logic.
+- `core/if_then_plan.py` now builds structured primary + flip scenarios with IF/THEN blocks: zone, trigger, context, action, entry, invalidation, and fallback.
+- Pipeline now exposes both `if_then_layer` (structured object) and `if_then_plan` (renderer-ready lines) for downstream output and regression safety.
+- Added regression tests for the new layer and pipeline integration.
+
 - V17.10.43 hotfix1: fixed MAKE_RELEASE/PUSH_RELEASE manifest rebuild path; removed BOM issues from BAT files.
 # Changelog
 

@@ -1,1 +1,1 @@
-V17.10.43-exit-strategy-dynamic-hotfix2
+V17.10.44-if-then-plan
