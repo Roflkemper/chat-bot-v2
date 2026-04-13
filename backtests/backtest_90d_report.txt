@@ -1,16 +1,16 @@
 BACKTEST 90D
-Trades: 19
-Winrate: 89.47%
-Avg RR: 0.5117
-PnL: 16.952%
-Max DD: -2.1542%
+Trades: 36
+Winrate: 72.22%
+Avg RR: 0.0946
+PnL: 5.0929%
+Max DD: -3.5964%
 IF-THEN:
-- triggered: 384
-- armed: 19
-- entered: 19
-- closed: 19
-- failed: 86
+- triggered: 383
+- armed: 36
+- entered: 36
+- closed: 36
+- failed: 147
 EXITS:
 - tp_hit: 3
-- stop: 12
-- timeout: 4
+- stop: 27
+- timeout: 6

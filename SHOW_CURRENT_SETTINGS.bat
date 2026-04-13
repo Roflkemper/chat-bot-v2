@@ -4,22 +4,22 @@ cd /d "%~dp0"
 chcp 65001 > nul
 
 echo ============================
-echo BACKTEST 90D START [AUTO: FROZEN IF EXISTS]
+echo EXPORT CURRENT SETTINGS
 echo ============================
 
 if exist .venv\Scripts\python.exe (
   echo [INFO] Using project venv python
-  .venv\Scripts\python.exe run_backtest.py --mode auto
+  .venv\Scripts\python.exe export_bot_settings.py
 ) else (
   echo [WARN] venv python not found, using system python
-  python run_backtest.py --mode auto
+  python export_bot_settings.py
 )
 
 set EXIT_CODE=%errorlevel%
 echo.
 echo [INFO] Exit code: %EXIT_CODE%
 echo ============================
-echo BACKTEST 90D FINISHED
+echo EXPORT FINISHED
 echo ============================
 pause
 endlocal & exit /b %EXIT_CODE%
