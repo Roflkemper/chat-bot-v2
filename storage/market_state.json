@@ -10,8 +10,8 @@
   "candidate_side": "NONE",
   "candidate_status": "NONE",
   "candidate_reason": "",
-  "short_neutral_streak": 0,
-  "session_neutral_streak": 0,
-  "double_neutral_streak": 0,
+  "short_neutral_streak": 1,
+  "session_neutral_streak": 1,
+  "double_neutral_streak": 1,
   "momentum_exhausted": false
 }
