@@ -71,6 +71,13 @@ from services.analysis_service import DEFAULT_TF
 logger = logging.getLogger(__name__)
 from services.debug_export_service import create_runtime_debug_export
 from services.health_service import build_health_status_text
+from services.pipeline_sync_service import (
+    build_pipeline_bundle,
+    build_pipeline_analysis_text,
+    build_pipeline_action_text,
+    build_pipeline_exit_text,
+    build_pipeline_position_text,
+)
 from services.journal_service import close_position_with_context, open_position_with_journal
 from services.response_service import ResponseService
 from storage.bot_manager_state import apply_manual_bot_action, format_bot_manager_status, parse_manual_bot_command, sync_bot_manager
@@ -241,6 +248,14 @@ class CommandActions:
     def analysis(self) -> BotResponsePayload:
         analysis = self.ctx.get_snapshot(self.ctx.timeframe)
         analysis = self._inject_decision_safe(analysis, self.ctx.timeframe)
+        if str(self.ctx.timeframe).lower() == DEFAULT_TF:
+            pipeline_snapshot = build_pipeline_bundle('BTCUSDT')
+            payload = self.ctx.plain(
+                build_pipeline_analysis_text(pipeline_snapshot),
+                analysis_snapshot=analysis,
+                timeframe=self.ctx.timeframe,
+            )
+            return self._attach_transition_alert(payload, analysis)
         payload = self.ctx.plain(
             build_base_analysis_text(analysis),
             analysis_snapshot=analysis,
@@ -364,6 +379,14 @@ class CommandActions:
         timeframe = journal.timeframe or DEFAULT_TF
         analysis = self.ctx.get_snapshot(timeframe)
         analysis = self._inject_decision_safe(analysis, timeframe)
+        if str(timeframe).lower() == DEFAULT_TF:
+            pipeline_snapshot = build_pipeline_bundle('BTCUSDT')
+            return self.ctx.plain(
+                build_pipeline_exit_text(pipeline_snapshot, journal_side=journal.side),
+                analysis_snapshot=analysis,
+                journal=journal,
+                timeframe=timeframe,
+            )
         return ResponseService.render_text(
             self.ctx.command,
             text_builder=build_btc_smart_exit_text,
@@ -618,7 +641,8 @@ class CommandActions:
 
     def my_position(self) -> BotResponsePayload:
         position = self.ctx.get_position_snapshot()
-        return self.ctx.plain(build_my_position_text(position), position=position)
+        pipeline_snapshot = build_pipeline_bundle('BTCUSDT')
+        return self.ctx.plain(build_pipeline_position_text(pipeline_snapshot, position), position=position)
 
     def close_position(self) -> BotResponsePayload:
         current_position = self.ctx.get_position_snapshot()
@@ -691,10 +715,10 @@ class CommandActions:
     def action_now(self) -> BotResponsePayload:
         analysis = self.ctx.get_snapshot(DEFAULT_TF)
         analysis = self._inject_decision_safe(analysis, DEFAULT_TF)
-        payload_dict = analysis.to_dict() if hasattr(analysis, 'to_dict') else {}
         journal = self.ctx.get_journal_snapshot()
+        pipeline_snapshot = build_pipeline_bundle('BTCUSDT')
         return self.ctx.plain(
-            format_v14_action_text(payload_dict, '⚡ ЧТО ДЕЛАТЬ'),
+            build_pipeline_action_text(pipeline_snapshot),
             analysis_snapshot=analysis,
             journal=journal,
             timeframe=DEFAULT_TF,

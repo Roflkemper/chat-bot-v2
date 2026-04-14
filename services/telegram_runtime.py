@@ -5,17 +5,35 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable
 
 import config
 from core.app_logging import setup_logging
 from handlers.command_handler import CommandHandler
 from models.responses import BotResponsePayload
 from services.analysis_service import call_btc_analysis
+from storage.position_store import load_position_state
 from storage.transition_alerts import build_transition_alert
 
 logger = logging.getLogger(__name__)
 _MAX_MESSAGE_LEN = 3800
+
+
+SLASH_COMMAND_ALIASES: dict[str, str] = {
+    '/help': 'HELP',
+    '/menu': 'HELP',
+    '/status': 'SYSTEM STATUS',
+    '/market': 'BTC 1H',
+    '/analysis': 'BTC 1H',
+    '/summary': 'BTC SUMMARY',
+    '/decision': 'FINAL DECISION',
+    '/entry': '⚡ ЧТО ДЕЛАТЬ СЕЙЧАС',
+    '/exit': 'BTC SMART EXIT',
+    '/position': 'МОЯ ПОЗИЦИЯ',
+    '/manage': 'МЕНЕДЖЕР BTC',
+    '/bots': 'СТАТУС БОТОВ',
+    '/forecast': 'BTC FORECAST',
+}
 
 
 def _safe_int(value: object) -> int | None:
@@ -93,6 +111,102 @@ def split_text_chunks(text: str, limit: int = _MAX_MESSAGE_LEN) -> list[str]:
     return chunks or ['⚠️ Пустой ответ.']
 
 
+def resolve_telegram_text(text: str) -> str:
+    raw = str(text or '').strip()
+    if not raw:
+        return ''
+    parts = raw.split(maxsplit=1)
+    slash = parts[0].lower()
+    if slash in SLASH_COMMAND_ALIASES:
+        return SLASH_COMMAND_ALIASES[slash]
+    upper = raw.upper()
+    aliases = {
+        'ГЛАВНОЕ МЕНЮ': 'HELP',
+        'ОБНОВИТЬ ИНТЕРФЕЙС': 'HELP',
+        'ОТЛАДКА': 'DEBUG EXPORT',
+    }
+    return aliases.get(upper, raw)
+
+
+def _fmt_price(value: object, digits: int = 2) -> str:
+    try:
+        if value is None:
+            return '—'
+        return f"{float(value):,.{digits}f}".replace(',', ' ')
+    except Exception:
+        return str(value or '—')
+
+
+def _compact_reason(value: object) -> str:
+    text = str(value or '').strip()
+    if not text:
+        return ''
+    text = text.replace('_', ' ')
+    return text[:220]
+
+
+def _snapshot_manage_hint(snapshot_dict: dict) -> str:
+    decision = snapshot_dict.get('decision') if isinstance(snapshot_dict.get('decision'), dict) else {}
+    direction = str(decision.get('direction_text') or snapshot_dict.get('forecast_direction') or snapshot_dict.get('signal') or '').strip()
+    action = str(decision.get('action_text') or decision.get('action') or snapshot_dict.get('final_decision') or '').strip()
+    manager_action = str(decision.get('manager_action_text') or decision.get('manager_action') or '').strip()
+    risk = str(decision.get('risk_level') or decision.get('risk') or snapshot_dict.get('risk_level') or '').strip().upper()
+    invalidation = _compact_reason(decision.get('invalidation') or snapshot_dict.get('invalidation'))
+    entry_reason = _compact_reason(decision.get('entry_reason') or snapshot_dict.get('entry_reason'))
+    pressure_reason = _compact_reason(decision.get('pressure_reason') or snapshot_dict.get('pressure_reason'))
+    confidence = decision.get('confidence_pct') or decision.get('confidence') or snapshot_dict.get('forecast_confidence') or 0.0
+    try:
+        confidence = round(float(confidence), 1)
+    except Exception:
+        confidence = 0.0
+
+    bullets: list[str] = []
+    if action:
+        bullets.append(f'• вход сейчас: {action}')
+    if direction:
+        bullets.append(f'• сторона сценария: {direction}')
+    if manager_action:
+        bullets.append(f'• сопровождение: {manager_action}')
+    bullets.append(f'• confidence: {confidence}%')
+    if risk:
+        bullets.append(f'• риск: {risk}')
+    if entry_reason:
+        bullets.append(f'• почему: {entry_reason}')
+    if pressure_reason and pressure_reason != entry_reason:
+        bullets.append(f'• давление/контекст: {pressure_reason}')
+    if invalidation:
+        bullets.append(f'• отмена сценария: {invalidation}')
+
+    unload = 'держать и ждать подтверждения'
+    side_upper = direction.upper()
+    manager_upper = manager_action.upper()
+    if 'PARTIAL' in manager_upper or 'TP1' in manager_upper or 'REDUCE' in manager_upper:
+        unload = 'фиксировать часть / разгружать ступенчато'
+    elif 'BE' in manager_upper:
+        unload = 'переносить в безубыток и держать остаток'
+    elif 'EXIT' in manager_upper or 'CLOSE' in manager_upper or risk == 'HIGH':
+        unload = 'разгружать позицию агрессивнее / не добирать'
+    elif 'LONG' in side_upper or 'SHORT' in side_upper:
+        unload = 'держать только по сценарию, без погони за ценой'
+    bullets.append(f'• что делать с позицией: {unload}')
+    return '\n'.join(bullets)
+
+
+def build_market_alert_message(snapshot, timeframe: str, transition_text: str) -> str:
+    payload = snapshot.to_dict() if hasattr(snapshot, 'to_dict') else {}
+    decision = payload.get('decision') if isinstance(payload.get('decision'), dict) else {}
+    price = _fmt_price(payload.get('price'))
+    direction = str(decision.get('direction_text') or payload.get('forecast_direction') or payload.get('signal') or '—')
+    header = [
+        f'🚨 BTCUSDT [{str(timeframe).upper()}]',
+        f'Цена: {price}',
+        f'Сценарий: {direction}',
+    ]
+    body = transition_text.strip()
+    hint = _snapshot_manage_hint(payload)
+    return '\n'.join(header) + '\n\n' + body + '\n\n🧭 ТРЕЙДЕРСКОЕ ДЕЙСТВИЕ\n' + hint
+
+
 class TelegramResponder:
     def __init__(self, bot) -> None:
         self.bot = bot
@@ -159,9 +273,9 @@ class MarketAlertWorker(threading.Thread):
                     alert_text = build_transition_alert(snapshot)
                     if not alert_text:
                         continue
-                    header = f'⏱️ LIVE {timeframe.upper()}\n\n'
+                    message = build_market_alert_message(snapshot, timeframe, alert_text)
                     for chat_id in self.chat_ids:
-                        for chunk in split_text_chunks(header + alert_text):
+                        for chunk in split_text_chunks(message):
                             self.bot.send_message(chat_id, chunk)
                             time.sleep(0.15)
             except Exception:
@@ -201,6 +315,21 @@ class TelegramBotApp:
     def _is_allowed(self, chat_id: int) -> bool:
         return not self.allowed_chat_ids or chat_id in self.allowed_chat_ids
 
+    def _dispatch(self, chat_id: int, text: str) -> None:
+        resolved = resolve_telegram_text(text)
+        if not resolved:
+            self.bot.send_message(chat_id, 'Напиши команду или нажми кнопку.')
+            return
+        if resolved == 'МОЯ ПОЗИЦИЯ':
+            state = load_position_state()
+            if not bool((state or {}).get('has_position')):
+                self.bot.send_message(
+                    chat_id,
+                    '📭 Сейчас открытая позиция не зафиксирована.\n\nДля рынка используй /market или /entry. Для сопровождения после входа — /exit или /manage.',
+                )
+                return
+        self.command_handler.handle(chat_id, resolved)
+
     def _register_handlers(self) -> None:
         from telegram_ui.keyboards import build_main_keyboard
 
@@ -212,17 +341,17 @@ class TelegramBotApp:
                 return
             self.bot.send_message(
                 chat_id,
-                '✅ Чат-бот версия 2 запущен.\n\nКнопки внизу активны.\nАвто-алерты по рынку тоже включены.',
+                '✅ Чат-бот версия 2 запущен.\n\nКоманды:\n/status\n/market\n/entry\n/exit\n/position\n/manage\n\nКнопки внизу активны. Авто-алерты по рынку тоже включены.',
                 reply_markup=build_main_keyboard(),
             )
 
-        @self.bot.message_handler(commands=['help'])
-        def handle_help(message) -> None:
+        @self.bot.message_handler(commands=['help', 'status', 'market', 'analysis', 'summary', 'decision', 'entry', 'exit', 'position', 'manage', 'bots', 'forecast'])
+        def handle_commands(message) -> None:
             chat_id = int(message.chat.id)
             if not self._is_allowed(chat_id):
                 self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
                 return
-            self.command_handler.handle(chat_id, 'HELP')
+            self._dispatch(chat_id, str(message.text or '').strip())
 
         @self.bot.message_handler(func=lambda m: True, content_types=['text'])
         def handle_text(message) -> None:
@@ -234,13 +363,7 @@ class TelegramBotApp:
             if not text:
                 self.bot.send_message(chat_id, 'Напиши команду или нажми кнопку.', reply_markup=build_main_keyboard())
                 return
-            upper = text.upper()
-            aliases = {
-                'ГЛАВНОЕ МЕНЮ': 'HELP',
-                'ОБНОВИТЬ ИНТЕРФЕЙС': 'HELP',
-                'ОТЛАДКА': 'DEBUG EXPORT',
-            }
-            self.command_handler.handle(chat_id, aliases.get(upper, text))
+            self._dispatch(chat_id, text)
 
     def run(self) -> None:
         if getattr(config, 'AUTO_EDGE_ALERTS_ENABLED', True) and self.allowed_chat_ids:

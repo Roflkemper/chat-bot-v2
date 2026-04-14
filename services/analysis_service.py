@@ -7,6 +7,7 @@ import traceback
 from typing import Any, Callable, Dict, List
 
 from utils.observability import RequestTrace
+from services.pipeline_sync_service import build_pipeline_bundle, pipeline_snapshot_to_analysis
 from models.snapshots import AnalysisSnapshot
 from core.data_loader import get_klines_cache_info, load_klines
 from core.import_compat import (
@@ -798,6 +799,15 @@ class AnalysisRequestContext:
             self._analysis_cache[tf] = snap
             if self.trace is not None:
                 self.trace.mark(f"analysis:{tf}:global_cache")
+            return snap
+
+        if tf == DEFAULT_TF:
+            pipeline_bundle = build_pipeline_bundle(symbol='BTCUSDT')
+            snap = pipeline_snapshot_to_analysis(pipeline_bundle, timeframe=tf)
+            _GLOBAL_ANALYSIS_CACHE[tf] = (now, snap)
+            self._analysis_cache[tf] = snap
+            if self.trace is not None:
+                self.trace.mark(f"analysis:{tf}:pipeline_sync")
             return snap
 
         snap = call_btc_analysis(tf)

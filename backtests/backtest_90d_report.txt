@@ -1,16 +1,17 @@
+DATA_SOURCE: LIVE_BINANCE
 BACKTEST 90D
-Trades: 36
-Winrate: 72.22%
-Avg RR: 0.0946
-PnL: 5.0929%
-Max DD: -3.5964%
+Trades: 0
+Winrate: 0.0%
+Avg RR: 0.0
+PnL: 0.0%
+Max DD: -0.0%
 IF-THEN:
-- triggered: 383
-- armed: 36
-- entered: 36
-- closed: 36
-- failed: 147
+- triggered: 2182
+- armed: 0
+- entered: 0
+- closed: 0
+- failed: 2182
 EXITS:
-- tp_hit: 3
-- stop: 27
-- timeout: 6
+- tp_hit: 0
+- stop: 0
+- timeout: 0

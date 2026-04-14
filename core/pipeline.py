@@ -12,6 +12,7 @@ from features.structural_context import analyze_structural_context
 from core.grid_adapter import snapshot_to_grid_input
 from core.grid_action_engine import build_grid_action
 from core.scenario_handoff import compute_block_pressure, compute_scenario_weights, update_flip_prep
+from core.entry_quality_filter import build_entry_quality_context
 from core.if_then_plan import build_if_then_plan as _compose_if_then_plan
 from storage.market_state_store import load_market_state, save_market_state
 try:
@@ -421,6 +422,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
         watch_side = 'NONE'
 
     volatility = _build_volatility_context(candles_1h)
+    entry_filter = build_entry_quality_context(candles=candles_1h, entry_idx=len(candles_1h) - 1, side=active_side)
 
     base_snapshot = {
         'symbol': symbol,
@@ -464,6 +466,10 @@ def build_full_snapshot(symbol="BTCUSDT"):
         'structural_context': structural_context,
         'absorption': absorption,
         'volatility': volatility,
+        'entry_filter': entry_filter,
+        'entry_filter_ok': bool(entry_filter.get('ok')),
+        'entry_filter_reason': str(entry_filter.get('reason') or 'OK'),
+        'entry_filter_reason_code': str(entry_filter.get('reason_code') or 'OK'),
         **structure_flags,
     }
 
@@ -533,6 +539,9 @@ def build_full_snapshot(symbol="BTCUSDT"):
         or (active_block == 'SHORT' and session_side == 'LONG' and session_strength == 'HIGH')
     )
 
+    entry_filter_ok = bool(entry_filter.get('ok'))
+    entry_filter_reason = str(entry_filter.get('reason') or 'OK')
+
     if state == "OVERRUN":
         action = "PROTECT"
         entry_type = None
@@ -540,6 +549,9 @@ def build_full_snapshot(symbol="BTCUSDT"):
         action = "WAIT"
         entry_type = None
     elif session_veto:
+        action = "WAIT"
+        entry_type = None
+    elif not entry_filter_ok:
         action = "WAIT"
         entry_type = None
     elif trigger and state == "CONFIRMED" and context_score >= 2 and not (block_pressure == 'AGAINST' and block_pressure_strength in {'MID', 'HIGH'}):
@@ -600,9 +612,15 @@ def build_full_snapshot(symbol="BTCUSDT"):
         primary_blocker = 'нет подтверждённого trigger'
         trigger_blocked = True
         trigger_block_reason = 'нет подтверждённого trigger'
+    elif not entry_filter_ok:
+        primary_blocker = entry_filter_reason
+        trigger_blocked = True
+        trigger_block_reason = entry_filter_reason
 
     if session_veto:
         secondary_warnings.append('сильная старшая сессия блокирует вход против блока')
+    if not entry_filter_ok:
+        secondary_warnings.append(f'entry filter veto: {entry_filter_reason}')
     if scalp_direction != active_side:
         if scalp_direction == 'NEUTRAL':
             secondary_warnings.append('скальп не подтверждает — краткосрочного импульса нет')

@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, List
 from core import pipeline
 from market_data.ohlcv import get_klines
 from services.timeframe_aggregator import aggregate_to_4h, aggregate_to_1d
+from core.entry_quality_filter import build_entry_quality_context
 
 
 DEFAULT_TIMEFRAME = '1h'
@@ -709,6 +710,7 @@ def run_backtest_from_candles(
     timeout_count = 0
     tp_hit_count = 0
     stop_count = 0
+    entry_filter_lock_until = -1
 
     last_index_for_entry = max(0, len(candles) - horizon_bars - 1)
     for i in range(MIN_WINDOW_BARS, len(candles)):
@@ -736,12 +738,26 @@ def run_backtest_from_candles(
             if_then_triggered += 1
 
         if position is None:
+            if i <= entry_filter_lock_until:
+                continue
             if historical_triggered and i <= last_index_for_entry:
                 entry_side = historical_side or side
                 entry_source = historical_source or action
                 quality_ok, quality_reason = _quality_gate(snapshot, entry_side, entry_source)
                 if not quality_ok:
                     if_then_failed += 1
+                    continue
+                if 'entry_filter_ok' in snapshot or 'entry_filter_reason' in snapshot or 'entry_filter_reason_code' in snapshot:
+                    entry_filter_ctx = {
+                        'ok': bool(snapshot.get('entry_filter_ok')),
+                        'reason': str(snapshot.get('entry_filter_reason') or 'OK'),
+                        'reason_code': str(snapshot.get('entry_filter_reason_code') or ('OK' if snapshot.get('entry_filter_ok', True) else 'FILTERED')),
+                    }
+                else:
+                    entry_filter_ctx = {'ok': True, 'reason': 'OK', 'reason_code': 'OK'}
+                if not bool(entry_filter_ctx.get('ok')):
+                    if_then_failed += 1
+                    entry_filter_lock_until = max(entry_filter_lock_until, i + horizon_bars)
                     continue
                 if_then_armed += 1
                 enter_count += 1
@@ -759,6 +775,8 @@ def run_backtest_from_candles(
                     'tp2_pct': tp2_pct,
                     'entry_action': entry_source,
                     'entry_quality_gate': quality_reason or 'PASS',
+                    'entry_filter_reason': str(entry_filter_ctx.get('reason') or 'OK'),
+                    'entry_filter_reason_code': str(entry_filter_ctx.get('reason_code') or 'OK'),
                     'partial_taken': False,
                     'tp1_hit_index': None,
                     'be_armed': False,
