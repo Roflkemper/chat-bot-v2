@@ -1,0 +1,14 @@
+FIX PRO V5.3 STAGE 3 (финал без API, но мощный)
+
+Что добавлено поверх STAGE 2:
+- новый fallback слой core/liquidity_lite.py
+- action-команда ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС усилена блоком LIQUIDITY LITE
+- smart alerts усилены событиями sweep / trap reclaim
+
+Смысл stage 3:
+- без CoinGlass бот теперь даёт более практичный fallback по ликвидности
+- используется положение цены в диапазоне, rejection/sweep сигналы, fake move и squeeze/cascade risk
+- приоритет смещён от абстрактного WAIT к понятному action_hint
+
+Ограничение:
+- это всё ещё lite/fallback логика, а не реальный external heatmap feed

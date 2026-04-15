@@ -1,0 +1,20 @@
+V14.3 DECISION TAKEOVER FIX
+
+Что исправлено:
+- добавлен decision authority V14 как главный арбитр финального решения
+- добавлен единый V14 snapshot/output contract
+- финальные рендеры SUMMARY / FORECAST / FINAL DECISION / BEST TRADE / TRADE MANAGER / GINAREA переведены на V14 snapshot
+- legacy NO_EDGE/WAIT больше не является единственным источником истины для боевых блоков
+- action_output, bot_authority и grid_cmd синхронизируются после V14 takeover
+
+Ключевая цель:
+- новый V14 анализ больше не живёт рядом со старым выводом
+- новый V14 state становится главным для финальных сообщений
+
+Что проверено:
+- py_compile для изменённых файлов проходит
+
+Что ещё нужно проверять на живом запуске:
+- реальные Telegram handlers
+- реальные рыночные snapshots в бою
+- корректность поведения на живом Binance/Bybit feed

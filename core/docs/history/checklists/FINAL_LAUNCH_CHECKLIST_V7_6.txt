@@ -1,0 +1,3 @@
+1. Запустить RUN_BOT.bat
+2. Проверить команды BTC 15M / BTC 1H / FINAL DECISION / BTC SUMMARY / BTC FORECAST / ЛУЧШАЯ СДЕЛКА / МЕНЕДЖЕР BTC / ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС
+3. В NO-TRADE режиме убедиться, что ответы короткие и без повторов

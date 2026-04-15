@@ -1,0 +1,12 @@
+V7.4 — LEARNING ENGINE PRO
+
+Что добавлено:
+- расширен core/setup_stats.py
+- добавлена классификация семейств сетапов:
+  FAKE_UP_FADE, FAKE_DOWN_FADE, RECLAIM_CONTINUATION, RANGE_FADE, BREAKOUT_FAILURE, POST_LIQUIDATION_REVERSAL
+- learning engine теперь считает family-level samples / winrate / avg RR / hold quality / failure profile
+- в setup_stats_adjustment добавлена подсказка по aggressiveness: AGGRESSIVE_OK / SMALL_OR_WAIT / NEUTRAL
+- Telegram renderer и BTC TRADE MANAGER показывают новый блок LEARNING ENGINE PRO V7.4
+
+Примечание:
+- если журнал сделок ещё пустой, блок корректно работает в мягком режиме и не усиливает confidence на шуме.

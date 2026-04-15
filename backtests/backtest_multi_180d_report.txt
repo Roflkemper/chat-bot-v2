@@ -1,0 +1,15 @@
+DATA_SOURCE:
+- BTCUSDT=FROZEN:backtests/frozen/BTCUSDT_1h_180d_frozen.json
+- ETHUSDT=FROZEN:backtests/frozen/ETHUSDT_1h_180d_frozen.json
+- XRPUSDT=FROZEN:backtests/frozen/XRPUSDT_1h_180d_frozen.json
+BACKTEST MULTI 180D
+Symbols: BTCUSDT, ETHUSDT, XRPUSDT
+Trades: 68
+Winrate: 52.94%
+Avg RR: -0.0482
+PnL: -5.8647%
+Max DD: -14.2283%
+PER SYMBOL:
+- BTCUSDT: trades=20 | wr=75.0% | pnl=10.5709% | dd=2.1542%
+- ETHUSDT: trades=20 | wr=50.0% | pnl=-2.9913% | dd=10.168%
+- XRPUSDT: trades=28 | wr=39.29% | pnl=-13.4443% | dd=14.2283%

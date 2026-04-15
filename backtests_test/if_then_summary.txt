@@ -1,0 +1,14 @@
+IF-THEN DIAGNOSTICS
+Failed signals: 95
+Profitable failed signals: 55
+MID_CROSS_FLIP:
+- count: 11
+- profitable: 4
+- total hypothetical pnl: -4.9709%
+TOP VETO REASONS:
+- FLIP_EDGE_TOO_WEAK: count=48, profitable=28, pnl=4.8412%
+- WEAK_CONTEXT: count=46, profitable=27, pnl=10.1712%
+- ACTION_NOT_ARMED: count=1, profitable=0, pnl=-0.5564%
+TOP ACTION TYPES:
+- PRESSURE_FLIP_ARM: count=84, profitable=51, pnl=19.4269%
+- MID_CROSS_FLIP: count=11, profitable=4, pnl=-4.9709%

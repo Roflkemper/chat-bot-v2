@@ -1,0 +1,8 @@
+FIX 71 — final UX + bugs
+
+Что исправлено:
+- очищены основные и динамические Telegram-кнопки
+- убраны дубли и лишние кнопки из базового UX
+- добавлен QUICK ACTION блок в BTC ANALYSIS и FINAL DECISION
+- исправено отображение deviation в 3 BOT GRID STRATEGY (0.11% вместо 11.3%)
+- в grid strategy добавлен readiness / trigger fill для BOT A/B/C

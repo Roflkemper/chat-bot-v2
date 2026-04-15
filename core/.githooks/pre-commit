@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$REPO_ROOT"
+
+echo "[HOOK] pre-commit: running Regression Shield..."
+python -B -m pytest tests -q

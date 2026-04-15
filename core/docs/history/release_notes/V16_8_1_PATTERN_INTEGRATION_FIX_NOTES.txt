@@ -1,0 +1,13 @@
+V16.8.1 — Pattern Integration Fix
+
+Что исправлено:
+- pattern_history_engine_v15 теперь всегда возвращает не пустой pattern context
+- добавлены обязательные поля: pattern_type, match_quality, expected_path, invalidation, pattern_note
+- safe_pattern_memory_v2 больше не отдаёт пустой fallback без контекста
+- analysis_service синхронизирует pattern_memory_v2 в legacy history_pattern_* поля
+- telegram_renderers теперь печатает новый pattern block вместо постоянного "НЕЙТРАЛЬНО 0.0%"
+
+Цель фикса:
+- убрать старый pattern fallback
+- протащить v2-pattern до Telegram-вывода
+- запретить полностью пустой pattern-блок

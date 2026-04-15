@@ -1,0 +1,17 @@
+DATA_SOURCE: FROZEN:backtests/frozen/BTCUSDT_1h_90d_frozen.json
+BACKTEST 90D
+Trades: 23
+Winrate: 78.26%
+Avg RR: 0.3696
+PnL: 14.7529%
+Max DD: -2.2714%
+IF-THEN:
+- triggered: 377
+- armed: 23
+- entered: 23
+- closed: 23
+- failed: 354
+EXITS:
+- tp_hit: 3
+- stop: 16
+- timeout: 4

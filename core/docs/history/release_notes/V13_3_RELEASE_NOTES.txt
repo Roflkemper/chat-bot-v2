@@ -1,0 +1,5 @@
+V13.3 ENTRY LIFECYCLE + REACTION ENGINE
+- added zone proximity states: FAR / NEAR / TOUCH
+- added lifecycle states for entry: НЕ ГОТОВО / ГОТОВИТЬ / СМОТРЕТЬ РЕАКЦИЮ / АКТИВНЫЙ ТРИГГЕР
+- added reaction engine based on zone touch, failed acceptance, fake-move risk, and weak continuation
+- formatter now shows reaction and lifecycle in V13 CORE blocks

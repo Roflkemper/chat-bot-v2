@@ -1,0 +1,13 @@
+V17.10.51.1 — Pattern A post-pass hotfix
+
+Что сделано:
+- восстановлена baseline-логика quality gate для non-Pattern-B сигналов
+- Pattern A weak context filter перенесен в post-pass слой поверх PASS
+- Pattern B2 не менялся
+- stop/TP не менялись
+- frozen data не менялись
+- trigger logic не менялась
+
+Измененные файлы:
+- core/backtest_engine.py
+- tests/test_backtest_engine.py

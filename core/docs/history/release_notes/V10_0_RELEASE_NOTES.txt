@@ -1,0 +1,11 @@
+FIX PRO V10.0 — best-effort consolidated release
+
+Main concrete changes in this package:
+- truth lock extended into range/ginarea/bot control so NO TRADE no longer advertises small/probe start
+- non-open range bots now render as observation instead of soft-ready
+- manager text uses SCENARIO MAP wording to avoid implying active trade before authorization
+- BTC-only bot control precision rendering to stop leaking BTC zones into XRP blocks
+- action/range notes downgraded to watch-only under no-trade contexts
+- ginarea observation text softened to confirm/reclaim language
+
+This release is focused on consistency and battle-safe output, not a full architecture rewrite of every planned V9.5-V9.9 subsystem.

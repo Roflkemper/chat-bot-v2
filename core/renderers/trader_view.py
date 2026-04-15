@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+
+def _arrow(side: str) -> str:
+    if side == "SHORT":
+        return "↘"
+    if side == "LONG":
+        return "↗"
+    return "↔"
+
+
+
+def _block_name(block: str) -> str:
+    return "SHORT BLOCK" if block == "SHORT" else "LONG BLOCK"
+
+
+
+def render_trader_view(s):
+    fc = s["forecast"]
+    entry_line = s["entry_type"] if s["entry_type"] else "NONE"
+    trigger_text = s["trigger_type"] if s["trigger_type"] else "NONE"
+    if s.get('trigger_blocked') and trigger_text != 'NONE':
+        trigger_text = f"{trigger_text} ⚠️ ЗАБЛОКИРОВАН"
+
+    lines = [
+        "TRADER VIEW",
+        f"СТАТУС: {s['state']}",
+        f"АКТИВНЫЙ БЛОК: {_block_name(s['active_block'])}",
+        f"СТОРОНА: {s['execution_side']} | ГЛУБИНА В БЛОКЕ: {s['block_depth_pct']}% [{s['depth_label']}]",
+        f"ПОЗИЦИЯ В ДИАПАЗОНЕ: {s['range_position_pct']}%",
+    ]
+
+    if s["active_block"] == "SHORT":
+        lines.append(f"ДО ВЕРХНЕГО КРАЯ: {s['distance_to_upper_edge']}$ ({s['edge_distance_pct']}% блока)")
+        lines.append(f"ДО НИЖНЕГО КРАЯ: {s['distance_to_lower_edge']}$")
+    else:
+        lines.append(f"ДО НИЖНЕГО КРАЯ: {s['distance_to_lower_edge']}$ ({s['edge_distance_pct']}% блока)")
+        lines.append(f"ДО ВЕРХНЕГО КРАЯ: {s['distance_to_upper_edge']}$")
+
+    lines.extend([
+        "",
+        f"TRIGGER: {trigger_text}",
+        f"ПРИЧИНА: {s['trigger_note']}",
+    ])
+    if s.get('trigger_block_reason'):
+        lines.append(f"ПРИЧИНА БЛОКИРОВКИ: {s['trigger_block_reason']}")
+    lines.extend([
+        "",
+        f"ACTION: {s['action']} | ENTRY: {entry_line}",
+        f"CONTEXT: {s.get('context_label', 'NO CONTEXT')} ({s.get('context_score', 0)}/3)",
+    ])
+    cdir = s['consensus_direction']
+    if cdir in {'LONG', 'SHORT'}:
+        lines.append(f"КОНСЕНСУС: {_arrow(cdir)} {cdir} | {s['consensus_confidence']} ({s['consensus_votes']})")
+    else:
+        lines.append(f"КОНСЕНСУС: CONFLICTED ({s['consensus_votes']})")
+
+    if s["warnings"]:
+        lines.append("")
+        lines.append("⚠️ ПРЕДУПРЕЖДЕНИЯ:")
+        lines.extend(s["warnings"])
+
+    lines.extend([
+        "",
+        "ПРОГНОЗ:",
+        f"• СКАЛЬП: {_arrow(fc['short']['direction'])} {fc['short']['direction']} | {fc['short']['strength']} | {fc['short']['note']}",
+        f"• СЕССИЯ: {_arrow(fc['session']['direction'])} {fc['session']['direction']} | {fc['session']['strength']} | {fc['session']['note']}",
+        f"• СРЕДНЕСРОК: {_arrow(fc['medium']['direction'])} {fc['medium']['direction']} | {fc['medium']['strength']} | {fc['medium']['phase']} | {fc['medium']['note']}",
+        "",
+        "ENTRY:",
+        f"• QUALITY: {s.get('entry_quality', 'NO_TRADE')}",
+        f"• PROFILE: {s.get('execution_profile', 'NO_ENTRY')}",
+        f"• RISK MODE: {s.get('risk_mode', 'MINIMAL')}",
+        f"• PARTIAL ENTRY: {'YES' if s.get('partial_entry_allowed') else 'NO'}",
+        f"• SCALE-IN: {'YES' if s.get('scale_in_allowed') else 'NO'}",
+        "",
+        "TRADE PLAN:",
+    ])
+    if s.get('trade_plan_active'):
+        lines.append(f"• MODE: {s.get('trade_plan_mode', 'GRID')}")
+    else:
+        lines.append("• ⏸️ ОЖИДАНИЕ — план не активен")
+        lines.append(f"• РЕЖИМ: {s.get('trade_plan_mode', 'GRID MONITORING')}")
+
+    lines.extend([
+        "",
+        "HEDGE:",
+        f"• STATE: {s['hedge_state']}",
+        f"• ARM UP: {s['hedge_arm_up']}",
+        f"• ARM DOWN: {s['hedge_arm_down']}",
+    ])
+    return "\n".join(lines)

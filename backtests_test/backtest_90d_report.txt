@@ -1,0 +1,21 @@
+DATA_SOURCE: FROZEN:/mnt/data/work53/backtests/frozen/BTCUSDT_1h_90d_frozen.json
+BACKTEST 90D
+Trades: 21
+Winrate: 80.95%
+Avg RR: 0.3677
+PnL: 13.352%
+Max DD: -2.815%
+IF-THEN:
+- triggered: 377
+- armed: 21
+- entered: 21
+- closed: 21
+- failed: 95
+EXITS:
+- tp_hit: 3
+- stop: 14
+- timeout: 4
+IF-THEN DIAGNOSTICS:
+- failed_signals: 95
+- profitable_failed: 55
+- mid_cross_flip_failed: 11

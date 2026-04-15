@@ -1,0 +1,12 @@
+RELEASE MANIFEST V7.3
+
+Обновлено:
+- core/bot_control_center.py
+- core/btc_plan.py
+- VERSION.txt
+- V7_3_RELEASE_NOTES.txt
+
+Смысл релиза:
+- доведён центр управления BTC/XRP long-short слоями
+- добавлены чёткие разрешения: ALLOW / SMALL ONLY / WAIT / NO ADDS / BLOCK
+- добавлены причины и side-risk по каждому активу

@@ -1,0 +1,14 @@
+CORE V1 SCAFFOLD RELEASE
+
+What is included:
+- New domain contracts
+- New market/feature/context pipelines
+- Strategy registry scaffold
+- 3 core strategies scaffold
+- FinalDecisionArbiter scaffold
+- ExecutionPlan scaffold
+- 4 minimal output screens scaffold
+
+Important:
+This ZIP is an architectural rebuild scaffold on top of the provided archive.
+It is not yet a production-complete engine and should be treated as the first rebuild base.

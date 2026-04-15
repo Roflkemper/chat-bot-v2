@@ -1,0 +1,653 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DisplayDriverUninstaller Version="18.1.4.1">
+	<LogEntries>
+		<Event>
+			<Time>1/23/2026 1:52:11 PM</Time>
+			<Message>The following paths are detected.</Message>
+			<Values Separator=" = ">
+				<KvP>
+					<Key>[Found] AppExeFile</Key>
+					<Value>C:\Users\ghisl\Desktop\DDU\DDU v18.1.4.1\Display Driver Uninstaller.exe</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] AppBase</Key>
+					<Value>C:\Users\ghisl\Desktop\DDU\DDU v18.1.4.1\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] Settings</Key>
+					<Value>C:\Users\ghisl\Desktop\DDU\DDU v18.1.4.1\Settings\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] Logs</Key>
+					<Value>C:\Users\ghisl\Desktop\DDU\DDU v18.1.4.1\DDU Logs\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] Language</Key>
+					<Value>C:\Users\ghisl\Desktop\DDU\DDU v18.1.4.1\Settings\Languages\</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>[Found] ProgramFiles</Key>
+					<Value>C:\Program Files\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] ProgramFilesx86</Key>
+					<Value>C:\Program Files (x86)\</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>[Found] Roaming</Key>
+					<Value>C:\ProgramData\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] AppBaseRoaming</Key>
+					<Value>C:\ProgramData\DisplayDriverUninstaller\</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>[Found] SystemDrive</Key>
+					<Value>C:\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] WinDir</Key>
+					<Value>C:\WINDOWS\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] UserPath</Key>
+					<Value>C:\Users\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] System32</Key>
+					<Value>C:\WINDOWS\system32\</Value>
+				</KvP>
+				<KvP>
+					<Key>[Found] SysWOW64</Key>
+					<Value>C:\WINDOWS\SysWOW64\</Value>
+				</KvP>
+			</Values>
+		</Event>
+		<Event>
+			<Time>1/23/2026 1:52:12 PM</Time>
+			<Message>System Information</Message>
+			<Values Separator=" : ">
+				<KvP>
+					<Key>DDU Version</Key>
+					<Value>18.1.4.1</Value>
+				</KvP>
+				<KvP>
+					<Key>OS</Key>
+					<Value>Windows 11</Value>
+				</KvP>
+				<KvP>
+					<Key>Build</Key>
+					<Value>26200.7623</Value>
+				</KvP>
+				<KvP>
+					<Key>Win 10 1809+ ?</Key>
+					<Value>True</Value>
+				</KvP>
+				<KvP>
+					<Key>NVIDIA App installed ?</Key>
+					<Value>True</Value>
+				</KvP>
+				<KvP>
+					<Key>NVIDIA Broadcast ?</Key>
+					<Value>False</Value>
+				</KvP>
+				<KvP>
+					<Key>Intel NPU Present ?</Key>
+					<Value>False</Value>
+				</KvP>
+				<KvP>
+					<Key>Architecture</Key>
+					<Value>x64</Value>
+				</KvP>
+				<KvP>
+					<Key>UserRights</Key>
+					<Value>Admin</Value>
+				</KvP>
+				<KvP>
+					<Key>Arguments</Key>
+					<Value>&lt;empty&gt;</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>GPU #0000</Key>
+					<Value>NVIDIA GeForce RTX 5070</Value>
+				</KvP>
+				<KvP>
+					<Key>GPU DeviceID</Key>
+					<Value>pci\ven_10de&amp;dev_2f04</Value>
+				</KvP>
+				<KvP>
+					<Key>Vbios</Key>
+					<Value>Version98 05.28.00.03</Value>
+				</KvP>
+				<KvP>
+					<Key>Detected Driver(s) Version(s)</Key>
+					<Value>32.0.15.9174</Value>
+				</KvP>
+				<KvP>
+					<Key>INF name</Key>
+					<Value>oem0.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>INF section</Key>
+					<Value>Section048</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>GPU #0001</Key>
+					<Value>Microsoft Remote Display Adapter</Value>
+				</KvP>
+				<KvP>
+					<Key>GPU DeviceID</Key>
+					<Value>RdpIdd_IndirectDisplay</Value>
+				</KvP>
+				<KvP>
+					<Key>Detected Driver(s) Version(s)</Key>
+					<Value>10.0.26100.6725</Value>
+				</KvP>
+				<KvP>
+					<Key>INF name</Key>
+					<Value>rdpidd.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>INF section</Key>
+					<Value>RdpIdd_Install.NT</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>GPU #0002</Key>
+					<Value>Microsoft Remote Display Adapter</Value>
+				</KvP>
+				<KvP>
+					<Key>GPU DeviceID</Key>
+					<Value>RdpIdd_IndirectDisplay</Value>
+				</KvP>
+				<KvP>
+					<Key>Detected Driver(s) Version(s)</Key>
+					<Value>10.0.26100.6725</Value>
+				</KvP>
+				<KvP>
+					<Key>INF name</Key>
+					<Value>rdpidd.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>INF section</Key>
+					<Value>RdpIdd_Install.NT</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>GPU #0004</Key>
+					<Value>Microsoft Remote Display Adapter</Value>
+				</KvP>
+				<KvP>
+					<Key>GPU DeviceID</Key>
+					<Value>RdpIdd_IndirectDisplay</Value>
+				</KvP>
+				<KvP>
+					<Key>Detected Driver(s) Version(s)</Key>
+					<Value>10.0.26100.6725</Value>
+				</KvP>
+				<KvP>
+					<Key>INF name</Key>
+					<Value>rdpidd.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>INF section</Key>
+					<Value>RdpIdd_Install.NT</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Key>GPU #0005</Key>
+					<Value>Microsoft Remote Display Adapter</Value>
+				</KvP>
+				<KvP>
+					<Key>GPU DeviceID</Key>
+					<Value>RdpIdd_IndirectDisplay</Value>
+				</KvP>
+				<KvP>
+					<Key>Detected Driver(s) Version(s)</Key>
+					<Value>10.0.26100.6725</Value>
+				</KvP>
+				<KvP>
+					<Key>INF name</Key>
+					<Value>rdpidd.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>INF section</Key>
+					<Value>RdpIdd_Install.NT</Value>
+				</KvP>
+				<KvP />
+			</Values>
+		</Event>
+		<Warning>
+			<Time>1/23/2026 1:52:12 PM</Time>
+			<Message>We are not in Safe Mode</Message>
+		</Warning>
+		<Event>
+			<Time>1/23/2026 1:52:12 PM</Time>
+			<Message>The following third-party driver packages are installed on this computer</Message>
+			<Values Separator=" = ">
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem0.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>NVIDIA</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Display</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem1.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Intel</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Net</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem10.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Xbox</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>SCSIAdapter</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem11.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Brother</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Printer</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem12.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Intel</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>SoftwareComponent</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem13.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Intel</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Net</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem14.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>INTEL</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>System</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem15.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Microsoft</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Printer</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem16.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Brother</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Printer</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem17.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Microsoft</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Printer</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem18.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Xbox</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>HSM</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem19.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Microsoft Corporation</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>AudioProcessingObject</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem2.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>CREATIVE</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>MEDIA</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem21.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Microsoft Corporation</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>AudioProcessingObject</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem23.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>TAP-Win32 Provider V9</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Net</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem3.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>INTEL</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>System</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem31.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>NVIDIA</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>MEDIA</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem32.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>NVIDIA</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>MEDIA</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem4.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Intel</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>System</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem5.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>NVIDIA Corporation</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>MEDIA</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem6.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Intel</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>SoftwareComponent</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem7.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Intel</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>SoftwareComponent</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem8.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>Brother</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>Image</Value>
+				</KvP>
+				<KvP />
+				<KvP>
+					<Value>C:\WINDOWS\inf\oem9.inf</Value>
+				</KvP>
+				<KvP>
+					<Key>Provider</Key>
+					<Value>INTEL</Value>
+				</KvP>
+				<KvP>
+					<Key>Class</Key>
+					<Value>System</Value>
+				</KvP>
+				<KvP />
+			</Values>
+		</Event>
+		<Event>
+			<Time>1/23/2026 1:52:12 PM</Time>
+			<Message>Trying to impersonate the SYSTEM account... SUCCESS !</Message>
+			<Values Separator=" : ">
+				<KvP>
+					<Key>Number of process to check</Key>
+					<Value>242</Value>
+				</KvP>
+				<KvP>
+					<Key>OneDrive</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>chrome</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>WidgetService</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>msedgewebview2</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>chrome</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>LockApp</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>svchost</Key>
+					<Value>Access is denied</Value>
+				</KvP>
+				<KvP>
+					<Key>ShellHost</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>RuntimeBroker</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>msedgewebview2</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>Display Driver Uninstaller</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>chrome</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>OneDrive.Sync.Service</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>services</Key>
+					<Value>Access is denied</Value>
+				</KvP>
+				<KvP>
+					<Key>RuntimeBroker</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>ctfmon</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>UserOOBEBroker</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>chrome</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>MpDefenderCoreService</Key>
+					<Value>Access is denied</Value>
+				</KvP>
+				<KvP>
+					<Key>lsass</Key>
+					<Value>Access is denied</Value>
+				</KvP>
+				<KvP>
+					<Key>msedgewebview2</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>chrome</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>dllhost</Key>
+					<Value>Skipping : S-1-5-21-2379611258-2097988269-378447985-1001</Value>
+				</KvP>
+				<KvP>
+					<Key>winlogon</Key>
+					<Value>S-1-5-18</Value>
+				</KvP>
+				<KvP>
+					<Key>winlogon</Key>
+					<Value>SYSTEM account impersonalisation SUCCESS</Value>
+				</KvP>
+				<KvP>
+					<Value>ThreadID : 1</Value>
+				</KvP>
+			</Values>
+		</Event>
+		<Event>
+			<Time>1/23/2026 1:52:12 PM</Time>
+			<Message>Trying to Revert impersonalisation of the SYSTEM account... Reverting the Impersonalisation is successful !</Message>
+			<Values Separator=" : ">
+				<KvP>
+					<Value>ThreadID : 1</Value>
+				</KvP>
+				<KvP>
+					<Value>Remaining impersonated threadIDs: </Value>
+				</KvP>
+			</Values>
+		</Event>
+		<Event>
+			<Time>1/23/2026 2:03:21 PM</Time>
+			<Message>&gt;&gt; Successfully saved log to file!</Message>
+		</Event>
+	</LogEntries>
+</DisplayDriverUninstaller>

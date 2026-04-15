@@ -1,0 +1,12 @@
+V17.8.4.3 — BIAS SCORE + FUNDING DELTA INTEGRATION
+
+Что добавлено:
+- bias score -1..+1 как агрегат HTF / flow / funding / leader context
+- funding regime: NEGATIVE / NORMAL / HIGH_POSITIVE
+- delta ratio и absorption score из taker buy/sell proxy
+- hedge trigger price для PRE-HEDGE / DEFEND перехода
+- расширенный вывод bias / funding / flow в Telegram
+
+Цель:
+- лучше понимать не только где рынок стоит, но и куда среда реально давит
+- раньше переводить сценарий в defend/pre-hedge без лишнего шума

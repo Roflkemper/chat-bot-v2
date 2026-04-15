@@ -1,0 +1,7 @@
+HOTFIX 15
+- direction mapping decoupled from setup readiness
+- ginarea merge no longer overwrites directional forecast with neutral values
+- impulse state now resolves to BULLISH/BEARISH/RANGE/CONFLICTED more often
+- pattern memory extended to 2024 Q4 / 2025 / recent 2026 scope for 1h/4h/1d only
+- BTC FORECAST and BTC ANALYSIS render extended pattern block
+- included RUN_BOT_DEBUG.bat and RUN_BOT.bat as stable loop launchers

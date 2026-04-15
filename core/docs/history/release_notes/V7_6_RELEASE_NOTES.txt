@@ -1,0 +1,7 @@
+V7.6 — SILENCE + ULTRA MODE
+
+Что изменено:
+- Добавлен core/ux_mode.py
+- NO-TRADE сценарии теперь рендерятся в коротком ULTRA-формате
+- Сильно сокращены: BTC ANALYSIS / FINAL DECISION / BTC SUMMARY / BTC FORECAST / ЛУЧШАЯ СДЕЛКА / BTC TRADE MANAGER / ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС
+- При отсутствии edge бот теперь делает упор на: WAIT / trigger / invalidation / запрет

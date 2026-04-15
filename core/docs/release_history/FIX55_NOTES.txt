@@ -1,0 +1,4 @@
+FIX 55 - edge label/action now directly gate bot activation.
+
+Added activation_state with OFF / WAIT / ARMED for bot_cards, unified_strategy_matrix, and impulse ladder.
+Execution bias and best bot status now follow edge gating.

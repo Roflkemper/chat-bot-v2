@@ -1,0 +1,17 @@
+{
+  "flip_prep_active": true,
+  "flip_prep_side": "LONG",
+  "flip_prep_reason": "рынок под давлением против блока — наблюдаем handoff",
+  "flip_prep_level": 74924.64,
+  "flip_prep_confirm_bars_needed": 2,
+  "flip_prep_progress_bars": 0,
+  "flip_prep_status": "WATCHING",
+  "flip_prep_cooldown_bars": 0,
+  "candidate_side": "LONG",
+  "candidate_status": "WATCH",
+  "candidate_reason": "новая сторона пока только в watch-режиме",
+  "short_neutral_streak": 0,
+  "session_neutral_streak": 0,
+  "double_neutral_streak": 0,
+  "momentum_exhausted": false
+}

@@ -4,7 +4,30 @@ from datetime import datetime
 
 from market_data.price_feed import get_price
 from market_data.ohlcv import get_klines
-from services.timeframe_aggregator import aggregate_to_4h, aggregate_to_1d
+try:
+    from services.timeframe_aggregator import aggregate_candles, aggregate_to_4h, aggregate_to_1d
+except Exception:
+    from services.timeframe_aggregator import aggregate_to_4h, aggregate_to_1d
+
+    def aggregate_candles(candles, step: int):
+        closed = list(candles or [])[:len(list(candles or [])) - (len(list(candles or [])) % step)]
+        out = []
+        for i in range(0, len(closed), step):
+            group = closed[i:i + step]
+            if len(group) < step:
+                continue
+            first = group[0]
+            last = group[-1]
+            out.append({
+                'open_time': first.get('open_time'),
+                'open': first.get('open'),
+                'high': max(x.get('high', x.get('close')) for x in group),
+                'low': min(x.get('low', x.get('close')) for x in group),
+                'close': last.get('close'),
+                'volume': sum(float(x.get('volume', 0.0) or 0.0) for x in group),
+                'close_time': last.get('close_time'),
+            })
+        return out
 from features.trigger_detection import detect_trigger
 from features.forecast import short_term_forecast, session_forecast, medium_forecast, build_consensus
 from features.liquidity_structure import detect_liquidity_structure
@@ -24,6 +47,40 @@ except Exception:
 NEAR_EDGE_THRESHOLD_PCT = 15.0
 HEDGE_BUFFER_USD = 293.0
 BLOCK_FLIP_CONFIRM_BARS = 3
+
+
+def _timeframe_scale(timeframe: str) -> int:
+    tf = str(timeframe or '1h').lower()
+    return 4 if tf == '15m' else 1
+
+
+def _scaled_window(size: int, timeframe: str) -> int:
+    return max(1, int(size) * _timeframe_scale(timeframe))
+
+
+def _base_limit_for_timeframe(timeframe: str) -> int:
+    tf = str(timeframe or '1h').lower()
+    return 800 if tf == '15m' else 200
+
+
+def _aggregate_for_snapshot(candles: list[dict], timeframe: str, target: str) -> list[dict]:
+    tf = str(timeframe or '1h').lower()
+    target_tf = str(target or '1h').lower()
+    if tf == target_tf:
+        return list(candles or [])
+    if tf == '15m':
+        if target_tf == '1h':
+            return aggregate_candles(candles, 4)
+        if target_tf == '4h':
+            return aggregate_candles(candles, 16)
+        if target_tf == '1d':
+            return aggregate_candles(candles, 96)
+    if tf == '1h':
+        if target_tf == '4h':
+            return aggregate_to_4h(candles)
+        if target_tf == '1d':
+            return aggregate_to_1d(candles)
+    return list(candles or [])
 
 
 def _update_momentum_state(prev_state: dict, short_fc: dict, session_fc: dict) -> dict:
@@ -60,8 +117,9 @@ def _true_range(bar: dict, prev_close: float | None = None) -> float:
     return max(high - low, abs(high - prev_close), abs(low - prev_close))
 
 
-def _build_volatility_context(candles_1h: list[dict]) -> dict:
-    recent = candles_1h[-32:] if len(candles_1h) >= 32 else candles_1h
+def _build_volatility_context(candles_1h: list[dict], timeframe: str = '1h') -> dict:
+    recent_window = _scaled_window(32, timeframe)
+    recent = candles_1h[-recent_window:] if len(candles_1h) >= recent_window else candles_1h
     if len(recent) < 10:
         return {'state': 'NORMAL', 'atr_ratio': 1.0}
     trs = []
@@ -69,8 +127,10 @@ def _build_volatility_context(candles_1h: list[dict]) -> dict:
     for bar in recent:
         trs.append(_true_range(bar, prev_close))
         prev_close = float(bar.get('close') or 0.0)
-    atr_fast = sum(trs[-8:]) / max(1, len(trs[-8:]))
-    baseline = trs[-24:] if len(trs) >= 24 else trs
+    fast_window = _scaled_window(8, timeframe)
+    base_window = _scaled_window(24, timeframe)
+    atr_fast = sum(trs[-fast_window:]) / max(1, len(trs[-fast_window:]))
+    baseline = trs[-base_window:] if len(trs) >= base_window else trs
     atr_base = sum(baseline) / max(1, len(baseline))
     ratio = atr_fast / atr_base if atr_base > 0 else 1.0
     state = 'NORMAL'
@@ -91,8 +151,9 @@ def _depth_label(depth_pct: float) -> str:
     return "DEEP"
 
 
-def _build_range(candles_1h):
-    window = candles_1h[-48:] if len(candles_1h) >= 48 else candles_1h
+def _build_range(candles_1h, timeframe: str = '1h'):
+    range_window = _scaled_window(48, timeframe)
+    window = candles_1h[-range_window:] if len(candles_1h) >= range_window else candles_1h
     range_low = min(x["low"] for x in window)
     range_high = max(x["high"] for x in window)
     range_mid = (range_low + range_high) / 2.0
@@ -162,8 +223,9 @@ def _build_bias_score(active_side: str, consensus_direction: str, consensus_alig
     return max(-10, min(10, int(score)))
 
 
-def _build_absorption(active_block: str, candles_1h: list[dict], block_low: float, block_high: float) -> dict:
-    recent = candles_1h[-12:] if len(candles_1h) >= 12 else candles_1h
+def _build_absorption(active_block: str, candles_1h: list[dict], block_low: float, block_high: float, timeframe: str = '1h') -> dict:
+    absorption_window = _scaled_window(12, timeframe)
+    recent = candles_1h[-absorption_window:] if len(candles_1h) >= absorption_window else candles_1h
     block_size = max(block_high - block_low, 1e-9)
     threshold = block_high - block_size * 0.25 if active_block == 'SHORT' else block_low + block_size * 0.25
     bars_at_edge = 0
@@ -349,17 +411,19 @@ def _build_manual_grid_blocks(snapshot: dict) -> tuple[list[str], list[str], lis
     return manual_action_lines, grid_action_lines, grid_shift_lines, liquidity_void_lines
 
 
-def build_full_snapshot(symbol="BTCUSDT"):
-    candles_1h = get_klines(symbol=symbol, interval="1h", limit=200)
+def build_full_snapshot(symbol="BTCUSDT", timeframe='1h'):
+    tf = str(timeframe or '1h').lower()
+    base_limit = _base_limit_for_timeframe(tf)
+    candles_1h = get_klines(symbol=symbol, interval=tf, limit=base_limit)
     candles_1h = [{**row, 'volume': float(row.get('volume', 0.0) or 0.0)} for row in candles_1h]
     try:
         price = get_price(symbol)
     except Exception:
         price = float(candles_1h[-1]['close']) if candles_1h else 0.0
-    candles_4h = aggregate_to_4h(candles_1h)
-    candles_1d = aggregate_to_1d(candles_1h)
+    candles_4h = _aggregate_for_snapshot(candles_1h, tf, '4h')
+    candles_1d = _aggregate_for_snapshot(candles_1h, tf, '1d')
 
-    range_low, range_high, range_mid = _build_range(candles_1h)
+    range_low, range_high, range_mid = _build_range(candles_1h, tf)
     range_size = max(range_high - range_low, 1e-9)
 
     if price >= range_mid:
@@ -393,7 +457,7 @@ def build_full_snapshot(symbol="BTCUSDT"):
 
     structure_flags = detect_liquidity_structure(candles_1h)
     structural_context = analyze_structural_context(candles_1h)
-    absorption = _build_absorption(active_block, candles_1h, block_low, block_high)
+    absorption = _build_absorption(active_block, candles_1h, block_low, block_high, tf)
 
     scalp_direction = short_fc["direction"]
     context_score, context_details = _context_flags('SEARCH_TRIGGER', depth_label, scalp_direction, active_side, candles_1h)
@@ -421,13 +485,13 @@ def build_full_snapshot(symbol="BTCUSDT"):
     else:
         watch_side = 'NONE'
 
-    volatility = _build_volatility_context(candles_1h)
+    volatility = _build_volatility_context(candles_1h, tf)
     entry_filter = build_entry_quality_context(candles=candles_1h, entry_idx=len(candles_1h) - 1, side=active_side)
 
     base_snapshot = {
         'symbol': symbol,
         'timestamp': datetime.now().strftime('%H:%M'),
-        'tf': '1h',
+        'tf': tf,
         'price': round(price, 2),
         'range_low': round(range_low, 2),
         'range_high': round(range_high, 2),

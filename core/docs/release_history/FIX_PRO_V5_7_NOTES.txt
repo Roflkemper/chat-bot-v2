@@ -1,0 +1,14 @@
+FIX PRO V5.7
+
+Включено:
+- REAL-LIQ FALLBACK: последний валидный snapshot ликвидности теперь используется как fallback при деградации websocket/feed
+- EARLY FAKE MOVE: добавлены промежуточные статусы EARLY_FAKE_UP_RISK / EARLY_FAKE_DOWN_RISK
+- SOFT PROJECTION: move projection теперь умеет строить мягкие цели даже при soft edge и range-mid сценариях
+- BATTLE OUTPUT: в "⚡ ЧТО ДЕЛАТЬ СЕЙЧАС" добавлен блок "ЧТО ИЗМЕНИТ КАРТИНУ", confidence fake-move и индикация fallback режима
+
+Изменённые файлы:
+- core/exchange_liquidity_engine.py
+- core/fast_move_interpreter.py
+- core/fake_move_detector.py
+- core/move_projection.py
+- handlers/command_actions.py

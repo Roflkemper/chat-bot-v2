@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 from core import pipeline
 from market_data.ohlcv import get_klines
-from services.timeframe_aggregator import aggregate_to_4h, aggregate_to_1d
+from services.timeframe_aggregator import aggregate_candles, aggregate_to_4h, aggregate_to_1d
 from core.entry_quality_filter import build_entry_quality_context
 
 
@@ -31,6 +31,20 @@ DEFAULT_TP2_ATR_MULT = 1.9
 DEFAULT_STOP_ATR_MULT = 1.5
 
 
+def _timeframe_scale(timeframe: str) -> int:
+    tf = str(timeframe or DEFAULT_TIMEFRAME).lower()
+    return 4 if tf == '15m' else 1
+
+
+def _effective_min_window_bars(timeframe: str) -> int:
+    return max(MIN_WINDOW_BARS, MIN_WINDOW_BARS * _timeframe_scale(timeframe))
+
+
+def _effective_max_window_bars(timeframe: str) -> int:
+    return max(MAX_WINDOW_BARS, MAX_WINDOW_BARS * _timeframe_scale(timeframe))
+
+
+
 @dataclass
 class BacktestTrade:
     entry_index: int
@@ -45,6 +59,7 @@ class BacktestTrade:
     partial_taken: bool = False
     tp1_hit_index: int | None = None
     be_armed: bool = False
+    pattern: str | None = None
 
 
 @dataclass
@@ -71,10 +86,12 @@ class BacktestSummary:
     tp_hit_count: int
     stop_count: int
     report_path: str = ''
+    swing_reversal_observe: bool = False
+    combined_validation: Dict[str, Any] = field(default_factory=dict)
 
 
 @contextmanager
-def _patched_pipeline(candles: List[Dict[str, Any]], state_box: Dict[str, Any]):
+def _patched_pipeline(candles: List[Dict[str, Any]], state_box: Dict[str, Any], timeframe: str = DEFAULT_TIMEFRAME):
     original = {
         'get_price': pipeline.get_price,
         'get_klines': pipeline.get_klines,
@@ -88,14 +105,27 @@ def _patched_pipeline(candles: List[Dict[str, Any]], state_box: Dict[str, Any]):
     def _get_price(symbol: str = 'BTCUSDT') -> float:
         return float(candles[-1]['close']) if candles else 0.0
 
-    def _get_klines(symbol: str = 'BTCUSDT', interval: str = '1h', limit: int = 200):
-        if interval == '1h':
-            return candles[-limit:]
+    tf = str(timeframe or DEFAULT_TIMEFRAME).lower()
+
+    def _aggregate(interval: str):
+        interval = str(interval or tf).lower()
+        if interval == tf:
+            return candles
+        if tf == '15m':
+            if interval == '1h':
+                return aggregate_candles(candles, 4)
+            if interval == '4h':
+                return aggregate_candles(candles, 16)
+            if interval == '1d':
+                return aggregate_candles(candles, 96)
         if interval == '4h':
-            return aggregate_to_4h(candles)[-limit:]
+            return aggregate_to_4h(candles)
         if interval == '1d':
-            return aggregate_to_1d(candles)[-limit:]
-        return candles[-limit:]
+            return aggregate_to_1d(candles)
+        return candles
+
+    def _get_klines(symbol: str = 'BTCUSDT', interval: str = '1h', limit: int = 200):
+        return _aggregate(interval)[-limit:]
 
     pipeline.get_price = _get_price
     pipeline.get_klines = _get_klines
@@ -118,6 +148,16 @@ def _patched_pipeline(candles: List[Dict[str, Any]], state_box: Dict[str, Any]):
         if original['load_position_state'] is not None:
             pipeline.load_position_state = original['load_position_state']
 
+
+
+
+def _build_snapshot_compat(symbol: str, timeframe: str) -> Dict[str, Any]:
+    try:
+        return pipeline.build_full_snapshot(symbol, timeframe=timeframe)
+    except TypeError as exc:
+        if 'timeframe' not in str(exc):
+            raise
+        return pipeline.build_full_snapshot(symbol)
 
 def _side_multiplier(side: str) -> float:
     return 1.0 if str(side).upper() == 'LONG' else -1.0
@@ -267,9 +307,36 @@ def _quality_gate(snapshot: Dict[str, Any], side: str, entry_source: str | None 
         has_score_support = confidence >= 47.0 or edge_score >= 36.0
         has_pressure_support = block_pressure_strength in {'MID', 'HIGH'}
         if not has_pressure_support and not has_score_support:
+            # Pattern B: PRESSURE_FLIP_ARM + ctx>=2 + |bias|>=3 + trigger!=RECLAIM
+            trigger_type = _norm_label(snapshot.get('trigger_type') or '')
+            if (
+                source == 'PRESSURE_FLIP_ARM'
+                and context_score >= 2
+                and abs(bias_score) >= 3
+                and trigger_type != 'RECLAIM'
+            ):
+                return True, 'PATTERN_B'
             return False, 'FLIP_EDGE_TOO_WEAK'
 
     return True, None
+
+
+def _context_filter_ok(snapshot: Dict[str, Any]) -> bool:
+    """Pattern A context filter: block weak entries without conviction."""
+    ctx = _safe_int(snapshot.get('context_score'), default=0)
+    bias = _safe_int(snapshot.get('bias_score'), default=0)
+    session = _norm_label(
+        snapshot.get('session_strength')
+        or snapshot.get('trend_pressure_strength')
+        or 'LOW'
+    )
+    # Strong context — always allow
+    if ctx >= 2:
+        return True
+    # Weak/no context — allow only with strong bias AND non-LOW session
+    if abs(bias) >= 4 and session not in {'', 'NONE', 'LOW'}:
+        return True
+    return False
 
 
 def _tp_pct(snapshot: Dict[str, Any], stop_pct: float, side: str, atr_pct: float | None = None) -> float:
@@ -573,7 +640,8 @@ def _equity_drawdown(equity_curve: Iterable[float]) -> float:
 def _write_report(output_dir: str | Path, summary: BacktestSummary, trades: List[BacktestTrade]) -> str:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    report_path = output_dir / 'backtest_90d_report.json'
+    days = getattr(summary, 'lookback_days', 90) or 90
+    report_path = output_dir / f'backtest_{days}d_report.json'
     payload = {
         'summary': asdict(summary),
         'trades': [asdict(x) for x in trades],
@@ -584,7 +652,7 @@ def _write_report(output_dir: str | Path, summary: BacktestSummary, trades: List
 
 def format_backtest_summary(summary: Dict[str, Any]) -> List[str]:
     return [
-        'BACKTEST 90D',
+        f"BACKTEST {summary.get('lookback_days', 90)}D",
         f"Trades: {summary.get('trades', 0)}",
         f"Winrate: {summary.get('winrate', 0.0)}%",
         f"Avg RR: {summary.get('avg_rr', 0.0)}",
@@ -663,7 +731,10 @@ def run_backtest_from_candles(
     output_dir: str | Path = 'backtests',
 ) -> Dict[str, Any]:
     candles = list(candles or [])
-    if len(candles) < MIN_WINDOW_BARS + horizon_bars + 5:
+    effective_min_window = _effective_min_window_bars(timeframe)
+    effective_max_window = _effective_max_window_bars(timeframe)
+
+    if len(candles) < effective_min_window + horizon_bars + 5:
         summary = BacktestSummary(
             symbol=symbol,
             timeframe=timeframe,
@@ -713,10 +784,10 @@ def run_backtest_from_candles(
     entry_filter_lock_until = -1
 
     last_index_for_entry = max(0, len(candles) - horizon_bars - 1)
-    for i in range(MIN_WINDOW_BARS, len(candles)):
-        window = candles[max(0, i - MAX_WINDOW_BARS + 1):i + 1]
-        with _patched_pipeline(window, state_box):
-            snapshot = pipeline.build_full_snapshot(symbol)
+    for i in range(effective_min_window, len(candles)):
+        window = candles[max(0, i - effective_max_window + 1):i + 1]
+        with _patched_pipeline(window, state_box, timeframe=timeframe):
+            snapshot = _build_snapshot_compat(symbol, timeframe)
 
         action = _norm_label(snapshot.get('action') or 'WAIT')
         side = _primary_side(snapshot)
@@ -747,6 +818,11 @@ def run_backtest_from_candles(
                 if not quality_ok:
                     if_then_failed += 1
                     continue
+                # Pattern A context filter (skip for Pattern B which has its own gate)
+                if quality_reason != 'PATTERN_B':
+                    if not _context_filter_ok(snapshot):
+                        if_then_failed += 1
+                        continue
                 if 'entry_filter_ok' in snapshot or 'entry_filter_reason' in snapshot or 'entry_filter_reason_code' in snapshot:
                     entry_filter_ctx = {
                         'ok': bool(snapshot.get('entry_filter_ok')),
@@ -775,6 +851,7 @@ def run_backtest_from_candles(
                     'tp2_pct': tp2_pct,
                     'entry_action': entry_source,
                     'entry_quality_gate': quality_reason or 'PASS',
+                    'pattern': 'B2' if quality_reason == 'PATTERN_B' else None,
                     'entry_filter_reason': str(entry_filter_ctx.get('reason') or 'OK'),
                     'entry_filter_reason_code': str(entry_filter_ctx.get('reason_code') or 'OK'),
                     'partial_taken': False,
@@ -855,6 +932,7 @@ def run_backtest_from_candles(
             partial_taken=bool(position.get('partial_taken')),
             tp1_hit_index=position.get('tp1_hit_index'),
             be_armed=bool(position.get('be_armed')),
+            pattern=position.get('pattern'),
         )
         trades.append(trade)
         cumulative_pnl += trade.pnl_pct
@@ -917,7 +995,7 @@ def run_backtest(
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
     output_dir: str | Path = 'backtests',
 ) -> Dict[str, Any]:
-    bars = bars_for_days(lookback_days, timeframe) + MIN_WINDOW_BARS + DEFAULT_HORIZON_BARS + 10
+    bars = bars_for_days(lookback_days, timeframe) + _effective_min_window_bars(timeframe) + DEFAULT_HORIZON_BARS + 10
     candles = get_klines(symbol=symbol, interval=timeframe, limit=bars)
     return run_backtest_from_candles(
         candles=candles,

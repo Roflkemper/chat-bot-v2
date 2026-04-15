@@ -1,0 +1,63 @@
+name: Release On Tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pandas requests
+
+      - name: Run Regression Shield
+        run: python -B -m pytest tests -q
+
+      - name: Run live smoke test
+        run: python -B tools/smoke_test.py --timeout 10
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          REF_NAME="${GITHUB_REF_NAME}"
+          if [ -f VERSION.txt ]; then
+            VERSION_RAW="$(head -n 1 VERSION.txt | tr -d '\r')"
+          else
+            VERSION_RAW="$REF_NAME"
+          fi
+          VERSION_SAFE="$(echo "$VERSION_RAW" | sed 's/[^A-Za-z0-9._-]/_/g')"
+          echo "raw=$VERSION_RAW" >> "$GITHUB_OUTPUT"
+          echo "safe=$VERSION_SAFE" >> "$GITHUB_OUTPUT"
+          echo "tag=$REF_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build zip
+        shell: bash
+        run: |
+          ZIP_NAME="chat_bot_v2_${{ steps.version.outputs.safe }}.zip"
+          mkdir -p dist
+          zip -r "dist/$ZIP_NAME" .             -x ".git/*"             -x ".github/workflows/*"             -x "__pycache__/*"             -x "*.pyc"             -x ".venv/*"             -x "logs/*"             -x ".env"             -x ".env.*"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.raw }}
+          files: dist/*.zip
+          generate_release_notes: true

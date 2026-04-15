@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DisplayDriverUninstaller Version="18.1.4.1">
+	<Settings>
+		<SelectedLanguage>ru-RU</SelectedLanguage>
+		<RemoveMonitors>True</RemoveMonitors>
+		<RemoveCrimsonCache>True</RemoveCrimsonCache>
+		<RemoveAMDDirs>False</RemoveAMDDirs>
+		<RemoveAudioBus>False</RemoveAudioBus>
+		<RemoveAMDKMPFD>False</RemoveAMDKMPFD>
+		<RemoveNvidiaDirs>True</RemoveNvidiaDirs>
+		<RemovePhysX>False</RemovePhysX>
+		<Remove3DTVPlay>True</Remove3DTVPlay>
+		<RemoveGFE>True</RemoveGFE>
+		<RemoveNVBROADCAST>True</RemoveNVBROADCAST>
+		<RemoveNVCP>True</RemoveNVCP>
+		<RemoveINTELCP>True</RemoveINTELCP>
+		<RemoveINTELIGS>True</RemoveINTELIGS>
+		<RemoveOneAPI>True</RemoveOneAPI>
+		<RemoveEnduranceGaming>True</RemoveEnduranceGaming>
+		<RemoveIntelNpu>False</RemoveIntelNpu>
+		<RemoveAMDCP>True</RemoveAMDCP>
+		<UseRoamingConfig>False</UseRoamingConfig>
+		<CheckUpdates>True</CheckUpdates>
+		<CreateRestorePoint>True</CreateRestorePoint>
+		<SaveLogs>True</SaveLogs>
+		<RemoveVulkan>True</RemoveVulkan>
+		<ShowOffer>True</ShowOffer>
+		<EnableSafeModeDialog>False</EnableSafeModeDialog>
+		<PreventWinUpdate>False</PreventWinUpdate>
+		<UsedBCD>False</UsedBCD>
+		<KeepNVCPopt>False</KeepNVCPopt>
+		<RememberLastChoice>False</RememberLastChoice>
+		<LastSelectedGPUIndex>1</LastSelectedGPUIndex>
+		<LastSelectedTypeIndex>2</LastSelectedTypeIndex>
+	</Settings>
+</DisplayDriverUninstaller>

@@ -1,0 +1,11 @@
+FIX: EXECUTION PLAN ENGINE
+
+Что добавлено:
+- concrete TRADE PLAN в BTC ANALYSIS
+- concrete TRADE PLAN в FINAL DECISION
+- TRADE PLAN CORE в BTC SUMMARY
+- BTC EXECUTION PLAN теперь показывает entry zone / trigger / stop / TP1 / TP2 / BE / RR
+- QUICK ACTION теперь показывает реальные long/short зоны и entry zone
+
+Задача фикса:
+сделать ответы бота ближе к формату исполнимого трейд-плана, а не только к общему аналитическому описанию.

@@ -1,0 +1,11 @@
+FIX 123–130
+
+Что усилено в этом релизе:
+- Scenario Engine: добавлены trigger readiness, action-now hint и более жёсткая стадийность PREPARE / BUILDING / READY.
+- Decision Engine: сценарный слой теперь прокидывает action_layer_hint и readiness в финальное решение.
+- Telegram renderer: добавлены readiness и тактическая подсказка в блоки SCENARIO RANKING / PRE-TRADE / NEXTGEN ACTION LAYER.
+
+Практический смысл:
+- бот меньше пишет просто WAIT и чаще объясняет, что именно ждать;
+- появляется промежуточное состояние между нейтральностью и готовым входом;
+- финальный вывод лучше подходит для ручного ведения контртренд и range/grid сценариев.

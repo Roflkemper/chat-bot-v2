@@ -1,0 +1,49 @@
+{
+  "telegram": {
+    "enable_telegram": true,
+    "bot_token_masked": "82014041***avXs",
+    "chat_id_masked": "57***90",
+    "config_source": "/mnt/data/workproj/.env"
+  },
+  "runtime": {
+    "enable_ml": true,
+    "loop_seconds": 120,
+    "auto_edge_alerts_enabled": true,
+    "auto_edge_alerts_interval_sec": 60,
+    "auto_edge_alerts_cooldown_sec": 180,
+    "auto_edge_alerts_timeframes": "15m,1h",
+    "ml_model_path": "/mnt/data/workproj/models/ml_signal_model.joblib"
+  },
+  "trade_filters": {
+    "min_confidence_to_trade": 55.0,
+    "min_rr": 1.5,
+    "min_urgency_to_act": 45.0
+  },
+  "coinglass": {
+    "api_key_present": false,
+    "base_url": "https://open-api-v4.coinglass.com",
+    "timeout_sec": 6.0,
+    "cache_ttl_sec": 90
+  },
+  "backtest_defaults": {
+    "timeframe": "1h",
+    "lookback_days": 90,
+    "horizon_bars": 12,
+    "min_window_bars": 120,
+    "max_window_bars": 240,
+    "be_buffer_pct": 0.35,
+    "be_trigger_to_tp1": 1.0,
+    "partial_size": 0.3,
+    "tp1_atr_mult": 1.0,
+    "tp2_atr_mult": 1.9,
+    "stop_atr_mult": 1.5,
+    "max_stop_pct": 1.8,
+    "min_stop_pct": 0.5,
+    "dead_trade_min_bars": 8,
+    "dead_trade_max_profit_pct": 0.35,
+    "dead_trade_compression_ratio": 0.75,
+    "tp3_tail_size": 0.1,
+    "frozen_backtest_file": "backtests/frozen/BTCUSDT_1h_90d_frozen.json",
+    "frozen_backtest_file_exists": false
+  }
+}

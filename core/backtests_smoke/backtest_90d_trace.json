@@ -1,0 +1,3348 @@
+{
+  "summary": {
+    "symbol": "BTCUSDT",
+    "timeframe": "1h",
+    "lookback_days": 90,
+    "bars": 160,
+    "trades": 0,
+    "winrate": 0.0,
+    "avg_rr": 0.0,
+    "pnl_pct": 0.0,
+    "max_drawdown_pct": 0.0,
+    "prepare_count": 0,
+    "enter_count": 0,
+    "exit_signal_count": 0,
+    "if_then_triggered": 40,
+    "if_then_armed": 0,
+    "if_then_executed": 0,
+    "if_then_closed": 0,
+    "if_then_failed": 40,
+    "momentum_exit_count": 0,
+    "timeout_count": 0,
+    "tp_hit_count": 0,
+    "stop_count": 0,
+    "report_path": ""
+  },
+  "events": [
+    {
+      "index": 120,
+      "price": 103.1,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.65,
+        "range_mid": 102.47,
+        "range_high": 103.3,
+        "break_level": 103.3,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 117,
+          "open": 102.99999999999983,
+          "high": 103.19999999999983,
+          "low": 102.74999999999983,
+          "close": 102.94999999999983,
+          "volume": 1117.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 118,
+          "open": 102.94999999999983,
+          "high": 103.24999999999983,
+          "low": 102.74999999999983,
+          "close": 103.04999999999983,
+          "volume": 1118.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 119,
+          "open": 103.04999999999983,
+          "high": 103.24999999999983,
+          "low": 102.79999999999983,
+          "close": 102.99999999999983,
+          "volume": 1119.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 120,
+          "open": 102.99999999999983,
+          "high": 103.29999999999983,
+          "low": 102.79999999999983,
+          "close": 103.09999999999982,
+          "volume": 1120.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 121,
+      "price": 103.05,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.65,
+        "range_mid": 102.47,
+        "range_high": 103.3,
+        "break_level": 103.3,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 118,
+          "open": 102.94999999999983,
+          "high": 103.24999999999983,
+          "low": 102.74999999999983,
+          "close": 103.04999999999983,
+          "volume": 1118.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 119,
+          "open": 103.04999999999983,
+          "high": 103.24999999999983,
+          "low": 102.79999999999983,
+          "close": 102.99999999999983,
+          "volume": 1119.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 120,
+          "open": 102.99999999999983,
+          "high": 103.29999999999983,
+          "low": 102.79999999999983,
+          "close": 103.09999999999982,
+          "volume": 1120.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 121,
+          "open": 103.09999999999982,
+          "high": 103.29999999999983,
+          "low": 102.84999999999982,
+          "close": 103.04999999999983,
+          "volume": 1121.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 122,
+      "price": 103.15,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.7,
+        "range_mid": 102.52,
+        "range_high": 103.35,
+        "break_level": 103.35,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 119,
+          "open": 103.04999999999983,
+          "high": 103.24999999999983,
+          "low": 102.79999999999983,
+          "close": 102.99999999999983,
+          "volume": 1119.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 120,
+          "open": 102.99999999999983,
+          "high": 103.29999999999983,
+          "low": 102.79999999999983,
+          "close": 103.09999999999982,
+          "volume": 1120.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 121,
+          "open": 103.09999999999982,
+          "high": 103.29999999999983,
+          "low": 102.84999999999982,
+          "close": 103.04999999999983,
+          "volume": 1121.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 122,
+          "open": 103.04999999999983,
+          "high": 103.34999999999982,
+          "low": 102.84999999999982,
+          "close": 103.14999999999982,
+          "volume": 1122.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 123,
+      "price": 103.1,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.7,
+        "range_mid": 102.52,
+        "range_high": 103.35,
+        "break_level": 103.35,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 120,
+          "open": 102.99999999999983,
+          "high": 103.29999999999983,
+          "low": 102.79999999999983,
+          "close": 103.09999999999982,
+          "volume": 1120.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 121,
+          "open": 103.09999999999982,
+          "high": 103.29999999999983,
+          "low": 102.84999999999982,
+          "close": 103.04999999999983,
+          "volume": 1121.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 122,
+          "open": 103.04999999999983,
+          "high": 103.34999999999982,
+          "low": 102.84999999999982,
+          "close": 103.14999999999982,
+          "volume": 1122.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 123,
+          "open": 103.14999999999982,
+          "high": 103.34999999999982,
+          "low": 102.89999999999982,
+          "close": 103.09999999999982,
+          "volume": 1123.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 124,
+      "price": 103.2,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.75,
+        "range_mid": 102.57,
+        "range_high": 103.4,
+        "break_level": 103.4,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 121,
+          "open": 103.09999999999982,
+          "high": 103.29999999999983,
+          "low": 102.84999999999982,
+          "close": 103.04999999999983,
+          "volume": 1121.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 122,
+          "open": 103.04999999999983,
+          "high": 103.34999999999982,
+          "low": 102.84999999999982,
+          "close": 103.14999999999982,
+          "volume": 1122.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 123,
+          "open": 103.14999999999982,
+          "high": 103.34999999999982,
+          "low": 102.89999999999982,
+          "close": 103.09999999999982,
+          "volume": 1123.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 124,
+          "open": 103.09999999999982,
+          "high": 103.39999999999982,
+          "low": 102.89999999999982,
+          "close": 103.19999999999982,
+          "volume": 1124.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 125,
+      "price": 103.15,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.75,
+        "range_mid": 102.57,
+        "range_high": 103.4,
+        "break_level": 103.4,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 122,
+          "open": 103.04999999999983,
+          "high": 103.34999999999982,
+          "low": 102.84999999999982,
+          "close": 103.14999999999982,
+          "volume": 1122.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 123,
+          "open": 103.14999999999982,
+          "high": 103.34999999999982,
+          "low": 102.89999999999982,
+          "close": 103.09999999999982,
+          "volume": 1123.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 124,
+          "open": 103.09999999999982,
+          "high": 103.39999999999982,
+          "low": 102.89999999999982,
+          "close": 103.19999999999982,
+          "volume": 1124.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 125,
+          "open": 103.19999999999982,
+          "high": 103.39999999999982,
+          "low": 102.94999999999982,
+          "close": 103.14999999999982,
+          "volume": 1125.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 126,
+      "price": 103.25,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.8,
+        "range_mid": 102.62,
+        "range_high": 103.45,
+        "break_level": 103.45,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 123,
+          "open": 103.14999999999982,
+          "high": 103.34999999999982,
+          "low": 102.89999999999982,
+          "close": 103.09999999999982,
+          "volume": 1123.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 124,
+          "open": 103.09999999999982,
+          "high": 103.39999999999982,
+          "low": 102.89999999999982,
+          "close": 103.19999999999982,
+          "volume": 1124.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 125,
+          "open": 103.19999999999982,
+          "high": 103.39999999999982,
+          "low": 102.94999999999982,
+          "close": 103.14999999999982,
+          "volume": 1125.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 126,
+          "open": 103.14999999999982,
+          "high": 103.44999999999982,
+          "low": 102.94999999999982,
+          "close": 103.24999999999982,
+          "volume": 1126.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 127,
+      "price": 103.2,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.8,
+        "range_mid": 102.62,
+        "range_high": 103.45,
+        "break_level": 103.45,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 124,
+          "open": 103.09999999999982,
+          "high": 103.39999999999982,
+          "low": 102.89999999999982,
+          "close": 103.19999999999982,
+          "volume": 1124.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 125,
+          "open": 103.19999999999982,
+          "high": 103.39999999999982,
+          "low": 102.94999999999982,
+          "close": 103.14999999999982,
+          "volume": 1125.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 126,
+          "open": 103.14999999999982,
+          "high": 103.44999999999982,
+          "low": 102.94999999999982,
+          "close": 103.24999999999982,
+          "volume": 1126.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 127,
+          "open": 103.24999999999982,
+          "high": 103.44999999999982,
+          "low": 102.99999999999982,
+          "close": 103.19999999999982,
+          "volume": 1127.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 128,
+      "price": 103.3,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.85,
+        "range_mid": 102.67,
+        "range_high": 103.5,
+        "break_level": 103.5,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 125,
+          "open": 103.19999999999982,
+          "high": 103.39999999999982,
+          "low": 102.94999999999982,
+          "close": 103.14999999999982,
+          "volume": 1125.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 126,
+          "open": 103.14999999999982,
+          "high": 103.44999999999982,
+          "low": 102.94999999999982,
+          "close": 103.24999999999982,
+          "volume": 1126.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 127,
+          "open": 103.24999999999982,
+          "high": 103.44999999999982,
+          "low": 102.99999999999982,
+          "close": 103.19999999999982,
+          "volume": 1127.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 128,
+          "open": 103.19999999999982,
+          "high": 103.49999999999982,
+          "low": 102.99999999999982,
+          "close": 103.29999999999981,
+          "volume": 1128.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 129,
+      "price": 103.25,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.85,
+        "range_mid": 102.67,
+        "range_high": 103.5,
+        "break_level": 103.5,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 126,
+          "open": 103.14999999999982,
+          "high": 103.44999999999982,
+          "low": 102.94999999999982,
+          "close": 103.24999999999982,
+          "volume": 1126.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 127,
+          "open": 103.24999999999982,
+          "high": 103.44999999999982,
+          "low": 102.99999999999982,
+          "close": 103.19999999999982,
+          "volume": 1127.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 128,
+          "open": 103.19999999999982,
+          "high": 103.49999999999982,
+          "low": 102.99999999999982,
+          "close": 103.29999999999981,
+          "volume": 1128.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 129,
+          "open": 103.29999999999981,
+          "high": 103.49999999999982,
+          "low": 103.04999999999981,
+          "close": 103.24999999999982,
+          "volume": 1129.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 130,
+      "price": 103.35,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.9,
+        "range_mid": 102.72,
+        "range_high": 103.55,
+        "break_level": 103.55,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 127,
+          "open": 103.24999999999982,
+          "high": 103.44999999999982,
+          "low": 102.99999999999982,
+          "close": 103.19999999999982,
+          "volume": 1127.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 128,
+          "open": 103.19999999999982,
+          "high": 103.49999999999982,
+          "low": 102.99999999999982,
+          "close": 103.29999999999981,
+          "volume": 1128.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 129,
+          "open": 103.29999999999981,
+          "high": 103.49999999999982,
+          "low": 103.04999999999981,
+          "close": 103.24999999999982,
+          "volume": 1129.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 130,
+          "open": 103.24999999999982,
+          "high": 103.54999999999981,
+          "low": 103.04999999999981,
+          "close": 103.34999999999981,
+          "volume": 1130.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 131,
+      "price": 103.3,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.9,
+        "range_mid": 102.72,
+        "range_high": 103.55,
+        "break_level": 103.55,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 128,
+          "open": 103.19999999999982,
+          "high": 103.49999999999982,
+          "low": 102.99999999999982,
+          "close": 103.29999999999981,
+          "volume": 1128.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 129,
+          "open": 103.29999999999981,
+          "high": 103.49999999999982,
+          "low": 103.04999999999981,
+          "close": 103.24999999999982,
+          "volume": 1129.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 130,
+          "open": 103.24999999999982,
+          "high": 103.54999999999981,
+          "low": 103.04999999999981,
+          "close": 103.34999999999981,
+          "volume": 1130.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 131,
+          "open": 103.34999999999981,
+          "high": 103.54999999999981,
+          "low": 103.09999999999981,
+          "close": 103.29999999999981,
+          "volume": 1131.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 132,
+      "price": 103.4,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.95,
+        "range_mid": 102.77,
+        "range_high": 103.6,
+        "break_level": 103.6,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 129,
+          "open": 103.29999999999981,
+          "high": 103.49999999999982,
+          "low": 103.04999999999981,
+          "close": 103.24999999999982,
+          "volume": 1129.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 130,
+          "open": 103.24999999999982,
+          "high": 103.54999999999981,
+          "low": 103.04999999999981,
+          "close": 103.34999999999981,
+          "volume": 1130.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 131,
+          "open": 103.34999999999981,
+          "high": 103.54999999999981,
+          "low": 103.09999999999981,
+          "close": 103.29999999999981,
+          "volume": 1131.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 132,
+          "open": 103.29999999999981,
+          "high": 103.59999999999981,
+          "low": 103.09999999999981,
+          "close": 103.3999999999998,
+          "volume": 1132.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 133,
+      "price": 103.35,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 101.95,
+        "range_mid": 102.77,
+        "range_high": 103.6,
+        "break_level": 103.6,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 130,
+          "open": 103.24999999999982,
+          "high": 103.54999999999981,
+          "low": 103.04999999999981,
+          "close": 103.34999999999981,
+          "volume": 1130.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 131,
+          "open": 103.34999999999981,
+          "high": 103.54999999999981,
+          "low": 103.09999999999981,
+          "close": 103.29999999999981,
+          "volume": 1131.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 132,
+          "open": 103.29999999999981,
+          "high": 103.59999999999981,
+          "low": 103.09999999999981,
+          "close": 103.3999999999998,
+          "volume": 1132.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 133,
+          "open": 103.3999999999998,
+          "high": 103.59999999999981,
+          "low": 103.1499999999998,
+          "close": 103.34999999999981,
+          "volume": 1133.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 134,
+      "price": 103.45,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.0,
+        "range_mid": 102.82,
+        "range_high": 103.65,
+        "break_level": 103.65,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 131,
+          "open": 103.34999999999981,
+          "high": 103.54999999999981,
+          "low": 103.09999999999981,
+          "close": 103.29999999999981,
+          "volume": 1131.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 132,
+          "open": 103.29999999999981,
+          "high": 103.59999999999981,
+          "low": 103.09999999999981,
+          "close": 103.3999999999998,
+          "volume": 1132.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 133,
+          "open": 103.3999999999998,
+          "high": 103.59999999999981,
+          "low": 103.1499999999998,
+          "close": 103.34999999999981,
+          "volume": 1133.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 134,
+          "open": 103.34999999999981,
+          "high": 103.6499999999998,
+          "low": 103.1499999999998,
+          "close": 103.4499999999998,
+          "volume": 1134.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 135,
+      "price": 103.4,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.0,
+        "range_mid": 102.82,
+        "range_high": 103.65,
+        "break_level": 103.65,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 132,
+          "open": 103.29999999999981,
+          "high": 103.59999999999981,
+          "low": 103.09999999999981,
+          "close": 103.3999999999998,
+          "volume": 1132.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 133,
+          "open": 103.3999999999998,
+          "high": 103.59999999999981,
+          "low": 103.1499999999998,
+          "close": 103.34999999999981,
+          "volume": 1133.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 134,
+          "open": 103.34999999999981,
+          "high": 103.6499999999998,
+          "low": 103.1499999999998,
+          "close": 103.4499999999998,
+          "volume": 1134.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 135,
+          "open": 103.4499999999998,
+          "high": 103.6499999999998,
+          "low": 103.1999999999998,
+          "close": 103.3999999999998,
+          "volume": 1135.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 136,
+      "price": 103.5,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.05,
+        "range_mid": 102.87,
+        "range_high": 103.7,
+        "break_level": 103.7,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 133,
+          "open": 103.3999999999998,
+          "high": 103.59999999999981,
+          "low": 103.1499999999998,
+          "close": 103.34999999999981,
+          "volume": 1133.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 134,
+          "open": 103.34999999999981,
+          "high": 103.6499999999998,
+          "low": 103.1499999999998,
+          "close": 103.4499999999998,
+          "volume": 1134.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 135,
+          "open": 103.4499999999998,
+          "high": 103.6499999999998,
+          "low": 103.1999999999998,
+          "close": 103.3999999999998,
+          "volume": 1135.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 136,
+          "open": 103.3999999999998,
+          "high": 103.6999999999998,
+          "low": 103.1999999999998,
+          "close": 103.4999999999998,
+          "volume": 1136.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 137,
+      "price": 103.45,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.05,
+        "range_mid": 102.87,
+        "range_high": 103.7,
+        "break_level": 103.7,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 134,
+          "open": 103.34999999999981,
+          "high": 103.6499999999998,
+          "low": 103.1499999999998,
+          "close": 103.4499999999998,
+          "volume": 1134.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 135,
+          "open": 103.4499999999998,
+          "high": 103.6499999999998,
+          "low": 103.1999999999998,
+          "close": 103.3999999999998,
+          "volume": 1135.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 136,
+          "open": 103.3999999999998,
+          "high": 103.6999999999998,
+          "low": 103.1999999999998,
+          "close": 103.4999999999998,
+          "volume": 1136.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 137,
+          "open": 103.4999999999998,
+          "high": 103.6999999999998,
+          "low": 103.2499999999998,
+          "close": 103.4499999999998,
+          "volume": 1137.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 138,
+      "price": 103.55,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.1,
+        "range_mid": 102.92,
+        "range_high": 103.75,
+        "break_level": 103.75,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 135,
+          "open": 103.4499999999998,
+          "high": 103.6499999999998,
+          "low": 103.1999999999998,
+          "close": 103.3999999999998,
+          "volume": 1135.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 136,
+          "open": 103.3999999999998,
+          "high": 103.6999999999998,
+          "low": 103.1999999999998,
+          "close": 103.4999999999998,
+          "volume": 1136.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 137,
+          "open": 103.4999999999998,
+          "high": 103.6999999999998,
+          "low": 103.2499999999998,
+          "close": 103.4499999999998,
+          "volume": 1137.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 138,
+          "open": 103.4499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2499999999998,
+          "close": 103.5499999999998,
+          "volume": 1138.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 139,
+      "price": 103.5,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.1,
+        "range_mid": 102.92,
+        "range_high": 103.75,
+        "break_level": 103.75,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 136,
+          "open": 103.3999999999998,
+          "high": 103.6999999999998,
+          "low": 103.1999999999998,
+          "close": 103.4999999999998,
+          "volume": 1136.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 137,
+          "open": 103.4999999999998,
+          "high": 103.6999999999998,
+          "low": 103.2499999999998,
+          "close": 103.4499999999998,
+          "volume": 1137.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 138,
+          "open": 103.4499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2499999999998,
+          "close": 103.5499999999998,
+          "volume": 1138.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 139,
+          "open": 103.5499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2999999999998,
+          "close": 103.4999999999998,
+          "volume": 1139.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 140,
+      "price": 103.6,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.15,
+        "range_mid": 102.97,
+        "range_high": 103.8,
+        "break_level": 103.8,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 137,
+          "open": 103.4999999999998,
+          "high": 103.6999999999998,
+          "low": 103.2499999999998,
+          "close": 103.4499999999998,
+          "volume": 1137.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 138,
+          "open": 103.4499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2499999999998,
+          "close": 103.5499999999998,
+          "volume": 1138.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 139,
+          "open": 103.5499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2999999999998,
+          "close": 103.4999999999998,
+          "volume": 1139.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 140,
+          "open": 103.4999999999998,
+          "high": 103.7999999999998,
+          "low": 103.2999999999998,
+          "close": 103.5999999999998,
+          "volume": 1140.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 141,
+      "price": 103.55,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.15,
+        "range_mid": 102.97,
+        "range_high": 103.8,
+        "break_level": 103.8,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 138,
+          "open": 103.4499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2499999999998,
+          "close": 103.5499999999998,
+          "volume": 1138.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 139,
+          "open": 103.5499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2999999999998,
+          "close": 103.4999999999998,
+          "volume": 1139.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 140,
+          "open": 103.4999999999998,
+          "high": 103.7999999999998,
+          "low": 103.2999999999998,
+          "close": 103.5999999999998,
+          "volume": 1140.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 141,
+          "open": 103.5999999999998,
+          "high": 103.7999999999998,
+          "low": 103.3499999999998,
+          "close": 103.5499999999998,
+          "volume": 1141.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 142,
+      "price": 103.65,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.2,
+        "range_mid": 103.02,
+        "range_high": 103.85,
+        "break_level": 103.85,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 139,
+          "open": 103.5499999999998,
+          "high": 103.7499999999998,
+          "low": 103.2999999999998,
+          "close": 103.4999999999998,
+          "volume": 1139.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 140,
+          "open": 103.4999999999998,
+          "high": 103.7999999999998,
+          "low": 103.2999999999998,
+          "close": 103.5999999999998,
+          "volume": 1140.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 141,
+          "open": 103.5999999999998,
+          "high": 103.7999999999998,
+          "low": 103.3499999999998,
+          "close": 103.5499999999998,
+          "volume": 1141.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 142,
+          "open": 103.5499999999998,
+          "high": 103.8499999999998,
+          "low": 103.3499999999998,
+          "close": 103.64999999999979,
+          "volume": 1142.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 143,
+      "price": 103.6,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.2,
+        "range_mid": 103.02,
+        "range_high": 103.85,
+        "break_level": 103.85,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 140,
+          "open": 103.4999999999998,
+          "high": 103.7999999999998,
+          "low": 103.2999999999998,
+          "close": 103.5999999999998,
+          "volume": 1140.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 141,
+          "open": 103.5999999999998,
+          "high": 103.7999999999998,
+          "low": 103.3499999999998,
+          "close": 103.5499999999998,
+          "volume": 1141.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 142,
+          "open": 103.5499999999998,
+          "high": 103.8499999999998,
+          "low": 103.3499999999998,
+          "close": 103.64999999999979,
+          "volume": 1142.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 143,
+          "open": 103.64999999999979,
+          "high": 103.8499999999998,
+          "low": 103.39999999999979,
+          "close": 103.5999999999998,
+          "volume": 1143.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 144,
+      "price": 103.7,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.25,
+        "range_mid": 103.07,
+        "range_high": 103.9,
+        "break_level": 103.9,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 141,
+          "open": 103.5999999999998,
+          "high": 103.7999999999998,
+          "low": 103.3499999999998,
+          "close": 103.5499999999998,
+          "volume": 1141.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 142,
+          "open": 103.5499999999998,
+          "high": 103.8499999999998,
+          "low": 103.3499999999998,
+          "close": 103.64999999999979,
+          "volume": 1142.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 143,
+          "open": 103.64999999999979,
+          "high": 103.8499999999998,
+          "low": 103.39999999999979,
+          "close": 103.5999999999998,
+          "volume": 1143.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 144,
+          "open": 103.5999999999998,
+          "high": 103.89999999999979,
+          "low": 103.39999999999979,
+          "close": 103.69999999999979,
+          "volume": 1144.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 145,
+      "price": 103.65,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.25,
+        "range_mid": 103.07,
+        "range_high": 103.9,
+        "break_level": 103.9,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 142,
+          "open": 103.5499999999998,
+          "high": 103.8499999999998,
+          "low": 103.3499999999998,
+          "close": 103.64999999999979,
+          "volume": 1142.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 143,
+          "open": 103.64999999999979,
+          "high": 103.8499999999998,
+          "low": 103.39999999999979,
+          "close": 103.5999999999998,
+          "volume": 1143.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 144,
+          "open": 103.5999999999998,
+          "high": 103.89999999999979,
+          "low": 103.39999999999979,
+          "close": 103.69999999999979,
+          "volume": 1144.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 145,
+          "open": 103.69999999999979,
+          "high": 103.89999999999979,
+          "low": 103.44999999999979,
+          "close": 103.64999999999979,
+          "volume": 1145.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 146,
+      "price": 103.75,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.3,
+        "range_mid": 103.12,
+        "range_high": 103.95,
+        "break_level": 103.95,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 143,
+          "open": 103.64999999999979,
+          "high": 103.8499999999998,
+          "low": 103.39999999999979,
+          "close": 103.5999999999998,
+          "volume": 1143.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 144,
+          "open": 103.5999999999998,
+          "high": 103.89999999999979,
+          "low": 103.39999999999979,
+          "close": 103.69999999999979,
+          "volume": 1144.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 145,
+          "open": 103.69999999999979,
+          "high": 103.89999999999979,
+          "low": 103.44999999999979,
+          "close": 103.64999999999979,
+          "volume": 1145.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 146,
+          "open": 103.64999999999979,
+          "high": 103.94999999999979,
+          "low": 103.44999999999979,
+          "close": 103.74999999999979,
+          "volume": 1146.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "WEAK_CONTEXT"
+    },
+    {
+      "index": 147,
+      "price": 103.7,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.3,
+        "range_mid": 103.12,
+        "range_high": 103.95,
+        "break_level": 103.95,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 144,
+          "open": 103.5999999999998,
+          "high": 103.89999999999979,
+          "low": 103.39999999999979,
+          "close": 103.69999999999979,
+          "volume": 1144.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 145,
+          "open": 103.69999999999979,
+          "high": 103.89999999999979,
+          "low": 103.44999999999979,
+          "close": 103.64999999999979,
+          "volume": 1145.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 146,
+          "open": 103.64999999999979,
+          "high": 103.94999999999979,
+          "low": 103.44999999999979,
+          "close": 103.74999999999979,
+          "volume": 1146.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 147,
+          "open": 103.74999999999979,
+          "high": 103.94999999999979,
+          "low": 103.49999999999979,
+          "close": 103.69999999999979,
+          "volume": 1147.0
+        }
+      ],
+      "event": "ENTRY_REJECTED",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "FLIP_EDGE_TOO_WEAK"
+    },
+    {
+      "index": 148,
+      "price": 103.8,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.35,
+        "range_mid": 103.17,
+        "range_high": 104.0,
+        "break_level": 104.0,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 145,
+          "open": 103.69999999999979,
+          "high": 103.89999999999979,
+          "low": 103.44999999999979,
+          "close": 103.64999999999979,
+          "volume": 1145.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 146,
+          "open": 103.64999999999979,
+          "high": 103.94999999999979,
+          "low": 103.44999999999979,
+          "close": 103.74999999999979,
+          "volume": 1146.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 147,
+          "open": 103.74999999999979,
+          "high": 103.94999999999979,
+          "low": 103.49999999999979,
+          "close": 103.69999999999979,
+          "volume": 1147.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 148,
+          "open": 103.69999999999979,
+          "high": 103.99999999999979,
+          "low": 103.49999999999979,
+          "close": 103.79999999999978,
+          "volume": 1148.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 149,
+      "price": 103.75,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.35,
+        "range_mid": 103.17,
+        "range_high": 104.0,
+        "break_level": 104.0,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 146,
+          "open": 103.64999999999979,
+          "high": 103.94999999999979,
+          "low": 103.44999999999979,
+          "close": 103.74999999999979,
+          "volume": 1146.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 147,
+          "open": 103.74999999999979,
+          "high": 103.94999999999979,
+          "low": 103.49999999999979,
+          "close": 103.69999999999979,
+          "volume": 1147.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 148,
+          "open": 103.69999999999979,
+          "high": 103.99999999999979,
+          "low": 103.49999999999979,
+          "close": 103.79999999999978,
+          "volume": 1148.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 149,
+          "open": 103.79999999999978,
+          "high": 103.99999999999979,
+          "low": 103.54999999999978,
+          "close": 103.74999999999979,
+          "volume": 1149.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 150,
+      "price": 103.85,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.4,
+        "range_mid": 103.22,
+        "range_high": 104.05,
+        "break_level": 104.05,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 147,
+          "open": 103.74999999999979,
+          "high": 103.94999999999979,
+          "low": 103.49999999999979,
+          "close": 103.69999999999979,
+          "volume": 1147.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 148,
+          "open": 103.69999999999979,
+          "high": 103.99999999999979,
+          "low": 103.49999999999979,
+          "close": 103.79999999999978,
+          "volume": 1148.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 149,
+          "open": 103.79999999999978,
+          "high": 103.99999999999979,
+          "low": 103.54999999999978,
+          "close": 103.74999999999979,
+          "volume": 1149.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 150,
+          "open": 103.74999999999979,
+          "high": 104.04999999999978,
+          "low": 103.54999999999978,
+          "close": 103.84999999999978,
+          "volume": 1150.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 151,
+      "price": 103.8,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.4,
+        "range_mid": 103.22,
+        "range_high": 104.05,
+        "break_level": 104.05,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 148,
+          "open": 103.69999999999979,
+          "high": 103.99999999999979,
+          "low": 103.49999999999979,
+          "close": 103.79999999999978,
+          "volume": 1148.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 149,
+          "open": 103.79999999999978,
+          "high": 103.99999999999979,
+          "low": 103.54999999999978,
+          "close": 103.74999999999979,
+          "volume": 1149.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 150,
+          "open": 103.74999999999979,
+          "high": 104.04999999999978,
+          "low": 103.54999999999978,
+          "close": 103.84999999999978,
+          "volume": 1150.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 151,
+          "open": 103.84999999999978,
+          "high": 104.04999999999978,
+          "low": 103.59999999999978,
+          "close": 103.79999999999978,
+          "volume": 1151.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 152,
+      "price": 103.9,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.45,
+        "range_mid": 103.27,
+        "range_high": 104.1,
+        "break_level": 104.1,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 149,
+          "open": 103.79999999999978,
+          "high": 103.99999999999979,
+          "low": 103.54999999999978,
+          "close": 103.74999999999979,
+          "volume": 1149.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 150,
+          "open": 103.74999999999979,
+          "high": 104.04999999999978,
+          "low": 103.54999999999978,
+          "close": 103.84999999999978,
+          "volume": 1150.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 151,
+          "open": 103.84999999999978,
+          "high": 104.04999999999978,
+          "low": 103.59999999999978,
+          "close": 103.79999999999978,
+          "volume": 1151.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 152,
+          "open": 103.79999999999978,
+          "high": 104.09999999999978,
+          "low": 103.59999999999978,
+          "close": 103.89999999999978,
+          "volume": 1152.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 153,
+      "price": 103.85,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.45,
+        "range_mid": 103.27,
+        "range_high": 104.1,
+        "break_level": 104.1,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 150,
+          "open": 103.74999999999979,
+          "high": 104.04999999999978,
+          "low": 103.54999999999978,
+          "close": 103.84999999999978,
+          "volume": 1150.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 151,
+          "open": 103.84999999999978,
+          "high": 104.04999999999978,
+          "low": 103.59999999999978,
+          "close": 103.79999999999978,
+          "volume": 1151.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 152,
+          "open": 103.79999999999978,
+          "high": 104.09999999999978,
+          "low": 103.59999999999978,
+          "close": 103.89999999999978,
+          "volume": 1152.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 153,
+          "open": 103.89999999999978,
+          "high": 104.09999999999978,
+          "low": 103.64999999999978,
+          "close": 103.84999999999978,
+          "volume": 1153.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 154,
+      "price": 103.95,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.5,
+        "range_mid": 103.32,
+        "range_high": 104.15,
+        "break_level": 104.15,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 151,
+          "open": 103.84999999999978,
+          "high": 104.04999999999978,
+          "low": 103.59999999999978,
+          "close": 103.79999999999978,
+          "volume": 1151.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 152,
+          "open": 103.79999999999978,
+          "high": 104.09999999999978,
+          "low": 103.59999999999978,
+          "close": 103.89999999999978,
+          "volume": 1152.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 153,
+          "open": 103.89999999999978,
+          "high": 104.09999999999978,
+          "low": 103.64999999999978,
+          "close": 103.84999999999978,
+          "volume": 1153.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 154,
+          "open": 103.84999999999978,
+          "high": 104.14999999999978,
+          "low": 103.64999999999978,
+          "close": 103.94999999999978,
+          "volume": 1154.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 155,
+      "price": 103.9,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.5,
+        "range_mid": 103.32,
+        "range_high": 104.15,
+        "break_level": 104.15,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 152,
+          "open": 103.79999999999978,
+          "high": 104.09999999999978,
+          "low": 103.59999999999978,
+          "close": 103.89999999999978,
+          "volume": 1152.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 153,
+          "open": 103.89999999999978,
+          "high": 104.09999999999978,
+          "low": 103.64999999999978,
+          "close": 103.84999999999978,
+          "volume": 1153.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 154,
+          "open": 103.84999999999978,
+          "high": 104.14999999999978,
+          "low": 103.64999999999978,
+          "close": 103.94999999999978,
+          "volume": 1154.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 155,
+          "open": 103.94999999999978,
+          "high": 104.14999999999978,
+          "low": 103.69999999999978,
+          "close": 103.89999999999978,
+          "volume": 1155.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 156,
+      "price": 104.0,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.55,
+        "range_mid": 103.37,
+        "range_high": 104.2,
+        "break_level": 104.2,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 153,
+          "open": 103.89999999999978,
+          "high": 104.09999999999978,
+          "low": 103.64999999999978,
+          "close": 103.84999999999978,
+          "volume": 1153.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 154,
+          "open": 103.84999999999978,
+          "high": 104.14999999999978,
+          "low": 103.64999999999978,
+          "close": 103.94999999999978,
+          "volume": 1154.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 155,
+          "open": 103.94999999999978,
+          "high": 104.14999999999978,
+          "low": 103.69999999999978,
+          "close": 103.89999999999978,
+          "volume": 1155.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 156,
+          "open": 103.89999999999978,
+          "high": 104.19999999999978,
+          "low": 103.69999999999978,
+          "close": 103.99999999999977,
+          "volume": 1156.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 157,
+      "price": 103.95,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.55,
+        "range_mid": 103.37,
+        "range_high": 104.2,
+        "break_level": 104.2,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 154,
+          "open": 103.84999999999978,
+          "high": 104.14999999999978,
+          "low": 103.64999999999978,
+          "close": 103.94999999999978,
+          "volume": 1154.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 155,
+          "open": 103.94999999999978,
+          "high": 104.14999999999978,
+          "low": 103.69999999999978,
+          "close": 103.89999999999978,
+          "volume": 1155.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 156,
+          "open": 103.89999999999978,
+          "high": 104.19999999999978,
+          "low": 103.69999999999978,
+          "close": 103.99999999999977,
+          "volume": 1156.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 157,
+          "open": 103.99999999999977,
+          "high": 104.19999999999978,
+          "low": 103.74999999999977,
+          "close": 103.94999999999978,
+          "volume": 1157.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 158,
+      "price": 104.05,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "NO CONTEXT",
+        "context_score": 0,
+        "bias_score": 4,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "HIGH",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "HIGH",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.6,
+        "range_mid": 103.42,
+        "range_high": 104.25,
+        "break_level": 104.25,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 155,
+          "open": 103.94999999999978,
+          "high": 104.14999999999978,
+          "low": 103.69999999999978,
+          "close": 103.89999999999978,
+          "volume": 1155.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 156,
+          "open": 103.89999999999978,
+          "high": 104.19999999999978,
+          "low": 103.69999999999978,
+          "close": 103.99999999999977,
+          "volume": 1156.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 157,
+          "open": 103.99999999999977,
+          "high": 104.19999999999978,
+          "low": 103.74999999999977,
+          "close": 103.94999999999978,
+          "volume": 1157.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 158,
+          "open": 103.94999999999978,
+          "high": 104.24999999999977,
+          "low": 103.74999999999977,
+          "close": 104.04999999999977,
+          "volume": 1158.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    },
+    {
+      "index": 159,
+      "price": 104.0,
+      "action": "WAIT",
+      "primary_side": "SHORT",
+      "historical_triggered": true,
+      "historical_side": "LONG",
+      "historical_source": "PRESSURE_FLIP_ARM",
+      "snapshot": {
+        "action": "WAIT",
+        "trigger_type": "RECLAIM",
+        "trigger_blocked": true,
+        "context_label": "VALID",
+        "context_score": 2,
+        "bias_score": 3,
+        "trend_pressure_side": "LONG",
+        "trend_pressure_strength": "LOW",
+        "consensus_direction": "LONG",
+        "block_pressure": "AGAINST",
+        "block_pressure_strength": "LOW",
+        "active_block": "SHORT",
+        "watch_side": "LONG",
+        "range_low": 102.6,
+        "range_mid": 103.42,
+        "range_high": 104.25,
+        "break_level": 104.25,
+        "momentum_exhausted": false,
+        "if_then_primary": {
+          "side": "SHORT",
+          "label": null,
+          "trigger": null,
+          "confidence": null
+        },
+        "forecast_medium": {
+          "phase": "MARKUP",
+          "direction": "LONG",
+          "confidence": null
+        }
+      },
+      "window_tail": [
+        {
+          "window_offset": -3,
+          "global_index": 156,
+          "open": 103.89999999999978,
+          "high": 104.19999999999978,
+          "low": 103.69999999999978,
+          "close": 103.99999999999977,
+          "volume": 1156.0
+        },
+        {
+          "window_offset": -2,
+          "global_index": 157,
+          "open": 103.99999999999977,
+          "high": 104.19999999999978,
+          "low": 103.74999999999977,
+          "close": 103.94999999999978,
+          "volume": 1157.0
+        },
+        {
+          "window_offset": -1,
+          "global_index": 158,
+          "open": 103.94999999999978,
+          "high": 104.24999999999977,
+          "low": 103.74999999999977,
+          "close": 104.04999999999977,
+          "volume": 1158.0
+        },
+        {
+          "window_offset": 0,
+          "global_index": 159,
+          "open": 104.04999999999977,
+          "high": 104.24999999999977,
+          "low": 103.79999999999977,
+          "close": 103.99999999999977,
+          "volume": 1159.0
+        }
+      ],
+      "event": "TRIGGER_FAILED_NO_ENTRY",
+      "entry_side": "LONG",
+      "entry_source": "PRESSURE_FLIP_ARM",
+      "gate_passed": false,
+      "gate_reason": "ACTION_NOT_ENTER_PREPARE"
+    }
+  ]
+}

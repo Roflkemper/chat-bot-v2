@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "symbol": "BTCUSDT",
+    "timeframe": "1h",
+    "lookback_days": 90,
+    "bars": 160,
+    "trades": 0,
+    "winrate": 0.0,
+    "avg_rr": 0.0,
+    "pnl_pct": 0.0,
+    "max_drawdown_pct": 0.0,
+    "prepare_count": 0,
+    "enter_count": 0,
+    "exit_signal_count": 0,
+    "if_then_triggered": 40,
+    "if_then_armed": 0,
+    "if_then_executed": 0,
+    "if_then_closed": 0,
+    "if_then_failed": 40,
+    "momentum_exit_count": 0,
+    "timeout_count": 0,
+    "tp_hit_count": 0,
+    "stop_count": 0,
+    "report_path": ""
+  },
+  "trades": []
+}
