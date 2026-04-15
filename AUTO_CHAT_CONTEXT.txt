@@ -1,0 +1,130 @@
+CHAT BOT VERSION 2 - CONTEXT
+
+=== PROMPT ===
+V17.10.46.4.4-requested-partial-dead-trade-tp3-tail
+
+Продолжаем проект «чат бот версия 2» строго по зафиксированному плану.
+
+Рабочая модель:
+- single-owner repo
+- локальная версия = источник истины
+- flow: tests → smoke → manifest → commit → fetch → push --force-with-lease → ZIP
+
+Текущее состояние:
+- Версия: V17.10.46.4.4-requested-partial-dead-trade-tp3-tail
+- Regression Shield: PASS (61 passed)
+- Smoke test: PASS
+
+Последний этап:
+- timeout logic разделена на dead trade timeout и productive runner timeout
+- timeout now uses peak progress / peak pnl / last meaningful progress
+- runner после partial/TP1 защищён от преждевременного timeout
+- мёртвые сделки без реального развития не тянутся лишние бары
+
+Последний локальный 90d backtest до этого этапа:
+- Trades: 25
+- Winrate: 60.0%
+- Avg RR: 0.1702
+- PnL: 7.0972%
+- Max DD: -4.7089%
+- tp_hit: 4
+- stop: 12
+- timeout: 9
+
+Текущий приоритет:
+👉 прогнать новый 90d backtest и проверить, снизился ли timeout leakage без ухудшения PnL/DD
+
+Что смотреть первым:
+- Avg RR
+- PnL
+- timeout_count
+- tp_hit_count
+- stop_count
+- Max DD
+
+Требования:
+- не ломать pipeline
+- не добавлять магические эвристики
+- сначала тесты → потом логика → потом релиз
+- только готовые ZIP
+- без кода в чат
+
+
+Текущий запрос реализован точечно:
+- partial size = 30%
+- dead trade exit: 8+ bars, pnl < 0.35%, compressed ATR
+- TP3 tail proxy: 10% only for LONG + MARKUP after TP2
+
+=== MANIFEST ===
+# PROJECT MANIFEST
+
+
+## DEVELOPMENT PROTOCOL (MANDATORY)
+
+- Отдавать пользователю только готовые файлы для замены в проекте.
+- Не добавлять воду и лишние описания, если пользователь сам не просит объяснение.
+- Не присылать куски кода в чат.
+- Перед выдачей решения максимально проверять результат, чтобы это не были косметические заглушки.
+- Убеждаться, что слои и функции реально работают и получают данные из источников (например, Binance), если это предусмотрено логикой.
+- Работать строго по согласованному плану.
+
+
+## GRID ACTION / STRUCTURE RULES (MANDATORY)
+
+- GRID VIEW и TRADER VIEW держать раздельно.
+- В GRID VIEW не тянуть trigger/entry/manual trader поля.
+- Для GRID VIEW priority считать от layers/impulse/structure, а не просто от bias.
+- Structure flags считать отдельным модулем и передавать в engine через snapshot.
+- Отдавать только рабочие файлы/архивы, без косметических заглушек.
+
+=== CHANGELOG ===
+# CHANGELOG
+
+## V17.10.46.4.4-requested-partial-dead-trade-tp3-tail
+- partial size set to 30% in the backtest execution path (note: previous baseline used 25%, not 50%)
+- added dead-trade market exit for pre-TP1 trades after 8+ bars when profit stays below 0.35% and ATR compresses vs entry ATR
+- added optional TP3 tail for LONG entries in MARKUP medium phase: 10% tail remains open after TP2 and exits later via normal management/flip/timeout path
+- added regression tests for dead-trade exit and TP3 tail handoff
+
+## V17.10.46.3.5-expectancy-stabilization
+- backtest expectancy profile stabilized: TP1 floor raised to >= 1R and TP2 normalized into ~1.9R with 2.2R cap
+- BE de-aggressed further: larger BE buffer (0.35%) and later activation, reducing micro-profit stopouts
+- partial size reduced to 25% so more position remains for TP2 expectancy
+- timeout logic now extends mature profitable trades and partial winners longer before forced exit
+- stop breathing room widened slightly via ATR/structural cap update, without breaking the existing pipeline
+- added regression tests for expectancy target profile and timeout protection of mature winners
+
+V17.10.46.3.4 — BE de-aggression + profit-preserving timeout + TP1>=1R + mild execution widening
+
+## V17.10.46.3.3 — backtest expectancy tuning
+- widened backtest breathing room with hybrid ATR/structural stop logic
+- moved BE earlier before TP1 using a partial path trigger
+- set TP2 to a stronger RR floor while keeping TP reachable on 1H history
+- kept quality filters strict but loosened only the execution timing path
+- cleaned stop handling after BE so protected trades exit at BE stop, not original stop
+
+## V17.10.45-single-owner-release-flow
+
+- release/push flow переведён под правило: один владелец репозитория, локальная ветка — источник истины
+- `PUSH_RELEASE.bat` больше не делает `git pull --rebase`
+- push теперь идёт через `git push --force-with-lease origin <branch>`
+- добавлен авто-abort незавершённого `rebase`/`merge` перед релизным прогоном
+- `MAKE_RELEASE.bat` теперь тоже автоматически чистит незавершённый rebase/merge перед локальной сборкой
+- `tools/release_runner.ps1` синхронизирован с тем же single-owner release flow
+
+## V17.10.44-if-then-plan
+
+- Added a dedicated `IF-THEN PLAN` layer after decision assembly, without mixing it into the decision logic.
+- `core/if_then_plan.py` now builds structured primary + flip scenarios with IF/THEN blocks: zone, trigger, context, action, entry, invalidation, and fallback.
+- Pipeline now exposes both `if_then_layer` (structured object) and `if_then_plan` (renderer-ready lines) for downstream output and regression safety.
+- Added regression tests for the new layer and pipeline integration.
+
+- V17.10.43 hotfix1: fixed MAKE_RELEASE/PUSH_RELEASE manifest rebuild path; removed BOM issues from BAT files.
+## V17.10.43 — EXIT STRATEGY DYNAMIC
+- exit strategy теперь обновляется по streak состояния momentum
+- правило `NEUTRAL x2 => momentum иссяк` вынесено в state и в рендер
+- добавлены regression tests на double neutral streak и динамический exhaustion update
+
+## V17.10.42-smoke-test-gate
+- Added `SMOKE_TEST.bat` for one live API run before release.
+- Added `tools/smoke_test.py` to run the bot once, verify non-empty Telegram output, and block release on Traceback/Exception.
