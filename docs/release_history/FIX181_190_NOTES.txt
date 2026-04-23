@@ -1,0 +1,19 @@
+CHAT BOT VERSION 2 — FIX 181–190
+
+Что добавлено:
+- Anti-spam policy для live-alerts: динамический cooldown в зависимости от типа события
+- Priority layer для авто-алертов: HIGH / MEDIUM / LOW
+- Live alert policy helper: вычисляет ключ anti-spam, следующую зону и invalidation
+- Новое состояние state/live_zone_memory.json для памяти последних зон смены характера
+
+Практический смысл:
+- бот меньше повторяет одно и то же на каждом похожем тике
+- сильные сигналы по fake/continuation получают более короткий cooldown
+- в авто-алерте теперь можно видеть priority, next zone и invalidation
+- логика лучше подходит под режим: наблюдаю дальше и пишу только когда характер реально меняется
+
+Следующий этап:
+- memory по характеру выноса и acceptance
+- stronger zone persistence
+- приоритизация сообщений по позиции и стороне
+- отдельные live-alert формулировки для long/short management

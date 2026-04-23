@@ -1,0 +1,98 @@
+{
+  "version": 2,
+  "updated_at": "2026-04-19 00:57:24",
+  "bots": {
+    "ct_long": {
+      "phase": "WATCH",
+      "last_action": "CANCEL SCENARIO",
+      "entry_mode": "WAIT",
+      "size_hint": "NONE",
+      "position_open": false,
+      "adds_used": 0,
+      "max_adds": 2,
+      "updated_at": "2026-04-19 00:57:24",
+      "note": "отмена сценария / выход при отсутствии подтверждения",
+      "last_score": 0.09,
+      "manual": {
+        "override": false,
+        "phase": "",
+        "action": "",
+        "size_hint": "",
+        "position_open": false,
+        "adds_done": 0,
+        "partial_exit_done": false,
+        "updated_at": null,
+        "note": ""
+      }
+    },
+    "ct_short": {
+      "phase": "WATCH",
+      "last_action": "CANCEL SCENARIO",
+      "entry_mode": "WAIT",
+      "size_hint": "NONE",
+      "position_open": false,
+      "adds_used": 0,
+      "max_adds": 2,
+      "updated_at": "2026-04-19 00:57:24",
+      "note": "отмена сценария / выход при отсутствии подтверждения",
+      "last_score": 0.09,
+      "manual": {
+        "override": false,
+        "phase": "",
+        "action": "",
+        "size_hint": "",
+        "position_open": false,
+        "adds_done": 0,
+        "partial_exit_done": false,
+        "updated_at": null,
+        "note": ""
+      }
+    },
+    "range_long": {
+      "phase": "WATCH",
+      "last_action": "CANCEL SCENARIO",
+      "entry_mode": "WAIT",
+      "size_hint": "NONE",
+      "position_open": false,
+      "adds_used": 0,
+      "max_adds": 2,
+      "updated_at": "2026-04-19 00:57:24",
+      "note": "отмена сценария / выход при отсутствии подтверждения",
+      "last_score": 0.02,
+      "manual": {
+        "override": false,
+        "phase": "",
+        "action": "",
+        "size_hint": "",
+        "position_open": false,
+        "adds_done": 0,
+        "partial_exit_done": false,
+        "updated_at": null,
+        "note": ""
+      }
+    },
+    "range_short": {
+      "phase": "WATCH",
+      "last_action": "CANCEL SCENARIO",
+      "entry_mode": "WAIT",
+      "size_hint": "NONE",
+      "position_open": false,
+      "adds_used": 0,
+      "max_adds": 2,
+      "updated_at": "2026-04-19 00:57:24",
+      "note": "отмена сценария / выход при отсутствии подтверждения",
+      "last_score": 0.02,
+      "manual": {
+        "override": false,
+        "phase": "",
+        "action": "",
+        "size_hint": "",
+        "position_open": false,
+        "adds_done": 0,
+        "partial_exit_done": false,
+        "updated_at": null,
+        "note": ""
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+V13.4 — ENTRY CONFIRMATION + LIGHT INFOGRAPHICS + FAST RENDER
+
+Что реально добавлено:
+- confirmation engine в core/v13_trade_fix.py
+- свечная реакция от зоны: wick/reclaim/failed acceptance
+- переход READY -> ACTIVE только при подтверждении зоны
+- compact info-lines в V13 CORE для более наглядного чтения
+- без тяжёлой графики: только быстрые символьные маркеры
+
+Новые поля в выводе:
+- confirm: НЕТ / РАННИЙ / ПОДТВЕРЖДЁН
+- карта: зона | entry | confirm | impulse
+
+Что улучшено по логике:
+- long/short вход теперь может стать ACTIVE не только от fake label,
+  но и от подтверждённой реакции в рабочей зоне
+- mid-зона по-прежнему режет вход
+- визуальный вывод стал компактнее и быстрее для чтения

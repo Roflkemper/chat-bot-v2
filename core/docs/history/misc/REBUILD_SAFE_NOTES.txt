@@ -1,0 +1,6 @@
+SAFE REBUILD FROM UPLOADED BASE
+- Built from the uploaded project archive, not from the broken placeholder zip.
+- Preserves original core/pipeline.py including build_full_snapshot.
+- Adds runtime-state gitignore rules.
+- Fixes PUSH_UPDATE.bat to use pull --rebase before push.
+- Adds CLEAN_RUNTIME_STATE_FROM_GIT.bat.

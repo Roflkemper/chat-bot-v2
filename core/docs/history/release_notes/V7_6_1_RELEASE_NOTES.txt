@@ -1,0 +1,15 @@
+V7.6.1 HOTFIX — imports/symbols
+
+Исправлено:
+- renderers/telegram_renderers.py: добавлен импорт is_no_trade_context и build_ultra_wait_block
+- handlers/command_actions.py: добавлен импорт is_no_trade_context, build_ultra_wait_block и build_tactical_edge
+- core/trade_manager.py: добавлен импорт is_no_trade_context, build_ultra_wait_block и build_tactical_edge
+- core/btc_plan.py: добавлен импорт is_no_trade_context и build_ultra_wait_block
+
+Цель:
+- убрать NameError после введения UX SILENCE / ULTRA режима в V7.6
+- восстановить команды BTC ANALYSIS / FINAL DECISION / SUMMARY / FORECAST / BEST TRADE / ACTION NOW / TRADE MANAGER
+
+Проверка:
+- python -m py_compile ... OK
+- python tools/health_check.py -> HEALTH CHECK OK

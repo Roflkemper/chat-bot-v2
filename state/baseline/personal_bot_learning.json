@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-19 00:57:24",
+  "bots": {
+    "ct_long": {
+      "samples": 200,
+      "auto_observations": 200,
+      "manual_positive": 0,
+      "manual_negative": 0,
+      "activations": 15,
+      "regimes": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "positions": {
+        "LOWER_PART": 62,
+        "MID": 131,
+        "LOW_EDGE": 7
+      },
+      "trade_styles": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "breakout_risks": {
+        "MEDIUM": 69,
+        "LOW": 131
+      },
+      "updated_at": "2026-04-19 00:57:24",
+      "closed_trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "breakeven": 0,
+      "avg_result_pct": 0.0,
+      "avg_rr": 0.0,
+      "setup_qualities": {},
+      "exit_reasons": {},
+      "timeframes": {},
+      "scenarios": {},
+      "learned_trade_ids": [],
+      "last_trade_id": null
+    },
+    "ct_short": {
+      "samples": 200,
+      "auto_observations": 200,
+      "manual_positive": 0,
+      "manual_negative": 0,
+      "activations": 0,
+      "regimes": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "positions": {
+        "LOWER_PART": 62,
+        "MID": 131,
+        "LOW_EDGE": 7
+      },
+      "trade_styles": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "breakout_risks": {
+        "MEDIUM": 69,
+        "LOW": 131
+      },
+      "updated_at": "2026-04-19 00:57:24",
+      "closed_trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "breakeven": 0,
+      "avg_result_pct": 0.0,
+      "avg_rr": 0.0,
+      "setup_qualities": {},
+      "exit_reasons": {},
+      "timeframes": {},
+      "scenarios": {},
+      "learned_trade_ids": [],
+      "last_trade_id": null
+    },
+    "range_long": {
+      "samples": 200,
+      "auto_observations": 200,
+      "manual_positive": 0,
+      "manual_negative": 0,
+      "activations": 0,
+      "regimes": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "positions": {
+        "LOWER_PART": 62,
+        "MID": 131,
+        "LOW_EDGE": 7
+      },
+      "trade_styles": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "breakout_risks": {
+        "MEDIUM": 69,
+        "LOW": 131
+      },
+      "updated_at": "2026-04-19 00:57:24",
+      "closed_trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "breakeven": 0,
+      "avg_result_pct": 0.0,
+      "avg_rr": 0.0,
+      "setup_qualities": {},
+      "exit_reasons": {},
+      "timeframes": {},
+      "scenarios": {},
+      "learned_trade_ids": [],
+      "last_trade_id": null
+    },
+    "range_short": {
+      "samples": 200,
+      "auto_observations": 200,
+      "manual_positive": 0,
+      "manual_negative": 0,
+      "activations": 0,
+      "regimes": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "positions": {
+        "LOWER_PART": 62,
+        "MID": 131,
+        "LOW_EDGE": 7
+      },
+      "trade_styles": {
+        "wait_confirmation": 4,
+        "wait_range_edge": 124,
+        "range_edge": 50,
+        "reversal_long": 17,
+        "reversal_short": 5
+      },
+      "breakout_risks": {
+        "MEDIUM": 69,
+        "LOW": 131
+      },
+      "updated_at": "2026-04-19 00:57:24",
+      "closed_trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "breakeven": 0,
+      "avg_result_pct": 0.0,
+      "avg_rr": 0.0,
+      "setup_qualities": {},
+      "exit_reasons": {},
+      "timeframes": {},
+      "scenarios": {},
+      "learned_trade_ids": [],
+      "last_trade_id": null
+    }
+  }
+}

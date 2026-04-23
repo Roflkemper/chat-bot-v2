@@ -1,0 +1,17 @@
+DATA_SOURCE: FROZEN:backtests/frozen/BTCUSDT_1h_180d_frozen.json
+BACKTEST 180D
+Trades: 24
+Winrate: 75.0%
+Avg RR: 0.3446
+PnL: 14.3393%
+Max DD: -2.1542%
+IF-THEN:
+- triggered: 414
+- armed: 24
+- entered: 24
+- closed: 24
+- failed: 52
+EXITS:
+- tp_hit: 3
+- stop: 16
+- timeout: 5

@@ -1,0 +1,8 @@
+V17.8.4.5 — AUTO RELEASE (GitHub + ZIP automatically)
+
+Added:
+- .github/workflows/build_release_zip.yml
+- .github/workflows/release_on_tag.yml
+- docs/github/AUTO_RELEASE_SETUP.md
+- OPEN_GITHUB_ACTIONS.bat
+- OPEN_GITHUB_RELEASES.bat

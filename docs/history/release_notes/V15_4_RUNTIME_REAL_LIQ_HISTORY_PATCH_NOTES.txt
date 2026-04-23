@@ -1,0 +1,12 @@
+V15.4 RUNTIME REAL LIQ + HISTORY PATCH
+
+Изменения:
+- exchange liquidity layer сделан приоритетным источником вместо пустого CoinGlass-first сценария
+- historical pattern memory для 1h/4h/1d переведён на analyze_history_pattern с базой 2024/2025/2026
+- companion output теперь показывает реальный блок: ликвидации / OI / funding / feed health / зоны сверху и снизу
+- pattern block теперь показывает matched_count, source_years и summary из исторического слоя
+- volume block теперь выводит orderflow summary вместе с volume confirmation
+
+Цель:
+- перестать писать пустые заглушки там, где уже есть доступный runtime-слой
+- вытянуть в Telegram те модули, которые раньше терялись внутри merged payload

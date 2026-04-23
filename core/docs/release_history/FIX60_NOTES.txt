@@ -1,0 +1,12 @@
+FIX 60 — auto runner manager
+
+Что добавлено:
+- manager_action понимает lifecycle_state=HOLD_RUNNER и runner_active
+- новые runner-действия: RUNNER_HOLD, RUNNER_TRAIL, RUNNER_EXIT
+- runner-логика обрабатывается раньше обычного hold/reduce
+- execution и final decision показывают lifecycle state, runner active и runner mode
+
+Логика:
+- если runner активен и структура/side ломаются -> RUNNER_EXIT
+- если runner защищён (partial + BE) и движение живо -> RUNNER_TRAIL
+- иначе -> RUNNER_HOLD

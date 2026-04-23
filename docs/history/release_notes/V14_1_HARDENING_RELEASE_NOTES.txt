@@ -1,0 +1,12 @@
+V14.1 HARDENING RELEASE
+
+Что сделано:
+- отключён legacy V13 shadow overlay во всех основных рендерах
+- вычищены ручные append-блоки render_shadow_compare в handlers/trade manager/ginarea
+- action-first блок приведён к V14 title: ⚡ ЧТО ДЕЛАТЬ
+- добавлен alias-команды: ⚡ ЧТО ДЕЛАТЬ
+- сохранены BTC SUMMARY / BTC FORECAST / FINAL DECISION, но без V13 overlay-шумов
+
+Фокус релиза:
+- синхронизация renderers/handlers под новый V14 output
+- окончательная чистка старого V13 шума из боевых сообщений

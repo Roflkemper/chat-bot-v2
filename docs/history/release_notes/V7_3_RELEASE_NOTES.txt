@@ -1,0 +1,8 @@
+V7.3 — BOT CONTROL PRECISION
+
+Что добавлено:
+- усилен core/bot_control_center.py
+- добавлены permission/reason/no_adds по каждому слою
+- добавлен precision summary по BTC и XRP
+- BTC план теперь показывает BOT CONTROL PRECISION V7.3
+- по каждому слою видно: status, layer kind, score, permission, reason, zone, invalidation

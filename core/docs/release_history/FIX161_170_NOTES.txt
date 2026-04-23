@@ -1,0 +1,18 @@
+FIX 161-170 NOTES
+
+Добавлено:
+- liquidations / fast move interpreter
+- классификация выноса: likely fake up/down, continuation up/down, post-liquidation exhaustion
+- live action layer:
+  * что делать с лонгами
+  * что делать с шортами
+  * наблюдение за сменой характера
+- liquidation context теперь пишет magnet/state/cascade risk
+- Telegram renderer показывает блок FAST MOVE / LIVE INTERPRETER
+
+Цель:
+бот должен писать по-человечески:
+- вынос похож на ложный — можно пробовать шорт только после подтверждения
+- лонги часть фиксируем в зоне выноса
+- движение не выглядит ложным — шорты лучше прикрывать
+- наблюдаю дальше и дам сигнал при смене характера

@@ -1,0 +1,7 @@
+FIX 101-107
+- bot authority remap: SOFT_AUTHORIZED / REDUCED_ONLY instead of raw NOT_AUTHORIZED where soft range mode is allowed
+- GINAREA summary now syncs strong/soft/watchlist candidates from bot_cards
+- BEST TRADE now reflects bot-mode when reduced/small range execution is allowed
+- bot execution bias now respects SOFT_READY and WATCHLIST states
+- stale cancel wording replaced with watchlist / ждать подтверждение in operator-facing summaries
+- BOTS STATUS display upgrades WATCHLIST to REDUCED_ONLY / SOFT_READY when entry mode supports it

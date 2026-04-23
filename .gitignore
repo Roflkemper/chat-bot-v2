@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets & local config
+.env
+.env.local
+bot_local_config.json
+*.pem
+*.key
+
+# Live state
+state/regime_state.json
+state/bot_manager_state.json
+state/personal_bot_learning.json
+state/transition_alert_state.json
+state/grid_portfolio.json
+state/calibration/
+
+# Logs
+logs/
+*.log
+
+# Backtest reports
+backtests/backtest_*_report.json
+backtests/freeze_data_*.json
+
+# Delivery / temp
+TZ-*_delivery.zip
+state_snapshot.zip
+*.tmp
+
+# Runtime reports
+reports/

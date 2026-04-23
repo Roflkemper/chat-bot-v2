@@ -1,0 +1,12 @@
+CHAT BOT V2 CORE V1
+
+Pipeline:
+data -> features -> context -> strategies -> final decision -> execution -> render
+
+Rules:
+1. One truth flow: MarketContext / FinalDecision / ExecutionPlan.
+2. One arbiter only.
+3. Directional and Grid are separate.
+4. Execution does not decide the market again.
+5. Presentation does not invent logic.
+6. Legacy is compatibility only.

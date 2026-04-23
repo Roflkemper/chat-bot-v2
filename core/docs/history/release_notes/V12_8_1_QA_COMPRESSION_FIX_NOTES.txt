@@ -1,0 +1,12 @@
+V12.8.1 QA COMPRESSION FIX
+
+Что изменено:
+- жёстко сокращены ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС, ЛУЧШАЯ СДЕЛКА, BTC TRADE MANAGER, BTC GINAREA
+- добавлена семейная anti-duplicate защита для близких по смыслу сообщений в burst-окне
+- action/state сведены к иерархии ENTER / MANAGE / WAIT ENTRY / OFF
+- no-trade/off контекст теперь схлопывается в короткие блоки без простыни
+
+Ожидаемый эффект:
+- меньше дублей между BTC ANALYSIS / FINAL DECISION / SUMMARY / FORECAST
+- короче боевые ответы
+- меньше визуального спама в Telegram

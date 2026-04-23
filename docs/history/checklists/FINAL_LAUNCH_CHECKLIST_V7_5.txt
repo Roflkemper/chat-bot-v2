@@ -1,0 +1,13 @@
+FINAL LAUNCH CHECKLIST V7.5
+
+1. Заполнить .env или bot_local_config.json
+2. Проверить, что requirements установлены
+3. Запустить python tools/health_check.py
+4. Проверить, что state/*.json доступны для записи
+5. После запуска проверить, что live alerts приходят только при смене режима
+6. Особо проверить кейсы:
+   - fake breakout
+   - continuation confirmed
+   - exhaustion after move
+   - reclaim failed
+   - bot layer activation

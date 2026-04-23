@@ -1,0 +1,5 @@
+FIX PRO V8.5 EXECUTION UNLOCK
+- quick decision layer now unlocks PROBE when soft-ready bot context exists
+- ultra wait blocks can surface probe mode instead of permanent WAIT
+- soft-ready detection now reads bot_cards and bot-mode hints, not only range_volume_bot status
+- wording updated to allow small probe entry without adds until confirmation

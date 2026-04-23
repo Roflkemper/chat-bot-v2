@@ -1,0 +1,6 @@
+FIX PRO V7.8.1 HOTFIX
+
+Included:
+- restored missing _zone_from_bounds helper for BTC 1H / FINAL DECISION render paths
+- hardened exchange liquidity state loading against broken JSON / extra appended data
+- made exchange liquidity state writes atomic to reduce partial-write corruption risk

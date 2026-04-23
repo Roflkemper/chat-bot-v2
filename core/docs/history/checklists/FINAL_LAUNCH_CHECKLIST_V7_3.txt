@@ -1,0 +1,8 @@
+FINAL LAUNCH CHECKLIST V7.3
+
+1. Запусти python tools/health_check.py
+2. Проверь запуск бота
+3. Открой BTC GINAREA / BTC SUMMARY
+4. Убедись, что в ответе появился блок BOT CONTROL PRECISION V7.3
+5. Проверь, что по BTC и XRP видны LONG/SHORT 1/2/3
+6. Проверь, что у слоёв есть permission и reason

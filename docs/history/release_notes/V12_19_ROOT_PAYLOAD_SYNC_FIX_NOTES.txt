@@ -1,0 +1,7 @@
+V12.19 ROOT PAYLOAD SYNC FIX
+
+Исправлено:
+- ux_mode теперь корректно работает, когда decision-поля приходят в корне payload, а не только в payload["decision"]
+- edge / execution / soft verdict подтягиваются из root execution_verdict
+- btc_plan и bot_control_advisor добавлены fallback-и на root payload
+- верхние блоки должны синхронизироваться с реальным WATCH/PROBE состоянием, если оно уже есть в результате решения

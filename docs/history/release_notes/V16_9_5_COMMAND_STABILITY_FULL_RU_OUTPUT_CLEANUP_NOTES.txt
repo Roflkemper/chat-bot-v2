@@ -1,0 +1,27 @@
+V16.9.5 — COMMAND STABILITY + FULL RU OUTPUT CLEANUP
+
+Что исправлено:
+- исправлен NameError в core/signal_engine.py: добавлен импорт detect_market_regime
+- усилена стабильность команд анализа, чтобы BTC 1H не падал на market regime layer
+- усилена стабильность exchange liquidity state:
+  - RLock вместо обычного Lock
+  - атомарная запись через уникальные tmp-файлы
+  - os.replace для безопасной замены
+  - state-mutation через общий защищённый контур
+- дожат русский в ключевых выводах V16:
+  - authority / режим действий
+  - runtime
+  - качество диапазона
+  - сценарий
+  - авто-риск
+  - long grid / short grid -> лонг-сетка / шорт-сетка
+  - PREFER_GRID / EDGE ONLY -> русские формулировки в ключевых экранах
+- убраны высокочастотные английские хвосты в decision / forecast / summary / trade manager / analysis
+- исправлена подача setup в ЛУЧШАЯ СДЕЛКА для mid-range / edge режима
+
+Файлы:
+- core/signal_engine.py
+- core/exchange_liquidity_engine.py
+- core/telegram_formatter.py
+- renderers/telegram_renderers.py
+- VERSION.txt

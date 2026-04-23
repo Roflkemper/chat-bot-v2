@@ -1,0 +1,9 @@
+V17.9.3.0 — GRID ACTION + LIQUIDITY STRUCTURE
+
+- added core/grid_action_engine.py
+- added core/grid_adapter.py
+- added features/liquidity_structure.py
+- pipeline now builds grid_action block from snapshot
+- GRID VIEW now reads only from grid_action
+- report split into TRADER VIEW and GRID VIEW
+- fixed execution_side NameError in core/pipeline.py

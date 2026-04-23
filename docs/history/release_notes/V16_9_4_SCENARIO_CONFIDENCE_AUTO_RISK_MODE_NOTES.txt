@@ -1,0 +1,21 @@
+V16.9.4 — SCENARIO CONFIDENCE + AUTO RISK MODE
+
+Что добавлено:
+- confidence сценария в процентах с русской оценкой
+- auto risk mode: STOP / DEFENSIVE / PAUSE / LIGHT / NORMAL / NORMAL+
+- русский дожим ключевых фраз в выводах:
+  - качество диапазона
+  - дивергенция
+  - импульс
+  - слом сценария
+- для английских статусов оставлены русские пояснения рядом
+- убрано дублирование строк вида «сценарий: сценарий» и «слом сценария: слом сценария»
+
+Обновлены экраны:
+- BTC ANALYSIS
+- FINAL DECISION
+- SUMMARY
+- FORECAST
+- TRADE MANAGER
+- GINAREA
+- BOTS STATUS

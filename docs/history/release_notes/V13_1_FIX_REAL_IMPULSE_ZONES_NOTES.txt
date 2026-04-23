@@ -1,0 +1,22 @@
+V13.1 FIX — REAL IMPULSE + REAL ZONES
+
+Что реально изменено:
+- added core/v13_trade_fix.py with real calculations for:
+  - impulse score / label
+  - continuation score / label
+  - reversal side / confidence
+  - short zone / long zone / no-trade mid zone
+  - action output based on zones + fake move + liquidation context
+- wired trade-fix context into core/v13_shadow_engine.py
+- V13 block now changes execution/action text from actual calculations instead of just adding descriptive lines
+- liquidation clusters now refine working zones when they are available
+- invalidation in V13 block now comes from calculated zone boundaries
+
+Ожидаемый эффект в Telegram:
+- появится явная оценка impulse
+- появятся конкретные short/long/mid zones
+- появится вывод типа:
+  - НЕ ЛЕЗТЬ: середина диапазона
+  - ИСКАТЬ ШОРТ В ВЕРХНЕЙ ЗОНЕ
+  - ИСКАТЬ ЛОНГ В НИЖНЕЙ ЗОНЕ
+  - НЕ КОНТРИТЬ: движение ещё живое

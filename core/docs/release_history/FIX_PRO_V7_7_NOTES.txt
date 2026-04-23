@@ -1,0 +1,8 @@
+FIX PRO V7.7
+- added MOVE TYPE engine
+- added BOT MODE engine for explicit range-volume permissions
+- added ACTION OUTPUT block for trader-facing summary
+- upgraded fake move detector with confirmation/reclaim/invalidation/execution mode
+- split directional_action vs bot_mode_action
+- best trade can now surface range-volume mode instead of blind WAIT
+- bot control advisor now shows market mode, move type, zones and invalidation

@@ -1,0 +1,9 @@
+V12.8 — ACTION CONSISTENCY + OUTPUT COMPRESSION
+
+Что изменено:
+- добавлен единый ACTION AUTHORITY слой для синхронизации action_now / best_trade / trade_manager
+- BEST TRADE больше не даёт ложный сигнал на вход, если execution не разрешён
+- ACTION NOW использует единый authority-state: WAIT / PRE_SETUP / EXECUTABLE / MANAGE
+- TRADE MANAGER показывает action authority вместо конфликтного decision action
+- отправка в Telegram сжата: убраны повторы, клавиатура ставится только на последнем chunk
+- добавлена защита от повторной отправки одинакового текста по той же команде в burst-окне

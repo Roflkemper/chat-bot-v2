@@ -1,0 +1,10 @@
+FINAL LAUNCH CHECKLIST V7.2
+
+1. Заполни .env или bot_local_config.json
+2. Запусти RUN_BOT.bat
+3. Проверь команды:
+   - BTC 15M
+   - FINAL DECISION
+   - ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС
+   - МЕНЕДЖЕР BTC
+4. Убедись, что в ответах есть блок TACTICAL EDGE V7.2

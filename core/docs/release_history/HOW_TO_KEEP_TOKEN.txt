@@ -1,0 +1,31 @@
+Как хранить токен безопасно и без перезаписи
+
+1. Не клади BOT_TOKEN в config.py.
+2. Создай рядом с проектом файл bot_local_config.json.
+3. При обновлении проекта просто распаковывай новую сборку поверх папки проекта — внешний файл не пострадает.
+
+Пример структуры:
+C:\bot 3\
+├── bot_local_config.json
+└── chat_bot_v2_final_project\
+    ├── main.py
+    ├── config.py
+    └── ...
+
+Содержимое bot_local_config.json:
+{
+  "BOT_TOKEN": "123456789:YOUR_REAL_TELEGRAM_TOKEN",
+  "CHAT_ID": "574716090"
+}
+
+Бот ищет конфиг в таком порядке:
+1) Переменные окружения BOT_TOKEN / CHAT_ID
+2) bot_local_config.json рядом с проектом
+3) .env рядом с проектом
+4) bot_local_config.json в родительской папке проекта
+5) .env в родительской папке проекта
+6) bot_local_config.json в текущей рабочей папке
+7) .env в текущей рабочей папке
+
+Если токен найден, при старте бот пишет строку:
+[OK] Telegram config source: ...

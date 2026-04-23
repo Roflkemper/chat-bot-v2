@@ -1,0 +1,17 @@
+RELEASE MANIFEST V7.1
+
+Основной смысл релиза:
+- реальная чистка пакета после V7.0
+- без добавления нового рискованного торгового слоя
+
+Главные изменения:
+- cleaned runtime cache artifacts
+- moved legacy release notes to docs/release_history
+- synced README with actual config loading behavior
+- added bot_local_config example file
+
+Проверить после распаковки:
+1. Создать .env или bot_local_config.json
+2. Запустить RUN_BOT.bat
+3. Проверить python tools/health_check.py
+4. Проверить, что бот видит BOT_TOKEN из выбранного источника

@@ -1,0 +1,15 @@
+FIX 70 — 3 BOT GRID ENGINE
+
+Что добавлено:
+- новый модуль core/grid_strategy.py
+- анализ 3 контртренд ботов:
+  BOT A = 1.5%
+  BOT B = 2.5%
+  BOT C = 3.3%
+- расчёт делается по deviation_pct / mean60_price / forecast / pattern bias
+- результат пробрасывается в AnalysisSnapshot
+- Telegram analysis теперь показывает отдельный блок 3 BOT GRID STRATEGY
+
+Важно:
+- это execution-layer советник, а не прямой авто-трейдинг
+- текущая логика ничего не ломает и работает поверх existing analytics

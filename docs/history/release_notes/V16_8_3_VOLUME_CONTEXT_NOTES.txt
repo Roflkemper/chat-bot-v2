@@ -1,0 +1,12 @@
+V16.8.3 — VOLUME CONTEXT
+
+Что сделано:
+- volume_confirmation_engine переведён из простого ratio-check в расширенный volume context
+- добавлены state / volume_quality / breakout_quality / acceleration_state / reaction_quality
+- добавлены exhaustion_hint / absorption_hint / signal_note / confidence
+- analysis_service теперь строит более содержательный orderflow stub с relative volume и range expansion
+- active telegram volume block теперь читает volume/orderflow из analysis snapshot и печатает расширенный боевой вывод
+
+Критерий проверки:
+- в BTC ANALYSIS [1h] блок ОБЪЁМ должен перестать быть двумя пустыми строками
+- должны появиться: quality / breakout / accel / вывод

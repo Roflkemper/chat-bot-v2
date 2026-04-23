@@ -1,0 +1,12 @@
+V6.7 — OBSERVABILITY / DEBUG PACK
+
+Что добавлено:
+- усилен SYSTEM STATUS: теперь видно runtime/state/data feed/models
+- добавлен machine-readable health snapshot JSON
+- DEBUG EXPORT теперь включает health_snapshot.json
+- добавлен tools/system_snapshot.py для быстрого локального дампа статуса
+
+Что это дает:
+- легче понять, что именно сломано: логи, state, feed, модели или XGBoost
+- проще сравнивать health между кейсами и релизами
+- удобнее разбирать деградацию источников и отсутствие обученных моделей

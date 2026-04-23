@@ -1,0 +1,19 @@
+FIX PRO V6.2 — LEARNING + SETUP STATS
+
+Что добавлено:
+- новый слой core/setup_stats.py
+- агрегирование личной статистики по ботам и закрытым сделкам
+- расчет favored side, strongest setup, recent closed stats
+- setup_stats_adjustment мягко влияет на confidence и action note
+- новый блок SETUP STATS / LEARNING в BTC ANALYSIS
+- новый блок SETUP STATS / LEARNING в BTC TRADE MANAGER
+
+Что это дает:
+- бот теперь смотрит не только на текущий рынок, но и на твою накопленную историю
+- если активный бот исторически сильнее, confidence слегка усиливается
+- если история по текущему типу бота слабая, бот становится осторожнее
+- в ответах видно: winrate, avg RR, favored side, strongest setup
+
+Ограничения:
+- если реальной истории мало, слой работает мягко и почти не вмешивается
+- статистика зависит от того, как у тебя накапливается personal bot learning и закрытые сделки

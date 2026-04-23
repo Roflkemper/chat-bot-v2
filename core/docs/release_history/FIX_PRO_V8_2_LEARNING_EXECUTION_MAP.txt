@@ -1,0 +1,12 @@
+FIX PRO V8.2 — LEARNING EXECUTION MAP
+
+Что добавлено:
+- learning_execution_plan на базе setup_stats + setup_stats_adjustment
+- action posture / size mode / execution map по личной статистике
+- top family / avoid family в verbose-рендере и trade manager
+- VERSION.txt обновлён до V8.2
+
+Смысл:
+- не просто показать learning summary, а перевести его в прикладную подсказку по размеру и агрессии
+- если личная статистика против сетапа — уменьшать размер и запрещать лишние доборы
+- если статистика поддерживает сетап — разрешать чуть более уверенное исполнение только после триггера

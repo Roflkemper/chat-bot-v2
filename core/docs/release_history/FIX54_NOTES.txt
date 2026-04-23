@@ -1,0 +1,19 @@
+FIX 54 — EDGE SCORE IN TELEGRAM RENDERS
+
+Что добавлено:
+- EDGE SCORE блок в BTC ANALYSIS
+- EDGE SCORE блок в FINAL DECISION
+- EDGE SCORE блок в BTC SUMMARY
+- EDGE SCORE блок в BTC GINAREA
+- EDGE SCORE / EDGE ACTION в BTC EXECUTION PLAN
+
+Что показывает блок:
+- score
+- label (NO_EDGE / WEAK / WORKABLE / STRONG)
+- side
+- action
+- components: delta / confidence / location / impulse / alignment / penalty
+
+Зачем:
+- чтобы в Telegram было сразу видно, есть ли реальный edge,
+  или система просто держит сторону без качественного входа.

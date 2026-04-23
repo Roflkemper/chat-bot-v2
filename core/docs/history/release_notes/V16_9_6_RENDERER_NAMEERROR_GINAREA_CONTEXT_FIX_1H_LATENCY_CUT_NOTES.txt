@@ -1,0 +1,16 @@
+V16.9.6 — RENDERER NAMEERROR + GINAREA CONTEXT FIX + 1H LATENCY CUT
+
+Сделано:
+- исправлен NameError по _range_quality_ru в telegram_renderers
+- добавлен импорт _divergence_ru для безопасного RU-рендера
+- в ginarea_advisor добавлен безопасный локальный analysis-контекст
+- снижена нагрузка в analyze_ginarea: limit 160 вместо 220
+- history pattern в ginarea режется до tail(120) для более быстрого ответа
+- усилена запись exchange_liquidity_state.json: retry + уникальный tmp + cleanup
+- _mutate_state теперь пишет через единый _save_state
+
+Цель:
+- убрать падение BTC 1H в рендерере
+- убрать NameError в analyze_ginarea
+- сократить латентность 1H-анализа
+- уменьшить ошибки записи liquidity state на Windows

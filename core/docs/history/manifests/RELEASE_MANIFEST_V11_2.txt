@@ -1,0 +1,5 @@
+V11.2
+- core/ux_mode.py
+- core/trade_manager.py
+- core/ginarea_advisor.py
+- core/btc_plan.py

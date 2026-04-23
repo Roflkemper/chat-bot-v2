@@ -1,0 +1,20 @@
+V17.8.7.1 — LIVE DATA (Binance REST)
+
+Что добавить:
+- Папку market_data/ (из этого архива) в корень проекта
+
+Что изменить (1 строка в handler):
+Было:
+    price = 72000
+
+Стало:
+    from market_data.price_feed import get_price
+    price = get_price()
+
+После этого:
+- Цена будет подтягиваться с Binance (BTCUSDT)
+- execution_snapshot начнет считать depth/distance по реальному рынку
+
+Важно:
+- Требуется пакет requests (обычно уже установлен)
+- Если Binance не отвечает — бот упадет с понятной ошибкой (fail-fast)

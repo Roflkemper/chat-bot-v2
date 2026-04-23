@@ -1,0 +1,9 @@
+RELEASE MANIFEST — V11.4 FINAL
+
+Изменённые файлы:
+- VERSION.txt
+- V11_4_FINAL_RELEASE_NOTES.txt
+- RELEASE_MANIFEST_V11_4_FINAL.txt
+- core/ginarea_advisor.py
+- core/ux_mode.py
+- core/btc_plan.py

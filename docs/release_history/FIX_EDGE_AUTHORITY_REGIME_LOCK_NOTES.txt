@@ -1,0 +1,7 @@
+FIX: EDGE AUTHORITY + REGIME LOCK
+
+- trade plan теперь подчинён edge authority
+- при NO_EDGE / NOT AUTHORIZED concrete execution levels скрываются
+- workable edge больше не даёт ARMED/ADD_READY без strong authorization
+- market regime больше не остаётся "НЕ ОПРЕДЕЛЁН": добавлен regime lock fallback
+- entry zone больше не схлопывается в одну цену

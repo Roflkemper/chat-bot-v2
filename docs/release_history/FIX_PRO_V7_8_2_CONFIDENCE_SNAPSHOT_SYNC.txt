@@ -1,0 +1,8 @@
+FIX PRO V7.8.2 — CONFIDENCE SNAPSHOT SYNC
+
+Changes:
+- confidence display now uses effective trade confidence instead of raw bias confidence when execution is blocked
+- forecast/summary confidence is capped by effective trade context
+- ACTION-FIRST working zone now falls back to "нет данных" instead of blank
+- FINAL DECISION manager action no longer auto-hides risk-reduction/exit intent when trade_authorized=false
+- manager action guard preserves exit/reduce-risk context instead of forcing WAIT in all blocked states

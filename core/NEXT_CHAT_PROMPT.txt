@@ -1,0 +1,53 @@
+V17.10.46.4.4-requested-partial-dead-trade-tp3-tail
+
+Продолжаем проект «чат бот версия 2» строго по зафиксированному плану.
+
+Рабочая модель:
+- single-owner repo
+- локальная версия = источник истины
+- flow: tests → smoke → manifest → commit → fetch → push --force-with-lease → ZIP
+
+Текущее состояние:
+- Версия: V17.10.46.4.4-requested-partial-dead-trade-tp3-tail
+- Regression Shield: PASS (61 passed)
+- Smoke test: PASS
+
+Последний этап:
+- timeout logic разделена на dead trade timeout и productive runner timeout
+- timeout now uses peak progress / peak pnl / last meaningful progress
+- runner после partial/TP1 защищён от преждевременного timeout
+- мёртвые сделки без реального развития не тянутся лишние бары
+
+Последний локальный 90d backtest до этого этапа:
+- Trades: 25
+- Winrate: 60.0%
+- Avg RR: 0.1702
+- PnL: 7.0972%
+- Max DD: -4.7089%
+- tp_hit: 4
+- stop: 12
+- timeout: 9
+
+Текущий приоритет:
+👉 прогнать новый 90d backtest и проверить, снизился ли timeout leakage без ухудшения PnL/DD
+
+Что смотреть первым:
+- Avg RR
+- PnL
+- timeout_count
+- tp_hit_count
+- stop_count
+- Max DD
+
+Требования:
+- не ломать pipeline
+- не добавлять магические эвристики
+- сначала тесты → потом логика → потом релиз
+- только готовые ZIP
+- без кода в чат
+
+
+Текущий запрос реализован точечно:
+- partial size = 30%
+- dead trade exit: 8+ bars, pnl < 0.35%, compressed ATR
+- TP3 tail proxy: 10% only for LONG + MARKUP after TP2

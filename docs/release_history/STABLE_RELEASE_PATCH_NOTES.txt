@@ -1,0 +1,30 @@
+STABLE RELEASE PATCH
+
+Что исправлено:
+1. Исправлен критический импорт в core/lifecycle_plan.py
+   - добавлен import analyze_market_structure
+   - это убирает падение BTC LIFECYCLE
+
+2. Добавлен безопасный fallback в services/response_service.py
+   - если какой-то text_builder падает, бот не роняет команду
+   - вместо системной ошибки отдает безопасный fallback-текст
+   - при наличии snapshot показывает decision/fallback вместо падения
+
+3. Усилена устойчивость polling в main.py
+   - infinity_polling теперь крутится в restart-loop
+   - при сетевых сбоях Telegram бот не завершается полностью
+   - через 5 секунд делает автоматический рестарт polling
+
+Проверка:
+- выполнен smoke test для ключевых команд:
+  BTC SUMMARY
+  BTC FORECAST
+  BEST TRADE
+  BOTS STATUS
+  BTC INVALIDATION
+  BTC TRADE MANAGER
+  BTC LIFECYCLE
+  BTC STRUCTURE
+  BTC SETUP QUALITY
+  BTC CONFLUENCE
+- python -m compileall пройден без ошибок

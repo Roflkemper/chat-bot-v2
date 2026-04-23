@@ -1,0 +1,62 @@
+CHAT BOT VERSION 2 - CONTEXT
+
+=== PROMPT ===
+Продолжаем проект «чат бот версия 2».
+
+Используй PROJECT_MANIFEST.md как основу.
+
+Работаем поверх:
+V17.10.22
+
+Фокус:
+- DANGER signal
+- If-Then plan
+- Composite Bias
+- Absorption / Time at Level
+- FLIP PREP progress
+- чистый trader output без ENTRY при WAIT
+
+=== MANIFEST ===
+# PROJECT MANIFEST
+
+
+## DEVELOPMENT PROTOCOL (MANDATORY)
+
+- Отдавать пользователю только готовые файлы для замены в проекте.
+- Не добавлять воду и лишние описания, если пользователь сам не просит объяснение.
+- Не присылать куски кода в чат.
+- Перед выдачей решения максимально проверять результат, чтобы это не были косметические заглушки.
+- Убеждаться, что слои и функции реально работают и получают данные из источников (например, Binance), если это предусмотрено логикой.
+- Работать строго по согласованному плану.
+
+
+## GRID ACTION / STRUCTURE RULES (MANDATORY)
+
+- GRID VIEW и TRADER VIEW держать раздельно.
+- В GRID VIEW не тянуть trigger/entry/manual trader поля.
+- Для GRID VIEW priority считать от layers/impulse/structure, а не просто от bias.
+- Structure flags считать отдельным модулем и передавать в engine через snapshot.
+- Отдавать только рабочие файлы/архивы, без косметических заглушек.
+
+=== CHANGELOG ===
+## V17.10.22
+- Added permanent top signal line for DANGER / WAIT / near-breakout states.
+- Removed ENTRY block from renderer when ACTION=WAIT.
+- Added flip prep progress with explicit X/Y bars and confirmation level.
+- Added composite bias score and absorption/time-at-level block.
+- Added If-Then action plan and consolidated current action summary.
+- Added structural 1h blocker wiring and ginarea priority sync.
+- Restored build_execution_snapshot compatibility and fixed pattern_history_store.
+- Added offline-safe market data fallbacks for local verification/tests.
+
+
+## V17.8.4.4
+- project manifest system
+- github integration
+- next chat prompt system
+
+## V17.9.3.0
+- Added GRID ACTION ENGINE wiring.
+- Added liquidity_structure-based 1h structure detection for GRID VIEW.
+- Split report into TRADER VIEW and GRID VIEW.
+- Fixed execution_side NameError in pipeline.

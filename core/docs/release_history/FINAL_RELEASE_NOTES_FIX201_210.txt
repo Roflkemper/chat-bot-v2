@@ -1,0 +1,13 @@
+CHAT BOT VERSION 2 — FINAL RELEASE FIX 201–210
+
+Added in this release:
+- TRADE FLOW layer: continuation state, target map, reversal watch zone
+- LIQUIDATION CHARACTER layer: normal move / aggressive push / liquidity sweep / false break
+- EXECUTION ADVISOR: entry type, chase risk, entry zone, RR estimate
+- BOT CONTROL ADVISOR summary inside BOTS STATUS
+- BTC TRADE MANAGER extended with trade flow, move character, and execution blocks
+- BEST TRADE extended with trade flow and execution context
+
+Notes:
+- Smart alerts module added as infrastructure/state layer, but no auto-push transport wiring was added in this packaging step
+- The release preserves existing commands and keyboard naming
