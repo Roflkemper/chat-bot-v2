@@ -362,6 +362,10 @@ class CommandActions:
         from telegram_ui.portfolio.command import handle_portfolio_command
         return self.ctx.plain(handle_portfolio_command())
 
+    def advise(self) -> BotResponsePayload:
+        from telegram_ui.advisor.advise import handle_advise_command
+        return self.ctx.plain(handle_advise_command())
+
     def regime(self) -> BotResponsePayload:
         from core.pipeline import build_full_snapshot
         from renderers.grid_renderer import render_regime_details
@@ -1142,6 +1146,7 @@ def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotRes
         '_cmd_forecast': actions.forecast,
         '_cmd_ginarea': actions.ginarea,
         '_cmd_portfolio': actions.portfolio,
+        '_cmd_advise': actions.advise,
         '_cmd_regime': actions.regime,
         '_cmd_category': actions.category,
         '_cmd_bot': actions.bot,

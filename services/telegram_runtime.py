@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import json
 import logging
 import os
 import threading
@@ -275,6 +277,85 @@ class MarketAlertWorker(threading.Thread):
             self._stop_event.wait(sleep_for)
 
 
+class SignalAlertWorker(threading.Thread):
+    """Polls signals.csv and sends new signals to Telegram."""
+
+    _PREFIXES = {
+        "LIQ_CASCADE": "⚠️ LIQ_CASCADE",
+        "RSI_EXTREME": "📊 RSI_EXTREME",
+        "LEVEL_BREAK": "🎯 LEVEL_BREAK",
+    }
+
+    def __init__(
+        self,
+        bot,
+        chat_ids: Iterable[int],
+        signals_csv: Path,
+        *,
+        poll_interval_sec: int = 30,
+    ) -> None:
+        super().__init__(daemon=True, name="signal-alert-worker")
+        self.bot = bot
+        self.chat_ids = list(chat_ids)
+        self.signals_csv = signals_csv
+        self.poll_interval_sec = poll_interval_sec
+        self._stop_event = threading.Event()
+        self._last_ts: str = ""
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def _read_new_signals(self) -> list[dict]:
+        if not self.signals_csv.exists():
+            return []
+        new: list[dict] = []
+        try:
+            with self.signals_csv.open(newline="", encoding="utf-8") as fh:
+                reader = csv.DictReader(fh)
+                for row in reader:
+                    ts = row.get("ts_utc", "")
+                    if ts > self._last_ts:
+                        new.append(dict(row))
+        except Exception:
+            logger.exception("signal_alert_worker.read_failed")
+        return new
+
+    def _format_signal(self, row: dict) -> str:
+        signal_type = row.get("signal_type", "")
+        prefix = self._PREFIXES.get(signal_type, f"📡 {signal_type}")
+        try:
+            details = json.loads(row.get("details_json", "{}") or "{}")
+        except Exception:
+            details = {}
+        ts_s = row.get("ts_utc", "")
+        ts_short = ts_s[11:19] if len(ts_s) >= 19 else ts_s
+        detail_s = "  ".join(f"{k}={v}" for k, v in details.items())
+        return f"{prefix}  [{ts_short}]  {detail_s}"
+
+    def run(self) -> None:
+        # Initialize last_ts so we don't replay already-existing signals on startup
+        existing = self._read_new_signals()
+        if existing:
+            self._last_ts = max(s.get("ts_utc", "") for s in existing)
+        logger.info("signal_alert_worker.start last_ts=%s", self._last_ts)
+        while not self._stop_event.is_set():
+            try:
+                new_signals = self._read_new_signals()
+                if new_signals:
+                    self._last_ts = max(s.get("ts_utc", "") for s in new_signals)
+                    for row in new_signals:
+                        text = self._format_signal(row)
+                        for chat_id in self.chat_ids:
+                            try:
+                                self.bot.send_message(chat_id, text)
+                                time.sleep(0.1)
+                            except Exception:
+                                logger.exception("signal_alert_worker.send_failed chat_id=%s", chat_id)
+            except Exception:
+                logger.exception("signal_alert_worker.loop_failed")
+            self._stop_event.wait(self.poll_interval_sec)
+
+
 class TelegramBotApp:
     def __init__(self) -> None:
         setup_logging()
@@ -299,6 +380,13 @@ class TelegramBotApp:
             self.allowed_chat_ids,
             interval_sec=getattr(config, 'AUTO_EDGE_ALERTS_INTERVAL_SEC', 60),
             timeframes=str(getattr(config, 'AUTO_EDGE_ALERTS_TIMEFRAMES', '15m,1h')).split(','),
+        )
+        _signals_csv = Path(__file__).resolve().parents[1] / "market_live" / "signals.csv"
+        self.signal_alert_worker = SignalAlertWorker(
+            self.bot,
+            self.allowed_chat_ids,
+            _signals_csv,
+            poll_interval_sec=30,
         )
         self._register_handlers()
 
@@ -358,6 +446,8 @@ class TelegramBotApp:
     def run(self) -> None:
         if getattr(config, 'AUTO_EDGE_ALERTS_ENABLED', True) and self.allowed_chat_ids:
             self.alert_worker.start()
+        if self.allowed_chat_ids:
+            self.signal_alert_worker.start()
         logger.info('telegram_bot.start config_source=%s allowed_chat_ids=%s', getattr(config, 'CONFIG_SOURCE', ''), self.allowed_chat_ids)
         while True:
             try:
@@ -376,6 +466,9 @@ class TelegramBotApp:
             and not self.alert_worker.is_alive()
         ):
             self.alert_worker.start()
+        signal_worker = getattr(self, 'signal_alert_worker', None)
+        if signal_worker is not None and self.allowed_chat_ids and not signal_worker.is_alive():
+            signal_worker.start()
         logger.info(
             'telegram_bot.start config_source=%s allowed_chat_ids=%s',
             getattr(config, 'CONFIG_SOURCE', ''),

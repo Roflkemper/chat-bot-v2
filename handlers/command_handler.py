@@ -99,6 +99,8 @@ class CommandHandler:
         registry.register('BTC GINAREA', '_cmd_ginarea', capabilities=analysis_with_journal)
         registry.register('/portfolio', '_cmd_portfolio', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('ПОРТФЕЛЬ', '_cmd_portfolio', capabilities=CommandCapabilities(renderer='grid'))
+        registry.register('/advise', '_cmd_advise', capabilities=CommandCapabilities(renderer='grid'))
+        registry.register('СОВЕТ', '_cmd_advise', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('/regime', '_cmd_regime', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('РЕЖИМ', '_cmd_regime', capabilities=CommandCapabilities(renderer='grid'))
         registry.register_prefix(
