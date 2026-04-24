@@ -44,10 +44,82 @@ BOT_FILTER: set[str] = (
 )
 
 ALIASES_PATH: Path = Path(__file__).parent / "bot_aliases.json"
-ALIASES_RELOAD_SEC: int = 600
+PID_DIR: Path = Path(__file__).parent / "run"
+PARAMS_FORCE_SEC: int = 4 * 3600  # force params write every 4h regardless of change
 
 _stop = threading.Event()
 
+
+# ── PID lock ──────────────────────────────────────────────────────────────────
+
+def _acquire_pid_lock() -> object | None:
+    """Return a lock handle if acquired, None if another instance is running.
+
+    Uses fcntl.flock on Unix/Mac (safe across crashes — kernel releases on exit).
+    Falls back to a simple PID-file check on Windows.
+    """
+    PID_DIR.mkdir(parents=True, exist_ok=True)
+    pid_path = PID_DIR / "tracker.pid"
+
+    try:
+        import fcntl
+        fd = os.open(str(pid_path), os.O_CREAT | os.O_WRONLY, 0o644)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            os.close(fd)
+            return None
+        os.ftruncate(fd, 0)
+        os.write(fd, str(os.getpid()).encode())
+        return fd  # keep fd open — lock held as long as process lives
+    except ImportError:
+        # Windows: best-effort PID file (not race-safe, but good enough for our use)
+        try:
+            existing = pid_path.read_text().strip() if pid_path.exists() else ""
+            if existing:
+                try:
+                    # Check if that process is alive
+                    os.kill(int(existing), 0)
+                    return None  # process alive
+                except (ProcessLookupError, ValueError, PermissionError):
+                    pass  # process dead, stale file
+            pid_path.write_text(str(os.getpid()))
+            return pid_path  # return path as handle; cleaned up on exit
+        except Exception:
+            return None
+
+
+def _release_pid_lock(handle: object) -> None:
+    try:
+        import fcntl
+        if isinstance(handle, int):
+            os.close(handle)
+    except ImportError:
+        if isinstance(handle, Path):
+            try:
+                handle.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+# ── Aliases ───────────────────────────────────────────────────────────────────
+
+def _load_aliases(path: Path) -> dict[str, str]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Cannot load aliases from %s: %s", path, exc)
+        return {}
+
+
+def _aliases_mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+# ── Logging ───────────────────────────────────────────────────────────────────
 
 def _setup_logging() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -62,13 +134,7 @@ def _setup_logging() -> None:
     logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler])
 
 
-def _load_aliases(path: Path) -> dict[str, str]:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        logging.getLogger(__name__).warning("Cannot load aliases from %s: %s", path, exc)
-        return {}
-
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _ts_utc() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -80,10 +146,47 @@ def _filter_bots(bots: list[dict]) -> list[dict]:
     return [b for b in bots if str(b.get("id", "")) in BOT_FILTER or b.get("name", "") in BOT_FILTER]
 
 
+def _build_params_row(params: dict, ts: str, bot_id: str, bot_name: str) -> dict:
+    gap = params.get("gap", {}) if isinstance(params.get("gap"), dict) else {}
+    border = params.get("border", {}) if isinstance(params.get("border"), dict) else {}
+    slp = params.get("slp", {}) if isinstance(params.get("slp"), dict) else {}
+    in_ = params.get("in", {}) if isinstance(params.get("in"), dict) else {}
+    return {
+        "ts_utc": ts,
+        "bot_id": bot_id,
+        "bot_name": bot_name,
+        "strategy_id": params.get("strategyId", ""),
+        "side": params.get("side", ""),
+        "grid_step": params.get("gs", ""),
+        "grid_step_ratio": params.get("gsr", ""),
+        "max_opened_orders": params.get("maxOp", ""),
+        "border_top": border.get("top", ""),
+        "border_bottom": border.get("bottom", ""),
+        "instop": gap.get("isg", ""),
+        "minstop": gap.get("minS", ""),
+        "maxstop": gap.get("maxS", ""),
+        "target": gap.get("tog", ""),
+        "total_sl": slp.get("tp", ""),
+        "total_tp": params.get("ttp", ""),
+        "leverage": params.get("leverage", ""),
+        "otc": in_.get("otc", ""),
+        "dsblin": params.get("dsblin", ""),
+        "raw_params_json": json.dumps(params, ensure_ascii=False),
+    }
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
 def main() -> None:
     _setup_logging()
     logger = logging.getLogger(__name__)
-    logger.info("Tracker starting — interval=%ds output=%s", INTERVAL, OUTPUT_DIR)
+
+    lock_handle = _acquire_pid_lock()
+    if lock_handle is None:
+        logger.info("Another tracker instance is already running — exiting")
+        sys.exit(0)
+
+    logger.info("Tracker starting — interval=%ds output=%s pid=%d", INTERVAL, OUTPUT_DIR, os.getpid())
 
     signal.signal(signal.SIGTERM, lambda s, f: _stop.set())
     signal.signal(signal.SIGINT, lambda s, f: _stop.set())
@@ -93,19 +196,21 @@ def main() -> None:
 
     storage = StorageManager(OUTPUT_DIR)
     aliases = _load_aliases(ALIASES_PATH)
-    aliases_loaded_at = time.monotonic()
+    aliases_mtime = _aliases_mtime(ALIASES_PATH)
 
-    # {bot_id: {"prev_stat": dict, "prev_params_hash": str}}
+    # {bot_id: {"prev_stat": dict, "prev_params_hash": str, "params_written_at": float}}
     state: dict[str, dict] = {}
 
     try:
         while not _stop.is_set():
             cycle_start = time.monotonic()
 
-            if time.monotonic() - aliases_loaded_at > ALIASES_RELOAD_SEC:
+            # Hot-reload aliases on mtime change
+            mtime = _aliases_mtime(ALIASES_PATH)
+            if mtime != aliases_mtime:
                 aliases = _load_aliases(ALIASES_PATH)
-                aliases_loaded_at = time.monotonic()
-                logger.debug("Aliases reloaded")
+                aliases_mtime = mtime
+                logger.info("Aliases reloaded (mtime changed)")
 
             try:
                 bots = client.get_bots()
@@ -151,7 +256,6 @@ def main() -> None:
                     "trade_volume": stat.get("tradeVolume", ""),
                     "balance": stat.get("balance", ""),
                     "liquidation_price": stat.get("liquidationPrice", ""),
-                    "stat_updated_at": stat.get("statUpdatedAt", stat.get("updatedAt", "")),
                 })
 
                 if bot_id in state:
@@ -160,6 +264,7 @@ def main() -> None:
                             "ts_utc": ts,
                             "bot_id": bot_id,
                             "bot_name": bot_name,
+                            "alias": alias,
                             "event_type": ev.event_type,
                             "delta_count": ev.delta_count,
                             "delta_qty": ev.delta_qty,
@@ -176,35 +281,28 @@ def main() -> None:
                 try:
                     params = client.get_bot_params(bot_id)
                     params_hash = json.dumps(params, sort_keys=True)
-                    if state[bot_id].get("prev_params_hash") != params_hash:
-                        storage.write_params({
-                            "ts_utc": ts,
-                            "bot_id": bot_id,
-                            "bot_name": bot_name,
-                            "strategy_id": params.get("strategyId", ""),
-                            "side": params.get("side", ""),
-                            "grid_step": params.get("gs", ""),
-                            "grid_step_ratio": params.get("gsr", ""),
-                            "max_opened_orders": params.get("maxOp", ""),
-                            "border_top": params.get("border", {}).get("top", ""),
-                            "border_bottom": params.get("border", {}).get("bottom", ""),
-                            "instop": params.get("gap", {}).get("isg", ""),
-                            "minstop": params.get("gap", {}).get("minS", ""),
-                            "maxstop": params.get("gap", {}).get("maxS", ""),
-                            "target": params.get("target", ""),
-                            "total_sl": params.get("slp", {}).get("tp", "") if isinstance(params.get("slp"), dict) else "",
-                            "total_tp": params.get("ttp", ""),
-                            "raw_params_json": json.dumps(params, ensure_ascii=False),
-                        })
+                    now_mono = time.monotonic()
+                    since_write = now_mono - state[bot_id].get("params_written_at", 0)
+                    changed = state[bot_id].get("prev_params_hash") != params_hash
+                    force = since_write >= PARAMS_FORCE_SEC
+
+                    if changed or force:
+                        row = _build_params_row(params, ts, bot_id, bot_name)
+                        row["alias"] = alias
+                        storage.write_params(row)
                         state[bot_id]["prev_params_hash"] = params_hash
-                        logger.info("Params snapshot bot=%s", bot_id)
+                        state[bot_id]["params_written_at"] = now_mono
+                        reason = "changed" if changed else "4h-force"
+                        logger.info("Params snapshot bot=%s (%s)", bot_id, reason)
                 except Exception as exc:
                     logger.error("Failed params for bot %s: %s", bot_id, exc)
 
+            storage.fsync_all()
             _wait(cycle_start)
 
     finally:
         storage.close()
+        _release_pid_lock(lock_handle)
         logger.info("Tracker stopped cleanly")
 
 

@@ -206,14 +206,14 @@ class TestStorageManager:
 
     def test_multiple_snapshots_appended(self, tmp_path):
         mgr = StorageManager(tmp_path)
-        mgr.write_snapshot(_snapshot_row(bot_id="aaa"))
-        mgr.write_snapshot(_snapshot_row(bot_id="bbb"))
+        mgr.write_snapshot(_snapshot_row(bot_id="111"))
+        mgr.write_snapshot(_snapshot_row(bot_id="222"))
         mgr.close()
         rows = _read_csv(tmp_path / "snapshots.csv")
         assert len(rows) == 3
         bot_ids = {rows[1][SNAPSHOTS_HEADERS.index("bot_id")],
                    rows[2][SNAPSHOTS_HEADERS.index("bot_id")]}
-        assert bot_ids == {"aaa", "bbb"}
+        assert bot_ids == {"111", "222"}
 
     def test_write_params_fields(self, tmp_path):
         mgr = StorageManager(tmp_path)
