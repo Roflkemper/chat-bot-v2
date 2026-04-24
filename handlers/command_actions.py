@@ -359,15 +359,8 @@ class CommandActions:
         return self._attach_transition_alert(payload, analysis)
 
     def portfolio(self) -> BotResponsePayload:
-        from core.orchestrator.portfolio_state import PortfolioStore
-        from core.pipeline import build_full_snapshot
-        from renderers.grid_renderer import render_portfolio
-
-        store = PortfolioStore.instance()
-        portfolio = store.get_snapshot()
-        snapshot = build_full_snapshot(symbol="BTCUSDT")
-        regime_dict = snapshot.get("regime", {}) if isinstance(snapshot, dict) else {}
-        return self.ctx.plain(render_portfolio(portfolio, regime_dict))
+        from telegram_ui.portfolio.command import handle_portfolio_command
+        return self.ctx.plain(handle_portfolio_command())
 
     def regime(self) -> BotResponsePayload:
         from core.pipeline import build_full_snapshot
