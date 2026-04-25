@@ -56,6 +56,17 @@ async def _run_polling_in_executor(app) -> None:
     await loop.run_in_executor(None, app.run_polling_blocking)
 
 
+async def _run_protection_alerts(stop_event: asyncio.Event) -> None:
+    from services.protection_alerts import ProtectionAlerts
+    pa = ProtectionAlerts.instance()
+    while not stop_event.is_set():
+        await pa.tick()
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=30.0)
+        except asyncio.TimeoutError:
+            pass
+
+
 async def _shutdown_task(task: asyncio.Task, *, timeout: float) -> None:
     try:
         await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
@@ -91,10 +102,11 @@ async def main(
 
     polling_task = asyncio.create_task(_run_polling_in_executor(app), name="telegram_polling")
     orchestrator_task = asyncio.create_task(orchestrator.start(), name="orchestrator_loop")
+    protection_task = asyncio.create_task(_run_protection_alerts(stop_event), name="protection_alerts")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     done, pending = await asyncio.wait(
-        {polling_task, orchestrator_task, stop_task},
+        {polling_task, orchestrator_task, protection_task, stop_task},
         return_when=asyncio.FIRST_COMPLETED,
     )
 

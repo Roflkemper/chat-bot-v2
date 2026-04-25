@@ -431,6 +431,59 @@ class TelegramBotApp:
                 return
             self._dispatch(chat_id, str(message.text or '').strip())
 
+        @self.bot.message_handler(commands=['protect_status'])
+        def handle_protect_status(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.protection_alerts import ProtectionAlerts
+            self.bot.send_message(chat_id, ProtectionAlerts.instance().status_text())
+
+        @self.bot.message_handler(commands=['protect_off'])
+        def handle_protect_off(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.protection_alerts import ProtectionAlerts
+            ProtectionAlerts.instance().set_enabled(False)
+            self.bot.send_message(chat_id, '⏸ Защита отключена.')
+
+        @self.bot.message_handler(commands=['protect_on'])
+        def handle_protect_on(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.protection_alerts import ProtectionAlerts
+            ProtectionAlerts.instance().set_enabled(True)
+            self.bot.send_message(chat_id, '✅ Защита включена.')
+
+        @self.bot.message_handler(commands=['protect_threshold'])
+        def handle_protect_threshold(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            # Usage: /protect_threshold position_stress critical -250
+            parts = str(message.text or '').strip().split()
+            if len(parts) != 4:
+                self.bot.send_message(chat_id, 'Формат: /protect_threshold <alert> <level> <value>\nПример: /protect_threshold position_stress critical -250')
+                return
+            _, alert, level, raw_value = parts
+            try:
+                value = float(raw_value)
+            except ValueError:
+                self.bot.send_message(chat_id, f'Неверное значение: {raw_value}')
+                return
+            from services.protection_alerts import ProtectionAlerts
+            ok = ProtectionAlerts.instance().set_threshold(alert, level, value)
+            if ok:
+                self.bot.send_message(chat_id, f'✅ {alert}.{level} = {value}')
+            else:
+                self.bot.send_message(chat_id, f'❌ Неизвестный алерт/уровень: {alert}/{level}')
+
         @self.bot.message_handler(func=lambda m: True, content_types=['text'])
         def handle_text(message) -> None:
             chat_id = int(message.chat.id)
