@@ -109,12 +109,16 @@ class _State:
             self.mid_visit_ts = ts
             self.mid_visit_min = float(elapsed) / 60_000.0
 
-        # sweep high: phase 0 → breach within X → phase 1 → close returns within Y → done
+        # sweep high: breach within X, then close returns within Y (same-bar wick allowed)
         if self.hs_phase == 0:
             if elapsed <= _SWEEP_X_MS:
                 if h > self.fin_h:
-                    self.hs_phase = 1
-                    self.hs_breach_ts = ts
+                    if cl < self.fin_h:       # same-bar wick sweep
+                        self.hs_done = True
+                        self.hs_phase = 2
+                    else:                     # breach only → wait for return
+                        self.hs_phase = 1
+                        self.hs_breach_ts = ts
             else:
                 self.hs_phase = -1
         elif self.hs_phase == 1:
@@ -126,12 +130,16 @@ class _State:
             else:
                 self.hs_phase = -1
 
-        # sweep low: phase 0 → breach within X → phase 1 → close returns within Y → done
+        # sweep low: breach within X, then close returns within Y (same-bar wick allowed)
         if self.ls_phase == 0:
             if elapsed <= _SWEEP_X_MS:
                 if lo < self.fin_lo:
-                    self.ls_phase = 1
-                    self.ls_breach_ts = ts
+                    if cl > self.fin_lo:      # same-bar wick sweep
+                        self.ls_done = True
+                        self.ls_phase = 2
+                    else:                     # breach only → wait for return
+                        self.ls_phase = 1
+                        self.ls_breach_ts = ts
             else:
                 self.ls_phase = -1
         elif self.ls_phase == 1:

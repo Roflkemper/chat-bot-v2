@@ -309,13 +309,12 @@ class TestSweepSynthetic:
         post_lo = [99.0] * n_post
         post_cl = [100.0] * n_post
 
-        # T0+50 min = index 49 post → low breach
+        # T0+50 min = index 49 post → low WICK sweep (lo=89 < 90, cl=100 > 90: same-bar)
         post_lo[49] = 89.0
-        # T0+60 min = index 59 post → low sweep return (close > 90)
-        post_cl[59] = 91.0
-        # T0+100 min = index 99 post → high breach
+        # T0+100 min = index 99 post → high breach only (cl=115 ≥ 110: NOT a wick sweep)
         post_h[99] = 111.0
-        # T0+115 min = index 114 post → high sweep return (close < 110)
+        post_cl[99] = 115.0   # close above fin_h → only phase 1 on breach bar
+        # T0+115 min = index 114 post → high sweep return (close < 110, within Y of breach)
         post_cl[114] = 109.0
 
         all_ts = s_ts + post_ts
@@ -347,8 +346,9 @@ class TestSweepSynthetic:
             assert r.iloc[i]["london_high_sweep"] == True
 
     def test_low_sweep_confirmed_at_return_bar(self):
+        # low breach at post[49]: lo=89<90, close=100>90 → same-bar wick sweep confirmed
         r, off = self._build()
-        assert r.iloc[off + 59]["london_low_sweep"] == True
+        assert r.iloc[off + 49]["london_low_sweep"] == True
 
     def test_low_sweep_not_before_return(self):
         # In _build(): breach at post[49] (lo=89<90). Default close=100 > fin_lo=90
@@ -410,6 +410,48 @@ class TestSweepSynthetic:
         )
         r = _compute(df)
         assert r["london_high_sweep"].sum() == 0
+
+    def test_same_bar_wick_high_sweep(self):
+        """bar.high > last_kz_high AND bar.close < last_kz_high → sweep confirmed same bar."""
+        # LONDON closes: high=110. Post bar: high=110.1, close=109.9 → wick sweep
+        s_ts = [f"2026-04-15T06:{m:02d}:00Z" for m in range(60)] + \
+               [f"2026-04-15T07:{m:02d}:00Z" for m in range(60)] + \
+               [f"2026-04-15T08:{m:02d}:00Z" for m in range(60)]
+        post_ts = ["2026-04-15T09:00:00Z", "2026-04-15T09:01:00Z"]
+        s_h = [110.0] + [101.0] * 179
+        all_ts = s_ts + post_ts
+        n = len(all_ts)
+        df = _ohlcv(
+            all_ts, [100.0]*n,
+            s_h + [110.1, 101.0],   # bar+0: wick through 110
+            [99.0] * n,
+            [100.0]*180 + [109.9, 100.0],   # bar+0: close below 110 → wick sweep
+        )
+        r = _compute(df)
+        # Bar at 09:00 (index 180): sweep confirmed on same bar as breach
+        assert r.iloc[180]["london_high_sweep"] == True
+        # Bar at 09:01 (index 181): stays True
+        assert r.iloc[181]["london_high_sweep"] == True
+
+    def test_same_bar_wick_low_sweep(self):
+        """bar.low < last_kz_low AND bar.close > last_kz_low → sweep confirmed same bar."""
+        # LONDON closes: low=90. Post bar: low=89.9, close=90.1 → wick sweep
+        s_ts = [f"2026-04-15T06:{m:02d}:00Z" for m in range(60)] + \
+               [f"2026-04-15T07:{m:02d}:00Z" for m in range(60)] + \
+               [f"2026-04-15T08:{m:02d}:00Z" for m in range(60)]
+        post_ts = ["2026-04-15T09:00:00Z", "2026-04-15T09:01:00Z"]
+        s_lo = [90.0] + [99.0] * 179
+        all_ts = s_ts + post_ts
+        n = len(all_ts)
+        df = _ohlcv(
+            all_ts, [100.0]*n,
+            [101.0] * n,
+            s_lo + [89.9, 99.0],             # session: first bar low=90 → fin_lo=90
+            [100.0]*180 + [90.1, 100.0],     # bar+0: close above 90 → wick sweep
+        )
+        r = _compute(df)
+        assert r.iloc[180]["london_low_sweep"] == True
+        assert r.iloc[181]["london_low_sweep"] == True
 
 
 # ── Midpoint magnet ───────────────────────────────────────────────────────────
