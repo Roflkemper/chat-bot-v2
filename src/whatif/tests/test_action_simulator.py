@@ -470,8 +470,11 @@ def test_restart_no_mutation():
 
 # ── Registry ──────────────────────────────────────────────────────────────────
 
-def test_actions_registry_has_10_entries():
-    assert len(ACTIONS) == 10
+def test_actions_registry_has_base_plus_composites():
+    # 10 base + 2 composite (A-RAISE-AND-STACK-SHORT, A-ADAPTIVE-GRID)
+    assert len(ACTIONS) >= 10
+    assert "A-RAISE-AND-STACK-SHORT" in ACTIONS
+    assert "A-ADAPTIVE-GRID" in ACTIONS
 
 
 def test_actions_registry_all_callable():
@@ -479,8 +482,34 @@ def test_actions_registry_all_callable():
         assert callable(fn), f"{name} not callable"
 
 
-def test_param_grids_all_10_actions():
+def test_param_grids_match_actions():
     assert set(PARAM_GRIDS.keys()) == set(ACTIONS.keys())
+
+
+def test_composite_raise_and_stack_short():
+    # boundary_top=82_000 < 82_500*1.005=82_912 → raise will increase it
+    snap = _snap(boundary_top=82_000, feature_row={"current_d_high": 82_500.0})
+    result = ACTIONS["A-RAISE-AND-STACK-SHORT"](snap, {"offset_pct": 0.5, "size_btc": 0.05})
+    assert result.boundary_top > snap.boundary_top
+    assert result.position_size_btc < snap.position_size_btc
+
+
+def test_composite_adaptive_grid():
+    snap = _snap()
+    result = ACTIONS["A-ADAPTIVE-GRID"](snap, {"target_factor": 0.6, "gs_factor": 0.67})
+    assert result.grid_target_pct == pytest.approx(snap.grid_target_pct * 0.6)
+    assert result.grid_step_pct == pytest.approx(snap.grid_step_pct * 0.67)
+
+
+def test_adaptive_grid_param_grid_is_cartesian():
+    grid = PARAM_GRIDS["A-ADAPTIVE-GRID"]
+    assert len(grid) == 25  # 5 × 5
+    assert all("target_factor" in p and "gs_factor" in p for p in grid)
+
+
+def test_raise_and_stack_param_grid():
+    grid = PARAM_GRIDS["A-RAISE-AND-STACK-SHORT"]
+    assert len(grid) == 12  # 4 × 3
 
 
 def test_param_grids_non_empty():

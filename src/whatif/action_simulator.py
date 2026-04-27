@@ -245,8 +245,10 @@ def action_launch_counter_long(snapshot: Snapshot, params: dict) -> Snapshot:
     fill = _fill_price(s.close, is_buy=True, slippage_pct=slippage)
 
     s.counter_long_size_btc = size
-    s.counter_long_entry = fill
-    s.counter_long_ttl_min = ttl
+    s.counter_long_entry    = fill
+    s.counter_long_ttl_min  = ttl
+    s.counter_long_tp_pct   = float(params.get("take_profit_pct", 1.0))
+    s.counter_long_stop_pct = float(params.get("stop_pct", 0.5))
     # main position unchanged
     return s
 
@@ -337,3 +339,41 @@ PARAM_GRIDS: dict[str, list[dict]] = {
         for t in [0.8, 1.0, 1.2]
     ],
 }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Composite actions (multi-step plays — applied sequentially)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def action_raise_and_stack_short(snapshot: Snapshot, params: dict) -> Snapshot:
+    """P-6 composite: raise boundary then launch stack short.
+
+    Uses offset_pct (raise) and size_btc (stack) from params.
+    """
+    s = action_raise_boundary(snapshot, params)
+    return action_launch_stack_short(s, params)
+
+
+def action_adaptive_grid(snapshot: Snapshot, params: dict) -> Snapshot:
+    """P-12 composite: tighten target_pct and grid_step simultaneously.
+
+    Uses target_factor and gs_factor from params.
+    """
+    s = action_change_target(snapshot, params)
+    return action_change_gs(s, params)
+
+
+ACTIONS["A-RAISE-AND-STACK-SHORT"] = action_raise_and_stack_short
+ACTIONS["A-ADAPTIVE-GRID"]         = action_adaptive_grid
+
+PARAM_GRIDS["A-RAISE-AND-STACK-SHORT"] = [
+    {"offset_pct": op, "size_btc": sz}
+    for op in [0.3, 0.5, 0.7, 1.0]
+    for sz in [0.05, 0.10, 0.18]
+]  # 12 combos
+
+PARAM_GRIDS["A-ADAPTIVE-GRID"] = [
+    {"target_factor": tf, "gs_factor": gf}
+    for tf in [0.4, 0.5, 0.6, 0.7, 0.8]
+    for gf in [0.5, 0.6, 0.67, 0.75, 0.85]
+]  # 25 combos
