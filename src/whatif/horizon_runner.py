@@ -135,10 +135,19 @@ def _pending_orders(
     bot_status: str,
     boundary_top: float,
     boundary_bottom: float,
+    last_in_price: float | None = None,
 ) -> list[tuple[str, float, bool]]:
-    """Return list of (order_type, level_price, is_buy) for current state."""
+    """Return list of (order_type, level_price, is_buy) for current state.
+
+    next in_level is computed from last_in_price (most recent grid IN fill price).
+    Falls back to avg_e if last_in_price is None or 0.
+    """
     if pos == 0:
         return []
+
+    # last_in_price anchor: the price level of the most recent grid IN fill.
+    # Next in_level steps one gs_pct away from it — not from avg_entry.
+    lip = last_in_price if (last_in_price is not None and last_in_price > 0) else avg_e
 
     orders = []
     if pos < 0:  # SHORT
@@ -146,7 +155,7 @@ def _pending_orders(
         orders.append(("tp", tp_level, True))   # buying back
 
         if bot_status == "running":
-            in_level = avg_e * (1 + gs_pct / 100)
+            in_level = lip * (1 + gs_pct / 100)
             if in_level <= boundary_top:
                 orders.append(("grid_in", in_level, False))  # selling more
     else:  # LONG
@@ -154,7 +163,7 @@ def _pending_orders(
         orders.append(("tp", tp_level, False))  # selling
 
         if bot_status == "running":
-            in_level = avg_e * (1 - gs_pct / 100)
+            in_level = lip * (1 - gs_pct / 100)
             if in_level >= boundary_bottom:
                 orders.append(("grid_in", in_level, True))  # buying more
 
@@ -176,9 +185,10 @@ def _process_bar_fills(
     grid_unit_btc: float,
     slippage_pct: float,
     fees_pct: float,
+    last_in_price: float | None = None,
 ) -> tuple[float, float, float, list[Fill]]:
     """Process all fills for one bar. Returns (new_pos, new_avg_e, new_realized, fills)."""
-    pending = _pending_orders(pos, avg_e, target_pct, gs_pct, bot_status, boundary_top, boundary_bottom)
+    pending = _pending_orders(pos, avg_e, target_pct, gs_pct, bot_status, boundary_top, boundary_bottom, last_in_price)
 
     # Only orders whose level is within bar range
     triggered = [
@@ -338,6 +348,9 @@ def run_horizon(
     cl_tp_pct   = snapshot.counter_long_tp_pct
     cl_stop_pct = snapshot.counter_long_stop_pct
 
+    # last_in_price: anchor for next grid IN level; 0 → fallback to avg_entry
+    last_in_price = snapshot.last_in_price if snapshot.last_in_price > 0 else avg_e
+
     bars = _load_bars_range(snapshot.symbol, snapshot.timestamp, horizon_min, features_dir)
 
     states: list[StateAtMinute] = []
@@ -364,7 +377,12 @@ def run_horizon(
             tgt_pct, gs_pct, bot_status, b_top, b_bot,
             bar_high, bar_low,
             ts, grid_unit_btc, slippage_pct, fees_maker_pct,
+            last_in_price=last_in_price,
         )
+        # Update last_in_price from any grid_in that fired this bar
+        for f in main_fills:
+            if f.order_type == "grid_in":
+                last_in_price = f.level_price
         all_fills.extend(main_fills)
 
         upnl = _unrealized(pos, avg_e, bar_close)

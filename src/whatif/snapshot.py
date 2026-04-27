@@ -45,15 +45,17 @@ POSITION_PRESETS: dict[str, dict] = {
     "short_small_drawdown": {
         "position_size_btc": -0.05,
         "avg_entry_offset_pct": -0.2,   # entry ~0.2% below close → small loss
+        "last_in_price_offset_pct": 0.1, # last IN was 0.1% above close
         "grid_target_pct": 1.0,
         "grid_step_pct": 0.5,
         "boundary_offset_top_pct": 3.0,
         "boundary_offset_bottom_pct": 5.0,
     },
-    # Typical short with drawdown — P-12 adaptive grid scenario
+    # Typical short with drawdown — P-1/P-12 scenario
     "short_large_drawdown": {
         "position_size_btc": -0.18,
         "avg_entry_offset_pct": -1.8,   # entry ~1.8% below close → ~-$300 unrealized
+        "last_in_price_offset_pct": 0.3, # last IN was 0.3% above close → next in_level = close*1.003*1.005 ≈ close*1.008
         "grid_target_pct": 1.0,
         "grid_step_pct": 0.5,
         "boundary_offset_top_pct": 5.0,
@@ -63,6 +65,7 @@ POSITION_PRESETS: dict[str, dict] = {
     "short_critical": {
         "position_size_btc": -0.60,
         "avg_entry_offset_pct": -1.0,   # entry ~1% below close → heavy loss
+        "last_in_price_offset_pct": 0.5, # last IN was 0.5% above close
         "grid_target_pct": 1.0,
         "grid_step_pct": 0.5,
         "boundary_offset_top_pct": 2.0,
@@ -102,10 +105,17 @@ class Snapshot:
     boundary_top: float = 0.0
     boundary_bottom: float = 0.0
 
+    # ── Grid state ────────────────────────────────────────────────────────────
+    # Price level of the most recent grid IN fill. Next in_level is computed
+    # as last_in_price * (1 ± gs_pct/100). 0.0 = fallback to avg_entry.
+    last_in_price: float = 0.0
+
     # ── Counter-LONG hedge (P-3) — separate from main position ──────────────
     counter_long_size_btc: float = 0.0   # 0 = no active counter-long
     counter_long_entry: float = 0.0
     counter_long_ttl_min: int = 0        # remaining TTL in minutes
+    counter_long_tp_pct: float = 1.0     # TP above entry %; 0 = disabled
+    counter_long_stop_pct: float = 0.5   # stop below entry %; 0 = disabled
 
     # ── Capital ───────────────────────────────────────────────────────────────
     capital_usd: float = _DEFAULT_CAPITAL_USD
@@ -236,6 +246,9 @@ def build_snapshot(
     top    = boundary_top    if boundary_top    is not None else close * (1 + top_offset    / 100)
     bottom = boundary_bottom if boundary_bottom is not None else close * (1 - bottom_offset / 100)
 
+    lip_offset_pct = p.get("last_in_price_offset_pct", 0.0)
+    last_in_price  = close * (1 + lip_offset_pct / 100) if lip_offset_pct != 0.0 else 0.0
+
     return Snapshot(
         timestamp=timestamp,
         symbol=symbol,
@@ -250,5 +263,6 @@ def build_snapshot(
         grid_step_pct=gs_pct,
         boundary_top=top,
         boundary_bottom=bottom,
+        last_in_price=last_in_price,
         capital_usd=capital_usd,
     )

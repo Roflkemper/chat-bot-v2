@@ -33,6 +33,10 @@ _VERSION = "v1"
 # Play registry
 # ─────────────────────────────────────────────────────────────────────────────
 
+_BTC  = ["BTCUSDT"]
+_ALL3 = ["BTCUSDT", "ETHUSDT", "XRPUSDT"]
+
+
 @dataclass
 class PlayConfig:
     play_id: str
@@ -40,33 +44,35 @@ class PlayConfig:
     action_name: str           # key in ACTIONS / PARAM_GRIDS
     param_grids: list[dict]
     preset: str                # position preset for build_snapshot
+    symbols: list[str] = None  # symbols to scan; None → use CLI --symbols or _ALL3
 
 
 PLAY_CONFIGS: dict[str, PlayConfig] = {
+    # BTC-only plays (relate to our BTC short bot)
     "P-1":  PlayConfig("P-1",  ["rally_strong", "rally_critical"],
-                       "A-RAISE-BOUNDARY",          PARAM_GRIDS["A-RAISE-BOUNDARY"],          "short_large_drawdown"),
+                       "A-RAISE-BOUNDARY",          PARAM_GRIDS["A-RAISE-BOUNDARY"],          "short_large_drawdown", _BTC),
     "P-2":  PlayConfig("P-2",  ["rally_strong"],
-                       "A-LAUNCH-STACK-SHORT",      PARAM_GRIDS["A-LAUNCH-STACK-SHORT"],      "short_large_drawdown"),
+                       "A-LAUNCH-STACK-SHORT",      PARAM_GRIDS["A-LAUNCH-STACK-SHORT"],      "short_large_drawdown", _BTC),
     "P-3":  PlayConfig("P-3",  ["rally_critical"],
-                       "A-LAUNCH-COUNTER-LONG",     PARAM_GRIDS["A-LAUNCH-COUNTER-LONG"],     "short_large_drawdown"),
+                       "A-LAUNCH-COUNTER-LONG",     PARAM_GRIDS["A-LAUNCH-COUNTER-LONG"],     "short_large_drawdown", _BTC),
     "P-4":  PlayConfig("P-4",  ["rally_strong", "rally_critical", "no_pullback_up_3h"],
-                       "A-STOP",                    PARAM_GRIDS["A-STOP"],                    "short_large_drawdown"),
+                       "A-STOP",                    PARAM_GRIDS["A-STOP"],                    "short_large_drawdown", _BTC),
     "P-5":  PlayConfig("P-5",  ["rally_strong", "rally_critical"],
-                       "A-CLOSE-PARTIAL",           PARAM_GRIDS["A-CLOSE-PARTIAL"],           "short_critical"),
+                       "A-CLOSE-PARTIAL",           PARAM_GRIDS["A-CLOSE-PARTIAL"],           "short_critical",       _BTC),
     "P-6":  PlayConfig("P-6",  ["rally_critical"],
-                       "A-RAISE-AND-STACK-SHORT",   PARAM_GRIDS["A-RAISE-AND-STACK-SHORT"],   "short_large_drawdown"),
+                       "A-RAISE-AND-STACK-SHORT",   PARAM_GRIDS["A-RAISE-AND-STACK-SHORT"],   "short_large_drawdown", _BTC),
     "P-7":  PlayConfig("P-7",  ["dump_strong", "dump_critical"],
-                       "A-LAUNCH-STACK-LONG",       PARAM_GRIDS["A-LAUNCH-STACK-LONG"],       "flat"),
+                       "A-LAUNCH-STACK-LONG",       PARAM_GRIDS["A-LAUNCH-STACK-LONG"],       "flat",                 _BTC),
     "P-8":  PlayConfig("P-8",  ["rally_critical", "dump_critical"],
-                       "A-RESTART-WITH-NEW-PARAMS", PARAM_GRIDS["A-RESTART-WITH-NEW-PARAMS"], "short_critical"),
+                       "A-RESTART-WITH-NEW-PARAMS", PARAM_GRIDS["A-RESTART-WITH-NEW-PARAMS"], "short_critical",       _BTC),
     "P-9":  PlayConfig("P-9",  ["rally_strong"],
-                       "A-CLOSE-PARTIAL",           PARAM_GRIDS["A-CLOSE-PARTIAL"],           "long_small_position"),
+                       "A-CLOSE-PARTIAL",           PARAM_GRIDS["A-CLOSE-PARTIAL"],           "long_small_position",  _BTC),
     "P-10": PlayConfig("P-10", ["rally_critical", "dump_critical"],
-                       "A-RESTART-WITH-NEW-PARAMS", PARAM_GRIDS["A-RESTART-WITH-NEW-PARAMS"], "short_large_drawdown"),
+                       "A-RESTART-WITH-NEW-PARAMS", PARAM_GRIDS["A-RESTART-WITH-NEW-PARAMS"], "short_large_drawdown", _BTC),
     "P-11": PlayConfig("P-11", ["rally_strong", "rally_critical"],
-                       "A-LAUNCH-STACK-SHORT",      PARAM_GRIDS["A-LAUNCH-STACK-SHORT"],      "short_large_drawdown"),
+                       "A-LAUNCH-STACK-SHORT",      PARAM_GRIDS["A-LAUNCH-STACK-SHORT"],      "short_large_drawdown", _BTC),
     "P-12": PlayConfig("P-12", ["rally_strong", "no_pullback_up_3h"],
-                       "A-ADAPTIVE-GRID",           PARAM_GRIDS["A-ADAPTIVE-GRID"],           "short_large_drawdown"),
+                       "A-ADAPTIVE-GRID",           PARAM_GRIDS["A-ADAPTIVE-GRID"],           "short_large_drawdown", _BTC),
 }
 
 
@@ -108,13 +114,20 @@ def load_episodes(
     features_dir: Path,
     symbols: list[str],
 ) -> pd.DataFrame:
-    """Load episodes for play: from pre-extracted parquet or feature scan fallback."""
-    if episodes_parquet is not None and episodes_parquet.exists():
-        logger.info("Loading episodes from %s", episodes_parquet)
-        return _load_episodes_from_parquet(episodes_parquet, config.episode_types)
+    """Load episodes for play: from pre-extracted parquet or feature scan fallback.
 
-    logger.info("episodes.parquet not found — scanning features_out (%s)", features_dir)
-    return _load_episodes_fallback(config.episode_types, features_dir, symbols)
+    config.symbols overrides the caller's symbols list when set.
+    """
+    effective_symbols = config.symbols if config.symbols else symbols
+
+    if episodes_parquet is not None and episodes_parquet.exists():
+        logger.info("Loading episodes from %s (symbols=%s)", episodes_parquet, effective_symbols)
+        df = _load_episodes_from_parquet(episodes_parquet, config.episode_types)
+        return df[df["symbol"].isin(effective_symbols)].reset_index(drop=True)
+
+    logger.info("episodes.parquet not found — scanning features_out (%s, symbols=%s)",
+                features_dir, effective_symbols)
+    return _load_episodes_fallback(config.episode_types, features_dir, effective_symbols)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
