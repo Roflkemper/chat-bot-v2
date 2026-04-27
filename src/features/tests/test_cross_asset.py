@@ -290,7 +290,7 @@ class TestAllDumpWithOI:
             eth_delta_1h_pct=-3.0,
             xrp_delta_1h_pct=-3.0,
         )
-        df["btc_oi_delta_1h_pct"] = 1.0  # positive OI → bonus
+        df["btc_oi_delta_pct_1h"] = 1.0  # positive OI → bonus
         r = compute(df)
         # 1.0 + 0.2 clipped to 1.0
         assert np.allclose(r["all_dump_score_with_oi"], 1.0)
@@ -302,7 +302,7 @@ class TestAllDumpWithOI:
             eth_delta_1h_pct=-3.0,
             xrp_delta_1h_pct=1.0,
         )
-        df["btc_oi_delta_1h_pct"] = 0.5  # positive
+        df["btc_oi_delta_pct_1h"] = 0.5  # positive
         r = compute(df)
         assert np.allclose(r["all_dump_score_with_oi"], 0.5 + _OI_BONUS)
 
@@ -313,12 +313,12 @@ class TestAllDumpWithOI:
             eth_delta_1h_pct=-3.0,
             xrp_delta_1h_pct=-3.0,
         )
-        df["btc_oi_delta_1h_pct"] = -1.0  # negative OI
+        df["btc_oi_delta_pct_1h"] = -1.0  # negative OI
         r = compute(df)
         assert np.allclose(r["all_dump_score_with_oi"], 1.0)  # no bonus, but already 1.0
 
     def test_fallback_equals_all_dump_when_oi_absent(self):
-        """Without btc_oi_delta_1h_pct column, with_oi = all_dump_score."""
+        """Without btc_oi_delta_pct_1h column, with_oi = all_dump_score."""
         r = compute(_base_df(5, btc_delta_1h_pct=-3.0, eth_delta_1h_pct=-3.0, xrp_delta_1h_pct=-3.0))
         assert np.allclose(r["all_dump_score_with_oi"], r["all_dump_score"])
 
@@ -329,6 +329,6 @@ class TestAllDumpWithOI:
             eth_delta_1h_pct=-5.0,
             xrp_delta_1h_pct=-5.0,
         )
-        df["btc_oi_delta_1h_pct"] = 999.0
+        df["btc_oi_delta_pct_1h"] = 999.0
         r = compute(df)
         assert (r["all_dump_score_with_oi"] <= 1.0).all()

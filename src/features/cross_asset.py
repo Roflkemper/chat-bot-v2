@@ -10,7 +10,7 @@ Required columns:
   btc_delta_1h_pct, eth_delta_1h_pct, xrp_delta_1h_pct
 
 Optional:
-  btc_oi_delta_1h_pct  (for all_dump_score_with_oi bonus)
+  btc_oi_delta_pct_1h  (for all_dump_score_with_oi bonus)
 
 Missing columns → NaN / neutral value (no crash).
 
@@ -127,8 +127,8 @@ def compute(df: pd.DataFrame) -> pd.DataFrame:
     all_dump = all_dump.where(dump_count < 3, 1.0)
     out["all_dump_score"] = all_dump
 
-    if "btc_oi_delta_1h_pct" in out.columns:
-        oi_col = out["btc_oi_delta_1h_pct"].astype(float)
+    if "btc_oi_delta_pct_1h" in out.columns:
+        oi_col = out["btc_oi_delta_pct_1h"].astype(float)
         oi_bonus = (oi_col > 0).astype(float) * _OI_BONUS
         out["all_dump_score_with_oi"] = (all_dump + oi_bonus).clip(upper=1.0)
     else:
