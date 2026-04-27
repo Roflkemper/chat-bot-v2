@@ -178,7 +178,10 @@ def _process_symbol(
         manifest.invalidate()
 
     date_strs_all = sorted({str(ts.date()) for ts in df.index})
-    dates_to_write = [d for d in date_strs_all if not manifest.is_fresh(symbol, d)]
+    dates_to_write = [
+        d for d in date_strs_all
+        if not manifest.is_fresh(symbol, d, parquet_path=sym_out / f"{d}.parquet")
+    ]
 
     if not dates_to_write:
         logger.info("[%s] All partitions fresh — skipping", symbol)

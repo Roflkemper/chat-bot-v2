@@ -74,11 +74,16 @@ class Manifest:
             and self._data.get("params_hash") == self._params_hash
         )
 
-    def is_fresh(self, symbol: str, date_str: str) -> bool:
-        """Return True if partition for (symbol, date_str) is up to date."""
+    def is_fresh(self, symbol: str, date_str: str, parquet_path: "Path | None" = None) -> bool:
+        """Return True if partition for (symbol, date_str) is up to date and file exists."""
         if not self._hashes_match():
             return False
-        return date_str in self._data.get("partitions", {}).get(symbol, set())
+        in_manifest = date_str in self._data.get("partitions", {}).get(symbol, set())
+        if not in_manifest:
+            return False
+        if parquet_path is not None and not parquet_path.exists():
+            return False
+        return True
 
     def mark_done(self, symbol: str, date_str: str) -> None:
         """Record that partition (symbol, date_str) is built."""
