@@ -66,6 +66,32 @@ def _load_parquet(path: Path, ts_col: str) -> pd.DataFrame | None:
     return df
 
 
+# ── Column normalization ──────────────────────────────────────────────────────
+
+_METRICS_RENAME = {
+    "sum_open_interest_value":        "oi_value",
+    "sum_toptrader_long_short_ratio": "ls_ratio_top",
+    "count_long_short_ratio":         "ls_ratio_retail",
+}
+_FUNDING_RENAME = {
+    "last_funding_rate": "funding_rate",
+}
+
+
+def _normalize_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    """Rename raw Binance metric columns to names derivatives.py expects."""
+    df = df.rename(columns={k: v for k, v in _METRICS_RENAME.items() if k in df.columns})
+    # taker: only ratio available → synthesize buy=ratio, sell=1 (ratio math is identical)
+    if "taker_buy_volume" not in df.columns and "sum_taker_long_short_vol_ratio" in df.columns:
+        df["taker_buy_volume"]  = df["sum_taker_long_short_vol_ratio"]
+        df["taker_sell_volume"] = 1.0
+    return df
+
+
+def _normalize_funding(df: pd.DataFrame) -> pd.DataFrame:
+    return df.rename(columns={k: v for k, v in _FUNDING_RENAME.items() if k in df.columns})
+
+
 # ── Alignment ─────────────────────────────────────────────────────────────────
 
 def _align_to_1m(
@@ -168,6 +194,11 @@ def _process_symbol(
         (sym_data / "funding_8h.parquet",            "funding_time"),
         (sym_data / "_combined_fundingRate.parquet", "calc_time"),
     )
+
+    if metrics is not None:
+        metrics = _normalize_metrics(metrics)
+    if funding is not None:
+        funding = _normalize_funding(funding)
 
     df = _align_to_1m(klines, metrics, funding)
     df = _run_symbol_features(df)
