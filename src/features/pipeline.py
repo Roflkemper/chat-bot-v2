@@ -144,14 +144,30 @@ def _process_symbol(
 
     Returns {symbol: [date_str, ...]} of newly written partitions.
     """
+    def _try(*candidates: tuple[Path, str]) -> pd.DataFrame | None:
+        for path, ts_col in candidates:
+            result = _load_parquet(path, ts_col=ts_col)
+            if result is not None:
+                return result
+        return None
+
     sym_data = data_dir / symbol
-    klines  = _load_parquet(sym_data / "klines_1m.parquet",  ts_col="open_time")
+    klines = _try(
+        (sym_data / "klines_1m.parquet",           "open_time"),
+        (sym_data / "_combined_klines_1m.parquet", "open_time"),
+    )
     if klines is None:
         logger.error("No klines for %s — skipping", symbol)
         return {symbol: []}
 
-    metrics = _load_parquet(sym_data / "metrics_5m.parquet", ts_col="open_time")
-    funding = _load_parquet(sym_data / "funding_8h.parquet", ts_col="funding_time")
+    metrics = _try(
+        (sym_data / "metrics_5m.parquet",       "open_time"),
+        (sym_data / "_combined_metrics.parquet", "create_time"),
+    )
+    funding = _try(
+        (sym_data / "funding_8h.parquet",            "funding_time"),
+        (sym_data / "_combined_fundingRate.parquet", "calc_time"),
+    )
 
     df = _align_to_1m(klines, metrics, funding)
     df = _run_symbol_features(df)
