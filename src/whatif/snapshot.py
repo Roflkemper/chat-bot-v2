@@ -28,6 +28,57 @@ import pandas as pd
 
 _DEFAULT_CAPITAL_USD = 14_000.0
 
+# Pre-set position scenarios (v1).
+# Values are relative to close where applicable (avg_entry_offset_pct).
+# Use with build_snapshot(..., preset="short_large_drawdown").
+POSITION_PRESETS: dict[str, dict] = {
+    # No open position — for P-3 counter-LONG, P-7 longs-after-dump
+    "flat": {
+        "position_size_btc": 0.0,
+        "avg_entry_offset_pct": 0.0,
+        "grid_target_pct": 1.0,
+        "grid_step_pct": 0.5,
+        "boundary_offset_top_pct": 5.0,
+        "boundary_offset_bottom_pct": 5.0,
+    },
+    # Small short, minimal drawdown — routine operation
+    "short_small_drawdown": {
+        "position_size_btc": -0.05,
+        "avg_entry_offset_pct": -0.2,   # entry ~0.2% below close → small loss
+        "grid_target_pct": 1.0,
+        "grid_step_pct": 0.5,
+        "boundary_offset_top_pct": 3.0,
+        "boundary_offset_bottom_pct": 5.0,
+    },
+    # Typical short with drawdown — P-12 adaptive grid scenario
+    "short_large_drawdown": {
+        "position_size_btc": -0.18,
+        "avg_entry_offset_pct": -1.8,   # entry ~1.8% below close → ~-$300 unrealized
+        "grid_target_pct": 1.0,
+        "grid_step_pct": 0.5,
+        "boundary_offset_top_pct": 5.0,
+        "boundary_offset_bottom_pct": 8.0,
+    },
+    # Critical short, near liquidation — P-4/P-5 stop/partial-close
+    "short_critical": {
+        "position_size_btc": -0.60,
+        "avg_entry_offset_pct": -1.0,   # entry ~1% below close → heavy loss
+        "grid_target_pct": 1.0,
+        "grid_step_pct": 0.5,
+        "boundary_offset_top_pct": 2.0,
+        "boundary_offset_bottom_pct": 10.0,
+    },
+    # Small long — P-9 fix-branch / counter-LONG
+    "long_small_position": {
+        "position_size_btc": 0.05,
+        "avg_entry_offset_pct": 0.3,    # entry 0.3% above close → small unrealized loss
+        "grid_target_pct": 0.5,
+        "grid_step_pct": 0.3,
+        "boundary_offset_top_pct": 3.0,
+        "boundary_offset_bottom_pct": 3.0,
+    },
+}
+
 
 @dataclass
 class Snapshot:
@@ -120,13 +171,14 @@ def build_snapshot(
     symbol: str,
     features_dir: str | Path = "features_out",
     *,
-    position_size_btc: float = 0.0,
+    preset: str | None = None,
+    position_size_btc: float | None = None,
     avg_entry: float | None = None,
     unrealized_pnl_usd: float | None = None,
     realized_pnl_session: float = 0.0,
     bot_status: str = "running",
-    grid_target_pct: float = 1.0,
-    grid_step_pct: float = 0.5,
+    grid_target_pct: float | None = None,
+    grid_step_pct: float | None = None,
     boundary_top: float | None = None,
     boundary_bottom: float | None = None,
     capital_usd: float = _DEFAULT_CAPITAL_USD,
@@ -154,28 +206,43 @@ def build_snapshot(
     features_dir = Path(features_dir)
     close, feature_row = _load_feature_row(timestamp, symbol, features_dir)
 
-    entry = avg_entry if avg_entry is not None else close
+    # Apply preset defaults, then override with any explicitly passed kwargs
+    p: dict = {}
+    if preset is not None:
+        if preset not in POSITION_PRESETS:
+            raise ValueError(f"Unknown preset '{preset}'. Valid: {list(POSITION_PRESETS)}")
+        p = POSITION_PRESETS[preset]
+
+    pos_size = position_size_btc if position_size_btc is not None else p.get("position_size_btc", 0.0)
+    tgt_pct  = grid_target_pct   if grid_target_pct   is not None else p.get("grid_target_pct",   1.0)
+    gs_pct   = grid_step_pct     if grid_step_pct      is not None else p.get("grid_step_pct",    0.5)
+
+    offset_pct = p.get("avg_entry_offset_pct", 0.0)
+    entry = avg_entry if avg_entry is not None else close * (1 + offset_pct / 100)
+
     upnl = (
         unrealized_pnl_usd
         if unrealized_pnl_usd is not None
-        else _unrealized(position_size_btc, entry, close)
+        else _unrealized(pos_size, entry, close)
     )
 
-    top    = boundary_top    if boundary_top    is not None else close * 1.05
-    bottom = boundary_bottom if boundary_bottom is not None else close * 0.95
+    top_offset    = p.get("boundary_offset_top_pct",    5.0)
+    bottom_offset = p.get("boundary_offset_bottom_pct", 5.0)
+    top    = boundary_top    if boundary_top    is not None else close * (1 + top_offset    / 100)
+    bottom = boundary_bottom if boundary_bottom is not None else close * (1 - bottom_offset / 100)
 
     return Snapshot(
         timestamp=timestamp,
         symbol=symbol,
         close=close,
         feature_row=feature_row,
-        position_size_btc=position_size_btc,
+        position_size_btc=pos_size,
         avg_entry=entry,
         unrealized_pnl_usd=upnl,
         realized_pnl_session=realized_pnl_session,
         bot_status=bot_status,
-        grid_target_pct=grid_target_pct,
-        grid_step_pct=grid_step_pct,
+        grid_target_pct=tgt_pct,
+        grid_step_pct=gs_pct,
         boundary_top=top,
         boundary_bottom=bottom,
         capital_usd=capital_usd,

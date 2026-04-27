@@ -286,3 +286,69 @@ def test_build_snapshot_copy_then_modify():
 def test_build_snapshot_avg_entry_defaults_to_close():
     snap = build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR)
     assert snap.avg_entry == pytest.approx(snap.close)
+
+
+# ── Preset tests ──────────────────────────────────────────────────────────────
+
+@skip_no_data
+def test_preset_flat():
+    snap = build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR, preset="flat")
+    assert snap.is_flat
+    assert snap.unrealized_pnl_usd == 0.0
+
+
+@skip_no_data
+def test_preset_short_small_drawdown():
+    snap = build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR, preset="short_small_drawdown")
+    assert snap.is_short
+    assert snap.position_size_btc == pytest.approx(-0.05)
+    assert snap.unrealized_pnl_usd < 0   # entry below close → short at loss
+
+
+@skip_no_data
+def test_preset_short_large_drawdown():
+    snap = build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR, preset="short_large_drawdown")
+    assert snap.is_short
+    assert snap.position_size_btc == pytest.approx(-0.18)
+    assert snap.unrealized_pnl_usd < -100   # significant drawdown
+
+
+@skip_no_data
+def test_preset_short_critical():
+    snap = build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR, preset="short_critical")
+    assert snap.is_short
+    assert abs(snap.position_size_btc) >= 0.5
+    assert snap.unrealized_pnl_usd < -200
+
+
+@skip_no_data
+def test_preset_long_small_position():
+    snap = build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR, preset="long_small_position")
+    assert snap.is_long
+    assert snap.position_size_btc == pytest.approx(0.05)
+
+
+@skip_no_data
+def test_preset_unknown_raises():
+    with pytest.raises(ValueError, match="Unknown preset"):
+        build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR, preset="nonexistent")
+
+
+@skip_no_data
+def test_preset_override_position_size():
+    # Explicit kwarg beats preset value
+    snap = build_snapshot(
+        _KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR,
+        preset="short_large_drawdown",
+        position_size_btc=-0.30,
+    )
+    assert snap.position_size_btc == pytest.approx(-0.30)
+
+
+@skip_no_data
+def test_preset_boundaries_set():
+    for preset_name in ["flat", "short_small_drawdown", "short_large_drawdown",
+                         "short_critical", "long_small_position"]:
+        snap = build_snapshot(_KNOWN_TS, _SYMBOL, features_dir=_FEATURES_DIR, preset=preset_name)
+        assert snap.boundary_top > snap.close, f"{preset_name}: top not above close"
+        assert snap.boundary_bottom < snap.close, f"{preset_name}: bottom not below close"
