@@ -102,6 +102,11 @@ class Snapshot:
     boundary_top: float = 0.0
     boundary_bottom: float = 0.0
 
+    # ── Counter-LONG hedge (P-3) — separate from main position ──────────────
+    counter_long_size_btc: float = 0.0   # 0 = no active counter-long
+    counter_long_entry: float = 0.0
+    counter_long_ttl_min: int = 0        # remaining TTL in minutes
+
     # ── Capital ───────────────────────────────────────────────────────────────
     capital_usd: float = _DEFAULT_CAPITAL_USD
 
