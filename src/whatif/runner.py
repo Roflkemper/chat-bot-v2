@@ -158,10 +158,12 @@ def _build_episode_list(
         except Exception as exc:
             logger.warning("Skipping %s @ %s: %s", symbol, ts, exc)
             continue
+        ep_type = str(row.get("episode_type", "")) if hasattr(row, "get") else str(getattr(row, "episode_type", ""))
         episodes.append(Episode(
             snapshot=snap,
             horizon_min=horizon_min,
             features_dir=features_dir,
+            episode_type=ep_type,
         ))
     return episodes
 
@@ -238,11 +240,14 @@ def run_play(
         play_id, len(episodes), len(config.param_grids), config.action_name,
     )
 
+    date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+
     result_df = grid_search_play(
         action_name=config.action_name,
         episodes=episodes,
         param_grids=config.param_grids,
         n_workers=n_workers,
+        raw_output_path=None if dry_run else output_dir / f"{play_id}_{date_str}_raw.parquet",
     )
 
     if dry_run:
@@ -251,7 +256,6 @@ def run_play(
 
     if not result_df.empty:
         output_dir.mkdir(parents=True, exist_ok=True)
-        date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
         out_path = output_dir / f"{play_id}_{date_str}.parquet"
         result_df.to_parquet(out_path, compression="zstd", index=False)
         logger.info("%s: wrote %d rows → %s", play_id, len(result_df), out_path)

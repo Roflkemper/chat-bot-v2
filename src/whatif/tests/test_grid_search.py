@@ -37,13 +37,17 @@ def _ep() -> Episode:
     return Episode(snapshot=_snap())
 
 
-def _row(combo_id: str, params: dict, pnl=100.0, vs_baseline=50.0, dd=0.5, dur=60) -> dict:
+def _row(combo_id: str, params: dict, pnl=100.0, vs_baseline=50.0, dd=0.5, dur=60,
+         dd_vs_baseline=0.0, target_hit_count=0, volume_usd=0.0) -> dict:
     return {
         "param_combo_id":      combo_id,
         "param_values":        json.dumps(params, sort_keys=True),
         "pnl_usd":             pnl,
         "pnl_vs_baseline_usd": vs_baseline,
         "max_drawdown_pct":    dd,
+        "dd_vs_baseline_pct":  dd_vs_baseline,
+        "target_hit_count":    target_hit_count,
+        "volume_traded_usd":   volume_usd,
         "duration_min":        dur,
     }
 

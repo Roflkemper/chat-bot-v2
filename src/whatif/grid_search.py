@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 RESULT_COLUMNS = [
     "param_combo_id", "param_values", "n_episodes",
     "mean_pnl_usd", "median_pnl_usd", "p25_pnl_usd", "p75_pnl_usd",
-    "win_rate", "mean_dd_pct", "max_dd_pct", "mean_duration_min",
+    "mean_pnl_vs_baseline_usd",
+    "win_rate", "mean_dd_pct", "max_dd_pct", "mean_dd_vs_baseline_pct",
+    "mean_target_hit_pct", "mean_volume_traded_usd", "mean_duration_min",
 ]
 
 
@@ -37,6 +39,7 @@ class Episode:
     grid_unit_btc: float | None = None
     slippage_pct: float = 0.01
     fees_maker_pct: float = 0.04
+    episode_type: str = ""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -100,9 +103,14 @@ def _compute_episode(
     return {
         "param_combo_id":      combo_id,
         "param_values":        json.dumps(params, sort_keys=True),
+        "ts_start":            str(episode.snapshot.timestamp),
+        "episode_type":        episode.episode_type,
         "pnl_usd":             out.pnl_usd,
         "pnl_vs_baseline_usd": out.pnl_vs_baseline_usd,
         "max_drawdown_pct":    out.max_drawdown_pct,
+        "dd_vs_baseline_pct":  out.dd_vs_baseline_pct,
+        "target_hit_count":    out.target_hit_count,
+        "volume_traded_usd":   out.volume_traded_usd,
         "duration_min":        out.duration_min,
     }
 
@@ -127,17 +135,21 @@ def _aggregate(rows: list[dict]) -> pd.DataFrame:
     for combo_id, grp in df.groupby("param_combo_id", sort=False):
         pnl = grp["pnl_usd"]
         results.append({
-            "param_combo_id":    combo_id,
-            "param_values":      grp["param_values"].iloc[0],
-            "n_episodes":        len(grp),
-            "mean_pnl_usd":      pnl.mean(),
-            "median_pnl_usd":    pnl.median(),
-            "p25_pnl_usd":       pnl.quantile(0.25),
-            "p75_pnl_usd":       pnl.quantile(0.75),
-            "win_rate":          (grp["pnl_vs_baseline_usd"] > 0).mean(),
-            "mean_dd_pct":       grp["max_drawdown_pct"].mean(),
-            "max_dd_pct":        grp["max_drawdown_pct"].max(),
-            "mean_duration_min": grp["duration_min"].mean(),
+            "param_combo_id":            combo_id,
+            "param_values":              grp["param_values"].iloc[0],
+            "n_episodes":                len(grp),
+            "mean_pnl_usd":              pnl.mean(),
+            "median_pnl_usd":            pnl.median(),
+            "p25_pnl_usd":               pnl.quantile(0.25),
+            "p75_pnl_usd":               pnl.quantile(0.75),
+            "mean_pnl_vs_baseline_usd":  grp["pnl_vs_baseline_usd"].mean(),
+            "win_rate":                  (grp["pnl_vs_baseline_usd"] > 0).mean(),
+            "mean_dd_pct":               grp["max_drawdown_pct"].mean(),
+            "max_dd_pct":                grp["max_drawdown_pct"].max(),
+            "mean_dd_vs_baseline_pct":   grp["dd_vs_baseline_pct"].mean(),
+            "mean_target_hit_pct":       (grp["target_hit_count"] > 0).mean(),
+            "mean_volume_traded_usd":    grp["volume_traded_usd"].mean(),
+            "mean_duration_min":         grp["duration_min"].mean(),
         })
 
     return pd.DataFrame(results, columns=RESULT_COLUMNS)
@@ -152,15 +164,16 @@ def grid_search_play(
     episodes: list[Episode],
     param_grids: list[dict],
     n_workers: int = 4,
+    raw_output_path: Path | None = None,
 ) -> pd.DataFrame:
     """Run grid search: param_grids × episodes → aggregated Outcome DataFrame.
 
     Args:
-        action_name:  Key from ACTIONS registry (e.g. "A-RAISE-BOUNDARY").
-        episodes:     Market scenarios to test. Each contains a Snapshot + run config.
-        param_grids:  List of param dicts. Use PARAM_GRIDS[action_name] directly,
-                      or cartesian_grid() to build a custom search space.
-        n_workers:    Parallel ProcessPoolExecutor workers. 1 = sequential (no fork).
+        action_name:      Key from ACTIONS registry (e.g. "A-RAISE-BOUNDARY").
+        episodes:         Market scenarios to test. Each contains a Snapshot + run config.
+        param_grids:      List of param dicts.
+        n_workers:        Parallel ProcessPoolExecutor workers. 1 = sequential (no fork).
+        raw_output_path:  If set, per-episode raw rows are saved to this parquet path.
 
     Returns:
         DataFrame with one row per param_combo, aggregated over all episodes.
@@ -180,5 +193,11 @@ def grid_search_play(
     else:
         with ProcessPoolExecutor(max_workers=n_workers) as pool:
             rows = list(pool.map(_worker, tasks))
+
+    if raw_output_path is not None and rows:
+        raw_output_path = Path(raw_output_path)
+        raw_output_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(rows).to_parquet(raw_output_path, compression="zstd", index=False)
+        logger.info("Raw episodes written: %s (%d rows)", raw_output_path, len(rows))
 
     return _aggregate(rows)
