@@ -141,6 +141,16 @@ D-061: P-1 эффективен только в CONTINUED-сценарии. Бе
   Полный regression count из этого запуска не подтверждён; роста относительно
   «13 pre-existing failures» по текущему состоянию repo оценить нельзя
 
+## 2026-04-28 — TZ-042 fix tests.fixtures collection error
+
+**Фикс:** добавлены `tests/__init__.py` и `tests/fixtures/__init__.py`, чтобы импорты вида
+`from tests.fixtures...` работали в pytest.
+
+**Результат:** `RUN_TESTS.bat` проходит collection и доходит до итогового отчёта.
+
+**Regression shield status:** 12 failed / 488 passed / 1 skipped (без collection errors).
+Baseline «13 pre-existing failures» обновлён до 12 (фактическое текущее состояние).
+
 **Решение:**
 - OPPORTUNITY_MAP_v1 не пересматривать по ranking: данных для real CI пока нет
 - Следующий шаг для TZ-040: либо накопить tracker coverage на даты новых episodes,

@@ -318,6 +318,9 @@ Pine Script скачан, логика понятна. Реализуем на P
 - /portfolio в Telegram (TZ-015), 76 тестов 90% coverage
 - /market, /regime команды
 - COUNTER-LONG-AUTO с dual_alert (15/15 acceptance, dry-run)
+
+### Тесты
+- Regression shield (`RUN_TESTS.bat`) на 2026-04-28: 12 failed / 488 passed / 1 skipped (baseline=12, без collection errors)
 - BOUNDARY-EXPAND (15/15, dry-run)
 - ANTI-SPAM RSI (27/38=71% попадание)
 - ADAPTIVE-GRID (закрыт после исправлений)
