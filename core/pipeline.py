@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime, timezone
+from pathlib import Path
 
 from market_data.price_feed import get_price
 from market_data.ohlcv import get_klines
@@ -49,7 +50,11 @@ except Exception:
 NEAR_EDGE_THRESHOLD_PCT = 15.0
 HEDGE_BUFFER_USD = 293.0
 BLOCK_FLIP_CONFIRM_BARS = 3
-_regime_store = RegimeStateStore("state/regime_state.json")
+
+
+def _regime_store_for_state_dir(state_dir: str) -> RegimeStateStore:
+    # Backtests must not touch live state/; callers can inject an isolated dir.
+    return RegimeStateStore(str(Path(state_dir) / "regime_state.json"))
 
 
 def _timeframe_scale(timeframe: str) -> int:
@@ -414,7 +419,12 @@ def _build_manual_grid_blocks(snapshot: dict) -> tuple[list[str], list[str], lis
     return manual_action_lines, grid_action_lines, grid_shift_lines, liquidity_void_lines
 
 
-def build_full_snapshot(symbol="BTCUSDT", timeframe='1h', reference_time: datetime | None = None):
+def build_full_snapshot(
+    symbol="BTCUSDT",
+    timeframe='1h',
+    reference_time: datetime | None = None,
+    state_dir: str = "state",
+):
     tf = str(timeframe or '1h').lower()
     base_limit = _base_limit_for_timeframe(tf)
     candles_1h = get_klines(symbol=symbol, interval=tf, limit=base_limit)
@@ -491,9 +501,11 @@ def build_full_snapshot(symbol="BTCUSDT", timeframe='1h', reference_time: dateti
     volatility = _build_volatility_context(candles_1h, tf)
     entry_filter = build_entry_quality_context(candles=candles_1h, entry_idx=len(candles_1h) - 1, side=active_side)
 
+    _now_utc = datetime.now(timezone.utc)
     base_snapshot = {
         'symbol': symbol,
-        'timestamp': datetime.now().strftime('%H:%M'),
+        'timestamp': _now_utc.strftime('%H:%M'),
+        'ts_utc': _now_utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
         'tf': tf,
         'price': round(price, 2),
         'range_low': round(range_low, 2),
@@ -539,6 +551,33 @@ def build_full_snapshot(symbol="BTCUSDT", timeframe='1h', reference_time: dateti
         'entry_filter_reason_code': str(entry_filter.get('reason_code') or 'OK'),
         **structure_flags,
     }
+
+    # Compute delta_1h_pct and consec_1h_up/down from live candles for advisor cascade.
+    # src/features/pipeline.py writes these to parquet (batch), but live snapshot
+    # must compute them directly so cascade.evaluate() gets real-time values.
+    if len(candles_1h) >= 2:
+        c_now = float(candles_1h[-1].get('close') or 0)
+        c_prev = float(candles_1h[-2].get('close') or 0)
+        base_snapshot['delta_1h_pct'] = round((c_now - c_prev) / c_prev * 100.0, 4) if c_prev else None
+    else:
+        base_snapshot['delta_1h_pct'] = None
+
+    _consec_up = 0
+    _consec_dn = 0
+    for _bar in reversed(candles_1h[-20:]):
+        _o, _c = float(_bar.get('open') or 0), float(_bar.get('close') or 0)
+        if _c > _o:
+            if _consec_dn > 0:
+                break
+            _consec_up += 1
+        elif _c < _o:
+            if _consec_up > 0:
+                break
+            _consec_dn += 1
+        else:
+            break
+    base_snapshot['consec_1h_up'] = _consec_up
+    base_snapshot['consec_1h_down'] = _consec_dn
 
     prev_market_state = load_market_state()
     prep_state = update_flip_prep(prev_market_state, base_snapshot)
@@ -839,6 +878,7 @@ def build_full_snapshot(symbol="BTCUSDT", timeframe='1h', reference_time: dateti
     candles_1h_regime = [{**row, 'volume': float(row.get('volume', 0.0) or 0.0)} for row in get_klines(symbol=symbol, interval='1h', limit=300)]
     candles_4h_regime = [{**row, 'volume': float(row.get('volume', 0.0) or 0.0)} for row in get_klines(symbol=symbol, interval='4h', limit=100)]
     regime_ts = reference_time or datetime.now(timezone.utc)
+    regime_store = _regime_store_for_state_dir(state_dir)
     regime = classify(
         symbol=symbol,
         ts=regime_ts,
@@ -847,8 +887,8 @@ def build_full_snapshot(symbol="BTCUSDT", timeframe='1h', reference_time: dateti
         candles_1h=candles_1h_regime,
         candles_4h=candles_4h_regime,
         funding_rate=None,
-        manual_blackout_until=_regime_store.get_blackout(),
-        state_store=_regime_store,
+        manual_blackout_until=regime_store.get_blackout(),
+        state_store=regime_store,
     )
     snapshot["regime"] = {
         "primary": regime.primary_regime,

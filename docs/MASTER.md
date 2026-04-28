@@ -321,6 +321,10 @@ Pine Script скачан, логика понятна. Реализуем на P
 
 ### Тесты
 - Regression shield (`RUN_TESTS.bat`) на 2026-04-28: 12 failed / 488 passed / 1 skipped (baseline=12, без collection errors)
+- TZ-044: backtest hermetic относительно live `state/` (в т.ч. `state/regime_state.json`); детерминизм на frozen dataset восстановлен.
+
+### TZ-043
+- TZ-043 extend features_out coverage + opportunistic real validation: выполнено, но расширение ограничено сырьём OHLCV (BTC 1m до 2026-04-24). Результаты: `docs/REAL_SUMMARY_2026-04-28.md`, артефакты `whatif/features_coverage.json` и `whatif/episodes_inventory.json`.
 - BOUNDARY-EXPAND (15/15, dry-run)
 - ANTI-SPAM RSI (27/38=71% попадание)
 - ADAPTIVE-GRID (закрыт после исправлений)

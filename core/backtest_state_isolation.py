@@ -49,13 +49,16 @@ def backtest_state_isolation(
         pbl_dst = isolated_root / "personal_bot_learning.json"
         tra_dst = isolated_root / "transition_alert_state.json"
 
-        original_regime_store = getattr(pipeline, "_regime_store", None)
         original_cache_dir = pattern_memory.CACHE_DIR
         original_bms_path = _bms_module.BOT_MANAGER_STATE_FILE
         original_pbl_path = _pbl_module.PERSONAL_BOT_LEARNING_FILE
         original_tra_path = _tra_module.STATE_FILE
 
-        pipeline._regime_store = RegimeStateStore(str(regime_dst))
+        # Some older code paths used pipeline._regime_store; keep backward compatibility
+        # if the attribute exists, but prefer DI via pipeline.build_full_snapshot(state_dir=...).
+        original_regime_store = getattr(pipeline, "_regime_store", None)
+        if hasattr(pipeline, "_regime_store"):
+            pipeline._regime_store = RegimeStateStore(str(regime_dst))
         pattern_memory.CACHE_DIR = isolated_root
         _bms_module.BOT_MANAGER_STATE_FILE = str(bms_dst)
         _pbl_module.PERSONAL_BOT_LEARNING_FILE = str(pbl_dst)
@@ -63,7 +66,8 @@ def backtest_state_isolation(
         try:
             yield isolated_root
         finally:
-            pipeline._regime_store = original_regime_store
+            if hasattr(pipeline, "_regime_store"):
+                pipeline._regime_store = original_regime_store
             pattern_memory.CACHE_DIR = original_cache_dir
             _bms_module.BOT_MANAGER_STATE_FILE = original_bms_path
             _pbl_module.PERSONAL_BOT_LEARNING_FILE = original_pbl_path

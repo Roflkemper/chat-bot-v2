@@ -13,6 +13,9 @@ Multi-asset episodes builder (BTC/ETH/XRP):
 
 ## 2026-04-29 — Финал сессии
 
+### TZ-044 (backtest state isolation)
+- Backtest больше не трогает live `state/regime_state.json`: `core.pipeline.build_full_snapshot(..., state_dir=...)` + backtest передаёт temp state_dir. Добавлены тесты на неизменность hash/mtime live state и независимость двух прогонов.
+
 Закрытые TZ за день (хронологически):
 - TZ-029-A smoke нового collectors runtime — PASS
 - TZ-029-B cutover collectors на новый runtime
@@ -150,6 +153,27 @@ D-061: P-1 эффективен только в CONTINUED-сценарии. Бе
 
 **Regression shield status:** 12 failed / 488 passed / 1 skipped (без collection errors).
 Baseline «13 pre-existing failures» обновлён до 12 (фактическое текущее состояние).
+
+## 2026-04-28 — TZ-043 extend features_out coverage + opportunistic real validation
+
+**Research:**
+- Feature pipeline: `src/features/pipeline.py`, запуск: `scripts/run_features.py`
+- Episodes extractor: `src/episodes/extractor.py` (`--start/--end`)
+
+**Coverage факты:**
+- tracker_max_ts: 2026-04-28 08:08:43 UTC
+- raw OHLCV (scripts/frozen/*/klines_1m) покрывает только до 2026-04-24 23:59 UTC
+- поэтому расширение `features_out` клипается до raw_klines_max_ts, реальный period 25-28.04 недоступен без новой загрузки OHLCV
+  (зафиксировано в `whatif/features_coverage.json`)
+
+**Episodes и inventory:**
+- `whatif/episodes_inventory.py` сгенерил episodes на доступном окне tracker×features
+- `whatif/episodes_inventory.json` содержит 12 plays × 3 bots = 36 ячеек
+- n>=5 получился только для P-4 и P-12 (тип `no_pullback_up_3h`) — остальные plays требуют rally/dump, которых в этом периоде нет
+
+**Real validation:**
+- `whatif/opportunistic_validate.py` посчитал bootstrap CI95 для доступных plays (см. `docs/REAL_SUMMARY_2026-04-28.md`)
+- BTC-LONG-B/BTC-LONG-C исключены из real validation: inverse боты, позиция не в BTC (юнит-несовместимость с replay v1)
 
 **Решение:**
 - OPPORTUNITY_MAP_v1 не пересматривать по ranking: данных для real CI пока нет

@@ -178,21 +178,30 @@ def _coerce_reference_time(candle: Dict[str, Any]) -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _build_snapshot_compat(symbol: str, timeframe: str, reference_time: datetime | None = None) -> Dict[str, Any]:
-    try:
-        return pipeline.build_full_snapshot(symbol, timeframe=timeframe, reference_time=reference_time)
-    except TypeError as exc:
-        message = str(exc)
-        if 'reference_time' in message:
-            try:
-                return pipeline.build_full_snapshot(symbol, timeframe=timeframe)
-            except TypeError as inner_exc:
-                if 'timeframe' not in str(inner_exc):
-                    raise
-                return pipeline.build_full_snapshot(symbol)
-        if 'timeframe' not in message:
-            raise
-        return pipeline.build_full_snapshot(symbol)
+def _build_snapshot_compat(
+    symbol: str,
+    timeframe: str,
+    reference_time: datetime | None = None,
+    state_dir: str | None = None,
+) -> Dict[str, Any]:
+    attempts: list[dict] = []
+    if state_dir is not None:
+        attempts.append({"timeframe": timeframe, "reference_time": reference_time, "state_dir": state_dir})
+        attempts.append({"timeframe": timeframe, "state_dir": state_dir})
+        attempts.append({"state_dir": state_dir})
+    attempts.append({"timeframe": timeframe, "reference_time": reference_time})
+    attempts.append({"timeframe": timeframe})
+    attempts.append({})
+
+    last_error: TypeError | None = None
+    for kwargs in attempts:
+        try:
+            return pipeline.build_full_snapshot(symbol, **kwargs)
+        except TypeError as exc:
+            last_error = exc
+            continue
+    assert last_error is not None
+    raise last_error
 
 def _side_multiplier(side: str) -> float:
     return 1.0 if str(side).upper() == 'LONG' else -1.0
@@ -819,12 +828,17 @@ def run_backtest_from_candles(
     entry_filter_lock_until = -1
 
     last_index_for_entry = max(0, len(candles) - horizon_bars - 1)
-    with backtest_state_isolation():
+    with backtest_state_isolation() as isolated_state_dir:
         for i in range(effective_min_window, len(candles)):
             window = candles[max(0, i - effective_max_window + 1):i + 1]
             reference_time = _coerce_reference_time(window[-1])
             with _patched_pipeline(window, state_box, timeframe=timeframe):
-                snapshot = _build_snapshot_compat(symbol, timeframe, reference_time=reference_time)
+                snapshot = _build_snapshot_compat(
+                    symbol,
+                    timeframe,
+                    reference_time=reference_time,
+                    state_dir=str(isolated_state_dir),
+                )
 
             action = _norm_label(snapshot.get('action') or 'WAIT')
             side = _primary_side(snapshot)
