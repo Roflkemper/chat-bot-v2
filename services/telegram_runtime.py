@@ -277,8 +277,32 @@ class MarketAlertWorker(threading.Thread):
             self._stop_event.wait(sleep_for)
 
 
+def _load_anti_spam_cfg() -> dict:
+    """Load anti_spam section from config/anti_spam.yaml. Returns defaults on error."""
+    cfg_path = Path(__file__).resolve().parents[1] / "config" / "anti_spam.yaml"
+    defaults = {
+        "enabled": True,
+        "cooldowns_sec": {"RSI_EXTREME": 3600, "LEVEL_BREAK": 1800},
+        "log_deduped": True,
+    }
+    if not cfg_path.exists():
+        return defaults
+    try:
+        import yaml
+        raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+        return raw.get("anti_spam", defaults)
+    except Exception:
+        logger.exception("anti_spam.cfg_load_failed")
+        return defaults
+
+
 class SignalAlertWorker(threading.Thread):
-    """Polls signals.csv and sends new signals to Telegram."""
+    """Polls signals.csv and sends new signals to Telegram.
+
+    Anti-spam deduplication: RSI_EXTREME and LEVEL_BREAK are deduplicated by
+    (signal_type, key_fields) within a configurable cooldown window.
+    LIQ_CASCADE is never deduplicated here (handled by counter_long_manager).
+    """
 
     _PREFIXES = {
         "LIQ_CASCADE": "⚠️ LIQ_CASCADE",
@@ -302,8 +326,64 @@ class SignalAlertWorker(threading.Thread):
         self._stop_event = threading.Event()
         self._last_ts: str = ""
 
+        # Anti-spam state
+        _cfg = _load_anti_spam_cfg()
+        self._spam_enabled: bool = bool(_cfg.get("enabled", True))
+        self._cooldowns: dict[str, int] = dict(_cfg.get("cooldowns_sec", {}))
+        self._log_deduped: bool = bool(_cfg.get("log_deduped", True))
+        self._last_sent: dict[str, float] = {}  # dedup_key → epoch
+
     def stop(self) -> None:
         self._stop_event.set()
+
+    # ------------------------------------------------------------------ dedup
+
+    @staticmethod
+    def _dedup_key(row: dict) -> str | None:
+        """Compute dedup key for a signal row. Returns None to skip dedup."""
+        sig = row.get("signal_type", "")
+        if sig == "LIQ_CASCADE":
+            return None  # handled by counter_long_manager
+        try:
+            details = json.loads(row.get("details_json", "{}") or "{}")
+        except Exception:
+            return None
+        if sig == "RSI_EXTREME":
+            tf = details.get("timeframe", "")
+            cond = details.get("condition", "")
+            rsi = details.get("rsi", 0)
+            return f"RSI_EXTREME|{tf}|{cond}|{round(float(rsi))}"
+        if sig == "LEVEL_BREAK":
+            level = details.get("level", 0)
+            direction = details.get("direction", "")
+            return f"LEVEL_BREAK|{round(float(level))}|{direction}"
+        return None
+
+    def _should_send(self, row: dict) -> bool:
+        """Return True if signal should be sent, False if deduplicated."""
+        if not self._spam_enabled:
+            return True
+        key = self._dedup_key(row)
+        if key is None:
+            return True
+        sig = row.get("signal_type", "")
+        cooldown = self._cooldowns.get(sig, 0)
+        if cooldown <= 0:
+            return True
+        now = time.time()
+        last = self._last_sent.get(key, 0.0)
+        if now - last < cooldown:
+            if self._log_deduped:
+                last_ts = time.strftime("%H:%M:%S", time.gmtime(last))
+                logger.info(
+                    "signal_alert.deduped key=%s last_sent=%s ago=%.0fmin",
+                    key, last_ts, (now - last) / 60,
+                )
+            return False
+        self._last_sent[key] = now
+        return True
+
+    # ------------------------------------------------------------------ helpers
 
     def _read_new_signals(self) -> list[dict]:
         if not self.signals_csv.exists():
@@ -344,6 +424,8 @@ class SignalAlertWorker(threading.Thread):
                 if new_signals:
                     self._last_ts = max(s.get("ts_utc", "") for s in new_signals)
                     for row in new_signals:
+                        if not self._should_send(row):
+                            continue
                         text = self._format_signal(row)
                         for chat_id in self.chat_ids:
                             try:
@@ -483,6 +565,119 @@ class TelegramBotApp:
                 self.bot.send_message(chat_id, f'✅ {alert}.{level} = {value}')
             else:
                 self.bot.send_message(chat_id, f'❌ Неизвестный алерт/уровень: {alert}/{level}')
+
+        @self.bot.message_handler(commands=['boundary_status'])
+        def handle_boundary_status(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.boundary_expand_manager import BoundaryExpandManager
+            self.bot.send_message(chat_id, BoundaryExpandManager.instance().status_text())
+
+        @self.bot.message_handler(commands=['boundary_off'])
+        def handle_boundary_off(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.boundary_expand_manager import BoundaryExpandManager
+            BoundaryExpandManager.instance().set_enabled(False)
+            self.bot.send_message(chat_id, '⏸ Boundary expand отключён.')
+
+        @self.bot.message_handler(commands=['boundary_on'])
+        def handle_boundary_on(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.boundary_expand_manager import BoundaryExpandManager
+            BoundaryExpandManager.instance().set_enabled(True)
+            self.bot.send_message(chat_id, '✅ Boundary expand включён.')
+
+        @self.bot.message_handler(commands=['grid_status'])
+        def handle_grid_status(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.adaptive_grid_manager import AdaptiveGridManager
+            self.bot.send_message(chat_id, AdaptiveGridManager.instance().status_text())
+
+        @self.bot.message_handler(commands=['grid_off'])
+        def handle_grid_off(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.adaptive_grid_manager import AdaptiveGridManager
+            AdaptiveGridManager.instance().set_enabled(False)
+            self.bot.send_message(chat_id, '⏸ Adaptive grid отключён.')
+
+        @self.bot.message_handler(commands=['grid_on'])
+        def handle_grid_on(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            from services.adaptive_grid_manager import AdaptiveGridManager
+            AdaptiveGridManager.instance().set_enabled(True)
+            self.bot.send_message(chat_id, '✅ Adaptive grid включён.')
+
+        # ── TZ-028: /logs and /restart ────────────────────────────────────────
+
+        @self.bot.message_handler(commands=['logs'])
+        def handle_logs(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            parts = str(message.text or '').strip().split()
+            component = parts[1] if len(parts) > 1 else 'all'
+            try:
+                from src.supervisor.process_config import ALL_COMPONENTS, log_path
+                from src.utils.logging_config import CURRENT_DIR
+                names = ALL_COMPONENTS if component == 'all' else [component]
+                out_parts = []
+                for name in names:
+                    lp = log_path(name) if name in ALL_COMPONENTS else CURRENT_DIR / f'{name}.log'
+                    if not lp.exists():
+                        out_parts.append(f'[{name}] нет лога')
+                        continue
+                    lines = lp.read_text(encoding='utf-8', errors='replace').splitlines()
+                    warn_lines = [l for l in lines if ' WARNING ' in l or ' ERROR ' in l or ' CRITICAL ' in l]
+                    tail = warn_lines[-20:] if warn_lines else lines[-5:]
+                    out_parts.append(f'[{name}]\n' + '\n'.join(tail))
+                self.bot.send_message(chat_id, '\n\n'.join(out_parts)[:3800])
+            except Exception as exc:
+                self.bot.send_message(chat_id, f'Ошибка: {exc}')
+
+        @self.bot.message_handler(commands=['restart'])
+        def handle_restart(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            parts = str(message.text or '').strip().split()
+            if len(parts) < 2:
+                self.bot.send_message(chat_id, 'Формат: /restart <component>\nКомпоненты: app_runner, tracker, collectors')
+                return
+            component = parts[1]
+            try:
+                from src.supervisor.process_config import ALL_COMPONENTS, pid_path
+                from src.supervisor.daemon import DAEMON_PID_PATH, _pid_alive, _read_pid
+                import os, signal as _signal
+                if component not in ALL_COMPONENTS:
+                    self.bot.send_message(chat_id, f'Неизвестный компонент: {component}')
+                    return
+                pid = _read_pid(pid_path(component))
+                if pid and _pid_alive(pid):
+                    os.kill(pid, _signal.SIGTERM)
+                    self.bot.send_message(chat_id, f'♻️ {component} (PID={pid}) — отправлен SIGTERM. Supervisor перезапустит через 30s.')
+                else:
+                    self.bot.send_message(chat_id, f'⚠️ {component} не запущен (PID файл пуст или процесс мёртв). Supervisor перезапустит.')
+            except Exception as exc:
+                self.bot.send_message(chat_id, f'Ошибка: {exc}')
 
         @self.bot.message_handler(func=lambda m: True, content_types=['text'])
         def handle_text(message) -> None:

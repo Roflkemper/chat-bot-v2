@@ -206,6 +206,22 @@ def build_health_status_text() -> str:
     else:
         lines.append('Проблем чтения state/journal не найдено.')
 
+    # ── Processes block (TZ-028) ──────────────────────────────────────────────
+    try:
+        from src.supervisor.daemon import get_status_rows
+        proc_rows = get_status_rows()
+        lines += ['', 'PROCESSES:']
+        icons = {'OK': '✅', 'STALE': '⚠️', 'DEAD': '❌'}
+        for row in proc_rows:
+            icon = icons.get(str(row.get('health', '')), '❓')
+            pid  = row.get('pid', '—')
+            ll   = row.get('last_log', '—')
+            name = row.get('component', '?')
+            h    = row.get('health', '?')
+            lines.append(f"• {name:<12} {icon} PID={pid} last={ll}")
+    except Exception:
+        pass
+
     return '\n'.join(lines)
 
 
