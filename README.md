@@ -1,30 +1,53 @@
 # Grid Orchestrator
 
-Grid Orchestrator is a trading operations project for managing GinArea-style grid bots and their supporting market analysis workflow. The workspace contains the Telegram runtime, backtest tooling, frozen datasets, and orchestration state used to evaluate and operate the strategy stack.
+Рабочий workspace: `C:\bot7`.
 
-TZ-011 fixes canonical backtest isolation and prepares the workspace for a future git migration by separating immutable baseline state from live mutable state.
+Проект управляет сеточными ботами GinArea на BitMEX и связанным analysis/backtest контуром. Текущий production runtime: `app_runner.py` (Unified Runtime: Telegram polling + OrchestratorLoop в одном процессе).
 
-## Quick Start
+## Главное
 
-1. Create and activate a local virtual environment.
-2. Install dependencies with `pip install -r requirements.txt`.
-3. Configure your local secrets outside the repo through `.env` or `bot_local_config.json`.
-4. Start the unified runtime with `RUN_APP.bat`.
+- Актуальный архитектурный контекст: `docs/MASTER.md`
+- Каталог playbook-приёмов: `docs/PLAYBOOK.md`
+- Журнал сессий: `docs/SESSION_LOG.md`
+- Reference по механике GinArea: `docs/GINAREA_MECHANICS.md`
+
+## Текущее состояние
+
+- `TZ-018` closed
+- `TZ-019` closed
+- `TZ-020 cleanup` partially done
+- PLAYBOOK содержит 12 plays
+- Валидатор: `12 OK / 0 errors`
+
+Проверка:
+
+```powershell
+.venv\Scripts\python.exe -m src.playbook.cli validate
+```
 
 ## Tests
 
-- Run the regression suite with `RUN_TESTS.bat`.
-- After TZ-011, the suite is expected to pass with the new baseline tests included.
+```powershell
+RUN_TESTS.bat
+```
 
-## Baseline
+Важно:
 
-- Canonical baseline documentation lives in `BASELINE.md`.
-- Immutable baseline state files live in `state/baseline/*.json`.
-- Live mutable files in `state/*.json` are intentionally ignored by `.gitignore`.
-- Pattern memory CSV files in `state/` remain committed reference data.
+## frozen/ — исторические данные
 
-## Architecture
+| Файл | Описание | Размер |
+|------|----------|--------|
+| `frozen/labels/episodes.parquet` | BTC+ETH+XRP эпизоды (7401 штук) | ~214KB |
+| `frozen/ETHUSDT_1m.parquet` | ETH USDT 1m klines, 366 дней | ~11MB |
+| `frozen/XRPUSDT_1m.parquet` | XRP USDT 1m klines, 366 дней | ~8.6MB |
+| `frozen/_metadata.json` | метаданные: источники, даты, кол-во баров | |
+| `backtests/frozen/BTCUSDT_1m_2y.csv` | BTC 1m, 2 года (источник для BTC эпизодов) | 87MB |
 
-- Runtime and orchestration docs live under `docs/`.
-- Baseline and determinism behavior are documented in `BASELINE.md`.
-- TZ-specific acceptance and design notes remain in the root `TZ-*.md` files and companion docs.
+Пересборка эпизодов: `python -m src.whatif.episodes_builder --symbols BTC,ETH,XRP`
+
+---
+
+- Не писать из тестов и бэктеста в live state `state/*.json`
+- Frozen baseline в `state/baseline/*.json` не трогать без явного ТЗ
+- Старый reference workspace с backtest/report артефактами: `C:\Users\Kemper\Documents\Codex\2026-04-20-new-chat`
+- При сверке использовать прежде всего `backtests/`, `reports/`, `data/`, `drafts/` из reference workspace

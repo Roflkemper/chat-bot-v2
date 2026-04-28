@@ -1,5 +1,16 @@
 # SESSION LOG
 
+## TZ-047 results 2026-04-28
+
+Multi-asset episodes builder (BTC/ETH/XRP):
+- Загружено: ETHUSDT_1m.parquet (11MB), XRPUSDT_1m.parquet (8.6MB), 366 дней
+- Новый episodes.parquet: 7401 эпизодов (было 184 BTC profit_lock_opportunity)
+- Распределение: BTC=1531, ETH=2878, XRP=2992
+- BTC regression check: rally_strong=157 [50-200] PASS, rally_critical=42 [5-80] PASS
+- Новые файлы: src/whatif/episodes_builder.py, src/whatif/binance_klines_downloader.py
+- Отчёт: whatif_results/EPISODES_MULTIASSET_2026-04-28.md
+- Статус: CLOSED
+
 ## 2026-04-29 — Финал сессии
 
 Закрытые TZ за день (хронологически):

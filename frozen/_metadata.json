@@ -1,0 +1,61 @@
+{
+  "build_date": "2026-04-28T21:12:47Z",
+  "days_back": 366,
+  "episode_types": [
+    "rally_strong",
+    "rally_critical",
+    "dump_strong",
+    "dump_critical",
+    "no_pullback_up_3h",
+    "no_pullback_down_3h"
+  ],
+  "symbols": {
+    "BTCUSDT": {
+      "source": "C:\\bot7\\backtests\\frozen\\BTCUSDT_1m_2y.csv",
+      "bars": 521318,
+      "ts_start": "2025-04-27",
+      "ts_end": "2026-04-24",
+      "episodes": {
+        "dump_critical": 51,
+        "dump_strong": 225,
+        "no_pullback_down_3h": 524,
+        "no_pullback_up_3h": 532,
+        "rally_critical": 42,
+        "rally_strong": 157
+      }
+    },
+    "ETHUSDT": {
+      "source": "C:\\bot7\\frozen\\ETHUSDT_1m.parquet",
+      "bars": 527042,
+      "ts_start": "2025-04-27",
+      "ts_end": "2026-04-28",
+      "episodes": {
+        "dump_critical": 206,
+        "dump_strong": 741,
+        "no_pullback_down_3h": 519,
+        "no_pullback_up_3h": 559,
+        "rally_critical": 205,
+        "rally_strong": 648
+      }
+    },
+    "XRPUSDT": {
+      "source": "C:\\bot7\\frozen\\XRPUSDT_1m.parquet",
+      "bars": 527041,
+      "ts_start": "2025-04-27",
+      "ts_end": "2026-04-28",
+      "episodes": {
+        "dump_critical": 207,
+        "dump_strong": 746,
+        "no_pullback_down_3h": 566,
+        "no_pullback_up_3h": 545,
+        "rally_critical": 223,
+        "rally_strong": 705
+      }
+    }
+  },
+  "regression": {
+    "btc_before": 184,
+    "btc_after": 1531,
+    "pass": true
+  }
+}
