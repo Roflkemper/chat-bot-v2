@@ -368,6 +368,7 @@ Pine Script скачан, логика понятна. Реализуем на P
 
 **Codex очередь:**
 1. TZ-040 real bot snapshots в What-If (implemented, data-blocked)
+2. TZ-041 regenerate episodes on tracker window (blocked by missing features coverage after 2026-04-24)
 
 **Backlog:**
 - TZ-025 — alert noise fix

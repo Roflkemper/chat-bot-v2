@@ -124,6 +124,8 @@ schedule_outcome_check(1h, 4h, 24h, advisor_outcomes.jsonl)
    Статус TZ-040 на 2026-04-28: replay-слой реализован, но для P-1/P-2/P-6/P-7
    в текущем workspace overlap с episode windows отсутствует, поэтому пункт не
    снят и ranking не обновлялся.
+   TZ-041 (2026-04-28): попытка перегенерить episodes на окне tracker упёрлась в отсутствие
+   coverage `features_out` после 2026-04-24 и в 0 эпизодов rally/dump на доступном окне.
 5. Macro context (SPX, DXY, gold) — нет коллектора
 6. Margin / liquidation risk dynamics — синтетические presets не моделируют реальные DD траектории
 7. P-3 (counter-LONG) — n=1, нет real-time liq для бэктеста

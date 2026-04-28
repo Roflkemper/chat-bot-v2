@@ -145,6 +145,23 @@ D-061: P-1 эффективен только в CONTINUED-сценарии. Бе
 - OPPORTUNITY_MAP_v1 не пересматривать по ranking: данных для real CI пока нет
 - Следующий шаг для TZ-040: либо накопить tracker coverage на даты новых episodes,
   либо пересобрать episodes на окне 2026-04-23+ и повторить real replay
+
+## 2026-04-28 — TZ-041 regenerate episodes on tracker window (blocked)
+
+**Цель:** перегенерить episodes на окне tracker coverage и пересчитать real CI95 для P-6 vs P-7.
+
+**Факт:** `features_out/BTCUSDT` в этом workspace покрывает максимум 2026-04-24, поэтому окно
+tracker клипается до 2026-04-24 23:00 UTC. На этом окне генератор episodes (`src/episodes/extractor.py`)
+не нашёл ни одного эпизода типов rally/dump (`0 rows`), поэтому real-replay и CI95 на real data
+не пересчитаны.
+
+**Артефакты:**
+- `whatif/episodes_window.json`
+- `whatif/episodes_archive/pre_tz041/episodes_*.parquet` (архив старого episodes)
+- `docs/REAL_SUMMARY_2026-04-28.md`
+
+**Следующий шаг:** расширить coverage `features_out` на 2026-04-25..2026-04-28 (или позже),
+после чего повторить TZ-041 и получить n>=5 эпизодов на cell.
 - ✅ §12 Шаг 6
 
 **Сводка SUMMARY 2026-04-27:**
