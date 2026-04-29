@@ -24,6 +24,17 @@
 
 ---
 
+## Поток B — новые (разблокируют RECONCILE-01)
+
+| ID | Задача | Кто | Время | Trader-first | Блокер | Статус |
+|---|---|---|---|---|---|---|
+| TZ-ADD-BOT-PARAMS-TO-STATE | Добавить machine-readable params в state_latest.json | Code | 2h | (а) стратегически | — | ⬜ OPEN |
+| TZ-RECONCILE-01 | Backtest vs real reconciliation (TEST_1/TEST_2) | Code | 3h | (а) стратегически | BLOCKER-1 + BLOCKER-2 | 🔒 STOPPED |
+
+> RECONCILE-01 stopped: config={} для всех ботов + OHLCV gap Apr25–28. См. [RECONCILE_01_2026-04-29_1658.md](RECONCILE_01_2026-04-29_1658.md)
+
+---
+
 ## Перед сном
 
 | ID | Задача | Кто | Время | Trader-first | Блокер | Статус |
