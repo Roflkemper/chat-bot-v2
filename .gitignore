@@ -85,3 +85,6 @@ market_data/liquidations_historical/
 # TZ-PROJECT-MEMORY-DEFENSE: project map (generated, not committed)
 docs/STATE/project_map.json
 docs/STATE/PROJECT_MAP.md
+
+# TZ-CONFLICTS-TRIAGE: machine-readable triage (generated, not committed)
+docs/STATE/conflicts_triage_*.json
