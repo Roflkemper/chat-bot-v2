@@ -1,5 +1,19 @@
 # SESSION LOG
 
+## TZ-048 — Collectors memory leak fix: ParquetWriter rotation (2026-04-29)
+
+**Root cause:** `pq.ParquetWriter` открыт 24 ч (до midnight rotation), накапливает C++
+метаданные row groups линейно. 8 активных буферов × 13-24 MB/час = утечка подтверждена.
+
+**Фикс:** threshold-based rotation в `collectors/storage.py`: `WRITER_MAX_ROWS=100k`,
+`WRITER_MAX_BYTES=50MB`, `WRITER_MAX_AGE_S=1800s` (30 мин). После достижения любого
+порога — `writer.close()`, путь инкрементируется (`{date}_N.parquet`), новый writer
+открывается при следующем flush. Midnight rotation остаётся как safety net.
+
+**Dev smoke:** 21 ротированных файл за 90s с WRITER_MAX_AGE_S=10s — механизм подтверждён.
+**5 новых тестов** (test_collectors_storage_rotation.py): все green.
+**Production rollout:** не выполнен — решение оператора (SIGTERM PID=5136).
+
 ## TZ-049 — Recover collectors/ from dangling git trees (2026-04-29)
 
 **Проблема:** `collectors/` пакет существовал только как untracked директория в `C:\bot7`.

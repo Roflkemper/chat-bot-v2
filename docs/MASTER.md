@@ -364,6 +364,7 @@ Pine Script скачан, логика понятна. Реализуем на P
 - TZ-045: ✅ DONE 2026-04-29
 - TZ-046: ✅ DONE 2026-04-29
 - TZ-047: ✅ DONE 2026-04-28 (multi-asset episodes BTC+ETH+XRP, 7401 эпизодов)
+- TZ-048: ✅ DONE 2026-04-29 (collectors ParquetWriter rotation; фикс готов, prod rollout — решение оператора; см. _recovery/SMOKE_TZ048.md)
 - TZ-049: ✅ DONE 2026-04-29 (recover collectors/ from dangling git trees; см. _recovery/README.md)
 - TZ-DEBT-07: ✅ DONE 2026-04-29 (закрыт через TZ-045)
 

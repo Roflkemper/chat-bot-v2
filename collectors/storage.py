@@ -19,6 +19,9 @@ from collectors.config import (
     PARQUET_COMPRESSION,
     PARQUET_COMPRESSION_LEVEL,
     PARQUET_ROW_GROUP_SIZE,
+    WRITER_MAX_AGE_S,
+    WRITER_MAX_BYTES,
+    WRITER_MAX_ROWS,
 )
 
 log = logging.getLogger(__name__)
@@ -85,9 +88,14 @@ def _parquet_path(exchange: str, symbol: str, datatype: str, day: str) -> Path:
 class ParquetBuffer:
     """Thread-safe (asyncio) buffer for a single (exchange, symbol, datatype) stream.
 
-    Uses a persistent ParquetWriter per day to append row groups without ever
-    reading the existing file back into memory.  The previous approach read the
-    full file on every flush → O(n²) memory growth (TZ-046 root cause).
+    Uses a streaming ParquetWriter that rotates by row count, file size, or age
+    (WRITER_MAX_ROWS / WRITER_MAX_BYTES / WRITER_MAX_AGE_S).  Rotation bounds
+    PyArrow's C++ heap: keeping a writer open for hours causes linear accumulation
+    of row group metadata (statistics, offsets) that is only released on close()
+    (TZ-048 root cause).  Calendar midnight rotation alone is insufficient.
+
+    The previous approach (TZ-046 root cause) read the full file on every flush
+    → O(n²) memory growth; that was fixed before this class was introduced.
     """
 
     def __init__(self, exchange: str, symbol: str, datatype: str) -> None:
@@ -100,6 +108,8 @@ class ParquetBuffer:
         self._current_day = _utc_day()
         self._path = _parquet_path(exchange, symbol, datatype, self._current_day)
         self._writer: pq.ParquetWriter | None = None
+        self._rows_written: int = 0
+        self._writer_opened_at: float = 0.0
 
     # ── Writer lifecycle ──────────────────────────────────────────────────────
 
@@ -110,6 +120,19 @@ class ParquetBuffer:
             compression=PARQUET_COMPRESSION,
             compression_level=PARQUET_COMPRESSION_LEVEL,
         )
+
+    def _should_rotate(self) -> bool:
+        """True when any rotation threshold is exceeded."""
+        if self._rows_written >= WRITER_MAX_ROWS:
+            return True
+        if time.monotonic() - self._writer_opened_at >= WRITER_MAX_AGE_S:
+            return True
+        try:
+            if self._path.stat().st_size >= WRITER_MAX_BYTES:
+                return True
+        except OSError:
+            pass
+        return False
 
     def _close_writer(self) -> None:
         if self._writer is not None:
@@ -163,17 +186,34 @@ class ParquetBuffer:
             table = pa.Table.from_pylist(rows, schema=self._schema)
             if self._writer is None:
                 self._writer = self._open_writer()
+                self._rows_written = 0
+                self._writer_opened_at = time.monotonic()
             self._writer.write_table(table, row_group_size=PARQUET_ROW_GROUP_SIZE)
+            self._rows_written += len(rows)
             log.debug(
                 "flushed %d rows → %s/%s/%s %s",
                 len(rows), self.datatype, self.exchange, self.symbol, self._path.name,
             )
+            if self._should_rotate():
+                log.debug(
+                    "rotating writer %s/%s/%s after %d rows",
+                    self.datatype, self.exchange, self.symbol, self._rows_written,
+                )
+                self._close_writer()
+                self._rows_written = 0
+                self._writer_opened_at = 0.0
+                self._path = _parquet_path(
+                    self.exchange, self.symbol, self.datatype, self._current_day
+                )
         except Exception:
             log.exception(
                 "flush error for %s/%s/%s — %d rows dropped",
                 self.datatype, self.exchange, self.symbol, len(rows),
             )
             self._close_writer()  # reset on error so next flush opens fresh
+            self._path = _parquet_path(
+                self.exchange, self.symbol, self.datatype, self._current_day
+            )
 
 
 def _utc_day() -> str:

@@ -43,6 +43,12 @@ PARQUET_COMPRESSION = "zstd"
 PARQUET_COMPRESSION_LEVEL = 3
 PARQUET_ROW_GROUP_SIZE = 50_000
 
+# Writer rotation — prevents linear C++ heap growth from PyArrow row group metadata
+# accumulation when a ParquetWriter is kept open for hours (TZ-048 root cause).
+WRITER_MAX_ROWS: int = 100_000      # rows written before forced rotation
+WRITER_MAX_BYTES: int = 50 * 1024 * 1024  # 50 MB file size before forced rotation
+WRITER_MAX_AGE_S: float = 30 * 60.0       # 30 min before forced rotation
+
 # BitMEX inverse contracts — only XBTUSD for now
 BITMEX_SYMBOL_MAP: dict[str, str] = {
     "XBTUSD": "BTCUSDT",
