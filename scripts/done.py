@@ -6,11 +6,16 @@ Usage (from Claude or manually):
 """
 from __future__ import annotations
 
+import io
 import sys
 import urllib.request
 import urllib.parse
 import urllib.error
 from pathlib import Path
+
+# Windows terminal may use CP1251/CP866 — force UTF-8 output
+if sys.stdout.encoding and sys.stdout.encoding.lower().replace("-", "") not in ("utf8", "utf8bom"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))

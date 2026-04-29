@@ -31,3 +31,22 @@ Related TZ: TZ-059
 **Prevention rule:** `git init` → немедленно `git commit --allow-empty -m "init"` на main, затем работа только через feature/* → merge → main. Никогда не работать месяцами на feature/* без trunk.
 
 **Related TZ:** TZ-065
+
+---
+
+## INC-009: Encoding mojibake in done.py terminal output (2026-04-29)
+
+**Symptom:** done.py вывел кириллицу как ? в терминале при печати статуса TZ-065. Первоначально интерпретировано как повреждённый файл.
+
+**Root cause:** Windows terminal использует CP1251/CP866. Python stdout на Windows по умолчанию использует locale.getpreferredencoding() (CP1251 на RU-локали). UTF-8 строки в print() → mojibake в терминале.
+
+**Note:** Сам файл docs/HANDOFF_2026-04-29_evening.md был в корректном UTF-8. Проблема была исключительно в терминальном выводе.
+
+**Fix:** done.py: sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace') на старте.
+
+**Prevention:**
+1. Mojibake в терминале ≠ поврежденный файл. Сначала проверить байты файла.
+2. Skill encoding_safety — явный UTF-8 во всех write-операциях.
+3. Никогда не перекодировать файл без диагностики байт первым шагом.
+
+**Related TZ:** TZ-066

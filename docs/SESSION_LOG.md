@@ -784,3 +784,19 @@ Module 5 derivatives.py от Code (в работе)
 **Skill:** regression_baseline_keeper применён — RUN_TESTS перед финальным коммитом.
 
 ---
+
+## 2026-04-29 (ночь) — TZ-066: fix HANDOFF encoding audit
+
+**Диагноз:** docs/HANDOFF_2026-04-29_evening.md был УЖЕ в корректном UTF-8. Mojibake наблюдался только в консольном выводе done.py (Windows terminal CP1251 vs UTF-8 строки), не в самом файле.
+
+**Выполнено:**
+- Аудит 9 критических документов: все [OK] UTF-8 без BOM, кириллица корректна
+- Фикс done.py: явное выставление sys.stdout в UTF-8 (io.TextIOWrapper)
+- Создан .claude/skills/encoding_safety.md (10-й skill)
+- PROJECT_RULES.md: добавлен триггер encoding_safety в Skills triggers index
+- Pre-commit hook: encoding_safety добавлен как 10-й skill в SKILLS[]
+- _recovery/HANDOFF_broken_encoding.md.bak сохранён
+
+**Урок:** При mojibake в терминале — сначала проверить байты файла, не перекодировать вслепую. Re-encoding валидного UTF-8 как CP1251→UTF-8 создаёт двойной mojibake.
+
+---

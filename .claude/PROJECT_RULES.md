@@ -102,6 +102,7 @@ When ТЗ contains keywords or task involves these operations, listed skills are
 | Telegram output, advise, signal rendering | telegram_signal_validator |
 | any code change, ТЗ closing, before commit | regression_baseline_keeper |
 | live bots, GinArea API, Bitmex positions, market_collector | state_drift_detector |
+| writing .md/.txt/.csv/.json files via PowerShell or Python on Windows | encoding_safety |
 
 Skills live in `.claude/skills/<name>.md`. Code reads relevant skill when trigger matches.
 
