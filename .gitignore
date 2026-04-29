@@ -89,6 +89,8 @@ docs/STATE/PROJECT_MAP.md
 # TZ-CONFLICTS-TRIAGE: machine-readable triage (generated, not committed)
 docs/STATE/conflicts_triage_*.json
 
-# TZ-SIGNAL-LOGGER: live signal logs (not committed)
+# TZ-SIGNAL-LOGGER / TZ-GITIGNORE-ADVISE-RUNTIME: runtime JSONL logs (not committed)
 state/advise_signals.jsonl
 state/advise_null_signals.jsonl
+state/advise_action_match.jsonl
+state/advise_followup.jsonl
