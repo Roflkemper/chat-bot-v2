@@ -27,6 +27,7 @@ from .signal_logger import (
 )
 from .recommendation_builder import build_recommendation
 from .signal_generator import MIN_CONFIDENCE_THRESHOLD, generate_signal
+from .weekly_report import SetupBreakdown, WeeklyReport, generate_weekly_report, report_to_markdown
 from .schemas import (
     AlternativeAction,
     CurrentExposure,
@@ -89,4 +90,8 @@ __all__ = [
     "DEFAULT_NULL_SIGNALS_PATH",
     "compute_session_context",
     "is_session_open_window",
+    "generate_weekly_report",
+    "report_to_markdown",
+    "WeeklyReport",
+    "SetupBreakdown",
 ]
