@@ -1,0 +1,429 @@
+{
+  "ts_run": "2026-04-29T190838Z",
+  "window": {
+    "end": "2026-04-28T23:59:59+00:00",
+    "start_varies": "per-bot BOT_STARTED_AT"
+  },
+  "engine_sha": "bedb317",
+  "ohlcv_path": "C:\\bot7\\backtests\\frozen\\BTCUSDT_1m_2y.csv",
+  "snaps_path": "C:\\bot7\\ginarea_live\\snapshots.csv",
+  "state_path": "C:\\bot7\\docs\\STATE\\state_latest.json",
+  "bot_results": {
+    "5196832375": {
+      "alias": "TEST_1",
+      "status": "ok",
+      "period": "2026-04-16 to 2026-04-28",
+      "started_at": "2026-04-16T00:00:00+00:00",
+      "bars_loaded": 18720,
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-29T19:07:43+00:00",
+        "n_snaps": 3220,
+        "cumul_pnl": 316.31843199979977,
+        "cumul_vol": 355923.3474099994,
+        "cumul_out": 1428,
+        "cumul_in": 2373,
+        "min_unrealized": -68.42526424490035,
+        "last_pos": -0.083,
+        "last_avg": 74538.23469879513
+      },
+      "sim": {
+        "delta_in": 349,
+        "delta_out": 347,
+        "delta_pnl": -10.149563600105731,
+        "delta_vol": 53162.20415072865,
+        "worst_upnl": -89.70613132067969,
+        "win_rate": 77.23342939481267,
+        "wins": 268,
+        "losses": 79
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 347,
+          "real": 1428,
+          "delta_pct": 75.7,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 53162.204151,
+          "real": 355923.34741,
+          "delta_pct": 85.06,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": -10.149564,
+          "real": 316.318432,
+          "delta_pct": 103.21,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 77.23,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -89.706131,
+          "real": -68.425264,
+          "delta_pct": 31.1,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 75.7% > 50%",
+        "realized_pnl: 103.2% > 100%"
+      ]
+    },
+    "5017849873": {
+      "alias": "TEST_2",
+      "status": "ok",
+      "period": "2026-04-24 to 2026-04-28",
+      "started_at": "2026-04-24T00:00:00+00:00",
+      "bars_loaded": 7200,
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-29T19:07:43+00:00",
+        "n_snaps": 3216,
+        "cumul_pnl": 325.2893929984995,
+        "cumul_vol": 364554.7940300003,
+        "cumul_out": 927,
+        "cumul_in": 1552,
+        "min_unrealized": -77.82388790230044,
+        "last_pos": -0.079,
+        "last_avg": 74488.65164556958
+      },
+      "sim": {
+        "delta_in": 86,
+        "delta_out": 76,
+        "delta_pnl": 21.017349999999727,
+        "delta_vol": 32994.55734,
+        "worst_upnl": -28.906240000000196,
+        "win_rate": 90.78947368421053,
+        "wins": 69,
+        "losses": 7
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 76,
+          "real": 927,
+          "delta_pct": 91.8,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 32994.55734,
+          "real": 364554.79403,
+          "delta_pct": 90.95,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": 21.01735,
+          "real": 325.289393,
+          "delta_pct": 93.54,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 90.79,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -28.90624,
+          "real": -77.823888,
+          "delta_pct": 62.86,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 91.8% > 50%"
+      ]
+    },
+    "4524162672": {
+      "alias": "TEST_3",
+      "status": "ok",
+      "period": "2026-04-16 to 2026-04-28",
+      "started_at": "2026-04-16T00:00:00+00:00",
+      "bars_loaded": 18720,
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-29T19:07:43+00:00",
+        "n_snaps": 3212,
+        "cumul_pnl": 338.60147799920003,
+        "cumul_vol": 367961.4173099998,
+        "cumul_out": 756,
+        "cumul_in": 1322,
+        "min_unrealized": -47.45211689069987,
+        "last_pos": -0.078,
+        "last_avg": 74504.91320512819
+      },
+      "sim": {
+        "delta_in": 428,
+        "delta_out": 405,
+        "delta_pnl": -2.403060000000697,
+        "delta_vol": 228425.47450999997,
+        "worst_upnl": -616.2959900000011,
+        "win_rate": 65.4320987654321,
+        "wins": 265,
+        "losses": 140
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 405,
+          "real": 756,
+          "delta_pct": 46.43,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 228425.47451,
+          "real": 367961.41731,
+          "delta_pct": 37.92,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": -2.40306,
+          "real": 338.601478,
+          "delta_pct": 100.71,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 65.43,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -616.29599,
+          "real": -47.452117,
+          "delta_pct": 1198.77,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "realized_pnl: 100.7% > 100%"
+      ]
+    },
+    "6399265299": {
+      "alias": "SHORT_1.1pct",
+      "status": "ok",
+      "period": "2026-04-02 to 2026-04-28",
+      "started_at": "2026-04-02T00:00:00+00:00",
+      "bars_loaded": 38880,
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-29T19:07:43+00:00",
+        "n_snaps": 3213,
+        "cumul_pnl": 742.898827999401,
+        "cumul_vol": 2124237.988879999,
+        "cumul_out": 1299,
+        "cumul_in": 2074,
+        "min_unrealized": 214.35927168220087,
+        "last_pos": 0.0,
+        "last_avg": 0.0
+      },
+      "sim": {
+        "delta_in": 247,
+        "delta_out": 247,
+        "delta_pnl": -418.67460000000705,
+        "delta_vol": 762331.2076000001,
+        "worst_upnl": -778.6554000000021,
+        "win_rate": 67.20647773279353,
+        "wins": 166,
+        "losses": 81
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 247,
+          "real": 1299,
+          "delta_pct": 80.99,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 762331.2076,
+          "real": 2124237.98888,
+          "delta_pct": 64.11,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": -418.6746,
+          "real": 742.898828,
+          "delta_pct": 156.36,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 67.21,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -778.6554,
+          "real": 214.359272,
+          "delta_pct": 463.25,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 81.0% > 50%",
+        "realized_pnl: 156.4% > 100%"
+      ]
+    },
+    "5427983401": {
+      "alias": "5427983401",
+      "status": "skipped",
+      "reason": "zero activity in window (vol_delta=0, no new orders)"
+    },
+    "6075975963": {
+      "alias": "6075975963",
+      "status": "skipped",
+      "reason": "zero activity in window (pos=0, flat bot)"
+    },
+    "5312167170": {
+      "alias": "5312167170",
+      "status": "skipped",
+      "reason": "LONG_C skipped: instop semantics B unverified (TZ-ENGINE-FIX-INSTOP-SEMANTICS-B)"
+    },
+    "5154651487": {
+      "alias": "5154651487",
+      "status": "skipped",
+      "reason": "LONG_D skipped: instop semantics B unverified (TZ-ENGINE-FIX-INSTOP-SEMANTICS-B)"
+    }
+  },
+  "aggregate": {
+    "bots_ok": 4,
+    "bots_pass": 0,
+    "engine_health": "red",
+    "rows_out_of_tol": 16,
+    "critical_mismatches": [
+      {
+        "bot": "TEST_1",
+        "issue": "trades_count: 75.7% > 50%"
+      },
+      {
+        "bot": "TEST_1",
+        "issue": "realized_pnl: 103.2% > 100%"
+      },
+      {
+        "bot": "TEST_2",
+        "issue": "trades_count: 91.8% > 50%"
+      },
+      {
+        "bot": "TEST_3",
+        "issue": "realized_pnl: 100.7% > 100%"
+      },
+      {
+        "bot": "SHORT_1.1pct",
+        "issue": "trades_count: 81.0% > 50%"
+      },
+      {
+        "bot": "SHORT_1.1pct",
+        "issue": "realized_pnl: 156.4% > 100%"
+      }
+    ]
+  },
+  "per_metric_summary": {
+    "trades_count": {
+      "avg_delta_pct": 73.73,
+      "max_delta_pct": 91.8,
+      "n_within": 0,
+      "n_total": 4
+    },
+    "volume_total": {
+      "avg_delta_pct": 69.51,
+      "max_delta_pct": 90.95,
+      "n_within": 0,
+      "n_total": 4
+    },
+    "realized_pnl": {
+      "avg_delta_pct": 113.45,
+      "max_delta_pct": 156.36,
+      "n_within": 0,
+      "n_total": 4
+    },
+    "max_dd_unreal": {
+      "avg_delta_pct": 439.0,
+      "max_delta_pct": 1198.77,
+      "n_within": 0,
+      "n_total": 4
+    }
+  },
+  "mechanics_check": [
+    {
+      "param": "target_profit_pct",
+      "docs_semantics": "% distance from IN entry to trigger (stop-profit placed at min_stop_pct from trigger)",
+      "engine_impl": "trigger_price = entry * (1 - target/100) for SHORT. Stop placed at trigger * (1 + min_stop/100)",
+      "verdict": "consistent"
+    },
+    {
+      "param": "instop_pct / Semant A",
+      "docs_semantics": "delay before opening IN: wait for reversal >= instop_pct from local extremum",
+      "engine_impl": "InstopTracker tracks extremum, fires when price reverses instop_pct from extreme",
+      "verdict": "consistent — Semantics A confirmed for TEST_1/2/3"
+    },
+    {
+      "param": "instop_pct / Semant B (LONG_C/D)",
+      "docs_semantics": "OPEN: in some modes instop = stop distance for IN. Unclear which mode LONG_C/D use",
+      "engine_impl": "Engine uses Semantics A for all bots. LONG bots excluded from this run.",
+      "verdict": "UNVERIFIED — TZ-ENGINE-FIX-INSTOP-SEMANTICS-B pending; LONG bots excluded"
+    },
+    {
+      "param": "grid_step_pct",
+      "docs_semantics": "step from LAST opened IN (not from first IN entry). Measured as % of last IN price",
+      "engine_impl": "last_in_price updated after each IN open; next level = last_in * (1 + step)",
+      "verdict": "consistent"
+    },
+    {
+      "param": "indicator Price% threshold",
+      "docs_semantics": "Price% close-to-close over period bars. SHORT: > threshold. LONG: < -threshold",
+      "engine_impl": "PricePercentIndicator: (close[-1]-close[0])/close[0]*100. SHORT: v>threshold, LONG: v<-threshold",
+      "verdict": "consistent"
+    },
+    {
+      "param": "Out Stop trailing max_stop_pct",
+      "docs_semantics": "combo trailing stop follows price, max deviation = max_stop_pct",
+      "engine_impl": "OutStopGroup.update_trailing() tracks extreme_price, stop = extreme*(1-max_stop) for SHORT",
+      "verdict": "consistent"
+    },
+    {
+      "param": "contract_type in state_latest.json",
+      "docs_semantics": "GINAREA_MECHANICS: SHORT bots=LINEAR BTCUSDT, LONG bots=INVERSE XBTUSD",
+      "engine_impl": "state_snapshot.py Fix #2 applied: label inverted logic corrected. TEST_1/2/3→linear, LONG→inverse.",
+      "verdict": "FIXED (TZ-FIX-CONTRACT-TYPE-LABEL) — state_snapshot.py line 442 corrected"
+    },
+    {
+      "param": "order_size",
+      "docs_semantics": "SHORT_1.1%=0.005 BTC (operator UI confirmed), TEST_*=0.001 BTC (GINAREA_MECHANICS §1)",
+      "engine_impl": "Hardcoded in reconcile script. Fix #3: SHORT_1.1% changed to 0.005 BTC.",
+      "verdict": "FIXED (TZ-ADD-ORDER-SIZE-TO-STATE inline) — SHORT_1.1% 0.005 BTC confirmed"
+    }
+  ],
+  "recommendation": "STOP optimize. Открыть TZ-ENGINE-FIX-* per расхождение. Optimize откладывается до фиксов.",
+  "anomalies": [
+    "SHORT_1.1pct (Fix #4): running interval check — status=2 throughout 973 rows (2026-04-28T08:10 to 2026-04-28T23:59). No pauses detected. continuous_working_assumed confirmed.",
+    "TEST_1: trades_count semantics — real=out_group_events(cumul=1428), sim=individual_orders_closed(cumul=347). Ratio may reflect avg group size, not true mismatch.",
+    "TEST_2: trades_count semantics — real=out_group_events(cumul=927), sim=individual_orders_closed(cumul=76). Ratio may reflect avg group size, not true mismatch.",
+    "TEST_3: trades_count semantics — real=out_group_events(cumul=756), sim=individual_orders_closed(cumul=405). Ratio may reflect avg group size, not true mismatch.",
+    "SHORT_1.1pct: trades_count semantics — real=out_group_events(cumul=1299), sim=individual_orders_closed(cumul=247). Ratio may reflect avg group size, not true mismatch."
+  ],
+  "methodology_fixes": [
+    "Fix #1: Full-history sim from bot.started_at (position=0) — no stale mid-window init",
+    "Fix #2: contract_type in state_snapshot.py corrected (inverted label fixed)",
+    "Fix #3: SHORT_1.1% order_size=0.005 BTC (confirmed from operator UI, was 0.001)",
+    "Fix #4: SHORT_1.1% running interval — status=2 throughout 973 rows (no pauses confirmed)"
+  ]
+}

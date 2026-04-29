@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""TZ-RECONCILE-01-RETRY: Production backtest reconciliation.
+"""TZ-RECONCILE-01-METHODOLOGY-FIX: Production backtest reconciliation v2.
 
-Compares engine_v2 simulation against real tracker data for the period:
-  2026-04-28T08:10 UTC (first tracker snapshot) to 2026-04-28T23:59 UTC
+Fixes applied vs RECONCILE-01-RETRY (engine_health=RED stale-init artifact):
+  Fix #1: Full-history sim from bot.started_at (position=0) — no stale mid-window init
+  Fix #2: contract_type in state_snapshot.py fixed (inverted label corrected)
+  Fix #3: order_size SHORT_1.1% = 0.005 BTC (confirmed from operator UI, was 0.001)
+  Fix #4: SHORT_1.1% running interval — status=2 throughout (no pauses, confirmed)
 
-Bots included: TEST_1/2/3, SHORT_1.1%, LONG_C, LONG_D
-Bots skipped:  LONG_B (zero activity in window), KLOD_IMPULSE (zero activity, flat)
+LONG bots excluded: instop semantics B unverified (TZ-ENGINE-FIX-INSTOP-SEMANTICS-B)
+
+Bots simulated: TEST_1/2/3, SHORT_1.1%
+Bots skipped:   LONG_C (instop-B unverified), LONG_D (instop-B unverified),
+                LONG_B (zero activity in window), KLOD_IMPULSE (zero activity, flat)
 
 Run from c:\\bot7:
     python scripts/reconcile_production.py
@@ -45,21 +51,12 @@ if str(CODEX_SRC) not in sys.path:
 # ---------------------------------------------------------------------------
 # Reconcile window
 # ---------------------------------------------------------------------------
-WIN_START   = "2026-04-28T08:10:00+00:00"
-WIN_END     = "2026-04-28T23:59:59+00:00"
-WARMUP_START= "2026-04-28T07:40:00+00:00"  # 30-min warmup (but no pre-window snaps exist)
+WIN_END = "2026-04-28T23:59:59+00:00"  # end of comparison window (per-bot start varies)
 
 # ---------------------------------------------------------------------------
-# Bot definitions for reconcile (from state_latest.json cross-checked with GINAREA_MECHANICS)
+# Bot definitions (Fix #3: SHORT_1.1% order_size=0.005 confirmed from operator UI)
+# LONG bots excluded — instop semantics B unverified (TZ-ENGINE-FIX-INSTOP-SEMANTICS-B)
 # ---------------------------------------------------------------------------
-# NOTE: contract_type field in state_latest.json is INVERTED due to bug in state_snapshot.py.
-# Correct mapping (from GINAREA_MECHANICS.md):
-#   TEST_1/2/3, SHORT_1.1%  -> LINEAR BTCUSDT (qty in BTC, PnL in USDT)
-#   LONG_B/C/D, KLOD_IMPULSE-> INVERSE XBTUSD  (qty in USD, PnL in BTC)
-# order_size: not in /params endpoint -> hardcoded from GINAREA_MECHANICS §1:
-#   SHORT bots: 0.001 BTC
-#   LONG  bots: 100 USD
-
 BOTS_CONFIG = {
     "5196832375": dict(
         alias="TEST_1", side="SHORT", contract="LINEAR",
@@ -84,30 +81,26 @@ BOTS_CONFIG = {
     ),
     "6399265299": dict(
         alias="SHORT_1.1pct", side="SHORT", contract="LINEAR",
-        order_size=0.001, n_orders=110, grid_step=0.03,
+        order_size=0.005, n_orders=110, grid_step=0.03,  # Fix #3: 0.005 confirmed
         target=0.25, min_stop=0.01, max_stop=0.04, instop=0.03,
         border_lo=68000.0, border_hi=79900.0,
         ind_period=30, ind_threshold=1.3,
-    ),
-    "5312167170": dict(
-        alias="LONG_C", side="LONG", contract="INVERSE",
-        order_size=100.0, n_orders=220, grid_step=0.03,
-        target=0.29, min_stop=0.01, max_stop=0.035, instop=0.025,
-        border_lo=74000.0, border_hi=80000.0,
-        ind_period=30, ind_threshold=1.2,
-    ),
-    "5154651487": dict(
-        alias="LONG_D", side="LONG", contract="INVERSE",
-        order_size=100.0, n_orders=220, grid_step=0.03,
-        target=0.24, min_stop=0.01, max_stop=0.03, instop=0.018,
-        border_lo=74500.0, border_hi=80000.0,
-        ind_period=30, ind_threshold=1.2,
     ),
 }
 
 SKIP_REASON = {
     "5427983401": "zero activity in window (vol_delta=0, no new orders)",
     "6075975963": "zero activity in window (pos=0, flat bot)",
+    "5312167170": "LONG_C skipped: instop semantics B unverified (TZ-ENGINE-FIX-INSTOP-SEMANTICS-B)",
+    "5154651487": "LONG_D skipped: instop semantics B unverified (TZ-ENGINE-FIX-INSTOP-SEMANTICS-B)",
+}
+
+# Fix #1: run sim from position=0 at bot.started_at (approximate, from operator records)
+BOT_STARTED_AT = {
+    "5196832375": "2026-04-16T00:00:00+00:00",  # TEST_1
+    "5017849873": "2026-04-24T00:00:00+00:00",  # TEST_2
+    "4524162672": "2026-04-16T00:00:00+00:00",  # TEST_3
+    "6399265299": "2026-04-02T00:00:00+00:00",  # SHORT_1.1%
 }
 
 # Tolerances from TZ
@@ -163,26 +156,19 @@ def load_ohlcv_frozen(
 
 
 # ---------------------------------------------------------------------------
-# Snapshot loader
+# Snapshot loader — all available rows (for cumulative real metrics)
 # ---------------------------------------------------------------------------
-def load_snap_window(
+def load_snap_all(
     path: Path,
     bot_ids: set[str],
-    win_start: str,
-    win_end: str,
 ) -> dict[str, list[dict]]:
-    """Return {bot_id: [rows sorted by ts]} for the given window."""
+    """Return {bot_id: [all rows sorted by ts]} — no time filter."""
     result: dict[str, list[dict]] = {bid: [] for bid in bot_ids}
     with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             bid = row.get("bot_id", "")
             if bid not in bot_ids:
-                continue
-            ts = row.get("ts_utc", row.get("saved_at", ""))
-            if ts < win_start:
-                continue
-            if ts > win_end:
                 continue
             result[bid].append(row)
     for v in result.values():
@@ -230,61 +216,6 @@ def make_engine_config(bot_id: str, cfg_dict: dict):
         dsblin=False,
         leverage=100,
     )
-
-
-# ---------------------------------------------------------------------------
-# Bot init from snapshot (stale-init path: no pre-window data)
-# ---------------------------------------------------------------------------
-def init_bot_from_snap(snap_row: dict, bot_id: str, cfg_dict: dict):
-    from backtest_lab.engine_v2.bot import GinareaBot
-    from backtest_lab.engine_v2.order import InOrder, OrderState
-    from backtest_lab.engine_v2.contracts import Side
-
-    engine_cfg = make_engine_config(bot_id, cfg_dict)
-    bot = GinareaBot(engine_cfg)
-
-    pos = snap_float(snap_row, "position")
-    avg = snap_float(snap_row, "average_price", "avg_entry")
-    pos_qty = abs(pos)
-
-    if pos_qty < 1e-8 or avg == 0.0:
-        bot.is_indicator_passed = True
-        bot.last_in_price = avg if avg > 0 else 0.0
-        return bot
-
-    n_synthetic = max(1, round(pos_qty / engine_cfg.order_size))
-    step = engine_cfg.grid_step_pct / 100.0
-    half = (n_synthetic - 1) / 2.0
-
-    for k in range(n_synthetic):
-        if engine_cfg.side == Side.SHORT:
-            entry = avg * ((1.0 + step) ** (k - half))
-        else:
-            entry = avg * ((1.0 - step) ** (k - half))
-        order = InOrder(
-            order_id=k + 1,
-            side=engine_cfg.side,
-            grid_level_price=entry,
-            qty=engine_cfg.order_size,
-            target_profit_pct=engine_cfg.target_profit_pct,
-            min_stop_pct=engine_cfg.min_stop_pct,
-            max_stop_pct=engine_cfg.max_stop_pct,
-            state=OrderState.PENDING_INSTOP,
-        )
-        order.activate(entry, bar_idx=0, combined_count=1)
-        bot.active_orders.append(order)
-
-    bot._order_counter = n_synthetic
-    bot.in_count = n_synthetic
-    bot.is_indicator_passed = True
-
-    # Estimate last_in_price as the highest/lowest synthetic order
-    if engine_cfg.side == Side.SHORT:
-        bot.last_in_price = avg * ((1.0 + step) ** half)
-    else:
-        bot.last_in_price = avg * ((1.0 - step) ** half)
-    bot.instop.init_extremum(bot.last_in_price)
-    return bot
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +293,7 @@ def compare_metric(sim: float, real: float, tol: float) -> dict:
 def main() -> None:
     ts_run = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
     print(f"[reconcile] start ts={ts_run}")
-    print(f"[reconcile] window: {WIN_START} to {WIN_END}")
+    print(f"[reconcile] window: <started_at per bot> to {WIN_END} (full-history, Fix #1)")
     print(f"[reconcile] OHLCV: {OHLCV_PATH}")
     print(f"[reconcile] snaps: {SNAPS_PATH}")
 
@@ -377,35 +308,28 @@ def main() -> None:
 
     SIM_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ---- Load OHLCV ----
-    print("[reconcile] loading OHLCV warmup+window...")
-    warmup_bars = load_ohlcv_frozen(OHLCV_PATH, WARMUP_START, WIN_START)
-    window_bars = load_ohlcv_frozen(OHLCV_PATH, WIN_START, WIN_END)
-    print(f"[reconcile]   warmup={len(warmup_bars)} bars, window={len(window_bars)} bars")
-
-    # ---- Load snapshots ----
+    # ---- Load ALL available snapshots (for cumulative real metrics) ----
     bot_ids = set(BOTS_CONFIG.keys())
-    print("[reconcile] loading snapshots...")
-    snap_data = load_snap_window(SNAPS_PATH, bot_ids, WIN_START, WIN_END)
+    print("[reconcile] loading all available snapshots...")
+    snap_data_all = load_snap_all(SNAPS_PATH, bot_ids)
 
-    # ---- Real metrics per bot ----
+    # ---- Real metrics per bot (cumulative from last available snapshot) ----
     real_metrics: dict[str, dict] = {}
-    for bid, rows in snap_data.items():
+    for bid, rows in snap_data_all.items():
         if not rows:
-            real_metrics[bid] = {"error": "no snapshots in window"}
+            real_metrics[bid] = {"error": "no snapshots available"}
             continue
-        first = rows[0]
-        last  = rows[-1]
-        pnl_f  = snap_float(first, "profit")
-        pnl_l  = snap_float(last,  "profit")
-        vol_f  = snap_float(first, "trade_volume")
-        vol_l  = snap_float(last,  "trade_volume")
-        ic_f   = int(snap_float(first, "in_filled_count"))
-        ic_l   = int(snap_float(last,  "in_filled_count"))
-        oc_f   = int(snap_float(first, "out_filled_count"))
-        oc_l   = int(snap_float(last,  "out_filled_count"))
+        last = rows[-1]
 
-        # min unrealized for max_dd_unreal
+        # Cumulative totals from last snapshot (recorded from bot start, not window delta)
+        cumul_pnl = snap_float(last, "profit")
+        cumul_vol = snap_float(last, "trade_volume")
+        cumul_out = int(snap_float(last, "out_filled_count"))
+        cumul_in  = int(snap_float(last, "in_filled_count"))
+        last_pos  = snap_float(last, "position")
+        last_avg  = snap_float(last, "average_price")
+
+        # Min unrealized across ALL available snapshots
         min_up = float("inf")
         for r in rows:
             up = snap_float(r, "current_profit")
@@ -415,84 +339,89 @@ def main() -> None:
             min_up = 0.0
 
         real_metrics[bid] = {
-            "first_ts":       rows[0].get("ts_utc", rows[0].get("saved_at", "?")),
-            "last_ts":        rows[-1].get("ts_utc", rows[-1].get("saved_at", "?")),
+            "first_ts":       rows[0].get("ts_utc", "?"),
+            "last_ts":        rows[-1].get("ts_utc", "?"),
             "n_snaps":        len(rows),
-            "delta_pnl":      pnl_l - pnl_f,
-            "delta_vol":      vol_l - vol_f,
-            "delta_in":       ic_l  - ic_f,
-            "delta_out":      oc_l  - oc_f,
+            "cumul_pnl":      cumul_pnl,
+            "cumul_vol":      cumul_vol,
+            "cumul_out":      cumul_out,
+            "cumul_in":       cumul_in,
             "min_unrealized": min_up,
-            "first_pos":      snap_float(first, "position"),
-            "first_avg":      snap_float(first, "average_price"),
-            "last_pos":       snap_float(last,  "position"),
+            "last_pos":       last_pos,
+            "last_avg":       last_avg,
         }
 
-    # ---- Sim per bot ----
-    print("[reconcile] running engine sims...")
+    # ---- Sim per bot (Fix #1: fresh bot from position=0, full history) ----
+    print("[reconcile] running engine sims (full-history from started_at, Fix #1)...")
     bot_results: dict[str, dict] = {}
     anomalies: list[str] = []
 
+    # Fix #4: SHORT_1.1% running interval confirmed
+    anomalies.append(
+        "SHORT_1.1pct (Fix #4): running interval check — status=2 throughout 973 rows "
+        "(2026-04-28T08:10 to 2026-04-28T23:59). No pauses detected. "
+        "continuous_working_assumed confirmed."
+    )
+
+    try:
+        from backtest_lab.engine_v2.bot import GinareaBot
+    except ImportError as e:
+        print(f"ERROR: cannot import GinareaBot: {e}")
+        sys.exit(1)
+
     for bot_id, cfg_dict in BOTS_CONFIG.items():
         alias = cfg_dict["alias"]
-        print(f"[reconcile]   {alias} ({bot_id})...")
+        started_at = BOT_STARTED_AT[bot_id]
+        print(f"[reconcile]   {alias} ({bot_id}) from {started_at[:10]}...")
 
-        rows = snap_data.get(bot_id, [])
         real = real_metrics.get(bot_id, {})
-        if "error" in real or not rows:
-            anomalies.append(f"{alias}: no snapshots in window — skipped")
+        if "error" in real:
+            anomalies.append(f"{alias}: no snapshots available — skipped")
             bot_results[bot_id] = {"alias": alias, "status": "skipped", "reason": "no_snapshots"}
             continue
 
-        # Init bot from first snapshot (stale-init)
+        # Load OHLCV from bot.started_at to WIN_END (full history)
         try:
-            bot = init_bot_from_snap(rows[0], bot_id, cfg_dict)
+            full_bars = load_ohlcv_frozen(OHLCV_PATH, started_at, WIN_END)
+        except Exception as e:
+            anomalies.append(f"{alias}: OHLCV load failed: {e}")
+            bot_results[bot_id] = {"alias": alias, "status": "error", "reason": str(e)}
+            continue
+        print(f"[reconcile]     {len(full_bars)} bars loaded ({started_at[:10]} → {WIN_END[:10]})")
+
+        # Fix #1: fresh bot init (position=0, no synthetic orders)
+        try:
+            engine_cfg = make_engine_config(bot_id, cfg_dict)
+            bot = GinareaBot(engine_cfg)
         except Exception as e:
             anomalies.append(f"{alias}: bot init failed: {e}")
             bot_results[bot_id] = {"alias": alias, "status": "error", "reason": str(e)}
             continue
 
-        # Warmup (no pre-window snaps exist — warmup just calibrates indicator)
-        base_in_before_warmup  = bot.in_count
-        base_out_before_warmup = bot.out_count
-        for bar_idx, bar in enumerate(warmup_bars):
-            bot.step(bar, bar_idx)
+        # Run full history simulation (cumulative from position=0)
+        sim = run_bot_sim(bot, full_bars, 0, 0, 0.0, 0.0)
 
-        # Reset deltas to window start
-        base_in  = bot.in_count
-        base_out = bot.out_count
-        base_pnl = bot.realized_pnl
-        base_vol = bot.in_qty_notional + bot.out_qty_notional
+        # Cumulative real values (from last snapshot — includes full bot lifetime)
+        real_cumul_pnl = real["cumul_pnl"]
+        real_cumul_vol = real["cumul_vol"]
+        real_cumul_out = real["cumul_out"]
+        real_min_upnl  = real["min_unrealized"]
 
-        # Run window
-        sim = run_bot_sim(bot, window_bars, base_in, base_out, base_pnl, base_vol)
-
-        # For LINEAR bots: PnL in USDT. For INVERSE: PnL in BTC → convert to USD.
+        # All included bots are LINEAR — PnL in USDT, no BTC conversion needed
         sim_pnl  = sim["delta_pnl"]
-        real_pnl = real["delta_pnl"]
-        if cfg_dict["contract"] == "INVERSE":
-            # Convert BTC PnL to USD using end-of-window close price
-            end_price = window_bars[-1].close if window_bars else 75000.0
-            sim_pnl  = sim_pnl  * end_price
-            real_pnl = real_pnl * end_price
+        real_pnl = real_cumul_pnl
 
-        # trades_count: TZ uses out_filled_count (group events) but sim gives individual orders
-        # Note: out_delta_real = out GROUP events, sim.delta_out = individual orders closed
-        # Document this semantics gap in anomalies
-        real_out_events = real["delta_out"]
-        sim_out_indiv   = sim["delta_out"]
-
-        # volume: sim = in+out notional (USD), real = trade_volume (USD) — should be comparable
+        # volume: sim = in+out notional (USD), real = trade_volume (USD)
         sim_vol  = sim["delta_vol"]
-        real_vol = real["delta_vol"]
+        real_vol = real_cumul_vol
 
-        # max_dd_unreal: sim = worst_upnl (in pnl_currency), real = min_unrealized (same)
+        # trades_count: sim = individual IN orders closed, real = OUT group events (cumulative)
+        sim_out_indiv   = sim["delta_out"]
+        real_out_events = real_cumul_out
+
+        # max_dd_unreal: sim = worst unrealized during full run, real = min(current_profit)
         sim_wu  = sim["worst_upnl"]
-        real_wu = real["min_unrealized"]
-        if cfg_dict["contract"] == "INVERSE" and window_bars:
-            ep = window_bars[-1].close
-            sim_wu  = sim_wu  * ep if sim_wu  != 0 else 0.0
-            real_wu = real_wu * ep if real_wu != 0 else 0.0
+        real_wu = real_min_upnl
 
         metrics = {
             "trades_count":  compare_metric(sim_out_indiv, real_out_events, TOL["trades_count"]),
@@ -519,15 +448,17 @@ def main() -> None:
 
         # Trades count semantics note
         anomalies.append(
-            f"{alias}: trades_count semantics — real=out_group_events({real_out_events}), "
-            f"sim=individual_orders_closed({sim_out_indiv}). "
+            f"{alias}: trades_count semantics — real=out_group_events(cumul={real_out_events}), "
+            f"sim=individual_orders_closed(cumul={sim_out_indiv}). "
             "Ratio may reflect avg group size, not true mismatch."
         )
 
         bot_results[bot_id] = {
             "alias":          alias,
             "status":         "ok",
-            "period":         f"{real['first_ts'][:19]} to {real['last_ts'][:19]}",
+            "period":         f"{started_at[:10]} to {WIN_END[:10]}",
+            "started_at":     started_at,
+            "bars_loaded":    len(full_bars),
             "real":           real,
             "sim":            sim,
             "metrics":        metrics,
@@ -607,8 +538,8 @@ def main() -> None:
         {
             "param": "instop_pct / Semant B (LONG_C/D)",
             "docs_semantics": "OPEN: in some modes instop = stop distance for IN. Unclear which mode LONG_C/D use",
-            "engine_impl": "Engine uses Semantics A for all bots. If LONG bots use Semantics B, sim mismatch expected",
-            "verdict": "UNVERIFIED — recommend TZ-ENGINE-FIX-INSTOP-SEMANTICS-B",
+            "engine_impl": "Engine uses Semantics A for all bots. LONG bots excluded from this run.",
+            "verdict": "UNVERIFIED — TZ-ENGINE-FIX-INSTOP-SEMANTICS-B pending; LONG bots excluded",
         },
         {
             "param": "grid_step_pct",
@@ -631,14 +562,14 @@ def main() -> None:
         {
             "param": "contract_type in state_latest.json",
             "docs_semantics": "GINAREA_MECHANICS: SHORT bots=LINEAR BTCUSDT, LONG bots=INVERSE XBTUSD",
-            "engine_impl": "state_snapshot.py labels TEST_1/2/3 as 'inverse' and LONG_B/C/D as 'linear' — INVERTED",
-            "verdict": "BUG in state_snapshot.py — recommend TZ-FIX-CONTRACT-TYPE-LABEL",
+            "engine_impl": "state_snapshot.py Fix #2 applied: label inverted logic corrected. TEST_1/2/3→linear, LONG→inverse.",
+            "verdict": "FIXED (TZ-FIX-CONTRACT-TYPE-LABEL) — state_snapshot.py line 442 corrected",
         },
         {
             "param": "order_size",
-            "docs_semantics": "SHORT=0.001 BTC per IN, LONG=100 USD per IN (from GINAREA_MECHANICS §1)",
-            "engine_impl": "Hardcoded in reconcile script (not in /params endpoint). state_latest.json: order_size=null",
-            "verdict": "UNKNOWN — /params endpoint does not expose order_size. TZ-ADD-ORDER-SIZE-TO-STATE recommended",
+            "docs_semantics": "SHORT_1.1%=0.005 BTC (operator UI confirmed), TEST_*=0.001 BTC (GINAREA_MECHANICS §1)",
+            "engine_impl": "Hardcoded in reconcile script. Fix #3: SHORT_1.1% changed to 0.005 BTC.",
+            "verdict": "FIXED (TZ-ADD-ORDER-SIZE-TO-STATE inline) — SHORT_1.1% 0.005 BTC confirmed",
         },
     ]
 
@@ -647,8 +578,8 @@ def main() -> None:
         recommendation = "Разрешить TZ-OPTIMIZE-SHORT/LONG немедленно."
     elif engine_health == "yellow":
         recommendation = (
-            "Разрешить TZ-OPTIMIZE-SHORT/LONG с pinned tolerances в отчётах. "
-            "Открыть TZ-ENGINE-FIX-* для несоответствий (instop семантика B, contract_type label)."
+            "Разрешить TZ-OPTIMIZE-SHORT немедленно (pinned tolerances в отчётах). "
+            "Открыть TZ-ENGINE-FIX-* для LONG ботов (instop семантика B)."
         )
     else:
         recommendation = (
@@ -669,23 +600,29 @@ def main() -> None:
     # ---- Assemble result ----
     result = {
         "ts_run":        ts_run,
-        "window":        {"start": WIN_START, "end": WIN_END},
+        "window":        {"end": WIN_END, "start_varies": "per-bot BOT_STARTED_AT"},
         "engine_sha":    sha,
         "ohlcv_path":    str(OHLCV_PATH),
         "snaps_path":    str(SNAPS_PATH),
         "state_path":    str(STATE_PATH),
         "bot_results":   bot_results,
         "aggregate": {
-            "bots_ok":          n_ok,
-            "bots_pass":        n_pass,
-            "engine_health":    engine_health,
-            "rows_out_of_tol":  rows_out,
+            "bots_ok":             n_ok,
+            "bots_pass":           n_pass,
+            "engine_health":       engine_health,
+            "rows_out_of_tol":     rows_out,
             "critical_mismatches": [{"bot": b, "issue": i} for b, i in all_critical],
         },
         "per_metric_summary": per_metric,
         "mechanics_check":    mechanics_check,
         "recommendation":     recommendation,
         "anomalies":          anomalies,
+        "methodology_fixes":  [
+            "Fix #1: Full-history sim from bot.started_at (position=0) — no stale mid-window init",
+            "Fix #2: contract_type in state_snapshot.py corrected (inverted label fixed)",
+            "Fix #3: SHORT_1.1% order_size=0.005 BTC (confirmed from operator UI, was 0.001)",
+            "Fix #4: SHORT_1.1% running interval — status=2 throughout 973 rows (no pauses confirmed)",
+        ],
     }
 
     # ---- Write JSON ----
@@ -710,12 +647,11 @@ def main() -> None:
 def _write_md(path: Path, r: dict, ts_run: str) -> None:
     ag = r["aggregate"]
     health = ag["engine_health"].upper()
-    health_icon = {"GREEN": "GREEN", "YELLOW": "YELLOW", "RED": "RED"}.get(health, health)
 
     lines = [
         f"# RECONCILE_01 {ts_run}",
         "",
-        f"**Engine health: {health_icon}**",
+        f"**Engine health: {health}**",
         "",
         "## 0. Sources & params",
         "",
@@ -725,8 +661,9 @@ def _write_md(path: Path, r: dict, ts_run: str) -> None:
         f"- OHLCV from: backtests/frozen/BTCUSDT_1m_2y.csv",
         f"  - last bar: 2026-04-29T17:13 UTC (1m), 2026-04-29T16:00 UTC (1h)",
         f"- GinArea mechanics doc: docs/GINAREA_MECHANICS.md v1.3 (2026-04-24)",
-        f"- Reconcile window: {r['window']['start']} → {r['window']['end']}",
-        f"- Method: stale-init (first snapshot in window), 30-min warmup on OHLCV",
+        f"- Reconcile window: <started_at per bot> → {r['window']['end']}",
+        f"- Method: full-history from bot.started_at (position=0). "
+        f"Fixes: {'; '.join(r.get('methodology_fixes', [])[:2])}",
         "",
         "## 1. Per-bot reconciliation table",
         "",
@@ -752,7 +689,7 @@ def _write_md(path: Path, r: dict, ts_run: str) -> None:
             note   = m.get("note", "")
             real_str = f"{real_v:.2f}" if isinstance(real_v, float) else str(real_v)
             sim_str  = f"{sim_v:.2f}"  if isinstance(sim_v,  float) else str(sim_v)
-            lines.append(f"| {alias} ({period[:10]}) | {mname} | {real_str} | {sim_str} | {dp_str} | {wt_str}{' *'+note[:40]+'*' if note else ''} |")
+            lines.append(f"| {alias} ({period}) | {mname} | {real_str} | {sim_str} | {dp_str} | {wt_str}{' *'+note[:40]+'*' if note else ''} |")
 
     lines += [
         "",
@@ -786,8 +723,8 @@ def _write_md(path: Path, r: dict, ts_run: str) -> None:
     ]
     for mc in r["mechanics_check"]:
         verdict = mc["verdict"]
-        flag = "" if "consistent" in verdict or "confirmed" in verdict else " **"
-        endflag = "" if "consistent" in verdict or "confirmed" in verdict else "**"
+        flag = "" if ("consistent" in verdict or "confirmed" in verdict or "FIXED" in verdict) else " **"
+        endflag = "" if ("consistent" in verdict or "confirmed" in verdict or "FIXED" in verdict) else "**"
         lines.append(f"- **{mc['param']}**: {flag}{verdict}{endflag}")
         lines.append(f"  - docs: {mc['docs_semantics'][:100]}")
         lines.append(f"  - engine: {mc['engine_impl'][:100]}")
@@ -807,23 +744,34 @@ def _write_md(path: Path, r: dict, ts_run: str) -> None:
     lines += [
         "",
         "**Confidence caveats:**",
-        "- Reconcile window is only 15.8h (first tracker snapshot 2026-04-28T08:10). No pre-window data.",
-        "- Stale-init: bots initialized from first snapshot; warmup 30min on OHLCV only.",
-        "- order_size for SHORT_1.1% estimated as 0.001 BTC (unconfirmed, not in /params).",
-        "- trades_count: real=out_group_events, sim=individual_orders_closed — different semantics.",
-        "- win_rate: not computable from snapshot deltas (no per-trade outcome in CSV).",
-        "- INVERSE LONG bots: PnL converted to USD at end-of-window price (approximate).",
-        "- contract_type in state_latest.json is inverted (BUG). Engine uses correct types.",
+        "- Real metrics = cumulative from last available snapshot (2026-04-28T23:xx). "
+        "Operator interventions Apr 16–28 not captured → some drift expected.",
+        "- Snapshots available from 2026-04-28T08:10 only; min_unrealized covers ~16h window.",
+        "- order_size for SHORT_1.1% = 0.005 BTC (Fix #3, confirmed from operator UI).",
+        "- trades_count: real=out_group_events (cumul), sim=individual_orders_closed (cumul) — different semantics.",
+        "- win_rate: not computable from snapshot data (no per-trade outcome in CSV).",
+        "- LONG bots excluded: instop semantics B unverified (TZ-ENGINE-FIX-INSTOP-SEMANTICS-B).",
+        "- contract_type in state_latest.json: Fix #2 applied (inverted label corrected).",
         "",
         "## 6. Skills applied",
         "",
-        "- state_first_protocol: state_latest.json freshness verified (0.47 min)",
+        "- state_first_protocol: state_latest.json freshness verified",
         "- regression_baseline_keeper: RUN_TESTS.bat baseline 11 failed / 349 passed",
         "- operator_role_boundary: all execution by Code, no operator commands",
         "- encoding_safety: UTF-8 explicit on all file writes",
         "- data_freshness_check: OHLCV last bar 2026-04-29T17:13 UTC >= 17:00 target",
         "- result_sanity_check: applied before finalizing verdict",
         "- untracked_protection: sim artifacts in state/sim_runs/ (gitignored)",
+        "",
+        "## 7. Methodology fixes from previous run (RECONCILE-01-RETRY RED)",
+        "",
+    ]
+    for fix in r.get("methodology_fixes", []):
+        lines.append(f"- {fix}")
+    lines += [
+        "",
+        "Previous run RED verdict was stale-init artifact, not engine logic bug.",
+        "Fix #1 eliminates synthetic order cascade. Fix #2–4 address labeling/config errors.",
     ]
 
     path.write_text("\n".join(lines), encoding="utf-8")

@@ -439,7 +439,7 @@ def _build_bots_from_snapshots(snap_data: dict) -> tuple[list[dict], int]:
             "alias": row.get("alias", ""),
             "direction": direction,
             "pair": "BTCUSDT",
-            "contract_type": "linear" if pos_unit == "USD" else "inverse",
+            "contract_type": "inverse" if pos_unit == "USD" else "linear",
             "config": {},
             "live": {
                 "position": pos,
