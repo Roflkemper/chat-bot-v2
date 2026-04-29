@@ -1,5 +1,34 @@
 # SESSION LOG
 
+## TZ-056 — H10 Detector Rebuild (2026-04-29)
+
+**Root cause:** TZ-053a found only 6 setups/week vs operator ground truth of 10-15/week.
+C2 only checked 3-candle window (3h), consolidations are 12-36h. C1 window 2-4h, real impulses
+4-12h. C3 radius 0.7-2.0%, map coverage ±3%, top_n=20 — zones beyond 2% got truncated.
+
+**Fixes:**
+- `h10_detector.py`: C1 windows `{2,3,4,6,8,12}`h; C2 corridor 6-48h ≤2.5%, boundary margin 0.2%;
+  `_detect_impulse_then_consolidation()` scans all (consol_len, imp_size) pairs; new fields
+  `impulse_window_hours`, `consolidation_hours` in `H10Setup`.
+- `liquidity_map.py`: `DEFAULT_TOP_N=60`, `_build_bins` ±5%, `_structure_score` radius 5%.
+- `backtest_h10.py`: added `impulse_window_hours`, `consolidation_hours` columns.
+
+**April 2026 validation:** 386 raw detections → 42 unique events (~10/week). Operator ground
+truth: Apr 5-7, 8-9, 11-12, 12-13, 16, 28-29 — all captured ✓.
+
+**Tests:** 20/20 green (5 liquidity_map + 11 detector + 4 grid). Added 6 new TZ-056 tests:
+consolidation 12h pass, 4h fail, 60h fail, range 3% fail, impulse 8h pass, C3 weight<threshold fail.
+
+## TZ-055 — Critical Docs Recovery (2026-04-29)
+
+**Incident:** PLAYBOOK.md, GINAREA_MECHANICS.md, HANDOFF, NEXT_CHAT_PROMPT, CLEANUP_GUIDE wiped
+by `git clean -fdx -e .venv` (TZ-044). Files were never committed (always `??` untracked).
+
+**Recovery:** All 5 files recovered from `stash@{2}^3` (stash saved 2026-04-29 00:03 with
+`--include-untracked`). Committed to git. Pre-commit hook blocks commits if any of 5 critical
+docs missing. `.gitignore` negation rules prevent future exclusion. Incident report:
+`_recovery/incident_report_docs.md`. Anti-pattern К26 added to MASTER §0.
+
 ## TZ-053a — H10 MVP Backtest (2026-04-29)
 
 **Стратегия:** Liquidity Grid Probe. После impulse ≥1.2% + consolidation + bilateral zones

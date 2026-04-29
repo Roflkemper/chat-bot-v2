@@ -27,8 +27,10 @@ def _setup(target_price: float = 50000.0, side: str = "long_probe") -> H10Setup:
         timestamp=ts,
         impulse_pct=0.02,
         impulse_direction="up",
+        impulse_window_hours=2,
         consolidation_low=target_price - 50,
         consolidation_high=target_price + 50,
+        consolidation_hours=6,
         target_zone=_zone(target_price),
         target_side=side,  # type: ignore[arg-type]
     )

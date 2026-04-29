@@ -11,7 +11,7 @@ import pandas as pd
 
 DEFAULT_BIN_SIZE = 50.0
 DEFAULT_LOOKBACK_HOURS = 72
-DEFAULT_TOP_N = 20
+DEFAULT_TOP_N = 60
 DEFAULT_MARKET_DATA_DIR = Path("market_live")
 DEFAULT_SYMBOL = "BTCUSDT"
 
@@ -60,7 +60,7 @@ def build_liquidity_map(
     if current_price <= 0:
         return []
 
-    bins = _build_bins(current_price=current_price, bin_size=bin_size)
+    bins = _build_bins(current_price=current_price, bin_size=bin_size, price_range_pct=0.05)
     if len(bins) < 2:
         return []
     centers = (bins[:-1] + bins[1:]) / 2.0
@@ -137,9 +137,9 @@ def _slice_lookback(
     return out.sort_index()
 
 
-def _build_bins(current_price: float, bin_size: float) -> np.ndarray:
-    low = current_price * 0.97
-    high = current_price * 1.03
+def _build_bins(current_price: float, bin_size: float, price_range_pct: float = 0.05) -> np.ndarray:
+    low = current_price * (1 - price_range_pct)
+    high = current_price * (1 + price_range_pct)
     start = np.floor(low / bin_size) * bin_size
     stop = np.ceil(high / bin_size) * bin_size + bin_size
     return np.arange(start, stop, bin_size)
@@ -165,7 +165,7 @@ def _structure_score(
     if not levels:
         return np.zeros(len(centers))
 
-    radius = max(current_price * 0.02, bin_size)
+    radius = max(current_price * 0.05, bin_size)
     score = np.zeros(len(centers))
     for level in levels:
         distance = np.abs(centers - float(level))
