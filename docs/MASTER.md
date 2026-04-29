@@ -370,6 +370,9 @@ Pine Script скачан, логика понятна. Реализуем на P
 - TZ-053a: ✅ DONE 2026-04-29 (H10 MVP backtest: 150 setups, 79.3% win rate, max DD -1.16%, rec stop=-0.8% tp=0.5%; report reports/h10_backtest_2026-04-29.md)
 - TZ-055: ✅ DONE 2026-04-29 (critical docs forensic + recovery from stash@{2}^3; pre-commit hook; all 5 docs now tracked in git)
 - TZ-056: ✅ DONE 2026-04-29 (H10 detector rebuild: C1=[2,3,4,6,8,12]h ≥1.5%, C2=6-48h ≤2.5%, C3=±5% map top_n=60; April 2026: 42 unique events ~10/week ✓; 20/20 tests green)
+- TZ-058: ✅ DONE 2026-04-29 (Project Guard skill: .claude/PROJECT_RULES.md + regression_baseline_keeper skill)
+- TZ-059: ✅ DONE 2026-04-29 (9 skills system: 9 skills + trigger index + bidirectional enforcement в pre-commit)
+- TZ-064: ✅ DONE 2026-04-29 (handoff document: HANDOFF_2026-04-29_evening.md + STATE/QUEUE.md + pre-commit HANDOFF*.md guard + MASTER/SESSION_LOG updated)
 - TZ-DEBT-07: ✅ DONE 2026-04-29 (закрыт через TZ-045)
 
 ### В очереди / в работе (на 29.04 final)

@@ -744,3 +744,30 @@ Module 5 derivatives.py от Code (в работе)
 - Цена BTC ~78400 на 22:15
 
 ---
+
+## 2026-04-29 (вечер) — TZ-056..TZ-064, skills system, handoff
+
+**Темы:**
+1. TZ-053a-hotfix: фикс `ValueError` tz-aware datetime в backtest_h10.py (`_utc()` helper)
+2. TZ-055: forensic recovery PLAYBOOK.md + GINAREA_MECHANICS.md из stash@{2}^3; pre-commit hook
+3. TZ-056: H10 detector rebuild (C1/C2/C3 формализация); 20/20 тестов; April 2026: 42 unique events, 5/5 GT ✓
+4. TZ-058: PROJECT_RULES.md + regression_baseline_keeper skill
+5. TZ-059: 9 skills system + trigger index + bidirectional pre-commit enforcement
+6. TZ-064: HANDOFF + STATE/QUEUE + pre-commit HANDOFF*.md guard
+
+**Ключевые решения:**
+- D-026: H10 детектор — C1=[2,3,4,6,8,12]h ≥1.5%, C2=6-48h ≤2.5% corridor margin 0.2%, C3 top_n=60 ±5% map coverage, weight≥0.5
+- D-027: Все тяжёлые симуляции — только оператор локально. Claude даёт команду, не запускает.
+- D-028: done.py — уведомление через Telegram по окончании задачи
+- D-029: `~/.claude/settings.json` — `Bash(*)/PowerShell(*)/Read(*)` wildcard eliminates permission prompts
+- D-030: STATE/QUEUE.md — живой навигатор очереди; обязателен как critical doc
+
+**Закрытые ТЗ:**
+- TZ-053a-hotfix ✅, TZ-055 ✅, TZ-056 ✅, TZ-058 ✅, TZ-059 ✅, TZ-064 ✅
+
+**Overnight backtest:** `scripts\run_backtest_h10_overnight.bat` — запуск перед сном; лог `logs/backtest_overnight_<timestamp>.log`; ETA 8-10h
+
+**Открытые TZ для нового чата:**
+- TZ-057 (bilateral dedup), TZ-060..063 (поток B), TZ-065 (H10 live), TZ-066 (calibration) — всё заблокировано backtest results
+
+---
