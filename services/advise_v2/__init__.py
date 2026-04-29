@@ -1,3 +1,18 @@
+from .action_tracker import (
+    ActionMatch,
+    ActionTaken,
+    FollowupHorizon,
+    FollowupOutcome,
+    aggregate_action_breakdown,
+    get_followups_for_signal,
+    get_match_for_signal,
+    iter_followups,
+    iter_matches,
+    log_followup,
+    log_match,
+    signals_pending_followup,
+    signals_without_match,
+)
 from .ban_filter import HARD_BAN_PATTERNS, filter_banned_patterns, is_banned
 from .signal_logger import (
     DEFAULT_NULL_SIGNALS_PATH,
@@ -28,6 +43,19 @@ from .setup_matcher import SetupMatch, match_setups
 from .trend_handler import compute_trend_handling
 
 __all__ = [
+    "ActionMatch",
+    "FollowupOutcome",
+    "ActionTaken",
+    "FollowupHorizon",
+    "log_match",
+    "log_followup",
+    "iter_matches",
+    "iter_followups",
+    "get_match_for_signal",
+    "get_followups_for_signal",
+    "signals_without_match",
+    "signals_pending_followup",
+    "aggregate_action_breakdown",
     "SignalEnvelope",
     "MarketContext",
     "LiqLevel",
