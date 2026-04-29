@@ -26,7 +26,8 @@ from .signal_logger import (
     signals_by_pattern,
 )
 from .recommendation_builder import build_recommendation
-from .regime_adapter import is_valid_advise_regime_label, map_regime_to_advise_label
+from .paper_journal import PAPER_JOURNAL_INTERVAL_SEC, paper_journal_loop
+from .regime_adapter import is_valid_advise_regime_label, map_regime_dict_to_advise_label, map_regime_to_advise_label
 from .signal_generator import MIN_CONFIDENCE_THRESHOLD, generate_signal
 from .weekly_report import SetupBreakdown, WeeklyReport, generate_weekly_report, report_to_markdown
 from .schemas import (
@@ -70,7 +71,10 @@ __all__ = [
     "is_banned",
     "build_recommendation",
     "map_regime_to_advise_label",
+    "map_regime_dict_to_advise_label",
     "is_valid_advise_regime_label",
+    "paper_journal_loop",
+    "PAPER_JOURNAL_INTERVAL_SEC",
     "MIN_CONFIDENCE_THRESHOLD",
     "generate_signal",
     "RecommendationTarget",

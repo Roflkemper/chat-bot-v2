@@ -67,6 +67,44 @@ async def _run_protection_alerts(stop_event: asyncio.Event) -> None:
             pass
 
 
+async def _run_counter_long(stop_event: asyncio.Event) -> None:
+    from services.counter_long_manager import CounterLongManager
+    mgr = CounterLongManager()
+    while not stop_event.is_set():
+        await mgr.tick()
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=30.0)
+        except asyncio.TimeoutError:
+            pass
+
+
+async def _run_boundary_expand(stop_event: asyncio.Event) -> None:
+    from services.boundary_expand_manager import BoundaryExpandManager
+    mgr = BoundaryExpandManager.instance()
+    while not stop_event.is_set():
+        await mgr.tick()
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=60.0)
+        except asyncio.TimeoutError:
+            pass
+
+
+async def _run_adaptive_grid(stop_event: asyncio.Event) -> None:
+    from services.adaptive_grid_manager import AdaptiveGridManager
+    mgr = AdaptiveGridManager.instance()
+    while not stop_event.is_set():
+        await mgr.tick()
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=300.0)
+        except asyncio.TimeoutError:
+            pass
+
+
+async def _run_paper_journal(stop_event: asyncio.Event) -> None:
+    from services.advise_v2.paper_journal import paper_journal_loop
+    await paper_journal_loop(stop_event=stop_event)
+
+
 async def _shutdown_task(task: asyncio.Task, *, timeout: float) -> None:
     try:
         await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
@@ -103,10 +141,14 @@ async def main(
     polling_task = asyncio.create_task(_run_polling_in_executor(app), name="telegram_polling")
     orchestrator_task = asyncio.create_task(orchestrator.start(), name="orchestrator_loop")
     protection_task = asyncio.create_task(_run_protection_alerts(stop_event), name="protection_alerts")
+    counter_long_task = asyncio.create_task(_run_counter_long(stop_event), name="counter_long")
+    boundary_expand_task = asyncio.create_task(_run_boundary_expand(stop_event), name="boundary_expand")
+    adaptive_grid_task = asyncio.create_task(_run_adaptive_grid(stop_event), name="adaptive_grid")
+    paper_journal_task = asyncio.create_task(_run_paper_journal(stop_event), name="paper_journal")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     done, pending = await asyncio.wait(
-        {polling_task, orchestrator_task, protection_task, stop_task},
+        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, stop_task},
         return_when=asyncio.FIRST_COMPLETED,
     )
 

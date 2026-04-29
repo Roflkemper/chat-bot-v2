@@ -53,6 +53,33 @@ def map_regime_to_advise_label(snapshot: RegimeSnapshot) -> str:
     return "unknown"
 
 
+def map_regime_dict_to_advise_label(regime: dict) -> str:
+    """Map snapshot['regime'] dict from build_full_snapshot → advise_v2 regime_label.
+
+    Accepts the dict form {"primary": str, "metrics": {...}} so callers don't
+    need to reconstruct a RegimeSnapshot object.
+    """
+    primary = regime.get("primary", "")
+    metrics = regime.get("metrics", {})
+    bb_width = float(metrics.get("bb_width_pct_1h") or 0.0)
+    adx = float(metrics.get("adx_1h") or 0.0)
+    adx_slope = float(metrics.get("adx_slope_1h") or 0.0)
+
+    if primary == PRIMARY_TREND_UP:
+        return "trend_up"
+    if primary == PRIMARY_TREND_DOWN:
+        return "trend_down"
+    if primary == PRIMARY_COMPRESSION:
+        return "consolidation"
+    if primary == PRIMARY_RANGE:
+        return "range_tight" if bb_width < 3.0 else "range_wide"
+    if primary == PRIMARY_CASCADE_UP:
+        return "impulse_up_exhausting" if adx > 40.0 and adx_slope < 0.0 else "impulse_up"
+    if primary == PRIMARY_CASCADE_DOWN:
+        return "impulse_down_exhausting" if adx > 40.0 and adx_slope < 0.0 else "impulse_down"
+    return "unknown"
+
+
 def is_valid_advise_regime_label(value: str) -> bool:
     """Return True when the mapped regime label is valid for advise_v2 schema."""
     return value in _VALID_ADVISE_LABELS

@@ -34,13 +34,13 @@ Exit criteria:
 - Backtest движок trustworthy для optimize TZs
 
 ### ФАЗА 1 — Paper Journal Launch
-Status: planned
+Status: in_progress
 
 Goal: оркестратор смотрит, пишет paper journal, не действует
 
 Active tasks:
-- TZ-PAPER-JOURNAL-LIVE
-- TZ-WEEKLY-COMPARISON-REPORT
+- TZ-PAPER-JOURNAL-LIVE [DONE]
+- TZ-WEEKLY-COMPARISON-REPORT [planned]
 
 Exit criteria:
 - Paper journal пишется minimum 14 дней непрерывно
