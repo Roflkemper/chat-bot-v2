@@ -15,3 +15,19 @@ Fix: TZ-059 installed 9 skills in `.claude/skills/`, bidirectional enforcement i
 Prevention: Every ТЗ must declare "Skills applied" section. Code-side verifies triggers vs declared skills before execution. Missing skill = REJECT.
 
 Related TZ: TZ-059
+
+---
+
+## INC-008: No main branch from project start (2026-04-29)
+
+**Symptom:** При попытке branch consolidation (TZ-065) оказалось что `main` ветки не существует — весь проект работал на feature/tz-059-skills-system. Переезд в новый чат усложнился, нужна была ручная процедура создания main.
+
+**Root cause:** `git init` создаёт ветку `master` (или `main` в зависимости от настроек), но первый feature/* был создан немедленно, и работа никогда не вернулась на trunk. Main-ветки не было с начала проекта.
+
+**Impact:** Нет, работа не потеряна. Но git-граф нелинеен, переезд между чатами требует явного создания main.
+
+**Fix:** TZ-065 создал `main` от HEAD 4c6fa28. Все старые feature/* удалены через safe `-d`.
+
+**Prevention rule:** `git init` → немедленно `git commit --allow-empty -m "init"` на main, затем работа только через feature/* → merge → main. Никогда не работать месяцами на feature/* без trunk.
+
+**Related TZ:** TZ-065

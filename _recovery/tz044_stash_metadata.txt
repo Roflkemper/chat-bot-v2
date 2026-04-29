@@ -1,0 +1,3 @@
+stash@{0}: On feature/tz-044-backtest-state-isolation: tz-044 verify clean collect-only
+stash@{1}: On feature/tz-044-backtest-state-isolation: wip pre tz-044 (clean slate)
+stash@{2}: On feature/tz-044-backtest-state-isolation: wip tz-043 uncommitted

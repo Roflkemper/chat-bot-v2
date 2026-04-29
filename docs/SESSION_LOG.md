@@ -771,3 +771,16 @@ Module 5 derivatives.py от Code (в работе)
 - TZ-057 (bilateral dedup), TZ-060..063 (поток B), TZ-065 (H10 live), TZ-066 (calibration) — всё заблокировано backtest results
 
 ---
+
+## 2026-04-29 (ночь) — TZ-065: branch consolidation
+
+**Выполнено:**
+- Создана ветка main от HEAD 4c6fa28 (TZ-064)
+- Удалены 8 feature-веток (-d safe): tz-040, tz-041, tz-044, tz-048, tz-049, tz-053a, tz-058, tz-059
+- Оставлена tz-042 (содержимое в main через f6c5986, формальный merge не требуется)
+- Сохранены все 3 stash-а в _recovery/tz044_stash_dump.zip (317 KB), stash список очищен
+- HANDOFF обновлён: добавлены строки main branch + активные feature-ветки
+
+**Skill:** regression_baseline_keeper применён — RUN_TESTS перед финальным коммитом.
+
+---

@@ -14,6 +14,8 @@
 | Realized today | ~$2274 (бот + ручные) |
 | Главный приоритет | H10 backtest на году → live deployment |
 | Queue Navigator | [docs/STATE/QUEUE.md](STATE/QUEUE.md) |
+| Главная ветка | main (HEAD 4c6fa28 = TZ-064) |
+| Активные feature-ветки | feature/tz-043-features-coverage-extension, feature/tz-042-fix-tests-fixtures (содержимое в main, ветка оставлена для git-graph чистоты), feature/tracker-v2, feature/tz-015-portfolio-command |
 
 ---
 
