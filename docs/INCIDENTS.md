@@ -84,3 +84,27 @@ Related TZ: TZ-059
 **Prevention rule:** Any architect output containing `run ...`, `execute ...`, `git add ...` directed at operator = violation. Rewrite as mini-TZ for Code before sending.
 
 **Related TZ:** TZ-SKILL-OPERATOR-BOUNDARY
+
+---
+
+## INC-012: Architectural amnesia — parallel implementation unknown to new session (2026-04-29)
+
+**Symptom:** Mid-session code discovery revealed `_recovery/restored/src/advisor/v2/cascade.py` was a parallel re-implementation of `services/advise_v2/setup_matcher.py` (both evaluate plays P-1..P-12). Architect had issued TZ for session integration without knowing the duplicate existed. Additionally, `src/features/calendar.py` was missing from active code for an unknown duration, silently breaking 2 test files. 34 modules in `_recovery/restored/` had no active counterpart and were unknown to architect.
+
+**Root cause:** New chat session has no knowledge of session-specific discoveries from prior session. State snapshot (`CURRENT_STATE_latest.md`) covers bot positions/API state but NOT codebase structure. No inventory check was performed before designing integration TZs. Architect relied on training knowledge ("I assume X exists") rather than grep verification.
+
+**Impact:** TZ for session integration was designed without knowing about duplicate implementation → would have created a third implementation of the same logic. Calendar module missing → 2 test collection errors went unnoticed. 1098 pre-computed feature parquets were available but architect was unaware and might have issued TZ to recompute them.
+
+**Fix:** TZ-PROJECT-MEMORY-DEFENSE:
+- L1: Skill `project_inventory_first` — mandatory 4-check inventory before any implementation TZ
+- L1: Skill `session_handoff_protocol` — mandatory handoff document at session close covering discoveries, decisions, anti-patterns
+- L2: `scripts/state_snapshot.py` extended with `_build_project_map()` → `docs/STATE/PROJECT_MAP.md` + `docs/STATE/project_map.json`
+- L3: `PROJECT_RULES.md` "TZ Template — Inventory Check" section + new skills rows in triggers table
+
+**Prevention rules:**
+1. Before any implementation TZ: grep `src/` and `_recovery/restored/` for the concept keyword. Check PROJECT_MAP.md. Check RESTORED_FEATURES_AUDIT JSON.
+2. Any module with `recommendation == "leave_as_restored"` in audit → DO NOT reactivate without explicit conflict resolution TZ.
+3. At session end: generate HANDOFF doc covering open threads + "what to tell new Claude".
+4. Never assume a module exists OR is absent without grep confirmation.
+
+**Related TZ:** TZ-PROJECT-MEMORY-DEFENSE

@@ -752,6 +752,262 @@ def _render_markdown(ts_str: str, sources: dict, bots: list[dict],
 
 
 # ---------------------------------------------------------------------------
+# PROJECT_MAP generation
+# ---------------------------------------------------------------------------
+
+_MAP_WALK_DIRS = ["src", "services", "scripts", "handlers", "telegram_ui", "collectors"]
+_MAP_EXTRA_DIRS = ["_recovery", "_backup", "deprecated", "old"]
+_MAP_SKIP_DIRS = {"__pycache__", ".git", "node_modules", ".venv", ".pytest_cache"}
+_MAP_SKIP_FILE_PREFIXES = ("test_",)
+_MAP_SKIP_SUFFIXES = ("_test.py",)
+
+
+def _is_test_file(name: str) -> bool:
+    return name.startswith(_MAP_SKIP_FILE_PREFIXES) or name.endswith(_MAP_SKIP_SUFFIXES)
+
+
+def _extract_module_meta(path: Path, root: Path) -> dict:
+    """Read first 80 lines of a .py file; extract docstring, imports, top-level symbols."""
+    rel = str(path.relative_to(root)).replace("\\", "/")
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return {"path": rel, "lines": 0, "description": "", "imports": [], "symbols": []}
+
+    raw_lines = text.splitlines()
+    lines_total = len(raw_lines)
+    head = raw_lines[:80]
+
+    # One-line description: first non-empty line of module docstring
+    description = ""
+    in_docstring = False
+    for ln in head:
+        stripped = ln.strip()
+        if not description and stripped.startswith('"""'):
+            content = stripped[3:].strip().rstrip('"""').strip()
+            if content:
+                description = content.split("\n")[0][:120]
+                break
+            in_docstring = True
+        elif in_docstring:
+            if stripped:
+                description = stripped[:120]
+            break
+
+    # Imports: first 5 unique top-level module names
+    imports: list[str] = []
+    for ln in head:
+        stripped = ln.strip()
+        if stripped.startswith("import ") or stripped.startswith("from "):
+            parts = stripped.split()
+            mod = parts[1] if len(parts) > 1 else ""
+            mod_root = mod.split(".")[0]
+            if mod_root and mod_root not in imports:
+                imports.append(mod_root)
+            if len(imports) >= 5:
+                break
+
+    # Top-level symbols: def/class at column 0
+    symbols: list[str] = []
+    for ln in head:
+        if ln.startswith("def ") or ln.startswith("class ") or ln.startswith("async def "):
+            parts = ln.split("(")[0].split()
+            name = parts[-1] if parts else ""
+            if name and name not in symbols:
+                symbols.append(name)
+            if len(symbols) >= 10:
+                break
+
+    return {
+        "path": rel,
+        "lines": lines_total,
+        "description": description,
+        "imports": imports,
+        "symbols": symbols,
+    }
+
+
+def _walk_dir(base: Path, root: Path, skip_tests: bool = True) -> list[dict]:
+    modules: list[dict] = []
+    if not base.exists():
+        return modules
+    for path in sorted(base.rglob("*.py")):
+        if any(part in _MAP_SKIP_DIRS for part in path.parts):
+            continue
+        if skip_tests and _is_test_file(path.name):
+            continue
+        if "tests" in path.parts and skip_tests:
+            continue
+        modules.append(_extract_module_meta(path, root))
+    return modules
+
+
+def _detect_conflicts(active: list[dict], restored: list[dict]) -> list[dict]:
+    """Find pairs where symbol overlap > 50% (likely parallel implementations)."""
+    conflicts: list[dict] = []
+    for rm in restored:
+        rs = set(rm["symbols"])
+        if not rs:
+            continue
+        for am in active:
+            as_ = set(am["symbols"])
+            if not as_:
+                continue
+            overlap = rs & as_
+            ratio = len(overlap) / max(len(rs), len(as_))
+            if ratio > 0.5:
+                conflicts.append({
+                    "active": am["path"],
+                    "restored": rm["path"],
+                    "overlap_symbols": sorted(overlap)[:5],
+                    "overlap_ratio": round(ratio, 2),
+                })
+    return conflicts
+
+
+def _detect_missing_deps(active: list[dict], restored: list[dict]) -> list[dict]:
+    """Find imports in active modules that don't exist in active but do in restored."""
+    active_paths = {m["path"] for m in active}
+    restored_paths = {m["path"] for m in restored}
+    active_modules = {
+        m["path"].replace("/", ".").replace("\\", ".").removesuffix(".py")
+        for m in active
+    }
+    restored_modules = {
+        m["path"].replace("/", ".").replace("\\", ".").removesuffix(".py")
+        for m in restored
+    }
+
+    missing: list[dict] = []
+    for m in active:
+        for imp in m["imports"]:
+            # Only internal imports (src.*, services.*, collectors.*, etc.)
+            if "." not in imp and not imp.startswith("src"):
+                continue
+            norm = imp.replace("/", ".").replace("\\", ".")
+            in_active = any(am.startswith(norm) or norm in am for am in active_modules)
+            in_restored = any(rm.startswith(norm) or norm in rm for rm in restored_modules)
+            if not in_active and in_restored:
+                missing.append({
+                    "importer": m["path"],
+                    "missing_import": imp,
+                    "found_in_restored": True,
+                })
+    return missing
+
+
+def _build_project_map(root: Path) -> tuple[dict, str]:
+    """Walk codebase and build PROJECT_MAP dict + markdown string."""
+    active_modules: list[dict] = []
+    for d in _MAP_WALK_DIRS:
+        active_modules.extend(_walk_dir(root / d, root, skip_tests=True))
+
+    restored_modules: list[dict] = []
+    for d in _MAP_EXTRA_DIRS:
+        restored_modules.extend(_walk_dir(root / d, root, skip_tests=True))
+
+    conflicts = _detect_conflicts(active_modules, restored_modules)
+    missing_deps = _detect_missing_deps(active_modules, restored_modules)
+
+    # Pre-computed assets scan
+    assets: list[dict] = []
+    features_out = root / "_recovery" / "restored" / "features_out"
+    if features_out.exists():
+        parquets = list(features_out.rglob("*.parquet"))
+        assets.append({
+            "name": "features_out (restored)",
+            "path": "_recovery/restored/features_out/",
+            "count": len(parquets),
+            "note": "Pre-computed 1m feature parquets. Ready to use.",
+        })
+    market_live = root / "market_live"
+    if market_live.exists():
+        parquets = list(market_live.rglob("*.parquet"))
+        assets.append({
+            "name": "market_live",
+            "path": "market_live/",
+            "count": len(parquets),
+            "note": "Live collector output parquets.",
+        })
+
+    # Skills list
+    skills_dir = root / ".claude" / "skills"
+    skills = [p.stem for p in sorted(skills_dir.glob("*.md"))] if skills_dir.exists() else []
+
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    project_map = {
+        "ts": ts,
+        "active_modules": active_modules,
+        "restored_modules": restored_modules,
+        "conflicts": conflicts,
+        "missing_deps": missing_deps,
+        "assets": assets,
+        "skills": skills,
+    }
+
+    # Render markdown
+    lines: list[str] = [
+        "# PROJECT_MAP",
+        f"_Generated: {ts}_",
+        "",
+        "## 1. Active modules",
+        "",
+        f"Walk: {', '.join(_MAP_WALK_DIRS)}",
+        "",
+        "| Path | Lines | Description |",
+        "|------|-------|-------------|",
+    ]
+    for m in active_modules:
+        desc = m["description"][:80].replace("|", "¦") if m["description"] else "—"
+        lines.append(f"| {m['path']} | {m['lines']} | {desc} |")
+
+    lines += [
+        "",
+        "## 2. Restored modules (_recovery/ + _backup/ + deprecated/)",
+        "",
+        "| Path | Lines | Recommendation |",
+        "|------|-------|----------------|",
+    ]
+    for m in restored_modules:
+        desc = m["description"][:80].replace("|", "¦") if m["description"] else "—"
+        lines.append(f"| {m['path']} | {m['lines']} | {desc} |")
+
+    lines += ["", "## 3. Potential conflicts (symbol overlap > 50%)", ""]
+    if conflicts:
+        lines += [
+            "| Active | Restored | Overlap ratio | Shared symbols |",
+            "|--------|----------|---------------|----------------|",
+        ]
+        for c in conflicts:
+            shared = ", ".join(c["overlap_symbols"])
+            lines.append(f"| {c['active']} | {c['restored']} | {c['overlap_ratio']} | {shared} |")
+    else:
+        lines.append("_(none detected)_")
+
+    lines += ["", "## 4. Missing dependencies (active imports not in active, found in restored)", ""]
+    if missing_deps:
+        lines += ["| Importer | Missing import | In restored? |", "|----------|----------------|--------------|"]
+        for d in missing_deps[:30]:
+            lines.append(f"| {d['importer']} | {d['missing_import']} | {'yes' if d['found_in_restored'] else 'no'} |")
+    else:
+        lines.append("_(none detected)_")
+
+    lines += ["", "## 5. Pre-computed assets", ""]
+    if assets:
+        for a in assets:
+            lines.append(f"- **{a['name']}** (`{a['path']}`): {a['count']} files — {a['note']}")
+    else:
+        lines.append("_(none)_")
+
+    lines += ["", "## 6. Skills available", ""]
+    for s in skills:
+        lines.append(f"- {s}")
+
+    lines.append("")
+    return project_map, "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Generate state_inline.js for dashboard
 # ---------------------------------------------------------------------------
 
@@ -859,6 +1115,24 @@ def main() -> None:
         "anomalies": anomalies,
         "skills_applied": skills_applied,
     }
+
+    print("  project_map: building...")
+    try:
+        project_map_data, project_map_md = _build_project_map(ROOT)
+        pm_md_path = STATE_DIR / "PROJECT_MAP.md"
+        pm_json_path = STATE_DIR / "project_map.json"
+        pm_md_path.write_text(project_map_md, encoding="utf-8")
+        pm_json_path.write_text(
+            json.dumps(project_map_data, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8",
+        )
+        n_active = len(project_map_data["active_modules"])
+        n_conflicts = len(project_map_data["conflicts"])
+        n_missing = len(project_map_data["missing_deps"])
+        print(f"  project_map: {n_active} active modules, {n_conflicts} conflicts, {n_missing} missing deps")
+        print(f"  PROJECT_MAP: {pm_md_path}")
+    except Exception as _pm_err:
+        print(f"  project_map: ERROR — {_pm_err}")
 
     md_path = STATE_DIR / f"CURRENT_STATE_{ts_file}.md"
     latest_json_path = STATE_DIR / "state_latest.json"

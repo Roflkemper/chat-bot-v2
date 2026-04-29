@@ -81,3 +81,7 @@ state/runtime_state_snapshot.lock
 
 # TZ-LIQ-INGESTION-90D: historical liquidation data (fetched, not committed)
 market_data/liquidations_historical/
+
+# TZ-PROJECT-MEMORY-DEFENSE: project map (generated, not committed)
+docs/STATE/project_map.json
+docs/STATE/PROJECT_MAP.md

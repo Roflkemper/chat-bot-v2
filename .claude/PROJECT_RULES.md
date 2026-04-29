@@ -94,6 +94,26 @@ Misaligned task:
 - MAJOR: incomplete pre-flight, missing acceptance. Stop, request fix.
 - MINOR: typo, missing forbidden item. Continue, report.
 
+## TZ Template — Inventory Check
+
+Before any ТЗ for new functionality, new module, or new feature:
+
+**Code-side mandatory before execution:**
+1. Confirm `project_inventory_first` skill was applied by architect.
+2. If "Skills applied" section is missing or does not list `project_inventory_first` for applicable TZ → REJECT with:
+   ```
+   ТЗ ОТКЛОНЁН: inventory check missing. Apply project_inventory_first skill in chat.
+   ```
+
+**Architect-side mandatory before issuing TZ:**
+1. Walk `src/`, `services/`, `_recovery/restored/` for relevant keywords.
+2. Read `docs/STATE/PROJECT_MAP.md` (sections: active modules, conflicts, missing deps).
+3. Read latest `docs/STATE/RESTORED_FEATURES_AUDIT_*.json` for any module with `status == "restored_only"` relevant to the task.
+4. If parallel implementation found → replace TZ with `TZ-INVENTORY-<feature>` that decides reactivate/integrate/leave.
+
+**Session end mandatory:**
+Apply `session_handoff_protocol` skill whenever session closes with open threads or context near limit. Generate `docs/HANDOFF_<date>_<part>.md` covering all active threads, pending decisions, anti-patterns discovered, and "what to tell new Claude" snippet.
+
 ## Skills triggers index
 
 When ТЗ contains keywords or task involves these operations, listed skills are MANDATORY:
@@ -112,6 +132,8 @@ When ТЗ contains keywords or task involves these operations, listed skills are
 | writing .md/.txt/.csv/.json files via PowerShell or Python on Windows | encoding_safety |
 | new chat session start; positions/bots/AGM/liq/trading decisions | state_first_protocol |
 | architect ТЗ contains git/script/file commands directed at operator | operator_role_boundary |
+| new module, add feature, new service, write X, implement Y, before нарезать TZ | project_inventory_first |
+| end of session, session handoff, new chat, context limit, open threads | session_handoff_protocol |
 
 Skills live in `.claude/skills/<name>.md`. Code reads relevant skill when trigger matches.
 
