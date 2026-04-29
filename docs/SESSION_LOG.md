@@ -1,5 +1,19 @@
 # SESSION LOG
 
+## TZ-058 — Project Rules + Overnight Backtest Wrapper (2026-04-29)
+
+**Goal:** Формализовать рабочий протокол и добавить bat-скрипт для ночного бэктеста.
+
+**Created:**
+- `.claude/PROJECT_RULES.md` — полный набор правил: pre-flight, scope, parameters, destructive ops,
+  critical docs, module existence, long ops, acceptance, deletion, final report, severity.
+- `scripts/run_backtest_h10_overnight.bat` — запуск полного 2-летнего бэктеста с логом в `logs/`.
+- `.git/hooks/pre-commit` — добавлен `.claude/PROJECT_RULES.md` в CRITICAL_DOCS.
+
+**Checks:** hook OK (exit 0), bat syntax verified, PROJECT_RULES.md present.
+
+**Operator action:** Запустить `scripts\run_backtest_h10_overnight.bat` на своём ПК когда готов.
+
 ## TZ-056 — H10 Detector Rebuild (2026-04-29)
 
 **Root cause:** TZ-053a found only 6 setups/week vs operator ground truth of 10-15/week.
