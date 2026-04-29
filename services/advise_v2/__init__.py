@@ -1,5 +1,6 @@
 from .ban_filter import HARD_BAN_PATTERNS, filter_banned_patterns, is_banned
 from .recommendation_builder import build_recommendation
+from .signal_generator import MIN_CONFIDENCE_THRESHOLD, generate_signal
 from .schemas import (
     AlternativeAction,
     CurrentExposure,
@@ -25,6 +26,8 @@ __all__ = [
     "filter_banned_patterns",
     "is_banned",
     "build_recommendation",
+    "MIN_CONFIDENCE_THRESHOLD",
+    "generate_signal",
     "RecommendationTarget",
     "RecommendationInvalidation",
     "Recommendation",
