@@ -1,5 +1,23 @@
 # SESSION LOG
 
+## TZ-049 — Recover collectors/ from dangling git trees (2026-04-29)
+
+**Проблема:** `collectors/` пакет существовал только как untracked директория в `C:\bot7`.
+Был удалён (предположительно cleanup). Источники пропали с диска, в git никогда не коммитились.
+Живой процесс PID=5136 держал модули в RAM — единственная оперативная копия.
+
+**Recovery:** `git fsck --full --no-reflogs --unreachable` нашёл 640 dangling trees.
+6 из них содержали полный `collectors/` пакет (15 файлов). Выбрана tree `c8801caa`
+(единственная с timestamp-коммитом stash, ~2026-04-26, наибольший storage.py 8306 bytes).
+Извлечение через `GIT_INDEX_FILE` temp index + `checkout-index` (без BOM, без воздействия на основной index).
+
+**Результат:** 20 файлов закоммичены в `feature/tz-049-collectors-recovery`:
+`collectors/` (15 файлов), `scripts/{watchdog,run_collectors,smoke_collectors}`,
+`tests/test_collectors_parsers.py`, `_recovery/README.md`.
+Все 36 collector-тестов зелёные. PID=5136 не тронут.
+
+**Инвариант зафиксирован:** bytecode-only deployment запрещён. TZ-DEBT-04 в backlog.
+
 ## TZ-047 results 2026-04-28
 
 Multi-asset episodes builder (BTC/ETH/XRP):

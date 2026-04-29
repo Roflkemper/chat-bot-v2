@@ -364,6 +364,7 @@ Pine Script скачан, логика понятна. Реализуем на P
 - TZ-045: ✅ DONE 2026-04-29
 - TZ-046: ✅ DONE 2026-04-29
 - TZ-047: ✅ DONE 2026-04-28 (multi-asset episodes BTC+ETH+XRP, 7401 эпизодов)
+- TZ-049: ✅ DONE 2026-04-29 (recover collectors/ from dangling git trees; см. _recovery/README.md)
 - TZ-DEBT-07: ✅ DONE 2026-04-29 (закрыт через TZ-045)
 
 ### В очереди / в работе (на 29.04 final)
@@ -384,6 +385,9 @@ Pine Script скачан, логика понятна. Реализуем на P
 - TZ-DEBT-06 — schema consec naming
 - TZ-DEBT-02 — re-arm в bt-симуляторе
 - TZ-DEBT-08 — ProcessPoolExecutor WinError 5 на Windows
+- TZ-DEBT-04 — Pre-commit hook: запрет untracked Python пакетов без .py исходников в git (предотвращение повторения инцидента TZ-049)
+
+**Инвариант:** Любой исполняемый Python код проекта обязан быть в git с исходниками. Bytecode-only deployment — запрещён.
 
 ### Frozen датасет (исторические данные) ✅ DONE 26.04
 - BTC + ETH + XRP за 1 год (25.04.2025 → 24.04.2026)
