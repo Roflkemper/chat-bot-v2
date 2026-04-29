@@ -72,3 +72,9 @@ reports/
 !docs/OPPORTUNITY_MAP_v1.md
 !docs/GINAREA_MECHANICS.md
 !docs/SESSION_LOG.md
+
+# TZ-068: state snapshot artifacts (generated, not committed)
+docs/STATE/CURRENT_STATE_*.md
+docs/STATE/state_latest.json
+docs/state_inline.js
+state/runtime_state_snapshot.lock

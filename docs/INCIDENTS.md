@@ -50,3 +50,21 @@ Related TZ: TZ-059
 3. Никогда не перекодировать файл без диагностики байт первым шагом.
 
 **Related TZ:** TZ-066
+
+---
+
+## INC-010: Acceptance leniency on partial TZ closure (2026-04-29)
+
+**Symptom:** TZ-068 closed by architect Claude with 9/10 components done. Pre-commit hook (component 6) absent from FILES CHANGED. Architect suggested "don't block the rest of the acceptance for it" — partial TZ treated as closed.
+
+**Root cause:** Soft acceptance creep. Architect applied informal "minor gap" judgement instead of binary pass/fail rule. Silent debt: missing component forgotten, next session starts with weaker invariants than declared.
+
+**Failure mode:** Skill `state_first_protocol` works top-level (Claude doesn't analyze on stale state). But Claude can still soften acceptance one level down — allow Code to close TZ with gaps. Defense in depth fails at architect layer.
+
+**Fix:** Added binary acceptance rule to PROJECT_RULES.md §acceptance: TZ is not closed until all components pass. No phrases like "minor gap", "fix later", "don't block for the rest". Exception only when operator explicitly descopes a component by name.
+
+**Recovery:** Caught in chat. Addendum TZ-068+TZ-PORTFOLIO-PATH issued as single Code pass. Commit blocked until both pass acceptance.
+
+**Prevention rule:** TZ acceptance is binary. Any missing component = TZ back to Code. Zero exceptions without explicit operator descope phrase.
+
+**Related TZ:** TZ-068 addendum

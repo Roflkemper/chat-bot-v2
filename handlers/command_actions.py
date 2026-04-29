@@ -362,6 +362,10 @@ class CommandActions:
         from telegram_ui.portfolio.command import handle_portfolio_command
         return self.ctx.plain(handle_portfolio_command())
 
+    def state(self) -> BotResponsePayload:
+        from telegram_ui.state.command import handle_state_command
+        return self.ctx.plain(handle_state_command())
+
     def advise(self) -> BotResponsePayload:
         from telegram_ui.advisor.advise import handle_advise_command
         return self.ctx.plain(handle_advise_command())
@@ -1137,6 +1141,7 @@ def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotRes
     actions = CommandActions(ctx)
     return {
         '_cmd_help': actions.help,
+        '_cmd_state': actions.state,
         '_cmd_analysis': actions.analysis,
         '_cmd_system_status': actions.system_status,
         '_cmd_action_now': actions.action_now,

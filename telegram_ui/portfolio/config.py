@@ -4,7 +4,7 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
 
-SNAPSHOTS_CSV = _ROOT / "ginarea_tracker" / "ginarea_live" / "snapshots.csv"
+SNAPSHOTS_CSV = _ROOT / "ginarea_live" / "snapshots.csv"
 BOT_ALIASES_JSON = _ROOT / "ginarea_tracker" / "bot_aliases.json"
 GINAREA_ENV = _ROOT / "ginarea_tracker" / ".env"
 

@@ -65,6 +65,13 @@ Unit tests pass but factual missing → report incomplete, do not claim done.
 Allowed only if all: explicit task auth + exact paths + git status checked + rollback documented.
 Never without per-file approval: tests/, backtests/, docs/, releases/, .env, .claude/, config.py, *.bat, *.ps1, README.md, CHANGELOG.md, PROJECT_MANIFEST.md.
 
+## HANDOFF generation protocol (TZ-068)
+
+Before creating any HANDOFF document (docs/HANDOFF_<date>_<part>.md):
+1. Run `python scripts/state_snapshot.py` → generates docs/STATE/CURRENT_STATE_<ts>.md
+2. Link the fresh state report in HANDOFF §1 table: "| Текущий стейт | [CURRENT_STATE_latest.md](STATE/CURRENT_STATE_latest.md) |"
+3. HANDOFF without state link → incomplete, do not mark done.
+
 ## Final report
 RESULT: [one line]
 FILES CHANGED: [paths]
@@ -103,6 +110,7 @@ When ТЗ contains keywords or task involves these operations, listed skills are
 | any code change, ТЗ closing, before commit | regression_baseline_keeper |
 | live bots, GinArea API, Bitmex positions, market_collector | state_drift_detector |
 | writing .md/.txt/.csv/.json files via PowerShell or Python on Windows | encoding_safety |
+| new chat session start; positions/bots/AGM/liq/trading decisions | state_first_protocol |
 
 Skills live in `.claude/skills/<name>.md`. Code reads relevant skill when trigger matches.
 
