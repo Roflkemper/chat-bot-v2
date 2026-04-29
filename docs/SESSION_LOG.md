@@ -1,5 +1,24 @@
 # SESSION LOG
 
+## TZ-059 — Skills System + Bidirectional Enforcement (2026-04-29)
+
+**Goal:** Установить систему из 9 skills с триггер-индексом, защитить через pre-commit hook.
+
+**Created:**
+- `.claude/skills/` — 9 файлов: data_freshness_check, live_position_safety, result_sanity_check,
+  incident_log_writer, param_provenance_tracker, cost_aware_executor, telegram_signal_validator,
+  regression_baseline_keeper, state_drift_detector. Каждый ≤19 строк.
+- `docs/INCIDENTS.md` — создан (первая запись: 2026-04-29, skills system absent).
+- `.claude/PROJECT_RULES.md` — добавлены разделы "Skills triggers index" + "Skills applied enforcement".
+- `.git/hooks/pre-commit` — добавлена проверка наличия всех 9 skill-файлов.
+
+**Checks:** hook smoke OK (блокирует при удалённом файле), hook full OK (9 файлов = exit 0),
+20/20 тестов green (регрессий нет).
+
+**SKILLS APPLIED:**
+- regression_baseline_keeper: 20 passed, 0 failures — pass ✓
+- incident_log_writer: docs/INCIDENTS.md создан, запись 2026-04-29 добавлена ✓
+
 ## TZ-058 — Project Rules + Overnight Backtest Wrapper (2026-04-29)
 
 **Goal:** Формализовать рабочий протокол и добавить bat-скрипт для ночного бэктеста.

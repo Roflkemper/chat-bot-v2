@@ -86,3 +86,53 @@ Misaligned task:
 - CRITICAL: destructive without protection, critical doc deleted, silent param change. Stop. Operator override required.
 - MAJOR: incomplete pre-flight, missing acceptance. Stop, request fix.
 - MINOR: typo, missing forbidden item. Continue, report.
+
+## Skills triggers index
+
+When ТЗ contains keywords or task involves these operations, listed skills are MANDATORY:
+
+| Triggers | Required skill |
+|---|---|
+| backtest, ohlcv, market_collector, real validation, frozen, historical data | data_freshness_check |
+| live, rollout, deploy, kill PID, restart daemon, taskkill | live_position_safety |
+| after backtest/validation/detector — before final report | result_sanity_check |
+| recovery, restoration, rollback, file loss, root cause | incident_log_writer |
+| strategy parameter change (C1, C2, threshold, target, gs, TP, SL, risk) | param_provenance_tracker |
+| long backtest, grid search, ML, full repo scan | cost_aware_executor |
+| Telegram output, advise, signal rendering | telegram_signal_validator |
+| any code change, ТЗ closing, before commit | regression_baseline_keeper |
+| live bots, GinArea API, Bitmex positions, market_collector | state_drift_detector |
+
+Skills live in `.claude/skills/<name>.md`. Code reads relevant skill when trigger matches.
+
+## Skills applied — bidirectional enforcement
+
+**Chat-side (Claude in chat) responsibility:**
+Every ТЗ must include section:
+Skills applied
+
+skill_name_1 (because: [trigger])
+skill_name_2 (because: [trigger])
+
+ТЗ without this section or with skills not matching triggers detected by Code → REJECT.
+
+**Code-side responsibility:**
+1. On receiving ТЗ — parse triggers in goal/steps, derive expected skills.
+2. Compare to "Skills applied" section.
+3. If mismatch:
+SKILLS MISMATCH:
+
+ТЗ declared: [list]
+Triggers detected: [list]
+Missing: [list]
+Передай Claude в чате для исправления.
+
+4. Final report must include:
+SKILLS APPLIED:
+
+skill_name_1: [confirmation/result]
+skill_name_2: [confirmation/result]
+
+5. If skill detected applicable but not applied — final report flags it as INCOMPLETE regardless of other criteria.
+
+This double-check prevents skill amnesia on either end.
