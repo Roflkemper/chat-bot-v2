@@ -1,3 +1,5 @@
+from .ban_filter import HARD_BAN_PATTERNS, filter_banned_patterns, is_banned
+from .recommendation_builder import build_recommendation
 from .schemas import (
     AlternativeAction,
     CurrentExposure,
@@ -19,6 +21,10 @@ __all__ = [
     "MarketContext",
     "LiqLevel",
     "CurrentExposure",
+    "HARD_BAN_PATTERNS",
+    "filter_banned_patterns",
+    "is_banned",
+    "build_recommendation",
     "RecommendationTarget",
     "RecommendationInvalidation",
     "Recommendation",
