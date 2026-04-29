@@ -57,6 +57,26 @@ def _safe_float(v: Any) -> float | None:
         return None
 
 
+def _is_valid_bot_row(bot_id: str, bot_name: str) -> bool:
+    """GinArea bot IDs are 7–12 digit numeric strings; name must not be a float."""
+    if not bot_id.isdigit():
+        return False
+    if not (7 <= len(bot_id) <= 12):
+        return False
+    try:
+        float(bot_name)
+        return False  # name parses as number → garbage row
+    except ValueError:
+        return True
+
+
+def _infer_position_unit(position: float | None) -> str:
+    """USD if |position| > 100 (USDT-M linear contract), else BTC."""
+    if position is None:
+        return "BTC"
+    return "USD" if abs(position) > 100 else "BTC"
+
+
 # ---------------------------------------------------------------------------
 # Source: snapshots.csv (tail last lookback_hours)
 # ---------------------------------------------------------------------------
@@ -215,17 +235,22 @@ def _load_ginarea_api() -> dict:
 # Build bots table from snapshots
 # ---------------------------------------------------------------------------
 
-def _build_bots_from_snapshots(snap_data: dict) -> list[dict]:
+def _build_bots_from_snapshots(snap_data: dict) -> tuple[list[dict], int]:
+    """Returns (bots, garbage_row_count)."""
     rows = snap_data.get("rows", [])
     if not rows:
-        return []
+        return [], 0
 
-    # Get latest snapshot per bot_id
+    # Get latest snapshot per bot_id; filter garbage simultaneously
     latest: dict[str, dict] = {}
+    garbage_count = 0
     for row in rows:
         bid = row.get("bot_id", "")
-        if bid:
-            latest[bid] = row
+        bname = row.get("bot_name", "")
+        if not _is_valid_bot_row(bid, bname):
+            garbage_count += 1
+            continue
+        latest[bid] = row
 
     bots = []
     for bot_id, row in latest.items():
@@ -236,6 +261,13 @@ def _build_bots_from_snapshots(snap_data: dict) -> list[dict]:
         volume = _safe_float(row.get("trade_volume"))
         status_code = row.get("status", "")
 
+        pos_unit = _infer_position_unit(pos)
+        # Convert USD contracts to BTC equivalent using avg_entry as proxy for mark
+        if pos_unit == "USD" and pos is not None and avg_price and avg_price > 1000:
+            pos_btc_eq = round(pos / avg_price, 6)
+        else:
+            pos_btc_eq = pos
+
         direction = "short" if (pos is not None and pos < 0) else (
             "long" if (pos is not None and pos > 0) else "flat"
         )
@@ -245,10 +277,12 @@ def _build_bots_from_snapshots(snap_data: dict) -> list[dict]:
             "alias": row.get("alias", ""),
             "direction": direction,
             "pair": "BTCUSDT",
-            "contract_type": "inverse" if (volume and volume > 1000) else "linear",
+            "contract_type": "linear" if pos_unit == "USD" else "inverse",
             "config": {},
             "live": {
-                "position_btc": pos,
+                "position": pos,
+                "position_unit": pos_unit,
+                "position_btc_equivalent": pos_btc_eq,
                 "avg_entry": avg_price if avg_price and avg_price > 1000 else None,
                 "mark": None,
                 "liq_price": liq,
@@ -260,7 +294,7 @@ def _build_bots_from_snapshots(snap_data: dict) -> list[dict]:
             "status": status_code,
             "last_ts": row.get("ts_utc"),
         })
-    return bots
+    return bots, garbage_count
 
 
 # ---------------------------------------------------------------------------
@@ -276,18 +310,18 @@ def _build_exposure(bots: list[dict]) -> dict:
 
     for bot in bots:
         live = bot.get("live", {})
-        pos = live.get("position_btc")
+        pos_eq = live.get("position_btc_equivalent")
         liq = live.get("liq_price")
 
-        if pos is None:
+        if pos_eq is None:
             continue
-        if pos < 0:
-            shorts_btc += pos
+        if pos_eq < 0:
+            shorts_btc += pos_eq
             if liq and liq > 0:
                 if nearest_short_liq is None or liq < nearest_short_liq["price"]:
                     nearest_short_liq = {"price": liq, "distance_pct": None}
-        elif pos > 0:
-            longs_btc += pos
+        elif pos_eq > 0:
+            longs_btc += pos_eq
             if liq and liq > 0:
                 if nearest_long_liq is None or liq > nearest_long_liq["price"]:
                     nearest_long_liq = {"price": liq, "distance_pct": None}
@@ -343,10 +377,13 @@ def _build_dd_recovery(snap_data: dict, bots: list[dict]) -> list[dict]:
     if not rows:
         return []
 
-    # Group rows by bot_id, find min unrealized
+    # Group rows by bot_id, find min unrealized — skip garbage rows
     by_bot: dict[str, list[dict]] = {}
     for row in rows:
         bid = row.get("bot_id", "")
+        bname = row.get("bot_name", "")
+        if not _is_valid_bot_row(bid, bname):
+            continue
         pos = _safe_float(row.get("position"))
         if bid and pos is not None and pos < 0:
             by_bot.setdefault(bid, []).append(row)
@@ -385,7 +422,8 @@ def _build_dd_recovery(snap_data: dict, bots: list[dict]) -> list[dict]:
 # Build anomalies
 # ---------------------------------------------------------------------------
 
-def _build_anomalies(snap_data: dict, api_data: dict, bm_data: dict) -> list[str]:
+def _build_anomalies(snap_data: dict, api_data: dict, bm_data: dict,
+                     garbage_count: int = 0, valid_bot_count: int = 0) -> list[str]:
     anomalies: list[str] = []
 
     if snap_data.get("status") != "ok":
@@ -394,6 +432,12 @@ def _build_anomalies(snap_data: dict, api_data: dict, bm_data: dict) -> list[str
     age = snap_data.get("age_min")
     if age is not None and age > 60:
         anomalies.append(f"snapshots.csv is stale: last update {_fmt_age(age)} ago")
+
+    if garbage_count > 0:
+        anomalies.append(
+            f"filtered {garbage_count} garbage rows from snapshots.csv "
+            f"(bot_id non-numeric or name is float — possible column shift in tracker writer)"
+        )
 
     if bm_data.get("status") != "ok":
         anomalies.append(f"bot_manager_state.json unavailable: {bm_data.get('reason')}")
@@ -417,8 +461,11 @@ def _build_anomalies(snap_data: dict, api_data: dict, bm_data: dict) -> list[str
 def _render_markdown(ts_str: str, sources: dict, bots: list[dict],
                      exposure: dict, agm_24h: list[dict],
                      dd_recovery: list[dict], anomalies: list[str],
-                     skills_applied: list[str]) -> str:
+                     skills_applied: list[str],
+                     data_health: str = "ok") -> str:
     lines: list[str] = [f"# CURRENT_STATE {ts_str}", ""]
+    if data_health == "critical":
+        lines += [f"**⚠ snapshots.csv likely corrupted, fewer than 5 valid bot rows recovered**", ""]
 
     # Section 0: Sources
     lines += ["## 0. Sources & freshness", ""]
@@ -450,24 +497,25 @@ def _render_markdown(ts_str: str, sources: dict, bots: list[dict],
     # Section 1: Bots
     lines += ["## 1. Bots — config + live", ""]
     if bots:
-        lines.append("| alias | id | dir | position_btc | avg_entry | liq_price | unreal_usd | real_usd | last_ts |")
-        lines.append("|---|---|---|---|---|---|---|---|---|")
+        lines.append("| alias | id | dir | position | unit | pos_btc_eq | avg_entry | liq_price | unreal_usd | last_ts |")
+        lines.append("|---|---|---|---|---|---|---|---|---|---|")
         for bot in bots:
             live = bot.get("live", {})
             alias = bot.get("alias") or bot.get("name", "")[:20]
             bid = bot.get("id", "")
             direction = bot.get("direction", "")
-            pos = live.get("position_btc")
+            pos = live.get("position")
+            pos_unit = live.get("position_unit", "BTC")
+            pos_eq = live.get("position_btc_equivalent")
             avg = live.get("avg_entry")
             liq = live.get("liq_price")
             unreal = live.get("unrealized_usd")
-            real = live.get("realized_usd")
             last_ts = bot.get("last_ts", "")[:16] if bot.get("last_ts") else ""
 
             def _f(v: Any, fmt: str = ".4f") -> str:
                 return format(v, fmt) if v is not None else "N/A"
 
-            lines.append(f"| {alias} | {bid} | {direction} | {_f(pos)} | {_f(avg, '.0f')} | {_f(liq, '.0f')} | {_f(unreal, '.2f')} | {_f(real, '.2f')} | {last_ts} |")
+            lines.append(f"| {alias} | {bid} | {direction} | {_f(pos)} | {pos_unit} | {_f(pos_eq)} | {_f(avg, '.0f')} | {_f(liq, '.0f')} | {_f(unreal, '.2f')} | {last_ts} |")
     else:
         lines.append("_(no bot data available)_")
     lines.append("")
@@ -563,6 +611,11 @@ def _write_inline_js(state_json: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    import io as _io
+    if hasattr(sys.stdout, "buffer") and sys.stdout.encoding and \
+            sys.stdout.encoding.lower().replace("-", "") not in ("utf8", "utf8bom"):
+        sys.stdout = _io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description="State Snapshot")
     parser.add_argument("--no-api", action="store_true", help="Skip GinArea API calls")
     parser.add_argument("--lookback-hours", type=int, default=24)
@@ -597,11 +650,13 @@ def main() -> None:
     else:
         print("  ginarea_api: skipped (--no-api)")
 
-    bots = _build_bots_from_snapshots(snap_data)
+    bots, garbage_count = _build_bots_from_snapshots(snap_data)
     exposure = _build_exposure(bots)
     agm_24h = _build_agm_24h(bm_data, bots)
     dd_recovery = _build_dd_recovery(snap_data, bots)
-    anomalies = _build_anomalies(snap_data, api_data, bm_data)
+    anomalies = _build_anomalies(snap_data, api_data, bm_data,
+                                 garbage_count=garbage_count,
+                                 valid_bot_count=len(bots))
 
     sources = {
         "snapshots": snap_data,
@@ -611,8 +666,11 @@ def main() -> None:
         "ginarea_api": api_data,
     }
 
+    data_health = "critical" if len(bots) < 5 else "ok"
+
     state_json = {
         "ts": ts.isoformat(),
+        "data_health": data_health,
         "sources": {k: {kk: vv for kk, vv in v.items() if kk != "rows"} for k, v in sources.items()},
         "bots": bots,
         "manual_positions": [],
@@ -628,7 +686,8 @@ def main() -> None:
     latest_md_path = STATE_DIR / "CURRENT_STATE_latest.md"
 
     md_content = _render_markdown(
-        ts_str, sources, bots, exposure, agm_24h, dd_recovery, anomalies, skills_applied
+        ts_str, sources, bots, exposure, agm_24h, dd_recovery, anomalies, skills_applied,
+        data_health=data_health,
     )
 
     md_path.write_text(md_content, encoding="utf-8")

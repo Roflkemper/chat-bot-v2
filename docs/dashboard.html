@@ -101,8 +101,8 @@
 <div class="card" style="overflow-x:auto">
   <table id="bots-table">
     <thead><tr>
-      <th>alias</th><th>id</th><th>dir</th><th>position</th>
-      <th>avg_entry</th><th>liq_price</th><th>unreal $</th><th>real $</th><th>ts</th>
+      <th>alias</th><th>id</th><th>dir</th><th>position</th><th>unit</th><th>pos_btc</th>
+      <th>avg_entry</th><th>liq_price</th><th>unreal $</th><th>ts</th>
     </tr></thead>
     <tbody id="bots-tbody"></tbody>
   </table>
@@ -178,7 +178,9 @@ function renderAll(S) {
   const bots = (S.bots || []).slice().sort((a, b) => a.direction < b.direction ? -1 : 1);
   for (const bot of bots) {
     const live = bot.live || {};
-    const pos = live.position_btc;
+    const pos = live.position;
+    const posEq = live.position_btc_equivalent;
+    const posUnit = live.position_unit || 'BTC';
     const unreal = live.unrealized_usd;
     const dirColor = bot.direction === 'short' ? 'var(--red)' : bot.direction === 'long' ? 'var(--green)' : '';
     const unrColor = unreal != null ? (unreal < 0 ? 'var(--red)' : 'var(--green)') : '';
@@ -187,11 +189,12 @@ function renderAll(S) {
       <td>${bot.alias || bot.name || ''}</td>
       <td style="color:var(--muted)">${bot.id}</td>
       <td style="color:${dirColor}">${bot.direction}</td>
-      <td>${pos != null ? fmt(pos,4) : 'N/A'}</td>
+      <td>${pos != null ? fmt(pos, posUnit==='USD' ? 0 : 4) : 'N/A'}</td>
+      <td style="color:var(--muted);font-size:11px">${posUnit}</td>
+      <td>${posEq != null ? fmt(posEq,4) : 'N/A'}</td>
       <td>${live.avg_entry != null ? fmt(live.avg_entry,0) : 'N/A'}</td>
       <td>${live.liq_price != null ? fmt(live.liq_price,0) : 'N/A'}</td>
       <td style="color:${unrColor}">${unreal != null ? fmt(unreal,2) : 'N/A'}</td>
-      <td>${live.realized_usd != null ? fmt(live.realized_usd,2) : 'N/A'}</td>
       <td style="color:var(--muted);font-size:11px">${ts}</td>
     </tr>`);
   }
