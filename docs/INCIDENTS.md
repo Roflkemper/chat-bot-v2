@@ -108,3 +108,32 @@ Related TZ: TZ-059
 4. Never assume a module exists OR is absent without grep confirmation.
 
 **Related TZ:** TZ-PROJECT-MEMORY-DEFENSE
+
+---
+
+## INC-013: Architect inventory pattern recurrence (2026-04-30)
+
+**Symptom:** Across one session ARCHITECT issued 3 TZs requiring inventory
+but missing architect-side pre-check:
+
+- TZ-SIGNAL-LOGGER: caught by Code, reformulated to TZ-INVENTORY-SIGNAL-LOGGER first
+- TZ-ACTION-TRACKER: had inventory in PRE-FLIGHT, passed
+- TZ-WEEKLY-COMPARISON-REPORT: caught by Code, reformulated
+
+**Pattern:** architect-side inventory pre-check missing.
+Code's inventory check working as designed (defense in depth)
+but each catch breaks flow.
+
+**Root cause:** `project_inventory_first` skill exists for Code-side enforcement
+but no architect-side self-check habit. Architect issues TZ from memory rather
+than reading PROJECT_MAP + RESTORED_FEATURES_AUDIT first.
+
+**Fix:** Skill `architect_inventory_first` added (.claude/skills/architect_inventory_first.md).
+Mandatory self-check before any TZ for new module.
+
+**Recovery:** Каждый случай caught без data loss. No commits with duplicates.
+
+**Prevention rule:** Before any new-module TZ, architect reads PROJECT_MAP.md +
+RESTORED_FEATURES_AUDIT. Missing step = TZ not sent.
+
+**Related TZ:** TZ-SKILL-ARCHITECT-INVENTORY-FIRST

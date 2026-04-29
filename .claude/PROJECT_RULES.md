@@ -134,6 +134,7 @@ When ТЗ contains keywords or task involves these operations, listed skills are
 | architect ТЗ contains git/script/file commands directed at operator | operator_role_boundary |
 | new module, add feature, new service, write X, implement Y, before нарезать TZ | project_inventory_first |
 | end of session, session handoff, new chat, context limit, open threads | session_handoff_protocol |
+| architect отправляет TZ для new module, new feature, new service | architect_inventory_first |
 
 Skills live in `.claude/skills/<name>.md`. Code reads relevant skill when trigger matches.
 
