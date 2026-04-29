@@ -1,4 +1,4 @@
-# Queue Navigator — 2026-04-29 evening
+# Queue Navigator — 2026-04-29 night
 
 > Живой навигатор очереди. Обновлять при каждом изменении статуса.
 
@@ -19,19 +19,31 @@
 |---|---|---|---|---|---|---|
 | TZ-060 | Tracker analyzer (snapshots.csv 16-29.04) | Code | 1h | (а) тактически | — | ⬜ OPEN |
 | TZ-061 | Live dashboard backend (JSON endpoint) | Code | 2h | (б) инфраструктура | — | ⬜ OPEN |
-| TZ-062 | OHLCV ingestion script | Code | 1h | (б) инфраструктура | — | ⬜ OPEN |
+| TZ-062 | OHLCV ingestion script | Code | 1h | (б) инфраструктура | — | ✅ DONE |
 | TZ-063 | AGM dry-run analyzer | Code | 2h | (а) тактически | — | ⬜ OPEN |
 
 ---
 
-## Поток B — новые (разблокируют RECONCILE-01)
+## Поток B — новые
 
 | ID | Задача | Кто | Время | Trader-first | Блокер | Статус |
 |---|---|---|---|---|---|---|
-| TZ-ADD-BOT-PARAMS-TO-STATE | Добавить machine-readable params в state_latest.json | Code | 2h | (а) стратегически | — | ⬜ OPEN |
-| TZ-RECONCILE-01 | Backtest vs real reconciliation (TEST_1/TEST_2) | Code | 3h | (а) стратегически | BLOCKER-1 + BLOCKER-2 | 🔒 STOPPED |
+| TZ-ADD-BOT-PARAMS-TO-STATE | Добавить machine-readable params в state_latest.json | Code | 2h | (а) стратегически | — | ✅ DONE |
+| TZ-RECONCILE-01-RETRY | Backtest vs real reconciliation (8 ботов) | Code | 3h | (а) стратегически | — | ✅ DONE (RED — stale-init) |
+| TZ-PARAMS-FRESHNESS-GUARD | state_snapshot.py: guard params.csv age >15min + tracker not running → anomaly | Code | 15m | (в) защита капитала | — | ⬜ OPEN |
 
-> RECONCILE-01 stopped: config={} для всех ботов + OHLCV gap Apr25–28. См. [RECONCILE_01_2026-04-29_1658.md](RECONCILE_01_2026-04-29_1658.md)
+> RECONCILE-01-RETRY: engine_health=RED. Причина: stale-init artifact (не баг движка). Все 6 симулированных ботов — FAIL из-за каскадного срабатывания синтетических ордеров при инициализации. Требует TZ-ENGINE-FIX-STALE-INIT. См. [RECONCILE_01_2026-04-29T183424Z.md](RECONCILE_01_2026-04-29T183424Z.md)
+
+---
+
+## TZ-ENGINE-FIX (открыты по результатам RECONCILE-01-RETRY)
+
+| ID | Задача | Кто | Время | Trader-first | Блокер | Статус |
+|---|---|---|---|---|---|---|
+| TZ-ENGINE-FIX-STALE-INIT | Reconcile v2: запустить sim с bot.started_at (16.04) вместо первого snapshot | Code | 3h | (а) стратегически | — | ⬜ OPEN |
+| TZ-FIX-CONTRACT-TYPE-LABEL | state_snapshot.py: contract_type inverted (TEST_1/2/3 = linear, не inverse) | Code | 30m | (в) точность данных | — | ⬜ OPEN |
+| TZ-ENGINE-FIX-INSTOP-SEMANTICS-B | Верифицировать instop для LONG_C/D: Semant A или B? | Оператор+Code | 1h | (а) стратегически | — | ⬜ OPEN |
+| TZ-ADD-ORDER-SIZE-TO-STATE | Добавить order_size в state_latest.json (хардкод из GINAREA_MECHANICS) | Code | 30m | (в) точность данных | — | ⬜ OPEN |
 
 ---
 
@@ -51,6 +63,12 @@
 | TZ-057 | H10 bilateral dedup | Code | 2h | (а) стратегически | backtest results | 🔒 BLOCKED |
 | TZ-065 | H10 live deployment (Telegram semi-auto) | Code | 3h | (а) стратегически | backtest results | 🔒 BLOCKED |
 | TZ-066 | H10 calibration (data-driven thresholds) | Code | 2h | (а) стратегически | backtest results | 🔒 BLOCKED |
+
+---
+
+## Поток B — deferred
+
+- TZ-TREND-STRENGTH-CAP-FIX: trend_strength_score не достигает 1.0 при regime trend_up. Добавить modifier +0.20 для |price_change_1h_pct| > 4.0% в trend_handler.py. ~10 мин Codex.
 
 ---
 
@@ -91,3 +109,6 @@
 | TZ-058 | Project Guard skill | ✅ PROJECT_RULES.md + regression_baseline_keeper skill |
 | TZ-059 | 9 skills system | ✅ 9 skills + trigger index + bidirectional enforcement |
 | TZ-064 | Handoff document | ✅ HANDOFF + STATE/QUEUE + hook + MASTER + SESSION_LOG |
+| TZ-062 | OHLCV ingest script | ✅ scripts/ohlcv_ingest.py; BTCUSDT gap filled + XRPUSDT initial download |
+| TZ-ADD-BOT-PARAMS-TO-STATE | Bot params → state_latest.json | ✅ API-primary + params.csv fallback; config_source logged |
+| TZ-RECONCILE-01-RETRY | Reconcile 8 ботов | ✅ engine_health=RED (stale-init artifact). TZ-ENGINE-FIX-STALE-INIT opened |
