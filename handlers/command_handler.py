@@ -298,6 +298,9 @@ class CommandHandler:
         registry.register('СТАТУС БОТОВ', '_cmd_bots_status', capabilities=CommandCapabilities(renderer='status'))
         registry.register('BOT HELP', '_cmd_bot_help', capabilities=CommandCapabilities(renderer='help'))
         registry.register('ПОМОЩЬ ПО БОТАМ', '_cmd_bot_help', capabilities=CommandCapabilities(renderer='help'))
+        registry.register('ROADMAP', '_cmd_roadmap', capabilities=CommandCapabilities(renderer='help'))
+        registry.register('РОАДМАП', '_cmd_roadmap', capabilities=CommandCapabilities(renderer='help'))
+        registry.register('/ROADMAP', '_cmd_roadmap', capabilities=CommandCapabilities(renderer='help'))
         registry.register_prefix(
             'BOT <NAME> <ACTION>',
             lambda t: t.startswith('BOT ') and any(x in t for x in ('CT LONG','CT SHORT','RANGE LONG','RANGE SHORT')),

@@ -136,6 +136,12 @@
 <h2>Anomalies</h2>
 <div id="anomalies-section"></div>
 
+<!-- Roadmap -->
+<h2>Roadmap</h2>
+<div class="card" id="roadmap-section">
+  <span style="color:var(--muted)">Загрузка roadmap...</span>
+</div>
+
 <!-- Queue -->
 <h2>Queue Navigator</h2>
 <div class="queue-section" id="queue-section">
@@ -241,6 +247,43 @@ function renderAll(S) {
   }
 }
 
+// Roadmap rendering
+function renderRoadmap(S) {
+  const sec = document.getElementById('roadmap-section');
+  const rm = S && S.roadmap;
+  if (!rm || rm.status === 'unavailable') {
+    sec.innerHTML = '<span style="color:var(--muted)">Roadmap не найден — запусти state_snapshot.py</span>';
+    return;
+  }
+  const statusColor = rm.current_phase_status === 'in_progress' ? 'var(--yellow)' :
+                      rm.current_phase_status === 'done' ? 'var(--green)' : 'var(--muted)';
+  let html = `<div style="margin-bottom:8px">
+    <span style="font-size:15px;font-weight:600">📍 ${rm.current_phase || '—'}</span>
+    <span style="margin-left:8px;color:${statusColor};font-size:11px">[${rm.current_phase_status || '—'}]</span>
+  </div>`;
+
+  const tasks = (rm.active_tasks || []).slice(0, 7);
+  if (tasks.length) {
+    html += '<div style="margin-bottom:6px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Active tasks</div>';
+    for (const t of tasks) {
+      const color = t.status === 'done' ? 'var(--green)' : 'var(--muted)';
+      const icon = t.status === 'done' ? '✓' : '·';
+      html += `<div style="color:${color};font-size:12px;padding:1px 0">${icon} ${t.id}</div>`;
+    }
+  }
+
+  if (rm.next_phase) {
+    html += `<div style="margin-top:8px;font-size:11px;color:var(--muted)">Next: ${rm.next_phase}</div>`;
+  }
+
+  if (rm.milestones_completed && rm.milestones_completed.length) {
+    const last = rm.milestones_completed.slice(-1)[0];
+    html += `<div style="margin-top:4px;font-size:11px;color:var(--green)">✓ ${last}</div>`;
+  }
+
+  sec.innerHTML = html;
+}
+
 // Queue rendering (embedded QUEUE.md content from state_inline.js if present)
 function renderQueue() {
   const sec = document.getElementById('queue-section');
@@ -270,6 +313,7 @@ async function loadData() {
   }
 
   renderAll(S);
+  renderRoadmap(S);
   renderQueue();
 }
 

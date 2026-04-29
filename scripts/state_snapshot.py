@@ -752,6 +752,107 @@ def _render_markdown(ts_str: str, sources: dict, bots: list[dict],
 
 
 # ---------------------------------------------------------------------------
+# ROADMAP parsing
+# ---------------------------------------------------------------------------
+
+ROADMAP_PATH = ROOT / "docs" / "STATE" / "ROADMAP.md"
+
+_STATUS_MAP = {
+    "in_progress": "in_progress",
+    "in progress": "in_progress",
+    "planned": "planned",
+    "blocked": "blocked",
+    "done": "done",
+}
+
+
+def _parse_roadmap() -> dict:
+    """Parse ROADMAP.md into a structured dict for state_latest.json."""
+    if not ROADMAP_PATH.exists():
+        return {"status": "unavailable", "reason": "ROADMAP.md not found"}
+
+    text = ROADMAP_PATH.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    phases: list[dict] = []
+    current_phase: dict | None = None
+    current_section = ""
+    recently_completed: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Phase header: ### ФАЗА X — Name
+        if stripped.startswith("### ФАЗА") or (stripped.startswith("### ФА") ):
+            if current_phase:
+                phases.append(current_phase)
+            name = stripped.lstrip("#").strip()
+            current_phase = {"name": name, "status": "unknown", "active_tasks": [], "exit_criteria": []}
+            current_section = ""
+            continue
+
+        if current_phase is None:
+            continue
+
+        # Status line
+        if stripped.lower().startswith("status:"):
+            raw_status = stripped.split(":", 1)[1].strip().lower().replace(" ", "_")
+            current_phase["status"] = _STATUS_MAP.get(raw_status, raw_status)
+            continue
+
+        # Section markers
+        if "active tasks" in stripped.lower() or "active задачи" in stripped.lower():
+            current_section = "active_tasks"
+            continue
+        if "exit criteria" in stripped.lower():
+            current_section = "exit_criteria"
+            continue
+        if "pre-requisites" in stripped.lower():
+            current_section = "prereqs"
+            continue
+        if stripped.startswith("Goal:") or stripped.startswith("Status:"):
+            current_section = ""
+            continue
+
+        # List items
+        if stripped.startswith("- ") and current_section in ("active_tasks", "exit_criteria"):
+            item = stripped[2:].strip()
+            if current_section == "active_tasks":
+                current_phase["active_tasks"].append(item)
+                if "[DONE" in item:
+                    recently_completed.append(item)
+            else:
+                current_phase["exit_criteria"].append(item)
+
+    if current_phase:
+        phases.append(current_phase)
+
+    # Find current phase (first in_progress)
+    current = next((p for p in phases if p["status"] == "in_progress"), None)
+    next_phase = None
+    if current:
+        idx = phases.index(current)
+        if idx + 1 < len(phases):
+            next_phase = phases[idx + 1]["name"]
+
+    # Pending tasks (not DONE) from current phase
+    pending_tasks: list[dict] = []
+    if current:
+        for task in current["active_tasks"]:
+            status = "done" if "[DONE" in task else "pending"
+            pending_tasks.append({"id": task.split("[")[0].strip(), "status": status})
+
+    return {
+        "current_phase": current["name"] if current else "unknown",
+        "current_phase_status": current["status"] if current else "unknown",
+        "active_tasks": pending_tasks,
+        "next_phase": next_phase,
+        "milestones_completed": recently_completed,
+        "phases": [{"name": p["name"], "status": p["status"]} for p in phases],
+    }
+
+
+# ---------------------------------------------------------------------------
 # PROJECT_MAP generation
 # ---------------------------------------------------------------------------
 
@@ -1103,6 +1204,8 @@ def main() -> None:
 
     data_health = "critical" if len(bots) < 5 else "ok"
 
+    roadmap_data = _parse_roadmap()
+
     state_json = {
         "ts": ts.isoformat(),
         "data_health": data_health,
@@ -1113,6 +1216,7 @@ def main() -> None:
         "agm_24h": agm_24h,
         "dd_recovery_24h": dd_recovery,
         "anomalies": anomalies,
+        "roadmap": roadmap_data,
         "skills_applied": skills_applied,
     }
 

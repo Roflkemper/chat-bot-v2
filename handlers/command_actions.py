@@ -131,6 +131,69 @@ except Exception:
     summarize_bot_control = None
 
 
+def _format_roadmap_text() -> str:
+    """Read ROADMAP.md and return formatted Telegram-ready text (≤4096 chars)."""
+    from pathlib import Path
+    roadmap_path = Path(__file__).resolve().parents[1] / "docs" / "STATE" / "ROADMAP.md"
+    if not roadmap_path.exists():
+        return "📍 Roadmap не найден.\n\nЗапусти: python scripts/state_snapshot.py"
+
+    text = roadmap_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    current_phase_lines: list[str] = []
+    next_phase_name = ""
+    in_current = False
+    found_next = False
+
+    for line in lines:
+        s = line.strip()
+        if s.startswith("### ФАЗА") or s.startswith("### ФА"):
+            if in_current:
+                next_phase_name = s.lstrip("#").strip()
+                found_next = True
+                break
+            status_ahead = ""
+            for ll in lines[lines.index(line):lines.index(line) + 5]:
+                if ll.strip().lower().startswith("status:"):
+                    status_ahead = ll.strip().split(":", 1)[1].strip().lower()
+                    break
+            if "in_progress" in status_ahead or "in progress" in status_ahead:
+                in_current = True
+                current_phase_lines.append(s.lstrip("#").strip())
+        elif in_current:
+            current_phase_lines.append(line)
+
+    if not current_phase_lines:
+        return "📍 Roadmap: нет активной фазы.\n\nПроверь docs/STATE/ROADMAP.md"
+
+    # Build output
+    phase_name = current_phase_lines[0]
+    out_lines = [f"📍 Текущая фаза: {phase_name}", ""]
+
+    in_tasks = False
+    tasks_shown = 0
+    for line in current_phase_lines[1:]:
+        s = line.strip()
+        if "active tasks" in s.lower():
+            out_lines.append("Active:")
+            in_tasks = True
+            continue
+        if "exit criteria" in s.lower() or "pre-requisites" in s.lower():
+            in_tasks = False
+            continue
+        if in_tasks and s.startswith("- ") and tasks_shown < 7:
+            icon = "✓" if "[DONE" in s else "·"
+            out_lines.append(f"  {icon} {s[2:]}")
+            tasks_shown += 1
+
+    if next_phase_name:
+        out_lines += ["", f"Next: {next_phase_name}"]
+
+    result = "\n".join(out_lines)
+    return result[:4090]
+
+
 @dataclass
 class CommandActionContext:
     command: str
@@ -1127,6 +1190,9 @@ class CommandActions:
     def bot_help(self) -> BotResponsePayload:
         return self.ctx.plain(format_bot_manager_status())
 
+    def roadmap(self) -> BotResponsePayload:
+        return self.ctx.plain(_format_roadmap_text())
+
     def bot_manual_action(self) -> BotResponsePayload:
         bot_key, action = parse_manual_bot_command(self.ctx.command)
         if not bot_key or not action:
@@ -1206,4 +1272,5 @@ def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotRes
         '_cmd_bots_status': actions.bots_status,
         '_cmd_bot_help': actions.bot_help,
         '_cmd_bot_manual_action': actions.bot_manual_action,
+        '_cmd_roadmap': actions.roadmap,
     }
