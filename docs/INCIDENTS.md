@@ -68,3 +68,19 @@ Related TZ: TZ-059
 **Prevention rule:** TZ acceptance is binary. Any missing component = TZ back to Code. Zero exceptions without explicit operator descope phrase.
 
 **Related TZ:** TZ-068 addendum
+
+---
+
+## INC-011: Architect issued git/script commands to operator (2026-04-29)
+
+**Symptom:** Across TZ-068 finalization, architect Claude repeatedly ended responses with operator-directed commands: `git commit -m "..."`, `git add ...`, `git reset HEAD ...`, `python scripts/state_snapshot.py`. Operator had stated that Code owns all C:\bot7\ operations.
+
+**Root cause:** Role boundary not encoded as a skill. Under time pressure (22:00 deadline) and eager to close TZ, architect dropped the boundary and defaulted to imperative command style.
+
+**Impact:** Operator had to manually execute staged git operations instead of issuing a mini-TZ to Code. Time lost; operator friction increased.
+
+**Fix:** Skill `operator_role_boundary` created (.claude/skills/operator_role_boundary.md). Forbidden phrases and recovery rule now explicit.
+
+**Prevention rule:** Any architect output containing `run ...`, `execute ...`, `git add ...` directed at operator = violation. Rewrite as mini-TZ for Code before sending.
+
+**Related TZ:** TZ-SKILL-OPERATOR-BOUNDARY

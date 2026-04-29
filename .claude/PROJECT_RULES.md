@@ -111,6 +111,7 @@ When ТЗ contains keywords or task involves these operations, listed skills are
 | live bots, GinArea API, Bitmex positions, market_collector | state_drift_detector |
 | writing .md/.txt/.csv/.json files via PowerShell or Python on Windows | encoding_safety |
 | new chat session start; positions/bots/AGM/liq/trading decisions | state_first_protocol |
+| architect ТЗ contains git/script/file commands directed at operator | operator_role_boundary |
 
 Skills live in `.claude/skills/<name>.md`. Code reads relevant skill when trigger matches.
 
