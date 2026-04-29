@@ -206,29 +206,191 @@ def _load_runtime() -> dict:
 # Source: GinArea API (optional)
 # ---------------------------------------------------------------------------
 
-def _load_ginarea_api() -> dict:
-    result: dict = {"status": "unavailable", "reason": "not attempted", "bots": []}
+def _init_ginarea_client() -> tuple[Any, str | None]:
+    """Create and login GinAreaClient from env vars.
+
+    Returns (client, None) on success, (None, error_str) on failure.
+    """
+    try:
+        from dotenv import load_dotenv  # load .env if present
+        load_dotenv(ROOT / ".env", override=False)
+    except ImportError:
+        pass
+
     try:
         from ginarea_tracker.ginarea_client import GinAreaClient
-        api_url = os.environ.get("GINAREA_API_URL", "")
-        email = os.environ.get("GINAREA_EMAIL", "")
-        password = os.environ.get("GINAREA_PASSWORD", "")
-        totp = os.environ.get("GINAREA_TOTP_SECRET", "")
-        if not all([api_url, email, password, totp]):
-            missing = [k for k, v in [
-                ("GINAREA_API_URL", api_url), ("GINAREA_EMAIL", email),
-                ("GINAREA_PASSWORD", password), ("GINAREA_TOTP_SECRET", totp)
-            ] if not v]
-            return {"status": "unavailable", "reason": f"missing env: {missing}", "bots": []}
+    except ImportError as e:
+        return None, f"import error: {e}"
 
+    api_url = os.environ.get("GINAREA_API_URL", "")
+    email = os.environ.get("GINAREA_EMAIL", "")
+    password = os.environ.get("GINAREA_PASSWORD", "")
+    totp = os.environ.get("GINAREA_TOTP_SECRET", "")
+
+    if not all([api_url, email, password, totp]):
+        missing = [k for k, v in [
+            ("GINAREA_API_URL", api_url), ("GINAREA_EMAIL", email),
+            ("GINAREA_PASSWORD", password), ("GINAREA_TOTP_SECRET", totp),
+        ] if not v]
+        return None, f"missing env: {missing}"
+
+    try:
         client = GinAreaClient(api_url, email, password, totp)
         client.login()
+        return client, None
+    except Exception as e:
+        return None, str(e)
+
+
+def _load_ginarea_api(client: Any = None) -> dict:
+    """Fetch bots list from GinArea API.
+
+    Accepts pre-initialized client to avoid double login.
+    If client is None, creates one from env vars.
+    """
+    if client is None:
+        client, err = _init_ginarea_client()
+        if client is None:
+            return {"status": "unavailable", "reason": err, "bots": []}
+    try:
         bots = client.get_bots()
         return {"status": "ok", "bots": bots, "fetched_at": _now_tz().isoformat()}
-    except ImportError as e:
-        return {"status": "unavailable", "reason": f"import error: {e}", "bots": []}
     except Exception as e:
         return {"status": "unavailable", "reason": str(e), "bots": []}
+
+
+def _normalize_bot_config(raw: dict) -> dict:
+    """Map raw /bots/{id}/params API response to normalized config schema.
+
+    All fields written explicitly — null for missing/unknown, never omitted.
+    Field mapping derived from GinArea API observed in ginarea_live/params.csv.
+    """
+    gap = raw.get("gap") or {}
+    border = raw.get("border") or {}
+    in_ = raw.get("in") or {}
+
+    # Entry trigger extraction from nested in.start.cnds[0]
+    entry_trigger_raw: str | None = None
+    entry_trigger_value: float | None = None
+    try:
+        cnds = (in_.get("start") or {}).get("cnds") or []
+        if cnds:
+            first_cnd = cnds[0]
+            items = first_cnd.get("items") or []
+            params = first_cnd.get("params") or {}
+            if items and params:
+                op = items[0].get("op", ">")
+                p = items[0].get("p")
+                tf = params.get("tf", "1m")
+                d = params.get("d", "?")
+                entry_trigger_raw = f"PRICE%-{tf}-{d}-1 {op} {p}"
+                entry_trigger_value = _safe_float(p)
+    except (KeyError, IndexError, TypeError):
+        pass
+
+    return {
+        "target_pct": _safe_float(gap.get("tog")),
+        "instop_pct": _safe_float(gap.get("isg")),
+        "min_stop_pct": _safe_float(gap.get("minS")),
+        "max_stop_pct": _safe_float(gap.get("maxS")),
+        "grid_step_pct": _safe_float(raw.get("gs")),
+        "grid_step_ratio": _safe_float(raw.get("gsr")),
+        "n_orders": _safe_float(raw.get("maxOp")),
+        "order_size": None,           # not in /params endpoint
+        "order_size_unit": None,      # not in /params endpoint
+        "border_top": _safe_float(border.get("top")),
+        "border_bottom": _safe_float(border.get("bottom")),
+        "leverage": _safe_float(raw.get("leverage")),
+        "dsblin": raw.get("dsblin"),
+        "dsblin_outside_borders": raw.get("dsblinbap"),
+        "entry_trigger_raw": entry_trigger_raw,
+        "entry_trigger_value": entry_trigger_value,
+        "percent_mode": raw.get("gsr") is not None,
+    }
+
+
+def _load_params_csv_cache() -> dict[str, dict]:
+    """Read ginarea_live/params.csv → {bot_id: normalized_config}.
+
+    Uses the raw_params_json column written by the tracker.
+    Returns latest row per bot_id. Empty dict if file unavailable.
+    """
+    params_csv = ROOT / "ginarea_live" / "params.csv"
+    if not params_csv.exists():
+        return {}
+    cache: dict[str, dict] = {}
+    try:
+        import csv as _csv
+        with open(params_csv, encoding="utf-8") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                bid = row.get("bot_id", "")
+                if not bid:
+                    continue
+                raw_json = row.get("raw_params_json", "")
+                if not raw_json:
+                    continue
+                try:
+                    raw = json.loads(raw_json)
+                    cache[bid] = _normalize_bot_config(raw)
+                    cache[bid]["_source"] = f"params_csv@{row.get('ts_utc', '')[:16]}"
+                except (json.JSONDecodeError, Exception):
+                    pass
+    except Exception:
+        pass
+    return cache
+
+
+def _enrich_bot_configs(
+    bots: list[dict],
+    client: Any,
+    ts_str: str,
+    anomalies: list[str],
+) -> None:
+    """Inject config into bots[*].config from GinArea API or params.csv fallback.
+
+    Priority:
+      1. Live API call via client (when credentials available)
+      2. Fallback: ginarea_live/params.csv raw_params_json (always fresh from tracker)
+
+    Uses 0.2s pause between API requests per TZ rate-limit spec.
+    On both sources unavailable: config={}, config_source="unavailable".
+    Status filter: all bots (numeric status codes 2/12, no "Working" string mapping).
+    """
+    csv_cache = _load_params_csv_cache()
+
+    for i, bot in enumerate(bots):
+        bot_id = bot.get("id", "")
+        if not bot_id:
+            continue
+
+        config_set = False
+
+        # Try API first
+        if client is not None:
+            try:
+                raw = client.get_bot_params(bot_id)
+                bot["config"] = _normalize_bot_config(raw)
+                bot["config_source"] = f"api@{ts_str}"
+                config_set = True
+            except Exception as e:
+                anomalies.append(
+                    f"bot {bot_id} API config fetch failed ({type(e).__name__}), using csv fallback"
+                )
+            if i < len(bots) - 1:
+                time.sleep(0.2)
+
+        # Fallback: params.csv
+        if not config_set:
+            if bot_id in csv_cache:
+                cfg = dict(csv_cache[bot_id])
+                src_tag = cfg.pop("_source", f"params_csv@{ts_str}")
+                bot["config"] = cfg
+                bot["config_source"] = src_tag
+            else:
+                bot["config"] = {}
+                bot["config_source"] = "unavailable"
+                anomalies.append(f"bot {bot_id} config not available from API or params.csv")
 
 
 # ---------------------------------------------------------------------------
@@ -626,7 +788,10 @@ def main() -> None:
     ts_str = ts.strftime("%Y-%m-%dT%H:%M%z")
     ts_file = ts.strftime("%Y-%m-%d_%H%M")
 
-    skills_applied = ["state_first_protocol", "encoding_safety", "regression_baseline_keeper"]
+    skills_applied = [
+        "state_first_protocol", "encoding_safety",
+        "regression_baseline_keeper", "operator_role_boundary",
+    ]
 
     print(f"[state_snapshot] {ts_str} — collecting state...")
 
@@ -642,21 +807,35 @@ def main() -> None:
     rt_data = _load_runtime()
     print(f"  runtime: {'running' if rt_data['running'] else 'stopped'}")
 
+    ginarea_client_obj: Any = None
     api_data: dict = {"status": "skipped", "reason": "--no-api", "bots": []}
     if not args.no_api:
-        print("  ginarea_api: fetching...")
-        api_data = _load_ginarea_api()
+        print("  ginarea_api: logging in...")
+        ginarea_client_obj, _cli_err = _init_ginarea_client()
+        if ginarea_client_obj is not None:
+            api_data = _load_ginarea_api(ginarea_client_obj)
+        else:
+            api_data = {"status": "unavailable", "reason": _cli_err or "login failed", "bots": []}
         print(f"  ginarea_api: {api_data['status']}")
     else:
         print("  ginarea_api: skipped (--no-api)")
 
     bots, garbage_count = _build_bots_from_snapshots(snap_data)
+
+    config_errors: list[str] = []
+    print(f"  enriching bot configs ({len(bots)} bots)...")
+    _enrich_bot_configs(bots, ginarea_client_obj, ts_str, config_errors)
+    ok_count = sum(1 for b in bots if b.get("config"))
+    err_count = sum(1 for b in bots if not b.get("config"))
+    print(f"  configs: {ok_count} ok, {err_count} empty, {len(config_errors)} errors")
+
     exposure = _build_exposure(bots)
     agm_24h = _build_agm_24h(bm_data, bots)
     dd_recovery = _build_dd_recovery(snap_data, bots)
     anomalies = _build_anomalies(snap_data, api_data, bm_data,
                                  garbage_count=garbage_count,
                                  valid_bot_count=len(bots))
+    anomalies.extend(config_errors)
 
     sources = {
         "snapshots": snap_data,
