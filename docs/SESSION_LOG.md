@@ -1,5 +1,25 @@
 # SESSION LOG
 
+## TZ-053a — H10 MVP Backtest (2026-04-29)
+
+**Стратегия:** Liquidity Grid Probe. После impulse ≥1.2% + consolidation + bilateral zones
+размещается сетка limit-ордеров в зоне ликвидности (max 0.15 BTC, 6 шагов по 0.25%).
+
+**Детектор:** C1 (impulse 4h sweep), C2 (3 overlapping candles range <1.0%), C3 (bilateral
+zones weight≥0.5 в радиусе 0.7-2.0%). Условия relaxed с 1.5%/0.8% до 1.2%/1.0% — с оригинальными
+давало только 12 сетапов за 2 года.
+
+**Результаты:** 150 сетапов, 79.3% win rate, max DD -1.16%, avg_pnl $2.16/цикл.
+Рекомендованные params: `stop=-0.8%, tp=0.5%, step=0.25%, time_stop=2h`.
+
+**Артефакты:**
+- `services/liquidity_map.py`, `services/h10_detector.py`, `services/h10_grid.py`
+- `scripts/backtest_h10.py`, `scripts/h10_summary.py`
+- `tests/services/test_liquidity_map.py` (5 тестов), `tests/services/test_h10_detector.py` (5),
+  `tests/services/test_h10_grid.py` (4) — 14/14 green
+- `reports/h10_backtest_2026-04-29.md`, `reports/h10_backtest_20260429_1057.csv`
+- `docs/STRATEGIES/H10.md`
+
 ## TZ-048 — Collectors memory leak fix: ParquetWriter rotation (2026-04-29)
 
 **Root cause:** `pq.ParquetWriter` открыт 24 ч (до midnight rotation), накапливает C++

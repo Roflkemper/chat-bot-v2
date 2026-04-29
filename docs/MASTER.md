@@ -366,6 +366,7 @@ Pine Script скачан, логика понятна. Реализуем на P
 - TZ-047: ✅ DONE 2026-04-28 (multi-asset episodes BTC+ETH+XRP, 7401 эпизодов)
 - TZ-048: ✅ DONE 2026-04-29 (collectors ParquetWriter rotation; фикс готов, prod rollout — решение оператора; см. _recovery/SMOKE_TZ048.md)
 - TZ-049: ✅ DONE 2026-04-29 (recover collectors/ from dangling git trees; см. _recovery/README.md)
+- TZ-053a: ✅ DONE 2026-04-29 (H10 MVP backtest: 150 setups, 79.3% win rate, max DD -1.16%, rec stop=-0.8% tp=0.5%; report reports/h10_backtest_2026-04-29.md)
 - TZ-DEBT-07: ✅ DONE 2026-04-29 (закрыт через TZ-045)
 
 ### В очереди / в работе (на 29.04 final)
