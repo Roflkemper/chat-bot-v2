@@ -171,43 +171,106 @@ def _validate(path: Path, last_ts_before: int, target_end_ms: int) -> dict:
     return result
 
 
+def _fetch_batch_parallel(args: tuple) -> tuple[int, list]:
+    """Worker for parallel batch fetching. Returns (start_ms, rows)."""
+    symbol, start_ms, interval = args
+    raw = _fetch_klines(symbol, start_ms, interval)
+    rows = [
+        [int(k[0]), float(k[1]), float(k[2]), float(k[3]),
+         float(k[4]), float(k[5])]
+        for k in raw
+    ]
+    return start_ms, rows
+
+
 def fill_gap(
     symbol: str,
     interval: str,
     target_end_ms: int,
     frozen_dir: Path,
     dry_run: bool = False,
+    start_ms: int | None = None,
+    workers: int = 1,
 ) -> dict:
-    """Fill gap in {symbol}_{interval}_2y.csv up to target_end_ms."""
+    """Fill gap (or initial download) in {symbol}_{interval}_2y.csv.
+
+    start_ms: if provided and file doesn't exist, create file and download
+              from start_ms. If None and file doesn't exist, skip.
+    workers:  parallel fetch workers (use >1 for large initial downloads).
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     csv_path = frozen_dir / f"{symbol}_{interval}_2y.csv"
+    _initial = False
+
     if not csv_path.exists():
-        log.warning("No file %s — skipping %s %s", csv_path, symbol, interval)
-        return {"skipped": True, "reason": "file not found"}
+        if start_ms is None:
+            log.warning("No file %s — skipping %s %s", csv_path, symbol, interval)
+            return {"skipped": True, "reason": "file not found"}
+        # Initial download: create file with header
+        frozen_dir.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow(["ts", "open", "high", "low", "close", "volume"])
+            log.info("Created new file %s", csv_path)
+        last_ts = start_ms - _BAR_MS  # sentinel: no prior data
+        _initial = True
+    else:
+        last_ts = _read_csv_last_ts(csv_path)
+        if last_ts is None:
+            return {"skipped": True, "reason": "cannot read last ts"}
+        if start_ms is not None and start_ms < last_ts:
+            log.info("%s %s: file exists, ignoring --start-date (using last ts)", symbol, interval)
 
-    last_ts = _read_csv_last_ts(csv_path)
-    if last_ts is None:
-        return {"skipped": True, "reason": "cannot read last ts"}
-
-    next_start_ms = last_ts + _BAR_MS  # first missing bar
+    next_start_ms = last_ts + _BAR_MS
     if next_start_ms >= target_end_ms:
         log.info("%s %s already up to date (last=%s)", symbol, interval,
                  _ms_to_dt(last_ts).isoformat())
         return {"skipped": False, "already_uptodate": True, "bars_fetched": 0}
 
-    gap_bars = (target_end_ms - last_ts) // _BAR_MS
+    gap_bars = (target_end_ms - next_start_ms) // _BAR_MS
+    all_batches = list(range(next_start_ms, target_end_ms, _BATCH_BARS * _BAR_MS))
+
     log.info(
-        "%s %s: filling %d bars from %s → %s",
+        "%s %s: %s %d bars (%d batches) from %s → %s",
         symbol, interval,
-        gap_bars,
-        _ms_to_dt(last_ts).isoformat(),
+        "downloading" if _initial else "filling",
+        gap_bars, len(all_batches),
+        _ms_to_dt(next_start_ms).isoformat(),
         _ms_to_dt(target_end_ms).isoformat(),
     )
 
+    if dry_run:
+        return {"dry_run": True, "expected_bars": gap_bars, "batches": len(all_batches)}
+
     all_rows: list[list] = []
-    cursor = next_start_ms
-    batch_num = 0
-    while cursor < target_end_ms:
-        if not dry_run:
+
+    if workers > 1 and len(all_batches) > 20:
+        # Parallel fetch for large downloads
+        _args = [(symbol, b, interval) for b in all_batches]
+        t0 = time.time()
+        results: dict[int, list] = {}
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(_fetch_batch_parallel, a): a[1] for a in _args}
+            done = 0
+            for fut in as_completed(futs):
+                b_start, rows = fut.result()
+                results[b_start] = rows
+                done += 1
+                if done % 100 == 0 or done == len(all_batches):
+                    elapsed = time.time() - t0
+                    rate = done / elapsed if elapsed > 0 else 1
+                    eta = (len(all_batches) - done) / rate
+                    log.info("  %d/%d batches  %.1f b/s  ETA %.0fs",
+                             done, len(all_batches), rate, eta)
+        # Merge in order
+        for b in all_batches:
+            all_rows.extend(results.get(b, []))
+    else:
+        # Sequential fetch
+        cursor = next_start_ms
+        batch_num = 0
+        while cursor < target_end_ms:
             raw = _fetch_klines(symbol, cursor, interval)
             rows = [
                 [int(k[0]), float(k[1]), float(k[2]), float(k[3]),
@@ -215,57 +278,64 @@ def fill_gap(
                 for k in raw
             ]
             all_rows.extend(rows)
-            log.debug("Batch %d: %d bars fetched (start=%s)",
-                      batch_num, len(rows), _ms_to_dt(cursor).isoformat())
             if rows:
                 cursor = rows[-1][0] + _BAR_MS
             else:
-                break  # exchange returned nothing, stop
-        else:
-            log.info("[dry-run] would fetch batch from %s",
-                     _ms_to_dt(cursor).isoformat())
-            cursor += _BATCH_BARS * _BAR_MS
+                break
+            batch_num += 1
+            if cursor < target_end_ms:
+                time.sleep(_SLEEP_BETWEEN_BATCHES)
 
-        batch_num += 1
-        if cursor < target_end_ms:
-            time.sleep(_SLEEP_BETWEEN_BATCHES)
-
-    # Filter to not exceed target_end
+    # Filter, deduplicate, sort
     all_rows = [r for r in all_rows if r[0] <= target_end_ms]
-
-    if dry_run:
-        return {"dry_run": True, "expected_bars": gap_bars, "batches": batch_num}
+    all_rows.sort(key=lambda r: r[0])
+    # Dedup by ts
+    seen: set[int] = set()
+    deduped: list[list] = []
+    for r in all_rows:
+        if r[0] not in seen:
+            seen.add(r[0])
+            deduped.append(r)
+    all_rows = deduped
 
     if all_rows:
         _append_rows_to_csv(csv_path, all_rows)
-        log.info("Appended %d rows to %s", len(all_rows), csv_path)
+        log.info("Wrote %d rows to %s", len(all_rows), csv_path)
     else:
         log.warning("No rows returned for %s %s", symbol, interval)
 
     validation = _validate(csv_path, last_ts, target_end_ms)
     return {
         "bars_fetched": len(all_rows),
-        "batches": batch_num,
+        "batches": len(all_batches),
         "validation": validation,
     }
 
 
 def fill_1h_from_1m(symbol: str, frozen_dir: Path, dry_run: bool = False) -> dict:
-    """Resample 1m CSV → 1h, append missing hours to 1h CSV."""
+    """Resample 1m CSV → 1h, append missing hours to 1h CSV.
+    Creates 1h file from scratch if it doesn't exist yet.
+    """
     csv_1m = frozen_dir / f"{symbol}_1m_2y.csv"
     csv_1h = frozen_dir / f"{symbol}_1h_2y.csv"
-    if not csv_1m.exists() or not csv_1h.exists():
-        return {"skipped": True, "reason": "file not found"}
+    if not csv_1m.exists():
+        return {"skipped": True, "reason": "1m file not found"}
 
-    last_1h_ts = _read_csv_last_ts(csv_1h)
     last_1m_ts = _read_csv_last_ts(csv_1m)
-    if last_1h_ts is None or last_1m_ts is None:
-        return {"skipped": True, "reason": "cannot read timestamps"}
+    if last_1m_ts is None:
+        return {"skipped": True, "reason": "cannot read 1m timestamp"}
 
-    # Need to resample from last_1h_ts + 1h onward
-    resample_from_ms = last_1h_ts + 3_600_000
+    _1h_new_file = not csv_1h.exists()
+    last_1h_ts = _read_csv_last_ts(csv_1h) if not _1h_new_file else None
 
-    if resample_from_ms > last_1m_ts:
+    if _1h_new_file:
+        resample_from_ms = 0  # resample all 1m data
+        log.info("%s 1h: creating from scratch (full resample)", symbol)
+    else:
+        # Need to resample from last_1h_ts + 1h onward
+        resample_from_ms = last_1h_ts + 3_600_000  # type: ignore[operator]
+
+    if not _1h_new_file and resample_from_ms > last_1m_ts:
         log.info("%s 1h already up to date", symbol)
         return {"skipped": False, "already_uptodate": True, "hours_added": 0}
 
@@ -300,8 +370,15 @@ def fill_1h_from_1m(symbol: str, frozen_dir: Path, dry_run: bool = False) -> dic
         for idx, row in df_1h_new.iterrows()
     ]
     if rows:
-        _append_rows_to_csv(csv_1h, rows)
-        log.info("Appended %d 1h rows to %s", len(rows), csv_1h)
+        if _1h_new_file:
+            with open(csv_1h, "w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(["ts", "open", "high", "low", "close", "volume"])
+                w.writerows(rows)
+            log.info("Created %s with %d 1h rows", csv_1h, len(rows))
+        else:
+            _append_rows_to_csv(csv_1h, rows)
+            log.info("Appended %d 1h rows to %s", len(rows), csv_1h)
 
     return {"hours_added": len(rows), "last_1h_ts": _ms_to_dt(rows[-1][0]).isoformat() if rows else ""}
 
@@ -313,11 +390,15 @@ def _write_log(entry: dict) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="OHLCV gap-fill ingest")
+    p = argparse.ArgumentParser(description="OHLCV gap-fill / initial ingest")
     p.add_argument("--symbol", default="BTCUSDT")
     p.add_argument("--target-end", default="2026-04-29T23:00:00Z",
                    help="ISO-8601 UTC end timestamp")
+    p.add_argument("--start-date", default=None,
+                   help="ISO-8601 UTC start for initial download (e.g. 2024-01-01)")
     p.add_argument("--frozen-dir", default=str(FROZEN_DIR))
+    p.add_argument("--workers", type=int, default=4,
+                   help="Parallel fetch workers for large downloads (default 4)")
     p.add_argument("--dry-run", action="store_true",
                    help="Simulate only, do not write files")
     args = p.parse_args(argv)
@@ -330,17 +411,22 @@ def main(argv: list[str] | None = None) -> int:
 
     frozen_dir = Path(args.frozen_dir)
     target_end_ms = _parse_target(args.target_end)
+    start_ms = _parse_target(args.start_date) if args.start_date else None
     symbol = args.symbol
 
     print(f"OHLCV ingest: {symbol} → {args.target_end}")
+    if start_ms:
+        print(f"start_date:   {args.start_date}")
     print(f"frozen_dir:   {frozen_dir}")
+    print(f"workers:      {args.workers}")
     if args.dry_run:
         print("DRY RUN — no files will be modified")
 
     ts_run = datetime.now(tz=timezone.utc).isoformat()
 
-    # Fill 1m gap
-    result_1m = fill_gap(symbol, "1m", target_end_ms, frozen_dir, args.dry_run)
+    # Fill 1m gap (or initial download)
+    result_1m = fill_gap(symbol, "1m", target_end_ms, frozen_dir,
+                         args.dry_run, start_ms, args.workers)
     print(f"\n1m result: {result_1m}")
 
     # Derive 1h from updated 1m
