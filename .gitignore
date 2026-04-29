@@ -78,3 +78,6 @@ docs/STATE/CURRENT_STATE_*.md
 docs/STATE/state_latest.json
 docs/state_inline.js
 state/runtime_state_snapshot.lock
+
+# TZ-LIQ-INGESTION-90D: historical liquidation data (fetched, not committed)
+market_data/liquidations_historical/
