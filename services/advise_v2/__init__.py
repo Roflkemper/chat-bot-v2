@@ -11,6 +11,7 @@ from .schemas import (
     SimilarSetup,
     TrendHandling,
 )
+from .trend_handler import compute_trend_handling
 
 __all__ = [
     "SignalEnvelope",
@@ -24,4 +25,5 @@ __all__ = [
     "PlaybookCheck",
     "AlternativeAction",
     "TrendHandling",
+    "compute_trend_handling",
 ]
