@@ -4,7 +4,7 @@ import copy
 
 import pytest
 
-from services.advise_v2 import CurrentExposure, LiqLevel, MarketContext, SetupMatch, match_setups
+from services.advise_v2 import CurrentExposure, LiqLevel, MarketContext, SessionContext, SetupMatch, match_setups
 
 
 @pytest.fixture
@@ -107,7 +107,7 @@ def test_p8_hard_ban_always_zero(base_market_context, base_exposure):
 def test_p10_hard_ban_zero_with_missing_session(base_market_context, base_exposure):
     match = _by_id(match_setups(base_market_context, base_exposure), "P-10")
     assert match.confidence == 0.0
-    assert match.missing_conditions == ["session_history_required"]
+    assert "session_history_required" in match.missing_conditions
 
 
 def test_exposure_long_heavy_dampens_long_patterns(base_market_context, base_exposure):
@@ -227,3 +227,137 @@ def test_input_not_mutated(base_market_context, base_exposure):
     match_setups(base_market_context, base_exposure)
     assert base_market_context.model_dump() == market_before
     assert base_exposure.model_dump() == exposure_before
+
+
+def test_p2_confidence_boosted_in_ny_am_open_window(base_market_context, base_exposure):
+    base_market = _replace_model(
+        base_market_context,
+        regime_label="impulse_down",
+        rsi_1h=20.0,
+        price_change_5m_30bars_pct=-1.5,
+        nearest_liq_below=LiqLevel(price=76000.0, size_usd=600000.0),
+        price_btc=76180.0,
+    )
+    boosted_market = _replace_model(
+        base_market,
+        session=SessionContext(
+            kz_active="NY_AM",
+            kz_session_id="NY_AM_2026-04-29",
+            minutes_into_session=15,
+            dow_ny=4,
+            is_weekend=False,
+            is_friday_close=False,
+        ),
+    )
+    plain = _by_id(match_setups(base_market, base_exposure), "P-2").confidence
+    boosted = _by_id(match_setups(boosted_market, base_exposure), "P-2").confidence
+    assert boosted == pytest.approx(plain + 0.10)
+
+
+def test_p1_confidence_boosted_in_asia(base_market_context, base_exposure):
+    base_market = _replace_model(
+        base_market_context,
+        regime_label="range_wide",
+        rsi_1h=70.0,
+        price_change_5m_30bars_pct=0.7,
+    )
+    asia_market = _replace_model(
+        base_market,
+        session=SessionContext(
+            kz_active="ASIA",
+            kz_session_id="ASIA_2026-04-29",
+            minutes_into_session=20,
+            dow_ny=4,
+            is_weekend=False,
+            is_friday_close=False,
+        ),
+    )
+    plain = _by_id(match_setups(base_market, base_exposure), "P-1").confidence
+    boosted = _by_id(match_setups(asia_market, base_exposure), "P-1").confidence
+    assert boosted == pytest.approx(plain + 0.05)
+
+
+def test_friday_close_dampens_trend_continuation(base_market_context, base_exposure):
+    base_market = _replace_model(
+        base_market_context,
+        regime_label="trend_down",
+        rsi_1h=50.0,
+        price_change_5m_30bars_pct=0.5,
+    )
+    friday_market = _replace_model(
+        base_market,
+        session=SessionContext(
+            kz_active="NY_PM",
+            kz_session_id="NY_PM_2026-05-01",
+            minutes_into_session=95,
+            dow_ny=6,
+            is_weekend=False,
+            is_friday_close=True,
+        ),
+    )
+    plain = _by_id(match_setups(base_market, base_exposure), "P-3").confidence
+    dampened = _by_id(match_setups(friday_market, base_exposure), "P-3").confidence
+    assert dampened == pytest.approx(plain - 0.10)
+
+
+def test_weekend_dampens_all_patterns(base_market_context, base_exposure):
+    base_market = _replace_model(
+        base_market_context,
+        regime_label="consolidation",
+        rsi_1h=45.0,
+        price_change_1h_pct=0.2,
+    )
+    weekend_market = _replace_model(
+        base_market,
+        session=SessionContext(
+            kz_active="NONE",
+            kz_session_id=None,
+            minutes_into_session=None,
+            dow_ny=7,
+            is_weekend=True,
+            is_friday_close=False,
+        ),
+    )
+    plain = _by_id(match_setups(base_market, base_exposure), "P-11").confidence
+    dampened = _by_id(match_setups(weekend_market, base_exposure), "P-11").confidence
+    assert dampened == pytest.approx(plain * 0.5)
+
+
+def test_session_modifiers_in_matched_conditions(base_market_context, base_exposure):
+    market = _replace_model(
+        base_market_context,
+        regime_label="trend_up",
+        rsi_1h=60.0,
+        price_change_5m_30bars_pct=1.0,
+        nearest_liq_above=LiqLevel(price=76100.0, size_usd=400000.0),
+        price_btc=76200.0,
+        session=SessionContext(
+            kz_active="NY_AM",
+            kz_session_id="NY_AM_2026-04-29",
+            minutes_into_session=10,
+            dow_ny=4,
+            is_weekend=False,
+            is_friday_close=False,
+        ),
+    )
+    match = _by_id(match_setups(market, base_exposure), "P-9")
+    assert "ny_am_open_window_boost" in match.matched_conditions
+
+
+def test_session_modifiers_logged_in_missing_conditions_when_off(base_market_context, base_exposure):
+    market = _replace_model(
+        base_market_context,
+        regime_label="range_wide",
+        rsi_1h=70.0,
+        price_change_5m_30bars_pct=0.7,
+        session=SessionContext(
+            kz_active="LONDON",
+            kz_session_id="LONDON_2026-04-29",
+            minutes_into_session=90,
+            dow_ny=4,
+            is_weekend=False,
+            is_friday_close=False,
+        ),
+    )
+    match = _by_id(match_setups(market, base_exposure), "P-1")
+    assert "asia_session_range_boost" in match.missing_conditions

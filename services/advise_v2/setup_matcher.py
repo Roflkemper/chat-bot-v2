@@ -6,6 +6,7 @@ from typing import Callable, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from services.advise_v2.schemas import CurrentExposure, MarketContext
+from services.advise_v2.session_intelligence import is_session_open_window
 
 
 class SetupMatch(BaseModel):
@@ -46,6 +47,13 @@ def match_setups(
             direction=spec.direction,
             net_btc=current_exposure.net_btc,
         )
+        confidence = _apply_session_adjustments(
+            pattern_id=spec.pattern_id,
+            confidence=confidence,
+            market_context=market_context,
+            matched_conditions=matched_conditions,
+            missing_conditions=missing_conditions,
+        )
         matches.append(
             SetupMatch(
                 pattern_id=spec.pattern_id,
@@ -64,6 +72,54 @@ def _apply_exposure_dampening(confidence: float, direction: str, net_btc: float)
         return confidence * 0.5
     if direction == "short" and net_btc < -0.5:
         return confidence * 0.5
+    return confidence
+
+
+def _apply_session_adjustments(
+    pattern_id: str,
+    confidence: float,
+    market_context: MarketContext,
+    matched_conditions: list[str],
+    missing_conditions: list[str],
+) -> float:
+    session = market_context.session
+
+    if session.is_weekend:
+        matched_conditions.append("weekend_low_liquidity")
+        confidence *= 0.5
+    else:
+        missing_conditions.append("weekend_low_liquidity")
+
+    in_open_window = is_session_open_window(session, 30)
+
+    if pattern_id in {"P-2", "P-6"}:
+        if in_open_window and session.kz_active in {"LONDON", "NY_AM"}:
+            matched_conditions.append(f"{session.kz_active.lower()}_open_window_boost")
+            confidence += 0.10
+        else:
+            missing_conditions.append("london_or_ny_am_open_window")
+
+    if pattern_id in {"P-1", "P-7"}:
+        if session.kz_active == "ASIA":
+            matched_conditions.append("asia_session_range_boost")
+            confidence += 0.05
+        else:
+            missing_conditions.append("asia_session_range_boost")
+
+    if pattern_id == "P-9":
+        if in_open_window and session.kz_active == "NY_AM":
+            matched_conditions.append("ny_am_open_window_boost")
+            confidence += 0.10
+        else:
+            missing_conditions.append("ny_am_open_window_boost")
+
+    if pattern_id in {"P-3", "P-4"}:
+        if session.is_friday_close:
+            matched_conditions.append("friday_close_dampened")
+            confidence -= 0.10
+        else:
+            missing_conditions.append("friday_close_dampened")
+
     return confidence
 
 

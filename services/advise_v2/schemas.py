@@ -20,6 +20,20 @@ class LiqLevel(StrictModel):
     size_usd: float = Field(ge=0)
 
 
+class SessionContext(StrictModel):
+    """Active trading session derived from the ICT killzone calendar."""
+
+    kz_active: Literal["ASIA", "LONDON", "NY_AM", "NY_LUNCH", "NY_PM", "NONE"] = "NONE"
+    kz_session_id: str | None = Field(
+        default=None,
+        pattern=r"^(ASIA|LONDON|NY_AM|NY_LUNCH|NY_PM)_\d{4}-\d{2}-\d{2}$",
+    )
+    minutes_into_session: int | None = Field(default=None, ge=0, le=600)
+    dow_ny: int = Field(default=2, ge=1, le=7)
+    is_weekend: bool = False
+    is_friday_close: bool = False
+
+
 class MarketContext(StrictModel):
     price_btc: float = Field(gt=0)
     regime_label: Literal[
@@ -41,6 +55,7 @@ class MarketContext(StrictModel):
     price_change_1h_pct: float
     nearest_liq_below: LiqLevel | None = None
     nearest_liq_above: LiqLevel | None = None
+    session: SessionContext = Field(default_factory=SessionContext)
 
     @field_validator("regime_modifiers")
     @classmethod

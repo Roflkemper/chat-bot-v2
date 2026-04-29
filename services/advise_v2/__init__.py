@@ -14,6 +14,7 @@ from .action_tracker import (
     signals_without_match,
 )
 from .ban_filter import HARD_BAN_PATTERNS, filter_banned_patterns, is_banned
+from .session_intelligence import compute_session_context, is_session_open_window
 from .signal_logger import (
     DEFAULT_NULL_SIGNALS_PATH,
     DEFAULT_SIGNALS_PATH,
@@ -35,6 +36,7 @@ from .schemas import (
     Recommendation,
     RecommendationInvalidation,
     RecommendationTarget,
+    SessionContext,
     SignalEnvelope,
     SimilarSetup,
     TrendHandling,
@@ -58,6 +60,7 @@ __all__ = [
     "aggregate_action_breakdown",
     "SignalEnvelope",
     "MarketContext",
+    "SessionContext",
     "LiqLevel",
     "CurrentExposure",
     "HARD_BAN_PATTERNS",
@@ -84,4 +87,6 @@ __all__ = [
     "signals_by_pattern",
     "DEFAULT_SIGNALS_PATH",
     "DEFAULT_NULL_SIGNALS_PATH",
+    "compute_session_context",
+    "is_session_open_window",
 ]
