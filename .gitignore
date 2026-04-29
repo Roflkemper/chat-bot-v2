@@ -31,6 +31,16 @@ desktop.ini
 bot_local_config.json
 *.pem
 *.key
+# Unknown / legacy
+.sixth/
+
+# GinArea tracker output
+ginarea_live/
+ginarea_tracker/.env
+
+# Cleanup artifacts
+cleanup.log
+CLEANUP_*.bat.bak
 
 # Live state
 state/regime_state.json
@@ -43,7 +53,7 @@ state/calibration/
 # Logs
 logs/
 *.log
-
+.sixth/
 # Backtest reports
 backtests/backtest_*_report.json
 backtests/freeze_data_*.json
@@ -55,3 +65,10 @@ state_snapshot.zip
 
 # Runtime reports
 reports/
+
+# Critical docs must NEVER be excluded by gitignore rules (TZ-055)
+!docs/MASTER.md
+!docs/PLAYBOOK.md
+!docs/OPPORTUNITY_MAP_v1.md
+!docs/GINAREA_MECHANICS.md
+!docs/SESSION_LOG.md
