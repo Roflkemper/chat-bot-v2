@@ -943,9 +943,73 @@ def _walk_dir(base: Path, root: Path, skip_tests: bool = True) -> list[dict]:
     return modules
 
 
-def _detect_conflicts(active: list[dict], restored: list[dict]) -> list[dict]:
-    """Find pairs where symbol overlap > 50% (likely parallel implementations)."""
+# Whitelist patterns from CONFLICTS_TRIAGE_2026-04-29T204605Z.
+# Each entry: path_prefix_a, path_prefix_b, symbol_set (overlap must be subset to suppress).
+# If BOTH paths match their respective prefix AND overlap is a subset of symbol_set → suppress.
+_CONFLICT_WHITELIST: list[dict] = [
+    {
+        "prefix_a": "collectors/",
+        "prefix_b": "collectors/",
+        "symbols": {"_parse", "run", "_build_url", "_main"},
+        "reason": "WebSocket collector interface — every collector has _parse/run. N×M cross-product is always false positive.",
+    },
+    {
+        "prefix_a": "src/features/",
+        "prefix_b": "src/features/",
+        "symbols": {"compute"},
+        "reason": "Standard feature module interface — every feature module exposes compute(df).",
+    },
+    {
+        "prefix_a": "scripts/",
+        "prefix_b": "scripts/",
+        "symbols": {"_run", "_main"},
+        "reason": "Generic script entrypoint names appear in all script utilities.",
+    },
+    # Also suppress when one side is in _recovery/ (non-restored) scripts vs active scripts
+    {
+        "prefix_a": "scripts/",
+        "prefix_b": "_recovery/",
+        "symbols": {"_run", "_main"},
+        "reason": "Generic entrypoint names in _recovery/ dev scripts vs active scripts.",
+    },
+]
+
+
+def _canonical_path(path: str) -> str:
+    """Strip _recovery/*/  prefix so restored paths compare like active paths."""
+    p = path.replace("\\", "/")
+    # Strip leading _recovery/<anything>/ up to first known package root
+    import re
+    m = re.match(r"^_recovery/[^/]+/(.+)$", p)
+    return m.group(1) if m else p
+
+
+def _is_whitelisted(path_a: str, path_b: str, overlap: set[str]) -> str:
+    """Return whitelist reason if pair should be suppressed, else empty string."""
+    ca = _canonical_path(path_a)
+    cb = _canonical_path(path_b)
+
+    # Same canonical path = one is backup of the other (RESTORED_VS_ACTIVE)
+    if ca == cb:
+        return "RESTORED_VS_ACTIVE — same file in active and _recovery/; active is authoritative"
+
+    for wl in _CONFLICT_WHITELIST:
+        pa = wl["prefix_a"]
+        pb = wl["prefix_b"]
+        if (ca.startswith(pa) and cb.startswith(pb)) or \
+           (ca.startswith(pb) and cb.startswith(pa)):
+            if overlap and overlap.issubset(wl["symbols"]):
+                return wl["reason"]
+    return ""
+
+
+def _detect_conflicts(active: list[dict], restored: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Find pairs where symbol overlap > 50%.
+
+    Returns (real_conflicts, whitelisted_pairs).
+    """
     conflicts: list[dict] = []
+    whitelisted: list[dict] = []
     for rm in restored:
         rs = set(rm["symbols"])
         if not rs:
@@ -957,13 +1021,19 @@ def _detect_conflicts(active: list[dict], restored: list[dict]) -> list[dict]:
             overlap = rs & as_
             ratio = len(overlap) / max(len(rs), len(as_))
             if ratio > 0.5:
-                conflicts.append({
+                wl_reason = _is_whitelisted(am["path"], rm["path"], overlap)
+                entry = {
                     "active": am["path"],
                     "restored": rm["path"],
                     "overlap_symbols": sorted(overlap)[:5],
                     "overlap_ratio": round(ratio, 2),
-                })
-    return conflicts
+                }
+                if wl_reason:
+                    entry["whitelist_reason"] = wl_reason
+                    whitelisted.append(entry)
+                else:
+                    conflicts.append(entry)
+    return conflicts, whitelisted
 
 
 def _detect_missing_deps(active: list[dict], restored: list[dict]) -> list[dict]:
@@ -1007,7 +1077,7 @@ def _build_project_map(root: Path) -> tuple[dict, str]:
     for d in _MAP_EXTRA_DIRS:
         restored_modules.extend(_walk_dir(root / d, root, skip_tests=True))
 
-    conflicts = _detect_conflicts(active_modules, restored_modules)
+    conflicts, whitelisted_conflicts = _detect_conflicts(active_modules, restored_modules)
     missing_deps = _detect_missing_deps(active_modules, restored_modules)
 
     # Pre-computed assets scan
@@ -1041,6 +1111,7 @@ def _build_project_map(root: Path) -> tuple[dict, str]:
         "active_modules": active_modules,
         "restored_modules": restored_modules,
         "conflicts": conflicts,
+        "whitelisted_conflicts": whitelisted_conflicts,
         "missing_deps": missing_deps,
         "assets": assets,
         "skills": skills,
@@ -1073,7 +1144,11 @@ def _build_project_map(root: Path) -> tuple[dict, str]:
         desc = m["description"][:80].replace("|", "¦") if m["description"] else "—"
         lines.append(f"| {m['path']} | {m['lines']} | {desc} |")
 
-    lines += ["", "## 3. Potential conflicts (symbol overlap > 50%)", ""]
+    lines += [
+        "",
+        f"## 3. Potential conflicts (symbol overlap > 50%) — {len(conflicts)} real, {len(whitelisted_conflicts)} whitelisted",
+        "",
+    ]
     if conflicts:
         lines += [
             "| Active | Restored | Overlap ratio | Shared symbols |",
@@ -1084,6 +1159,19 @@ def _build_project_map(root: Path) -> tuple[dict, str]:
             lines.append(f"| {c['active']} | {c['restored']} | {c['overlap_ratio']} | {shared} |")
     else:
         lines.append("_(none detected)_")
+
+    lines += ["", "## 3b. Whitelisted conflicts (suppressed — known false positives)", ""]
+    if whitelisted_conflicts:
+        lines += [
+            "| Active | Restored | Shared symbols | Whitelist reason |",
+            "|--------|----------|----------------|-----------------|",
+        ]
+        for c in whitelisted_conflicts:
+            shared = ", ".join(c["overlap_symbols"])
+            reason = c.get("whitelist_reason", "")[:60]
+            lines.append(f"| {c['active']} | {c['restored']} | {shared} | {reason} |")
+    else:
+        lines.append("_(none)_")
 
     lines += ["", "## 4. Missing dependencies (active imports not in active, found in restored)", ""]
     if missing_deps:
@@ -1232,8 +1320,9 @@ def main() -> None:
         )
         n_active = len(project_map_data["active_modules"])
         n_conflicts = len(project_map_data["conflicts"])
+        n_whitelisted = len(project_map_data["whitelisted_conflicts"])
         n_missing = len(project_map_data["missing_deps"])
-        print(f"  project_map: {n_active} active modules, {n_conflicts} conflicts, {n_missing} missing deps")
+        print(f"  project_map: {n_active} active modules, {n_conflicts} real conflicts (+{n_whitelisted} whitelisted), {n_missing} missing deps")
         print(f"  PROJECT_MAP: {pm_md_path}")
     except Exception as _pm_err:
         print(f"  project_map: ERROR — {_pm_err}")
