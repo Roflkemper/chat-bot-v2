@@ -11,6 +11,7 @@ from .schemas import (
     SimilarSetup,
     TrendHandling,
 )
+from .setup_matcher import SetupMatch, match_setups
 from .trend_handler import compute_trend_handling
 
 __all__ = [
@@ -25,5 +26,7 @@ __all__ = [
     "PlaybookCheck",
     "AlternativeAction",
     "TrendHandling",
+    "SetupMatch",
+    "match_setups",
     "compute_trend_handling",
 ]
