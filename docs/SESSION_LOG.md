@@ -1,5 +1,56 @@
 # SESSION LOG
 
+## 2026-04-30 — Architectural amnesia + recovery (30 коммитов, ~14ч)
+
+**Session summary:** Большая сессия в новом чате. Architect запустил без чтения MASTER + PLAYBOOK + OPPORTUNITY_MAP → создал параллельную инфраструктуру. Operator обнаружил дублирование. TZ-OPERATOR-TRADING-PROFILE-AND-CLEANUP зафиксировал profile + audit.
+
+**Архитектурные инциденты:**
+- **INC-014:** Architect создал `docs/CANON/*` (5 файлов), дублирующих MASTER. Создал `services/decision_log/` без проверки overlap с `paper_journal`. Создал `services/managed_grid_sim/` без inventory What-If engine. ~10h работы на параллельную инфраструктуру.
+- **Fix:** TZ-OPERATOR-TRADING-PROFILE-AND-CLEANUP — audit, proposal, MASTER §16.
+- **Skill reinforced:** `architect_inventory_first` ОБЯЗАТЕЛЕН перед любым TZ для нового модуля.
+
+**Принятые решения:**
+- **D-100:** Engine fix Phase 1 partial — A2+A3 в bot7 (calibrate_ginarea.py), A1+B1 в Codex engine_v2. Impact на prod params малый (LONG td=0.25/0.30, K изменился суб-порогово).
+- **D-101:** decision_log — KEEP (два отдельных слоя: event detection vs advisor telemetry). Telegram alerts включены (dedup добавлен TZ-EVENT-DEDUP-WINDOW).
+- **D-102:** managed_grid_sim — KEEP (НЕ дубль What-If; обёртка над Codex engine_v2 с intervention rules layer).
+- **D-103:** dashboard — KEEP (visual layer, не деплоен в app_runner).
+- **D-104:** CANON/* — cleanup proposal задокументирован, ждёт operator decision.
+
+**Выполненные TZ (хронологически):**
+1. TZ-CALIBRATE-VS-GINAREA — calibration tool sim vs GinArea ground truth
+2. TZ-GINAREA-API-CLIENT-V1 — GinArea HTTP client foundation
+3. TZ-DECISION-LOG-V2 — auto capture decision log (event_detector, models, storage, auto_capture)
+4. TZ-STRATEGY-CANON-2026-04-30 — docs/CANON/* (5 файлов) ← overlap с MASTER
+5. TZ-DECISION-LOG-V2-NOISE-REDUCTION — 4 noise fixes
+6. TZ-DASHBOARD-LIVE-STRATEGY-VIEW — 8-section live dashboard
+7. TZ-ENGINE-BUG-INVESTIGATION — 9 гипотез по 3 аномалиям (calibration tool)
+8. TZ-MANAGED-GRID-SIM-FRAMEWORK — intervention backtest framework
+9. TZ-CASCADE-NOISE — pre-seed _seen_event_ids из JSONL, fix 30-msg flood on restart
+10. TZ-RUNNING-SERVICES-INVENTORY — 11 процессов, 3 Telegram каналa
+11. TZ-CANON-UPDATE-WITH-INVENTORY — интеграция inventory в CANON
+12. TZ-ENGINE-BUG-FIX-PHASE-1 — Fix A2 (abs_cv + sign_flip) + Fix A3 (normalized_realized)
+13. TZ-CONFIG-SUPERVISOR-FIX — BOT_TOKEN/CHAT_ID alignment
+14. TZ-EVENT-DEDUP-WINDOW — Layer 2 content-based dedup (30-min window, 18 тестов)
+15. TZ-DECISION-LOG-RU-POLISH — RU localization Telegram alerts
+16. TZ-PHASE-1-VERIFY-DEEP — diagnostic всех Phase 1 fixes (6 checks, все прошли)
+17. TZ-PHASE-2C-LONG-SIGN-ERROR-INVESTIGATION — LONG K sign investigation (H4 whipsaw confirmed)
+
+**Состояние Phase 1 на конец сессии:**
+- paper_journal работает, пишет `advise_signals.jsonl` — День ~2 из 14
+- decision_log пишет `state/decision_log/events.jsonl` — live
+- Engine fixes (A2+A3) применены в calibration tool
+- SHORT K_realized = FRACTURED_SIGN_FLIP (ожидаемо, Phase 2b/2c нужны)
+- LONG K_realized = -0.886 (B2 indicator direction — требует operator verification)
+
+**Открыто на конец сессии:**
+- §16.6 Gap 1-4 требуют data analysis (TZ-BOOSTER-ACTIVATION-PATTERNS, TZ-MANUAL-LONG-CLOSE-ANALYSIS)
+- Phase 1 paper_journal: накапливает данные, ждёт 14 дней
+- CANON/* cleanup awaiting operator decision
+- Phase 2b (SHORT sign flip root cause), Phase 2c (LONG indicator direction) — отдельные TZ
+- TZ-STDOUT-SIGN-FLIP-FIX (1-line, строка 413-414 calibrate_ginarea.py)
+
+---
+
 ## TZ-059 — Skills System + Bidirectional Enforcement (2026-04-29)
 
 **Goal:** Установить систему из 9 skills с триггер-индексом, защитить через pre-commit hook.
