@@ -28,8 +28,8 @@ class HistoricalOutcomeSimulator:
         start_ts = setup.detected_at.replace(tzinfo=timezone.utc) if setup.detected_at.tzinfo is None else setup.detected_at
         end_ts = setup.expires_at.replace(tzinfo=timezone.utc) if setup.expires_at.tzinfo is None else setup.expires_at
 
-        mask = (self._df.index >= pd.Timestamp(start_ts)) & (self._df.index <= pd.Timestamp(end_ts))
-        window = self._df[mask]
+        # O(log n) slice via binary search on sorted DatetimeIndex
+        window = self._df.loc[pd.Timestamp(start_ts) : pd.Timestamp(end_ts)]
 
         if window.empty:
             return ProgressResult(
@@ -64,22 +64,7 @@ class HistoricalOutcomeSimulator:
 
             # Check TP / Stop after entry
             if current_status == SetupStatus.ENTRY_HIT:
-                # Check TP1
-                if setup.tp1_price is not None:
-                    tp_hit = (side == "long" and bar_high >= setup.tp1_price) or (
-                        side == "short" and bar_low <= setup.tp1_price
-                    )
-                    if tp_hit:
-                        pnl, r = _calc_pnl_usd(setup, setup.tp1_price)
-                        return ProgressResult(
-                            status_changed=True,
-                            new_status=SetupStatus.TP1_HIT,
-                            close_price=setup.tp1_price,
-                            hypothetical_pnl_usd=pnl,
-                            hypothetical_r=r,
-                            time_to_outcome_min=elapsed_min,
-                        )
-                # Check Stop
+                # Stop checked before TP (worst-case: stop fills first in volatile bar)
                 if setup.stop_price is not None:
                     stop_hit = (side == "long" and bar_low <= setup.stop_price) or (
                         side == "short" and bar_high >= setup.stop_price
@@ -90,6 +75,20 @@ class HistoricalOutcomeSimulator:
                             status_changed=True,
                             new_status=SetupStatus.STOP_HIT,
                             close_price=setup.stop_price,
+                            hypothetical_pnl_usd=pnl,
+                            hypothetical_r=r,
+                            time_to_outcome_min=elapsed_min,
+                        )
+                if setup.tp1_price is not None:
+                    tp_hit = (side == "long" and bar_high >= setup.tp1_price) or (
+                        side == "short" and bar_low <= setup.tp1_price
+                    )
+                    if tp_hit:
+                        pnl, r = _calc_pnl_usd(setup, setup.tp1_price)
+                        return ProgressResult(
+                            status_changed=True,
+                            new_status=SetupStatus.TP1_HIT,
+                            close_price=setup.tp1_price,
                             hypothetical_pnl_usd=pnl,
                             hypothetical_r=r,
                             time_to_outcome_min=elapsed_min,
