@@ -39,8 +39,8 @@ Status: in_progress
 Goal: оркестратор смотрит, пишет paper journal, не действует
 
 Active tasks:
-- TZ-PAPER-JOURNAL-LIVE [DONE]
-- TZ-WEEKLY-COMPARISON-REPORT [planned]
+- TZ-PAPER-JOURNAL-LIVE [DONE ef74db7]
+- TZ-WEEKLY-COMPARISON-REPORT [DONE f26ea35]
 
 Exit criteria:
 - Paper journal пишется minimum 14 дней непрерывно
