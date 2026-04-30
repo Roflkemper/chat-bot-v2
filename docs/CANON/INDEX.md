@@ -13,6 +13,9 @@
    (Q-1..Q-N) для backtest framework
 4. **CUSTOM_BOTS_REGISTRY.md** — реестр всех live ботов оператора
    с ролями и активационными условиями
+5. **RUNNING_SERVICES_INVENTORY_2026-04-30.md** — реестр всех
+   11 asyncio tasks в app_runner с ролями, форматами Telegram
+   сообщений, статусом active/legacy.
 
 ## Связи с другими docs
 

@@ -268,6 +268,48 @@ Stage 1.4 — Production rollout:
 
 ---
 
+## §6.5 АВТОМАТИЗАЦИОННЫЕ МОДУЛИ (LIVE)
+
+(Из docs/CANON/RUNNING_SERVICES_INVENTORY_2026-04-30.md)
+
+### 11 asyncio tasks в app_runner
+
+7 шлют Telegram, 4 не шлют (writers в JSONL/state):
+
+| Task | Назначение | Telegram | Format prefix |
+|---|---|---|---|
+| orchestrator_loop | Активные действия по regime+matrix | ✅ | "🔄 ОРКЕСТРАТОР: ИЗМЕНЕНИЕ" |
+| telegram_polling (DecisionLogAlertWorker) | Алерты от decision_log с inline кнопками | ✅ | "🟡/🔴 Зафиксировано:" |
+| protection_alerts | Защитные алерты | ✅ | "⚠️ ..." |
+| counter_long | P-3 hedge активация | ✅ | "🟡 COUNTER-LONG триггер:" |
+| boundary_expand | P-1 raise boundary auto | ✅ | "⚠️ BOUNDARY EXPAND:" |
+| adaptive_grid | P-12 tighten/release | ✅ | "⚠️ ADAPTIVE GRID:" |
+| paper_journal | Запись в advise_signals.jsonl | — | — |
+| decision_log | Запись в events.jsonl / outcomes | — | — |
+| dashboard | Обновление dashboard_state.json | — | — |
+| telegram_polling (TelegramBotApp) | Реактивные ответы на команды / callbacks | ✅ | command response |
+| supervisor daemon | Crash/memory alarms вне app_runner | ✅ | "🚨 bot7 supervisor:" |
+
+### Ключевые observations
+
+1. **Decision log != Orchestrator.** Это два разных модуля:
+   - Decision log: пассивный, фиксирует events с inline кнопками
+   - Orchestrator: активный, выдаёт recommendations / автоматические действия по action matrix (P-1..P-12)
+
+2. **Многие P-* паттерны уже автоматизированы:**
+   - P-1 raise boundary → boundary_expand task
+   - P-3 counter-LONG hedge → counter_long task
+   - P-12 adaptive grid tighten → adaptive_grid task
+   - P-4 PAUSED via orchestrator
+
+3. **Live status каждого модуля** — см. RUNNING_SERVICES_INVENTORY_2026-04-30.md.
+
+### Bug found in inventory
+
+src/supervisor/daemon.py импортирует config.TELEGRAM_BOT_TOKEN и config.AUTHORIZED_CHAT_IDS, но config.py экспортирует только BOT_TOKEN/CHAT_ID. Supervisor crash/memory alarms могут тихо не работать. Pending fix через TZ-CONFIG-SUPERVISOR-FIX.
+
+---
+
 ## §7 КОНКУРС GINAREA
 
 ### Текущая позиция (на 2026-04-30 12:48 utc)
