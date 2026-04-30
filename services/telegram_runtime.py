@@ -843,6 +843,40 @@ class TelegramBotApp:
                 self.bot.send_message(chat_id, f'❌ Advisor недоступен: {exc}')
                 return
 
+            if subcmd == 'setups':
+                # Active setup_detector setups
+                try:
+                    from services.setup_detector.storage import SetupStorage
+                    store = SetupStorage()
+                    active = store.list_active()
+                    recent = store.list_recent(hours=24)
+                except Exception as exc:
+                    self.bot.send_message(chat_id, f'Ошибка setup_detector: {exc}')
+                    return
+                lines_s = [f'📍 Активные сетапы: {len(active)}', '']
+                for s in active:
+                    lines_s.append(
+                        f'▸ {s.setup_type.value} {s.pair} | '
+                        f'Сила {s.strength}/10 | {s.confidence_pct:.0f}% | '
+                        f'до {s.expires_at.strftime("%H:%M")} UTC'
+                    )
+                lines_s.append('')
+                lines_s.append(f'За 24ч обнаружено: {len(recent)} сетапов')
+                self.bot.send_message(chat_id, '\n'.join(lines_s))
+                return
+
+            if subcmd == 'setup_stats':
+                # Setup stats from setup_detector
+                try:
+                    from services.setup_detector.stats_aggregator import compute_setup_stats, format_stats_card
+                    stats_sd = compute_setup_stats(lookback_days=7, include_backtest=True)
+                    card = format_stats_card(stats_sd)
+                except Exception as exc:
+                    self.bot.send_message(chat_id, f'Ошибка setup_stats: {exc}')
+                    return
+                self.bot.send_message(chat_id, card)
+                return
+
             if subcmd == 'stats':
                 stats = advisor_telemetry.get_stats()
                 by_count = stats.get('by_play_count', {})

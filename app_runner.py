@@ -117,6 +117,18 @@ async def _run_dashboard(stop_event: asyncio.Event) -> None:
     await dashboard_state_loop(stop_event=stop_event)
 
 
+async def _run_setup_detector(stop_event: asyncio.Event) -> None:
+    from services.setup_detector.loop import setup_detector_loop
+
+    await setup_detector_loop(stop_event=stop_event)
+
+
+async def _run_setup_tracker(stop_event: asyncio.Event) -> None:
+    from services.setup_detector.tracker import setup_tracker_loop
+
+    await setup_tracker_loop(stop_event=stop_event)
+
+
 async def _shutdown_task(task: asyncio.Task, *, timeout: float) -> None:
     try:
         await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
@@ -159,10 +171,12 @@ async def main(
     paper_journal_task = asyncio.create_task(_run_paper_journal(stop_event), name="paper_journal")
     decision_log_task = asyncio.create_task(_run_decision_log(stop_event), name="decision_log")
     dashboard_task = asyncio.create_task(_run_dashboard(stop_event), name="dashboard")
+    setup_detector_task = asyncio.create_task(_run_setup_detector(stop_event), name="setup_detector")
+    setup_tracker_task = asyncio.create_task(_run_setup_tracker(stop_event), name="setup_tracker")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     done, pending = await asyncio.wait(
-        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, decision_log_task, dashboard_task, stop_task},
+        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, decision_log_task, dashboard_task, setup_detector_task, setup_tracker_task, stop_task},
         return_when=asyncio.FIRST_COMPLETED,
     )
 
