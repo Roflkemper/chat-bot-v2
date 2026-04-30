@@ -4,320 +4,84 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grid Orchestrator Dashboard</title>
-<style>
-  :root {
-    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
-    --border: #30363d; --text: #e6edf3; --muted: #8b949e;
-    --green: #3fb950; --red: #f85149; --yellow: #d29922; --blue: #58a6ff;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'SF Mono', monospace; font-size: 13px; padding: 16px; }
-  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-  h2 { font-size: 14px; color: var(--muted); margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .dot.yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
-  .dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
-  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .stat-label { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
-  .stat-value { font-size: 20px; font-weight: 700; }
-  .stat-value.red { color: var(--red); }
-  .stat-value.green { color: var(--green); }
-  .stat-value.yellow { color: var(--yellow); }
-  table { width: 100%; border-collapse: collapse; }
-  th { color: var(--muted); font-weight: 400; font-size: 11px; text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); }
-  td { padding: 4px 8px; border-bottom: 1px solid var(--bg3); }
-  tr:last-child td { border-bottom: none; }
-  .bar-wrap { background: var(--bg3); border-radius: 3px; height: 8px; min-width: 80px; }
-  .bar-fill { height: 100%; border-radius: 3px; background: var(--green); }
-  .bar-neg { background: var(--red); }
-  .anomaly { background: rgba(248,81,73,0.1); border: 1px solid var(--red); border-radius: 4px; padding: 8px 12px; margin-bottom: 6px; color: var(--red); }
-  .queue-section { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
-  .queue-section h3 { font-size: 13px; color: var(--text); margin: 12px 0 6px; }
-  .queue-section table { font-size: 12px; }
-  .note { color: var(--muted); font-size: 12px; margin-top: 8px; padding: 8px; background: var(--bg3); border-radius: 4px; }
-  .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
-  .badge.open { background: rgba(88,166,255,0.15); color: var(--blue); }
-  .badge.done { background: rgba(63,185,80,0.15); color: var(--green); }
-  .badge.blocked { background: rgba(210,153,34,0.15); color: var(--yellow); }
-  #error-banner { display: none; background: rgba(248,81,73,0.15); border: 1px solid var(--red); border-radius: 6px; padding: 12px; margin-bottom: 12px; color: var(--red); }
-</style>
+<link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
 
-<div id="error-banner">
-  <strong>⚠ Данные не загружены.</strong><br>
-  Запусти <code>python -m http.server 8000</code> в <code>C:\bot7\docs\</code> и открой
-  <a href="http://localhost:8000/dashboard.html" style="color:var(--red)">http://localhost:8000/dashboard.html</a>,
-  или выполни <code>python scripts/state_snapshot.py</code> для обновления state_inline.js.
+<div id="offline-banner">
+  ⚠ Dashboard offline — не удалось загрузить данные.<br>
+  Запустите <code>python -m http.server 8000</code> в папке <code>C:\bot7\docs\</code>
 </div>
 
+<!-- Header -->
 <div class="header">
   <div class="dot" id="freshness-dot"></div>
   <div>
-    <h1>Grid Orchestrator Dashboard</h1>
-    <div id="header-ts" style="color:var(--muted);font-size:11px;">Загрузка...</div>
+    <h1>📊 Grid Orchestrator Dashboard</h1>
+    <div id="header-ts" style="color:var(--muted);font-size:11px">Загрузка...</div>
   </div>
-  <div style="margin-left:auto;text-align:right">
+  <div class="header-price">
     <div class="stat-label">BTC mark</div>
-    <div id="btc-mark" style="font-size:16px;font-weight:700">—</div>
+    <div id="btc-price" style="font-size:16px;font-weight:700">—</div>
   </div>
 </div>
 
-<!-- Exposure card -->
-<h2>Aggregate Exposure</h2>
+<!-- §1 Позиции -->
+<h2>🎯 Позиции</h2>
 <div class="card">
   <div class="grid3">
-    <div>
-      <div class="stat-label">Net BTC</div>
-      <div class="stat-value" id="net-btc">—</div>
-    </div>
-    <div>
-      <div class="stat-label">Shorts BTC</div>
-      <div class="stat-value red" id="shorts-btc">—</div>
-    </div>
-    <div>
-      <div class="stat-label">Longs BTC</div>
-      <div class="stat-value green" id="longs-btc">—</div>
-    </div>
-  </div>
-  <div class="grid2" style="margin-top:12px">
-    <div>
-      <div class="stat-label">⚠ Nearest SHORT liq</div>
-      <div class="stat-value red" id="short-liq">—</div>
-    </div>
-    <div>
-      <div class="stat-label">⚠ Nearest LONG liq</div>
-      <div class="stat-value green" id="long-liq">—</div>
-    </div>
+    <div id="pos-shorts"></div>
+    <div id="pos-longs"></div>
+    <div id="pos-margin"></div>
   </div>
 </div>
 
-<!-- Bots table -->
-<h2>Bots (latest snapshot)</h2>
-<div class="card" style="overflow-x:auto">
-  <table id="bots-table">
-    <thead><tr>
-      <th>alias</th><th>id</th><th>dir</th><th>position</th><th>unit</th><th>pos_btc</th>
-      <th>avg_entry</th><th>liq_price</th><th>unreal $</th><th>ts</th>
-    </tr></thead>
-    <tbody id="bots-tbody"></tbody>
-  </table>
+<!-- §2 Конкурс GinArea -->
+<h2>🏆 Конкурс GinArea</h2>
+<div class="card" id="competition-card">
+  <span class="muted">Загрузка...</span>
 </div>
 
-<!-- Manual positions -->
-<h2>Manual Positions</h2>
-<div class="card" id="manual-section">
-  <span style="color:var(--muted)">not_tracked</span>
+<!-- §3 Phase 1 Paper Journal -->
+<h2>📓 Phase 1 — Paper Journal</h2>
+<div class="card" id="phase1-card">
+  <span class="muted">Загрузка...</span>
 </div>
 
-<!-- AGM 24h -->
-<h2>AGM Activity 24h</h2>
-<div class="card" style="overflow-x:auto">
-  <table id="agm-table">
-    <thead><tr><th>bot_key</th><th>phase</th><th>last_action</th><th>last_action_ts</th></tr></thead>
-    <tbody id="agm-tbody"></tbody>
-  </table>
+<!-- §4 Engine Status -->
+<h2>⚙️ Status Engine</h2>
+<div class="card" id="engine-card">
+  <span class="muted">Загрузка...</span>
 </div>
 
-<!-- DD recovery -->
-<h2>DD Recovery 24h (shorts)</h2>
-<div class="card" style="overflow-x:auto">
-  <table id="dd-table">
-    <thead><tr><th>bot_id</th><th>min $</th><th>ts_min</th><th>current $</th><th>recovered</th><th>bar</th></tr></thead>
-    <tbody id="dd-tbody"></tbody>
-  </table>
+<!-- §5 4 Боли -->
+<h2>🩹 4 Боли</h2>
+<div class="card" id="boli-card">
+  <span class="muted">Загрузка...</span>
 </div>
 
-<!-- Anomalies -->
-<h2>Anomalies</h2>
-<div id="anomalies-section"></div>
-
-<!-- Roadmap -->
-<h2>Roadmap</h2>
-<div class="card" id="roadmap-section">
-  <span style="color:var(--muted)">Загрузка roadmap...</span>
+<!-- §6 Последние решения -->
+<h2>📋 Последние решения</h2>
+<div class="card" id="decisions-card">
+  <span class="muted">Загрузка...</span>
 </div>
 
-<!-- Queue -->
-<h2>Queue Navigator</h2>
-<div class="queue-section" id="queue-section">
-  <span style="color:var(--muted)">Загрузка очереди...</span>
+<!-- §7 Кластеры ликвидаций -->
+<h2>📍 Активные кластеры ликвидаций</h2>
+<div class="card" id="clusters-card">
+  <span class="muted">Загрузка...</span>
 </div>
 
-<script src="state_inline.js" onerror="window.__STATE_JS_FAILED=true"></script>
-<script>
-const fmt = (v, d=2) => v != null ? Number(v).toFixed(d) : 'N/A';
-const fmtK = v => v != null ? '$' + Number(v).toLocaleString('en-US', {maximumFractionDigits:0}) : 'N/A';
+<!-- §8 Оповещения 24ч -->
+<h2>🚨 Оповещения за 24ч</h2>
+<div class="card" id="alerts-card">
+  <span class="muted">Загрузка...</span>
+</div>
 
-function ageMinutes(tsStr) {
-  try {
-    return (Date.now() - new Date(tsStr).getTime()) / 60000;
-  } catch { return 999; }
-}
+<div style="color:var(--muted);font-size:11px;text-align:center;margin-top:16px">
+  Данные: docs/STATE/dashboard_state.json • Обновление каждые 5 мин (backend) / 60 сек (браузер)
+</div>
 
-function renderAll(S) {
-  // Header & freshness
-  const age = ageMinutes(S.ts);
-  const dot = document.getElementById('freshness-dot');
-  const tsEl = document.getElementById('header-ts');
-  const tsLocal = new Date(S.ts).toLocaleString('ru-RU');
-  tsEl.textContent = `Snapshot: ${tsLocal} (${age < 1 ? '<1' : Math.round(age)} мин назад)`;
-  dot.className = 'dot ' + (age < 5 ? 'green' : age < 30 ? 'yellow' : 'red');
-
-  // Exposure
-  const ex = S.exposure || {};
-  document.getElementById('net-btc').textContent = ex.net_btc != null ? fmt(ex.net_btc, 4) : 'N/A';
-  document.getElementById('shorts-btc').textContent = ex.shorts_btc != null ? fmt(ex.shorts_btc, 4) : 'N/A';
-  document.getElementById('longs-btc').textContent = ex.longs_btc != null ? fmt(ex.longs_btc, 4) : 'N/A';
-  const sl = ex.nearest_short_liq;
-  const ll = ex.nearest_long_liq;
-  document.getElementById('short-liq').textContent = sl ? fmtK(sl.price) + (sl.distance_pct ? ` (+${sl.distance_pct}%)` : '') : 'N/A';
-  document.getElementById('long-liq').textContent = ll ? fmtK(ll.price) + (ll.distance_pct ? ` (${ll.distance_pct}%)` : '') : 'N/A';
-
-  // Bots table
-  const tbody = document.getElementById('bots-tbody');
-  tbody.innerHTML = '';
-  const bots = (S.bots || []).slice().sort((a, b) => a.direction < b.direction ? -1 : 1);
-  for (const bot of bots) {
-    const live = bot.live || {};
-    const pos = live.position;
-    const posEq = live.position_btc_equivalent;
-    const posUnit = live.position_unit || 'BTC';
-    const unreal = live.unrealized_usd;
-    const dirColor = bot.direction === 'short' ? 'var(--red)' : bot.direction === 'long' ? 'var(--green)' : '';
-    const unrColor = unreal != null ? (unreal < 0 ? 'var(--red)' : 'var(--green)') : '';
-    const ts = bot.last_ts ? bot.last_ts.slice(0,16) : '';
-    tbody.insertAdjacentHTML('beforeend', `<tr>
-      <td>${bot.alias || bot.name || ''}</td>
-      <td style="color:var(--muted)">${bot.id}</td>
-      <td style="color:${dirColor}">${bot.direction}</td>
-      <td>${pos != null ? fmt(pos, posUnit==='USD' ? 0 : 4) : 'N/A'}</td>
-      <td style="color:var(--muted);font-size:11px">${posUnit}</td>
-      <td>${posEq != null ? fmt(posEq,4) : 'N/A'}</td>
-      <td>${live.avg_entry != null ? fmt(live.avg_entry,0) : 'N/A'}</td>
-      <td>${live.liq_price != null ? fmt(live.liq_price,0) : 'N/A'}</td>
-      <td style="color:${unrColor}">${unreal != null ? fmt(unreal,2) : 'N/A'}</td>
-      <td style="color:var(--muted);font-size:11px">${ts}</td>
-    </tr>`);
-  }
-
-  // AGM
-  const agmTbody = document.getElementById('agm-tbody');
-  agmTbody.innerHTML = '';
-  for (const a of (S.agm_24h || [])) {
-    agmTbody.insertAdjacentHTML('beforeend', `<tr>
-      <td>${a.bot_key}</td>
-      <td>${a.phase || 'N/A'}</td>
-      <td>${a.last_action || 'N/A'}</td>
-      <td style="color:var(--muted)">${a.last_action_ts || 'N/A'}</td>
-    </tr>`);
-  }
-
-  // DD Recovery
-  const ddTbody = document.getElementById('dd-tbody');
-  ddTbody.innerHTML = '';
-  for (const d of (S.dd_recovery_24h || [])) {
-    const pct = d.recovered_pct;
-    const barWidth = pct != null ? Math.min(Math.abs(pct), 200) / 2 + '%' : '0%';
-    const barCls = pct != null && pct > 0 ? '' : 'bar-neg';
-    ddTbody.insertAdjacentHTML('beforeend', `<tr>
-      <td style="color:var(--muted);font-size:11px">${d.bot_id}</td>
-      <td style="color:var(--red)">${d.unreal_min != null ? fmt(d.unreal_min,2) : 'N/A'}</td>
-      <td style="color:var(--muted);font-size:11px">${d.ts_min ? d.ts_min.slice(0,16) : 'N/A'}</td>
-      <td>${d.unreal_current != null ? fmt(d.unreal_current,2) : 'N/A'}</td>
-      <td>${pct != null ? pct + '%' : 'N/A'}</td>
-      <td><div class="bar-wrap"><div class="bar-fill ${barCls}" style="width:${barWidth}"></div></div></td>
-    </tr>`);
-  }
-
-  // Anomalies
-  const anom = document.getElementById('anomalies-section');
-  anom.innerHTML = '';
-  const anomalies = S.anomalies || [];
-  if (anomalies.length === 0) {
-    anom.innerHTML = '<div class="card" style="color:var(--muted)">✅ Аномалий нет</div>';
-  } else {
-    for (const a of anomalies) {
-      anom.insertAdjacentHTML('beforeend', `<div class="anomaly">⚠ ${a}</div>`);
-    }
-  }
-}
-
-// Roadmap rendering
-function renderRoadmap(S) {
-  const sec = document.getElementById('roadmap-section');
-  const rm = S && S.roadmap;
-  if (!rm || rm.status === 'unavailable') {
-    sec.innerHTML = '<span style="color:var(--muted)">Roadmap не найден — запусти state_snapshot.py</span>';
-    return;
-  }
-  const statusColor = rm.current_phase_status === 'in_progress' ? 'var(--yellow)' :
-                      rm.current_phase_status === 'done' ? 'var(--green)' : 'var(--muted)';
-  let html = `<div style="margin-bottom:8px">
-    <span style="font-size:15px;font-weight:600">📍 ${rm.current_phase || '—'}</span>
-    <span style="margin-left:8px;color:${statusColor};font-size:11px">[${rm.current_phase_status || '—'}]</span>
-  </div>`;
-
-  const tasks = (rm.active_tasks || []).slice(0, 7);
-  if (tasks.length) {
-    html += '<div style="margin-bottom:6px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Active tasks</div>';
-    for (const t of tasks) {
-      const color = t.status === 'done' ? 'var(--green)' : 'var(--muted)';
-      const icon = t.status === 'done' ? '✓' : '·';
-      html += `<div style="color:${color};font-size:12px;padding:1px 0">${icon} ${t.id}</div>`;
-    }
-  }
-
-  if (rm.next_phase) {
-    html += `<div style="margin-top:8px;font-size:11px;color:var(--muted)">Next: ${rm.next_phase}</div>`;
-  }
-
-  if (rm.milestones_completed && rm.milestones_completed.length) {
-    const last = rm.milestones_completed.slice(-1)[0];
-    html += `<div style="margin-top:4px;font-size:11px;color:var(--green)">✓ ${last}</div>`;
-  }
-
-  sec.innerHTML = html;
-}
-
-// Queue rendering (embedded QUEUE.md content from state_inline.js if present)
-function renderQueue() {
-  const sec = document.getElementById('queue-section');
-  if (window.STATE && window.STATE._queue_md) {
-    sec.innerHTML = '<pre style="white-space:pre-wrap;font-size:12px;color:var(--muted)">' +
-      window.STATE._queue_md.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
-  } else {
-    sec.innerHTML = '<div class="note">Queue MD not embedded — запусти <code>python scripts/state_snapshot.py</code> для обновления</div>';
-  }
-}
-
-// Load data: prefer window.STATE from state_inline.js, fallback to fetch
-async function loadData() {
-  let S = null;
-
-  if (window.STATE && !window.__STATE_JS_FAILED) {
-    S = window.STATE;
-  } else {
-    try {
-      const resp = await fetch('./STATE/state_latest.json');
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      S = await resp.json();
-    } catch (e) {
-      document.getElementById('error-banner').style.display = 'block';
-      return;
-    }
-  }
-
-  renderAll(S);
-  renderRoadmap(S);
-  renderQueue();
-}
-
-loadData();
-</script>
+<script src="dashboard.js"></script>
 </body>
 </html>
