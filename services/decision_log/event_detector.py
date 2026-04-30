@@ -3,13 +3,21 @@ from __future__ import annotations
 import csv
 import json
 import os
+from collections import OrderedDict
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
 
-from .models import CapturedEvent, EventSeverity, EventType, MarketContext, PortfolioContext
+from .models import (
+    CapturedEvent,
+    EventSeverity,
+    EventType,
+    MarketContext,
+    PortfolioContext,
+    compute_severity,
+)
 from .storage import EVENTS_PATH, LAST_SEEN_PATH, append_event, load_last_seen, save_last_seen
 
 SNAPSHOTS_PATH = Path("ginarea_live/snapshots.csv")
@@ -17,6 +25,14 @@ PARAMS_PATH = Path("ginarea_live/params.csv")
 ADVISE_SIGNALS_PATH = Path("state/advise_signals.jsonl")
 STATE_LATEST_PATH = Path("docs/STATE/state_latest.json")
 MARGIN_THRESHOLDS = (60.0, 30.0, 15.0)
+
+# Event types that fire continuously and need between-iteration dedup
+_DEDUP_EVENT_TYPES: frozenset[EventType] = frozenset({
+    EventType.BOUNDARY_BREACH,
+    EventType.PNL_EXTREME,
+    EventType.PNL_EVENT,
+})
+_DEDUP_WINDOW_MINUTES = 5
 
 
 def _read_csv_latest_by_bot(path: Path) -> dict[str, dict[str, str]]:
@@ -147,16 +163,6 @@ def _next_counter(state: dict[str, Any], now: datetime) -> int:
     return int(state["event_counter"])
 
 
-def _severity_for_margin(value: float) -> EventSeverity:
-    if value <= 15.0:
-        return EventSeverity.CRITICAL
-    if value <= 30.0:
-        return EventSeverity.WARNING
-    if value <= 60.0:
-        return EventSeverity.NOTICE
-    return EventSeverity.INFO
-
-
 def _build_event(
     state: dict[str, Any],
     *,
@@ -183,6 +189,69 @@ def _build_event(
     )
 
 
+def _aggregate_same_type_events(events: list[CapturedEvent]) -> list[CapturedEvent]:
+    """Merge same (event_type, severity) groups from one iteration into a single event."""
+    groups: OrderedDict[tuple[EventType, EventSeverity], list[CapturedEvent]] = OrderedDict()
+    for event in events:
+        key = (event.event_type, event.severity)
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(event)
+    result: list[CapturedEvent] = []
+    for group in groups.values():
+        if len(group) == 1:
+            result.append(group[0])
+        else:
+            bot_ids = [e.bot_id for e in group if e.bot_id]
+            merged_payload = dict(group[0].payload)
+            merged_payload["affected_bots"] = bot_ids
+            result.append(
+                replace(
+                    group[0],
+                    bot_id="multiple",
+                    summary=f"{group[0].event_type}: {len(group)} ботов одновременно",
+                    payload=merged_payload,
+                )
+            )
+    return result
+
+
+def _apply_dedup(
+    events: list[CapturedEvent],
+    state: dict[str, Any],
+    now: datetime,
+) -> list[CapturedEvent]:
+    """Suppress continuous-detector events already fired within the dedup window."""
+    window_start = now - timedelta(minutes=10)
+    recent: list[dict[str, Any]] = [
+        e for e in (state.get("recent_events") or [])
+        if _to_dt(e.get("ts")) >= window_start
+    ]
+    cutoff = now - timedelta(minutes=_DEDUP_WINDOW_MINUTES)
+    result: list[CapturedEvent] = []
+    for event in events:
+        if event.event_type not in _DEDUP_EVENT_TYPES:
+            result.append(event)
+            continue
+        already_fired = any(
+            e.get("event_type") == event.event_type and e.get("severity") == event.severity
+            for e in recent
+            if _to_dt(e.get("ts")) >= cutoff
+        )
+        if not already_fired:
+            result.append(event)
+    for event in result:
+        if event.event_type in _DEDUP_EVENT_TYPES:
+            recent.append({
+                "ts": now.isoformat(),
+                "event_type": event.event_type,
+                "severity": event.severity,
+                "bot_id": event.bot_id,
+            })
+    state["recent_events"] = recent[-100:]
+    return result
+
+
 def detect_events(
     current_snapshots: dict[str, dict[str, str]],
     current_params: dict[str, dict[str, str]],
@@ -193,6 +262,19 @@ def detect_events(
     portfolio_context: PortfolioContext,
 ) -> tuple[list[CapturedEvent], dict[str, Any]]:
     state = deepcopy(last_seen_state)
+
+    # Cold start: empty state → save baseline, emit nothing this iteration
+    if not state:
+        state["initialized"] = True
+        state["snapshots"] = current_snapshots
+        state["params"] = current_params
+        state["portfolio_history"] = []
+        state["free_margin_pct"] = portfolio_context.free_margin_pct
+        state["regime_label"] = market_context.regime_label
+        state["recent_events"] = []
+        return [], state
+
+    state["initialized"] = True
     events: list[CapturedEvent] = []
     prev_snapshots = dict(state.get("snapshots", {}) or {})
     prev_params = dict(state.get("params", {}) or {})
@@ -207,15 +289,16 @@ def detect_events(
                 changed.append({"field": field, "old": old_val, "new": new_val})
         if changed:
             readable = ", ".join(item["field"] for item in changed if item["field"] != "raw_params_json") or "raw_params_json"
+            payload: dict[str, Any] = {"changes": changed}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.PARAM_CHANGE,
-                    severity=EventSeverity.WARNING,
+                    severity=compute_severity(EventType.PARAM_CHANGE, payload, market_context, portfolio_context),
                     bot_id=bot_id,
                     summary=f"Изменение параметров бота {current.get('alias') or bot_id}: {readable}",
-                    payload={"changes": changed},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
@@ -224,15 +307,16 @@ def detect_events(
     for bot_id, current in current_snapshots.items():
         prev = dict(prev_snapshots.get(bot_id, {}) or {})
         if prev and prev.get("status") != current.get("status"):
+            payload = {"old_status": prev.get("status"), "new_status": current.get("status")}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.BOT_STATE_CHANGE,
-                    severity=EventSeverity.NOTICE,
+                    severity=compute_severity(EventType.BOT_STATE_CHANGE, payload, market_context, portfolio_context),
                     bot_id=bot_id,
                     summary=f"Смена статуса бота {current.get('alias') or bot_id}: {prev.get('status')} → {current.get('status')}",
-                    payload={"old_status": prev.get("status"), "new_status": current.get("status")},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
@@ -244,15 +328,16 @@ def detect_events(
             base = prev_position if prev_position > 0 else 1.0
             delta_ratio = abs(current_position - prev_position) / base
             if delta_ratio > 0.05:
+                payload = {"old_position": prev_position, "new_position": current_position, "delta_ratio": delta_ratio}
                 events.append(
                     _build_event(
                         state,
                         now=now,
                         event_type=EventType.POSITION_CHANGE,
-                        severity=EventSeverity.NOTICE,
+                        severity=compute_severity(EventType.POSITION_CHANGE, payload, market_context, portfolio_context),
                         bot_id=bot_id,
                         summary=f"Изменение позиции бота {current.get('alias') or bot_id}: {prev_position:.4f} → {current_position:.4f}",
-                        payload={"old_position": prev_position, "new_position": current_position, "delta_ratio": delta_ratio},
+                        payload=payload,
                         market_context=market_context,
                         portfolio_context=portfolio_context,
                     )
@@ -263,29 +348,31 @@ def detect_events(
         border_top = _to_float(params_row.get("border_top"))
         border_bottom = _to_float(params_row.get("border_bottom"))
         if border_top > 0 and current_price > border_top:
+            payload = {"price": current_price, "border_top": border_top}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.BOUNDARY_BREACH,
-                    severity=EventSeverity.WARNING,
+                    severity=compute_severity(EventType.BOUNDARY_BREACH, payload, market_context, portfolio_context),
                     bot_id=bot_id,
                     summary=f"Цена вышла выше верхней границы бота {current.get('alias') or bot_id}",
-                    payload={"price": current_price, "border_top": border_top},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
             )
         elif border_bottom > 0 and 0 < current_price < border_bottom:
+            payload = {"price": current_price, "border_bottom": border_bottom}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.BOUNDARY_BREACH,
-                    severity=EventSeverity.WARNING,
+                    severity=compute_severity(EventType.BOUNDARY_BREACH, payload, market_context, portfolio_context),
                     bot_id=bot_id,
                     summary=f"Цена вышла ниже нижней границы бота {current.get('alias') or bot_id}",
-                    payload={"price": current_price, "border_bottom": border_bottom},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
@@ -304,16 +391,16 @@ def detect_events(
     if compare_15m is not None:
         delta = portfolio_context.net_unrealized_usd - _to_float(compare_15m.get("net_unrealized_usd"))
         if abs(delta) > 200.0:
-            severity = EventSeverity.CRITICAL if abs(delta) > 500.0 else EventSeverity.WARNING
+            payload = {"delta_pnl_usd": delta}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.PNL_EVENT,
-                    severity=severity,
+                    severity=compute_severity(EventType.PNL_EVENT, payload, market_context, portfolio_context),
                     bot_id=None,
                     summary=f"Сильное изменение нереализованного PnL за 15 минут: {delta:+.0f} USD",
-                    payload={"delta_pnl_usd": delta},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
@@ -323,29 +410,31 @@ def detect_events(
         values = [_to_float(item.get("net_unrealized_usd")) for item in history]
         current_value = portfolio_context.net_unrealized_usd
         if current_value <= min(values[:-1] or values):
+            payload = {"extreme": "low", "value": current_value}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.PNL_EXTREME,
-                    severity=EventSeverity.WARNING,
+                    severity=compute_severity(EventType.PNL_EXTREME, payload, market_context, portfolio_context),
                     bot_id=None,
                     summary=f"Новый минимум PnL за 24ч: {current_value:.0f} USD",
-                    payload={"extreme": "low", "value": current_value},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
             )
         elif current_value >= max(values[:-1] or values):
+            payload = {"extreme": "high", "value": current_value}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.PNL_EXTREME,
-                    severity=EventSeverity.INFO,
+                    severity=compute_severity(EventType.PNL_EXTREME, payload, market_context, portfolio_context),
                     bot_id=None,
                     summary=f"Новый максимум PnL за 24ч: {current_value:.0f} USD",
-                    payload={"extreme": "high", "value": current_value},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
@@ -356,29 +445,31 @@ def detect_events(
     if isinstance(prev_margin, (int, float)):
         for threshold in MARGIN_THRESHOLDS:
             if prev_margin > threshold >= current_margin:
+                payload = {"threshold": threshold, "old_margin_pct": prev_margin, "new_margin_pct": current_margin}
                 events.append(
                     _build_event(
                         state,
                         now=now,
                         event_type=EventType.MARGIN_ALERT,
-                        severity=_severity_for_margin(current_margin),
+                        severity=compute_severity(EventType.MARGIN_ALERT, payload, market_context, portfolio_context),
                         bot_id=None,
                         summary=f"Свободная маржа упала ниже {threshold:.0f}%: сейчас {current_margin:.1f}%",
-                        payload={"threshold": threshold, "old_margin_pct": prev_margin, "new_margin_pct": current_margin},
+                        payload=payload,
                         market_context=market_context,
                         portfolio_context=portfolio_context,
                     )
                 )
         if prev_margin < 40.0 <= current_margin:
+            payload = {"old_margin_pct": prev_margin, "new_margin_pct": current_margin}
             events.append(
                 _build_event(
                     state,
                     now=now,
                     event_type=EventType.MARGIN_RECOVERY,
-                    severity=EventSeverity.NOTICE,
+                    severity=compute_severity(EventType.MARGIN_RECOVERY, payload, market_context, portfolio_context),
                     bot_id=None,
                     summary=f"Свободная маржа восстановилась выше 40%: сейчас {current_margin:.1f}%",
-                    payload={"old_margin_pct": prev_margin, "new_margin_pct": current_margin},
+                    payload=payload,
                     market_context=market_context,
                     portfolio_context=portfolio_context,
                 )
@@ -386,19 +477,26 @@ def detect_events(
 
     prev_regime = state.get("regime_label")
     if prev_regime and prev_regime != market_context.regime_label:
+        payload = {"old_regime": prev_regime, "new_regime": market_context.regime_label}
         events.append(
             _build_event(
                 state,
                 now=now,
                 event_type=EventType.REGIME_CHANGE,
-                severity=EventSeverity.NOTICE,
+                severity=compute_severity(EventType.REGIME_CHANGE, payload, market_context, portfolio_context),
                 bot_id=None,
                 summary=f"Смена рыночного режима: {prev_regime} → {market_context.regime_label}",
-                payload={"old_regime": prev_regime, "new_regime": market_context.regime_label},
+                payload=payload,
                 market_context=market_context,
                 portfolio_context=portfolio_context,
             )
         )
+
+    # Within-iteration: merge same (event_type, severity) groups from multiple bots
+    events = _aggregate_same_type_events(events)
+
+    # Between-iteration: suppress continuous events that already fired within dedup window
+    events = _apply_dedup(events, state, now)
 
     state["snapshots"] = current_snapshots
     state["params"] = current_params

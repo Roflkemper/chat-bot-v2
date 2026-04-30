@@ -85,3 +85,80 @@ class OutcomeRecord:
     longs_unrealized_at_checkpoint: float
     delta_pnl_since_event: float
     delta_pnl_classification: str
+
+
+def compute_severity(
+    event_type: EventType,
+    payload: dict[str, Any],
+    market_context: MarketContext,
+    portfolio_context: PortfolioContext,
+) -> EventSeverity:
+    if event_type == EventType.BOUNDARY_BREACH:
+        regime = market_context.regime_label
+        if regime in ("trend_up", "trend_down"):
+            if abs(market_context.price_change_1h_pct) > 1.0:
+                return EventSeverity.WARNING
+            return EventSeverity.NOTICE
+        return EventSeverity.INFO
+
+    if event_type == EventType.PNL_EXTREME:
+        depo = portfolio_context.depo_total
+        if depo <= 0:
+            return EventSeverity.WARNING
+        pct = abs(float(payload.get("value", 0.0))) / depo * 100
+        if pct < 3:
+            return EventSeverity.INFO
+        if pct < 5:
+            return EventSeverity.NOTICE
+        if pct < 8:
+            return EventSeverity.WARNING
+        return EventSeverity.CRITICAL
+
+    if event_type == EventType.PNL_EVENT:
+        depo = portfolio_context.depo_total
+        if depo <= 0:
+            return EventSeverity.WARNING
+        pct = abs(float(payload.get("delta_pnl_usd", 0.0))) / depo * 100
+        if pct < 1.5:
+            return EventSeverity.INFO
+        if pct < 3:
+            return EventSeverity.NOTICE
+        if pct < 5:
+            return EventSeverity.WARNING
+        return EventSeverity.CRITICAL
+
+    if event_type == EventType.PARAM_CHANGE:
+        return EventSeverity.WARNING
+
+    if event_type == EventType.BOT_LIFECYCLE:
+        return EventSeverity.WARNING
+
+    if event_type == EventType.BOT_STATE_CHANGE:
+        return EventSeverity.NOTICE
+
+    if event_type == EventType.POSITION_CHANGE:
+        pct = abs(float(payload.get("delta_ratio", 0.0))) * 100
+        if pct < 10:
+            return EventSeverity.INFO
+        if pct < 25:
+            return EventSeverity.NOTICE
+        return EventSeverity.WARNING
+
+    if event_type == EventType.MARGIN_ALERT:
+        margin = float(payload.get("new_margin_pct", 100.0))
+        if margin >= 30:
+            return EventSeverity.INFO
+        if margin >= 15:
+            return EventSeverity.WARNING
+        return EventSeverity.CRITICAL
+
+    if event_type == EventType.MARGIN_RECOVERY:
+        return EventSeverity.NOTICE
+
+    if event_type == EventType.REGIME_CHANGE:
+        return EventSeverity.NOTICE
+
+    if event_type == EventType.LIQ_CLUSTER_TOUCH:
+        return EventSeverity.WARNING
+
+    return EventSeverity.WARNING
