@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import logging
 import os
 import threading
 import time
-from datetime import datetime, timezone
+from collections import deque
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -439,6 +441,11 @@ class SignalAlertWorker(threading.Thread):
             self._stop_event.wait(self.poll_interval_sec)
 
 
+# Telegram alert dedup window — suppress semantically identical pings within this period.
+# Different from detector's 5-min JSONL dedup: here we compare payload content, not just type.
+_ALERT_DEDUP_WINDOW_MINUTES = 30
+
+
 class DecisionLogAlertWorker(threading.Thread):
     def __init__(self, bot, chat_ids: Iterable[int], events_path: Path, *, poll_interval_sec: int = 15) -> None:
         super().__init__(daemon=True, name="decision-log-alert-worker")
@@ -448,6 +455,7 @@ class DecisionLogAlertWorker(threading.Thread):
         self.poll_interval_sec = max(int(poll_interval_sec), 5)
         self._stop_event = threading.Event()
         self._seen_event_ids: set[str] = self._load_seen_ids()
+        self._recent_pings: deque[dict] = deque(maxlen=200)
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -477,6 +485,48 @@ class DecisionLogAlertWorker(threading.Thread):
                 events.append(event)
         return events
 
+    def _compute_signature(self, event) -> str:
+        """Canonical payload signature used for Telegram dedup comparison."""
+        et = event.event_type  # EventType(str, Enum) — direct comparison works
+        p: dict = event.payload or {}
+        if et == "PNL_EVENT":
+            bucket = round(float(p.get("delta_pnl_usd", 0)) / 100) * 100
+            return f"pnl_delta_{bucket}"
+        if et == "PNL_EXTREME":
+            bucket = round(float(p.get("value", 0)) / 100) * 100
+            return f"pnl_extreme_{bucket}"
+        if et == "BOUNDARY_BREACH":
+            direction = "above" if "border_top" in p else "below"
+            return f"boundary_{direction}"
+        if et == "POSITION_CHANGE":
+            bucket = round(float(p.get("delta_ratio", 0)) * 100)
+            return f"pos_{bucket}"
+        return hashlib.sha256(
+            json.dumps(p, sort_keys=True, default=str).encode()
+        ).hexdigest()[:16]
+
+    def _is_duplicate_recent(self, event) -> bool:
+        """Return True if a ping with the same content was sent within _ALERT_DEDUP_WINDOW_MINUTES.
+
+        Fails open on error so real events are never silently dropped.
+        """
+        try:
+            sig = self._compute_signature(event)
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=_ALERT_DEDUP_WINDOW_MINUTES)
+            for recent in self._recent_pings:
+                if recent["ts"] < cutoff:
+                    continue
+                if recent["event_type"] != event.event_type:
+                    continue
+                if recent["bot_id"] != event.bot_id:
+                    continue
+                if recent["payload_signature"] == sig:
+                    return True
+            return False
+        except Exception:
+            logger.exception("decision_log_alert_worker.dedup_check_failed")
+            return False  # fail open
+
     def run(self) -> None:
         logger.info("decision_log_alert_worker.start path=%s", self.events_path)
         while not self._stop_event.is_set():
@@ -484,11 +534,23 @@ class DecisionLogAlertWorker(threading.Thread):
                 from services.decision_log import build_event_keyboard, format_event_message
 
                 for event in self._read_new_events():
+                    if self._is_duplicate_recent(event):
+                        logger.info(
+                            "decision_log_alert_worker.dedup_skip event_type=%s bot_id=%s",
+                            event.event_type, event.bot_id,
+                        )
+                        continue
                     text = format_event_message(event)
                     markup = build_event_keyboard(event.event_id)
                     for chat_id in self.chat_ids:
                         self.bot.send_message(chat_id, text, reply_markup=markup)
                         time.sleep(0.1)
+                    self._recent_pings.append({
+                        "event_type": event.event_type,
+                        "bot_id": event.bot_id,
+                        "ts": datetime.now(timezone.utc),
+                        "payload_signature": self._compute_signature(event),
+                    })
             except Exception:
                 logger.exception("decision_log_alert_worker.loop_failed")
             self._stop_event.wait(self.poll_interval_sec)
