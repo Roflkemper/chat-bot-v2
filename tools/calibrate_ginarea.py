@@ -212,11 +212,30 @@ def group_stats(ks: list[float]) -> dict:
 def verdict(cv: Optional[float]) -> str:
     if cv is None:
         return "UNKNOWN"
-    if cv < 15:
+    abs_cv = abs(cv)
+    if abs_cv < 15:
         return "STABLE"
-    if cv < 35:
+    if abs_cv < 35:
         return "TD-DEPENDENT"
     return "FRACTURED"
+
+
+def has_sign_flip(st: dict) -> bool:
+    """True when K values span both negative and positive — unreliable group."""
+    mn, mx = st.get("min"), st.get("max")
+    if mn is None or mx is None:
+        return False
+    return mn < 0 < mx
+
+
+def fill_normalized_realized(rows: list["CalibRow"], groups: dict) -> None:
+    """Fill CalibRow.normalized_sim_realized with sim_realized × group mean K_realized."""
+    for gdata in groups.values():
+        k_mean = gdata["k_realized"].get("mean") or 0.0
+        if not k_mean:
+            continue
+        for r in gdata["rows"]:
+            r.normalized_sim_realized = r.sim_realized * k_mean
 
 
 # ---------------------------------------------------------------------------
@@ -274,8 +293,9 @@ def write_report(rows: list[CalibRow], groups: dict, out_path: Path) -> None:
         def row_line(name, st):
             if st["mean"] is None:
                 return f"| {name} | N/A | N/A | N/A | N/A | N/A | UNKNOWN |\n"
+            vlabel = "FRACTURED_SIGN_FLIP" if has_sign_flip(st) else verdict(st["cv"])
             return (f"| {name} | {st['mean']:.3f} | {st['std']:.3f} | {st['cv']:.1f}%"
-                    f" | {st['min']:.3f} | {st['max']:.3f} | **{verdict(st['cv'])}** |\n")
+                    f" | {st['min']:.3f} | {st['max']:.3f} | **{vlabel}** |\n")
 
         buf.write(row_line("K_trades",   st_tr  if st_tr  else dict(mean=None,std=None,cv=None,min=None,max=None)))
         buf.write(row_line("K_realized", st_re))
@@ -298,16 +318,18 @@ def write_report(rows: list[CalibRow], groups: dict, out_path: Path) -> None:
     buf.write("## Conclusions\n\n")
     for gname, gdata in groups.items():
         st_re = gdata["k_realized"]
-        v = verdict(st_re["cv"])
+        v = "FRACTURED_SIGN_FLIP" if has_sign_flip(st_re) else verdict(st_re["cv"])
         k_mean = st_re["mean"]
         buf.write(f"**{gname}:** K_realized = {k_mean:.3f} ± {st_re['std']:.3f}"
                   f" (CV={st_re['cv']:.1f}%) → **{v}**  \n")
         if v == "STABLE":
             buf.write(f"  → Use K = {k_mean:.3f} as fixed calibration multiplier.  \n")
         elif v == "TD-DEPENDENT":
-            buf.write(f"  → K varies with TD. Fit linear regression K(TD) before applying.  \n")
+            buf.write("  → K varies with TD. Fit linear regression K(TD) before applying.  \n")
+        elif v == "FRACTURED_SIGN_FLIP":
+            buf.write("  → K spans positive and negative values (sign flip detected). Group is unreliable; fix engine bug before calibrating.  \n")
         else:
-            buf.write(f"  → K is unstable. Do not use single multiplier; needs per-TD lookup.  \n")
+            buf.write("  → K is unstable. Do not use single multiplier; needs per-TD lookup.  \n")
     buf.write("\n")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -381,6 +403,8 @@ def main(out_path: Path = DEFAULT_OUT) -> list[CalibRow]:
 
     groups["SHORT / USDT-M (LINEAR)"] = make_group("short", lambda r: r.side == "SHORT")
     groups["LONG / COIN-M (INVERSE)"] = make_group("long",  lambda r: r.side == "LONG")
+
+    fill_normalized_realized(rows, groups)
 
     # Print summary to stdout
     for gname, gdata in groups.items():

@@ -1,7 +1,6 @@
 """Unit tests for tools/calibrate_ginarea.py — parsing and K calculations."""
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 
@@ -12,6 +11,7 @@ from tools.calibrate_ginarea import (
     GINAREA_GROUND_TRUTH,
     CalibRow,
     group_stats,
+    has_sign_flip,
     safe_k,
     verdict,
 )
@@ -174,3 +174,59 @@ class TestCalibRowNormalization:
         # GinArea volume >> sim volume (resolution gap)
         assert row.k_volume == 10.0
         assert row.k_volume > 1.0
+
+
+# ---------------------------------------------------------------------------
+# 5. verdict() abs(cv) correction — Fix A2
+# ---------------------------------------------------------------------------
+class TestVerdictAbsCV:
+    def test_negative_cv_not_stable_large(self):
+        # CV = -676.2 (SHORT sign-flip group from calibration data)
+        assert verdict(-676.2) != "STABLE"
+
+    def test_negative_cv_not_stable_medium(self):
+        assert verdict(-50.0) != "STABLE"
+        assert verdict(-35.0) != "STABLE"
+
+    def test_negative_cv_near_boundary(self):
+        # abs(-15.0) == 15.0 → TD-DEPENDENT, not STABLE
+        assert verdict(-15.0) != "STABLE"
+        assert verdict(-15.0) == "TD-DEPENDENT"
+
+    def test_abs_value_used_positive_and_negative_symmetry(self):
+        assert verdict(14.99) == "STABLE"
+        assert verdict(-14.99) == "STABLE"
+        assert verdict(35.0) == "FRACTURED"
+        assert verdict(-35.0) == "FRACTURED"
+        assert verdict(-676.2) == "FRACTURED"
+
+
+# ---------------------------------------------------------------------------
+# 6. has_sign_flip helper
+# ---------------------------------------------------------------------------
+class TestHasSignFlip:
+    def test_sign_flip_detected(self):
+        # SHORT K values from calibration: some negative, some positive
+        ks = [-497.11, 267.15, -101.29, 37.75, 34.47, 33.19]
+        st = group_stats(ks)
+        assert has_sign_flip(st) is True
+
+    def test_all_positive_no_flip(self):
+        ks = [33.19, 34.47, 37.75]
+        st = group_stats(ks)
+        assert has_sign_flip(st) is False
+
+    def test_all_negative_no_flip(self):
+        ks = [-5.0, -3.0, -1.0]
+        st = group_stats(ks)
+        assert has_sign_flip(st) is False
+
+    def test_zero_min_not_flip(self):
+        # min=0 not < 0, so no flip
+        ks = [0.0, 5.0, 10.0]
+        st = group_stats(ks)
+        assert has_sign_flip(st) is False
+
+    def test_empty_stats_no_flip(self):
+        st = group_stats([])
+        assert has_sign_flip(st) is False
