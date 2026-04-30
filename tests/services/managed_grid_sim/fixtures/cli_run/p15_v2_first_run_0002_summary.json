@@ -1,0 +1,49 @@
+{
+  "run_id": "p15_v2_first_run_0002",
+  "config_hash": "aa3f2d37bf07",
+  "bot_configs": [
+    {
+      "bot_id": "short_main",
+      "alias": "short_main",
+      "side": "short",
+      "contract_type": "linear",
+      "order_size": 0.003,
+      "order_count": 800,
+      "grid_step_pct": 0.03,
+      "target_profit_pct": 0.21,
+      "min_stop_pct": 0.01,
+      "max_stop_pct": 0.04,
+      "instop_pct": 0.01,
+      "boundaries_lower": 10000,
+      "boundaries_upper": 999999
+    },
+    {
+      "bot_id": "long_main",
+      "alias": "long_main",
+      "side": "long",
+      "contract_type": "inverse",
+      "order_size": 200,
+      "order_count": 800,
+      "grid_step_pct": 0.03,
+      "target_profit_pct": 0.25,
+      "min_stop_pct": 0.01,
+      "max_stop_pct": 0.3,
+      "instop_pct": 0.01,
+      "boundaries_lower": 10000,
+      "boundaries_upper": 999999
+    }
+  ],
+  "trend_type": "smooth_trending",
+  "final_realized_pnl_usd": 0.0,
+  "final_unrealized_pnl_usd": 0.0,
+  "total_volume_usd": 0.0,
+  "max_drawdown_pct": 0.0,
+  "max_drawdown_usd": 0.0,
+  "sharpe_ratio": 0.0,
+  "total_trades": 0,
+  "total_interventions": 0,
+  "interventions_by_type": {},
+  "intervention_log": [],
+  "bar_count": 6,
+  "sim_duration_seconds": 0.0
+}

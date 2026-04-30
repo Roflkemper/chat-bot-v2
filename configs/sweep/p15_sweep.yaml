@@ -1,0 +1,51 @@
+sweep_id: p15_v2_first_run
+description: |
+  P-15 rolling-trend-rebalance v2.
+base_bot_configs:
+  - bot_id: short_main
+    alias: short_main
+    side: short
+    contract_type: linear
+    order_size: 0.003
+    order_count: 800
+    grid_step_pct: 0.03
+    target_profit_pct: 0.21
+    min_stop_pct: 0.01
+    max_stop_pct: 0.04
+    instop_pct: 0.01
+    boundaries_lower: 10000
+    boundaries_upper: 999999
+  - bot_id: long_main
+    alias: long_main
+    side: long
+    contract_type: inverse
+    order_size: 200
+    order_count: 800
+    grid_step_pct: 0.03
+    target_profit_pct: 0.25
+    min_stop_pct: 0.01
+    max_stop_pct: 0.30
+    instop_pct: 0.01
+    boundaries_lower: 10000
+    boundaries_upper: 999999
+intervention_rules:
+  - rule_type: PauseEntriesOnUnrealizedThreshold
+    affected_bots: [short_main]
+    params:
+      unrealized_threshold_pct_of_depo:
+        _range: [-3.0, -5.0]
+      hold_time_minutes:
+        _range: [60, 120]
+  - rule_type: PartialUnloadOnRetracement
+    affected_bots: [short_main]
+    params:
+      unrealized_pct_threshold:
+        _range: [0.0, 1.0]
+      retracement_from_peak_pct:
+        _range: [0.5, 1.0]
+      unload_fraction:
+        _range: [0.25, 0.5]
+regime_classifier_params:
+  atr_window: 14
+  trend_window_bars: 30
+  compression_atr_threshold: 0.4
