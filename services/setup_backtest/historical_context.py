@@ -21,7 +21,9 @@ def _load_ohlcv(path: str | Path) -> pd.DataFrame:
     if p.suffix == ".parquet":
         df = pd.read_parquet(p)
     elif p.suffix == ".csv":
-        df = pd.read_csv(p, parse_dates=["ts"])
+        df = pd.read_csv(p)
+        # ts column may be Unix-ms integers (Binance export format)
+        df["ts"] = pd.to_datetime(df["ts"], unit="ms", utc=True)
         df = df.set_index("ts")
     else:
         raise ValueError(f"Unsupported format: {p.suffix} — use .parquet or .csv")

@@ -6,10 +6,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from services.setup_backtest.historical_context import HistoricalContextBuilder
+from services.setup_backtest.historical_context import HistoricalContextBuilder, _load_ohlcv
 from services.setup_backtest.replay_engine import SetupBacktestReplay
 
 from .conftest import make_synthetic_ohlcv
+
+_FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def _builder(df: pd.DataFrame) -> HistoricalContextBuilder:
@@ -104,3 +106,31 @@ def test_replay_progress_callback_called() -> None:
 
     replay.run(start, end, progress_callback=_cb)
     assert call_count > 0
+
+
+# ── CSV loader regression tests ───────────────────────────────────────────────
+
+def test_load_ohlcv_csv_handles_ts_column() -> None:
+    """Regression: CSV with Unix-ms ts column → DatetimeIndex with UTC tz."""
+    ctx = HistoricalContextBuilder(
+        _FIXTURES / "synthetic_btc_1m.csv",
+        pair="BTCUSDT",
+    )
+    assert ctx._df_1m.index.tz is not None
+    assert str(ctx._df_1m.index.tz) == "UTC"
+    assert "open" in ctx._df_1m.columns
+    assert "close" in ctx._df_1m.columns
+    assert len(ctx._df_1m) == 300
+
+
+def test_load_ohlcv_parquet_unchanged(synthetic_parquet: Path) -> None:
+    """Parquet path continues to work after CSV fix."""
+    ctx = HistoricalContextBuilder(synthetic_parquet, pair="BTCUSDT")
+    assert ctx._df_1m.index.tz is not None
+    assert "close" in ctx._df_1m.columns
+
+
+def test_load_ohlcv_unsupported_format() -> None:
+    """Unknown file extension → ValueError before any I/O."""
+    with pytest.raises(ValueError, match="Unsupported format"):
+        HistoricalContextBuilder("nonexistent.xml", pair="BTCUSDT")
