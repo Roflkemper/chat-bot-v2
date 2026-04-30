@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Callable
@@ -85,6 +86,11 @@ class SetupBacktestReplay:
             ctx = self._ctx.build_context_at(ts)
             if ctx is not None:
                 new_setups = _run_detectors_once(ctx, store, None)
+                # make_setup() stamps detected_at=datetime.now(); override with replay ts
+                new_setups = [
+                    dataclasses.replace(s, detected_at=ts, expires_at=ts + timedelta(minutes=s.window_minutes))
+                    for s in new_setups
+                ]
                 all_setups.extend(new_setups)
 
             step_count += 1
