@@ -105,6 +105,12 @@ async def _run_paper_journal(stop_event: asyncio.Event) -> None:
     await paper_journal_loop(stop_event=stop_event)
 
 
+async def _run_decision_log(stop_event: asyncio.Event) -> None:
+    from services.decision_log import decision_log_loop
+
+    await decision_log_loop(stop_event=stop_event)
+
+
 async def _shutdown_task(task: asyncio.Task, *, timeout: float) -> None:
     try:
         await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
@@ -145,10 +151,11 @@ async def main(
     boundary_expand_task = asyncio.create_task(_run_boundary_expand(stop_event), name="boundary_expand")
     adaptive_grid_task = asyncio.create_task(_run_adaptive_grid(stop_event), name="adaptive_grid")
     paper_journal_task = asyncio.create_task(_run_paper_journal(stop_event), name="paper_journal")
+    decision_log_task = asyncio.create_task(_run_decision_log(stop_event), name="decision_log")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     done, pending = await asyncio.wait(
-        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, stop_task},
+        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, decision_log_task, stop_task},
         return_when=asyncio.FIRST_COMPLETED,
     )
 

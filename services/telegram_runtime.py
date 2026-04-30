@@ -6,6 +6,7 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -438,6 +439,48 @@ class SignalAlertWorker(threading.Thread):
             self._stop_event.wait(self.poll_interval_sec)
 
 
+class DecisionLogAlertWorker(threading.Thread):
+    def __init__(self, bot, chat_ids: Iterable[int], events_path: Path, *, poll_interval_sec: int = 15) -> None:
+        super().__init__(daemon=True, name="decision-log-alert-worker")
+        self.bot = bot
+        self.chat_ids = list(chat_ids)
+        self.events_path = events_path
+        self.poll_interval_sec = max(int(poll_interval_sec), 5)
+        self._stop_event = threading.Event()
+        self._seen_event_ids: set[str] = set()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def _read_new_events(self) -> list:
+        from services.decision_log import EventSeverity, iter_events
+
+        events = []
+        for event in iter_events(self.events_path):
+            if event.event_id in self._seen_event_ids:
+                continue
+            self._seen_event_ids.add(event.event_id)
+            if event.severity in (EventSeverity.WARNING, EventSeverity.CRITICAL):
+                events.append(event)
+        return events
+
+    def run(self) -> None:
+        logger.info("decision_log_alert_worker.start path=%s", self.events_path)
+        while not self._stop_event.is_set():
+            try:
+                from services.decision_log import build_event_keyboard, format_event_message
+
+                for event in self._read_new_events():
+                    text = format_event_message(event)
+                    markup = build_event_keyboard(event.event_id)
+                    for chat_id in self.chat_ids:
+                        self.bot.send_message(chat_id, text, reply_markup=markup)
+                        time.sleep(0.1)
+            except Exception:
+                logger.exception("decision_log_alert_worker.loop_failed")
+            self._stop_event.wait(self.poll_interval_sec)
+
+
 class TelegramBotApp:
     def __init__(self) -> None:
         setup_logging()
@@ -470,6 +513,13 @@ class TelegramBotApp:
             _signals_csv,
             poll_interval_sec=30,
         )
+        self._decision_log_pending_reason: dict[int, str] = {}
+        self.decision_log_alert_worker = DecisionLogAlertWorker(
+            self.bot,
+            self.allowed_chat_ids,
+            self._decision_log_events_path(),
+            poll_interval_sec=15,
+        )
         self._register_handlers()
 
     def _is_allowed(self, chat_id: int) -> bool:
@@ -489,6 +539,15 @@ class TelegramBotApp:
                 )
                 return
         self.command_handler.handle(chat_id, resolved)
+
+    def _decision_log_events_path(self) -> Path:
+        return Path(__file__).resolve().parents[1] / "state" / "decision_log" / "events.jsonl"
+
+    def _decision_log_annotations_path(self) -> Path:
+        return Path(__file__).resolve().parents[1] / "state" / "decision_log" / "annotations.jsonl"
+
+    def _decision_log_outcomes_path(self) -> Path:
+        return Path(__file__).resolve().parents[1] / "state" / "decision_log" / "outcomes.jsonl"
 
     def _register_handlers(self) -> None:
         from telegram_ui.keyboards import build_main_keyboard
@@ -679,6 +738,219 @@ class TelegramBotApp:
             except Exception as exc:
                 self.bot.send_message(chat_id, f'Ошибка: {exc}')
 
+        # ── TZ-D-ADVISOR-V1: /advise ──────────────────────────────────────────
+
+        @self.bot.message_handler(commands=['advise'])
+        def handle_advise(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            parts = str(message.text or '').strip().split()
+            subcmd = parts[1].lower() if len(parts) > 1 else ''
+
+            try:
+                from src.advisor.v2.portfolio import read_portfolio_state
+                from src.advisor.v2.size_mode import pick_size_mode
+                from src.advisor.v2.cascade import evaluate as advisor_evaluate
+                from src.advisor.v2 import dedup as advisor_dedup
+                from src.advisor.v2 import telemetry as advisor_telemetry
+                from core.pipeline import build_full_snapshot
+            except Exception as exc:
+                self.bot.send_message(chat_id, f'❌ Advisor недоступен: {exc}')
+                return
+
+            if subcmd == 'stats':
+                stats = advisor_telemetry.get_stats()
+                by_count = stats.get('by_play_count', {})
+                by_out = stats.get('by_play_outcomes', {})
+                lines = [f'📊 Advisor stats ({stats.get("days", 7)}д, всего: {stats["total"]})', '']
+                all_plays = sorted(set(list(by_count.keys()) + list(by_out.keys())))
+                if not all_plays:
+                    lines.append('Нет данных в advisor_log.jsonl')
+                for pid in all_plays:
+                    cnt = by_count.get(pid, 0)
+                    out = by_out.get(pid)
+                    if out:
+                        lines.append(
+                            f'  {pid}: {cnt}x рек | hit {out["hit_rate"]:.0f}% (n={out["n"]}) | '
+                            f'actual≈${out["mean_actual_pnl"]:.0f} vs exp≈${out["mean_expected_pnl"]:.0f}'
+                        )
+                    else:
+                        lines.append(f'  {pid}: {cnt}x рек | нет outcomes')
+                self.bot.send_message(chat_id, '\n'.join(lines))
+                return
+
+            if subcmd == 'log':
+                entries = advisor_telemetry.get_recent_log(n=5)
+                if not entries:
+                    self.bot.send_message(chat_id, 'advisor_log.jsonl пуст.')
+                    return
+                lines = ['📋 Последние рекомендации:', '']
+                for e in reversed(entries):
+                    lines.append(
+                        f"{e.get('ts_utc','?')} | {e.get('play_id','?')} | "
+                        f"{e.get('size_mode','?')} | pnl≈${e.get('expected_pnl',0):.0f} | "
+                        f"{e.get('trigger','')}"
+                    )
+                self.bot.send_message(chat_id, '\n'.join(lines)[:3800])
+                return
+
+            # Default: run advisor on current snapshot — show all 3 symbols (TZ-035-FIX-1)
+            _SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'XRPUSDT']
+            try:
+                from src.advisor.v2.feature_writer import read_latest_features as _read_pq
+            except Exception:
+                _read_pq = None
+
+            try:
+                snapshot = build_full_snapshot(symbol='BTCUSDT')
+            except Exception as exc:
+                self.bot.send_message(chat_id, f'❌ Ошибка получения snapshot: {exc}')
+                return
+
+            portfolio = read_portfolio_state()
+            size_mode, size_reason = pick_size_mode(portfolio)
+
+            lines = [
+                '🧠 *ADVISOR v2 — multi-asset*',
+                f'Режим размера: *{size_mode}* ({size_reason})',
+                f'Портфель: ${portfolio.depo_total:,.0f} (доступно ${portfolio.depo_available:,.0f}) | '
+                f'DD: {portfolio.dd_pct:.1f}% | Margin free: {portfolio.free_margin_pct:.0f}%',
+                '',
+            ]
+
+            for sym in _SYMBOLS:
+                # Resolve live features for price display and cold-start detection
+                live = _read_pq(sym) if _read_pq else None
+                btc_price = snapshot.get('price') if isinstance(snapshot, dict) else None
+                sym_price = (live or {}).get('price') if sym != 'BTCUSDT' else btc_price
+                price_str = f'${sym_price:,.2f}' if sym_price else 'н/д'
+
+                features = snapshot if sym == 'BTCUSDT' else {}
+                rec = advisor_evaluate(features, portfolio, size_mode, symbol=sym)
+
+                if live is None and rec is None:
+                    # No parquet yet — cold start
+                    lines.append(f'▸ *{sym}* {price_str} | ⏳ cold start')
+                elif rec is None:
+                    lines.append(f'▸ *{sym}* {price_str} | ✅ нет сигналов')
+                else:
+                    already_seen = advisor_dedup.is_duplicate(rec)
+                    tag = ' _(уже)_' if already_seen else ''
+                    lines += [
+                        f'▸ *{sym}* {price_str} | 📌 *{rec.play_id}* {rec.play_name}{tag}',
+                        f'  Триггер: {rec.trigger}',
+                        f'  Причина: {rec.reason}',
+                        f'  Размер: {rec.size_btc:.2f} BTC | Ожид. pnl: ~${rec.expected_pnl:.0f}'
+                        f' | Win: {rec.win_rate*100:.0f}% | DD: {rec.dd_pct:.1f}%',
+                    ]
+                    if rec.params:
+                        lines.append(f'  Параметры: {rec.params}')
+                    if not already_seen:
+                        advisor_dedup.record(rec)
+                        advisor_telemetry.log_recommendation(rec, portfolio.balance)
+                        ref_price = float(sym_price or btc_price or 0)
+                        advisor_telemetry.schedule_outcome_check(rec, ref_price)
+
+            self.bot.send_message(chat_id, '\n'.join(lines), parse_mode='Markdown')
+
+        @self.bot.message_handler(commands=['events'])
+        def handle_events(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.decision_log import iter_annotations, iter_events
+
+            parts = str(message.text or "").strip().split()
+            subcmd = parts[1].lower() if len(parts) > 1 else "today"
+            events = list(iter_events(self._decision_log_events_path()))
+            if subcmd == "today":
+                today = datetime.now(timezone.utc).date()
+                events = [event for event in events if event.ts.astimezone(timezone.utc).date() == today]
+            elif subcmd == "pending":
+                annotated_ids = {item.event_id for item in iter_annotations(self._decision_log_annotations_path())}
+                events = [event for event in events if event.event_id not in annotated_ids]
+            if not events:
+                self.bot.send_message(chat_id, "Событий не найдено.")
+                return
+            lines = ["📒 События decision log:", ""]
+            for event in events[-10:]:
+                lines.append(f"{event.event_id} | {event.event_type.value} | {event.severity.value} | {event.summary}")
+            self.bot.send_message(chat_id, "\n".join(lines)[:3800])
+
+        @self.bot.message_handler(commands=['event'])
+        def handle_event_details(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.decision_log import format_event_message, iter_events, iter_outcomes
+
+            parts = str(message.text or "").strip().split()
+            if len(parts) != 2:
+                self.bot.send_message(chat_id, "Формат: /event <event_id>")
+                return
+            event_id = parts[1]
+            event = next((item for item in iter_events(self._decision_log_events_path()) if item.event_id == event_id), None)
+            if event is None:
+                self.bot.send_message(chat_id, "Событие не найдено.")
+                return
+            outcomes = [item for item in iter_outcomes(self._decision_log_outcomes_path()) if item.event_id == event_id]
+            lines = [format_event_message(event), ""]
+            if outcomes:
+                lines.append("Outcomes:")
+                for outcome in outcomes:
+                    lines.append(
+                        f"• {outcome.checkpoint_minutes}m | pnl {outcome.delta_pnl_since_event:+.0f} USD | {outcome.delta_pnl_classification}"
+                    )
+            self.bot.send_message(chat_id, "\n".join(lines)[:3800])
+
+        @self.bot.message_handler(commands=['outcomes'])
+        def handle_outcomes(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.decision_log import iter_outcomes
+
+            parts = str(message.text or "").strip().split()
+            subcmd = parts[1].lower() if len(parts) > 1 else "today"
+            outcomes = list(iter_outcomes(self._decision_log_outcomes_path()))
+            if subcmd == "today":
+                today = datetime.now(timezone.utc).date()
+                outcomes = [item for item in outcomes if item.checkpoint_ts.astimezone(timezone.utc).date() == today]
+            if not outcomes:
+                self.bot.send_message(chat_id, "Outcomes не найдены.")
+                return
+            lines = ["🧾 Outcomes decision log:", ""]
+            for outcome in outcomes[-10:]:
+                lines.append(
+                    f"{outcome.event_id} | {outcome.checkpoint_minutes}m | {outcome.delta_pnl_since_event:+.0f} USD | {outcome.delta_pnl_classification}"
+                )
+            self.bot.send_message(chat_id, "\n".join(lines)[:3800])
+
+        @self.bot.callback_query_handler(func=lambda call: str(getattr(call, "data", "")).startswith("decision_log:"))
+        def handle_decision_log_callback(call) -> None:
+            chat_id = int(call.message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.answer_callback_query(call.id, "Доступ запрещён.")
+                return
+            from services.decision_log import handle_callback
+
+            result = handle_callback(
+                str(call.data),
+                pending_reasons=self._decision_log_pending_reason,
+                chat_id=chat_id,
+                annotations_path=self._decision_log_annotations_path(),
+            )
+            self.bot.answer_callback_query(call.id, result.get("message", "ok"))
+            try:
+                self.bot.send_message(chat_id, result.get("message", "ok"))
+            except Exception:
+                logger.exception("decision_log.callback_reply_failed")
+
         @self.bot.message_handler(func=lambda m: True, content_types=['text'])
         def handle_text(message) -> None:
             chat_id = int(message.chat.id)
@@ -689,6 +961,18 @@ class TelegramBotApp:
             if not text:
                 self.bot.send_message(chat_id, 'Напиши команду или нажми кнопку.', reply_markup=build_main_keyboard())
                 return
+            if chat_id in self._decision_log_pending_reason:
+                from services.decision_log import handle_reason_message
+
+                result = handle_reason_message(
+                    chat_id,
+                    text,
+                    pending_reasons=self._decision_log_pending_reason,
+                    annotations_path=self._decision_log_annotations_path(),
+                )
+                if result is not None:
+                    self.bot.send_message(chat_id, result.get("message", "Причина сохранена."))
+                    return
             self._dispatch(chat_id, text)
 
     def run(self) -> None:
@@ -696,6 +980,8 @@ class TelegramBotApp:
             self.alert_worker.start()
         if self.allowed_chat_ids:
             self.signal_alert_worker.start()
+        if self.allowed_chat_ids and not self.decision_log_alert_worker.is_alive():
+            self.decision_log_alert_worker.start()
         logger.info('telegram_bot.start config_source=%s allowed_chat_ids=%s', getattr(config, 'CONFIG_SOURCE', ''), self.allowed_chat_ids)
         while True:
             try:
@@ -717,9 +1003,21 @@ class TelegramBotApp:
         signal_worker = getattr(self, 'signal_alert_worker', None)
         if signal_worker is not None and self.allowed_chat_ids and not signal_worker.is_alive():
             signal_worker.start()
+        decision_log_worker = getattr(self, 'decision_log_alert_worker', None)
+        if decision_log_worker is not None and self.allowed_chat_ids and not decision_log_worker.is_alive():
+            decision_log_worker.start()
         logger.info(
             'telegram_bot.start config_source=%s allowed_chat_ids=%s',
             getattr(config, 'CONFIG_SOURCE', ''),
             self.allowed_chat_ids,
         )
-        self.bot.infinity_polling(skip_pending=True, timeout=25, long_polling_timeout=25)
+        import time as _time
+        while True:
+            try:
+                self.bot.infinity_polling(skip_pending=True, timeout=25, long_polling_timeout=25)
+            except KeyboardInterrupt:
+                logger.info('telegram_bot.stopped_by_keyboard')
+                raise
+            except Exception:
+                logger.exception('telegram_bot.polling_failed; restart in 10s')
+                _time.sleep(10)
