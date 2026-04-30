@@ -35,11 +35,15 @@ if str(CODEX_SRC) not in sys.path:
 # GinArea ground truth — 9 backtests, 2025-05-01..2026-04-30
 # ---------------------------------------------------------------------------
 # Common SHORT params
+# boundaries: wide open (GinArea calibration runs have no border restriction)
+# indicator_period/threshold: GinArea default (30 bars / 0.3%)
 _SHORT_PARAMS = dict(
     side="SHORT", contract="LINEAR",
     grid_step=0.03, order_count=800, order_size=0.003,
     instop=0.03, min_stop=0.01, max_stop=0.04,
     dsblin=False,
+    boundaries_lower=10_000.0, boundaries_upper=999_999.0,
+    indicator_period=30, indicator_threshold_pct=0.3,
 )
 # Common LONG params
 _LONG_PARAMS = dict(
@@ -47,6 +51,8 @@ _LONG_PARAMS = dict(
     grid_step=0.03, order_count=800, order_size=200.0,
     instop=0.018, min_stop=0.01, max_stop=0.30,
     dsblin=False,
+    boundaries_lower=10_000.0, boundaries_upper=999_999.0,
+    indicator_period=30, indicator_threshold_pct=0.3,
 )
 
 GINAREA_GROUND_TRUTH = [
@@ -142,7 +148,7 @@ def load_ohlcv(start_iso: str, end_iso: str) -> list:
 # Run one simulation
 # ---------------------------------------------------------------------------
 def run_one_sim(cfg: dict, bars: list) -> SimResult:
-    from backtest_lab.engine_v2.bot import BotConfig, Bot
+    from backtest_lab.engine_v2.bot import BotConfig, GinareaBot
     from backtest_lab.engine_v2.contracts import LINEAR, INVERSE, Side
 
     side = Side.SHORT if cfg["side"] == "SHORT" else Side.LONG
@@ -160,11 +166,15 @@ def run_one_sim(cfg: dict, bars: list) -> SimResult:
         min_stop_pct=cfg["min_stop"],
         max_stop_pct=cfg["max_stop"],
         instop_pct=cfg["instop"],
+        boundaries_lower=cfg.get("boundaries_lower", 10_000.0),
+        boundaries_upper=cfg.get("boundaries_upper", 999_999.0),
+        indicator_period=cfg.get("indicator_period", 30),
+        indicator_threshold_pct=cfg.get("indicator_threshold_pct", 0.3),
         dsblin=cfg.get("dsblin", False),
         leverage=100,
     )
 
-    bot = Bot(bot_cfg)
+    bot = GinareaBot(bot_cfg)
     for i, bar in enumerate(bars):
         bot.step(bar, i)
 
