@@ -447,12 +447,13 @@ _ALERT_DEDUP_WINDOW_MINUTES = 30
 
 
 class DecisionLogAlertWorker(threading.Thread):
-    def __init__(self, bot, chat_ids: Iterable[int], events_path: Path, *, poll_interval_sec: int = 15) -> None:
+    def __init__(self, bot, chat_ids: Iterable[int], events_path: Path, *, poll_interval_sec: int = 15, silent_mode: bool = False) -> None:
         super().__init__(daemon=True, name="decision-log-alert-worker")
         self.bot = bot
         self.chat_ids = list(chat_ids)
         self.events_path = events_path
         self.poll_interval_sec = max(int(poll_interval_sec), 5)
+        self._silent_mode = silent_mode
         self._stop_event = threading.Event()
         self._seen_event_ids: set[str] = self._load_seen_ids()
         self._recent_pings: deque[dict] = deque(maxlen=200)
@@ -540,11 +541,17 @@ class DecisionLogAlertWorker(threading.Thread):
                             event.event_type, event.bot_id,
                         )
                         continue
-                    text = format_event_message(event)
-                    markup = build_event_keyboard(event.event_id)
-                    for chat_id in self.chat_ids:
-                        self.bot.send_message(chat_id, text, reply_markup=markup)
-                        time.sleep(0.1)
+                    if self._silent_mode:
+                        logger.info(
+                            "decision_log_alert_worker.silent_mode event_type=%s bot_id=%s",
+                            event.event_type, event.bot_id,
+                        )
+                    else:
+                        text = format_event_message(event)
+                        markup = build_event_keyboard(event.event_id)
+                        for chat_id in self.chat_ids:
+                            self.bot.send_message(chat_id, text, reply_markup=markup)
+                            time.sleep(0.1)
                     self._recent_pings.append({
                         "event_type": event.event_type,
                         "bot_id": event.bot_id,
@@ -594,6 +601,7 @@ class TelegramBotApp:
             self.allowed_chat_ids,
             self._decision_log_events_path(),
             poll_interval_sec=15,
+            silent_mode=True,
         )
         self._register_handlers()
 
