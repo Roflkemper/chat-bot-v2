@@ -447,10 +447,23 @@ class DecisionLogAlertWorker(threading.Thread):
         self.events_path = events_path
         self.poll_interval_sec = max(int(poll_interval_sec), 5)
         self._stop_event = threading.Event()
-        self._seen_event_ids: set[str] = set()
+        self._seen_event_ids: set[str] = self._load_seen_ids()
 
     def stop(self) -> None:
         self._stop_event.set()
+
+    def _load_seen_ids(self) -> set[str]:
+        """Pre-seed seen IDs from existing JSONL so restart doesn't re-send historical events."""
+        from services.decision_log import iter_events
+
+        seen: set[str] = set()
+        try:
+            for event in iter_events(self.events_path):
+                seen.add(event.event_id)
+        except Exception:
+            logger.exception("decision_log_alert_worker.seed_seen_ids_failed")
+        logger.info("decision_log_alert_worker.seed_seen_ids loaded=%d", len(seen))
+        return seen
 
     def _read_new_events(self) -> list:
         from services.decision_log import EventSeverity, iter_events
