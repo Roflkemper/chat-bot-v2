@@ -12,34 +12,37 @@ Responsibilities:
 """
 from __future__ import annotations
 
-import logging
 import os
 import signal
 import subprocess
 import sys
 import threading
 import time
+import importlib
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 try:
     import psutil
 except ImportError:
-    psutil = None  # type: ignore[assignment]
+    psutil = None
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from src.supervisor.process_config import (
-    ALL_COMPONENTS,
-    COMPONENTS,
-    LOGS_DIR,
-    RUN_DIR,
-    log_path,
-    pid_path,
-)
-from src.utils.logging_config import CURRENT_DIR, rotate_logs, setup_logging
+_process_config = importlib.import_module("src.supervisor.process_config")
+ALL_COMPONENTS = _process_config.ALL_COMPONENTS
+COMPONENTS = _process_config.COMPONENTS
+RUN_DIR = _process_config.RUN_DIR
+log_path = _process_config.log_path
+pid_path = _process_config.pid_path
+
+_logging_config = importlib.import_module("src.utils.logging_config")
+CURRENT_DIR = _logging_config.CURRENT_DIR
+rotate_logs = _logging_config.rotate_logs
+setup_logging = _logging_config.setup_logging
 
 logger = setup_logging("supervisor")
 
@@ -58,9 +61,9 @@ MEMORY_RESTART_MB = 800     # auto-restart threshold (app_runner only)
 def _send_telegram_alarm(text: str) -> None:
     try:
         import requests
-        from config import TELEGRAM_BOT_TOKEN, AUTHORIZED_CHAT_IDS
-        token = TELEGRAM_BOT_TOKEN
-        chat_ids = AUTHORIZED_CHAT_IDS if isinstance(AUTHORIZED_CHAT_IDS, list) else [AUTHORIZED_CHAT_IDS]
+        from config import BOT_TOKEN, CHAT_ID
+        token = BOT_TOKEN
+        chat_ids = [part.strip() for part in str(CHAT_ID or "").replace(";", ",").split(",") if part.strip()]
         for cid in chat_ids:
             try:
                 requests.post(
@@ -114,7 +117,7 @@ def _kill_process_tree(root_pid: int, name: str, timeout: int = 10) -> None:
                     break
                 time.sleep(0.1)
             else:
-                os.kill(root_pid, signal.SIGKILL)
+                os.kill(root_pid, getattr(signal, "SIGKILL", signal.SIGTERM))
         except OSError:
             pass
         logger.info("%s: stopped (no psutil fallback, root PID=%d)", name, root_pid)
@@ -164,10 +167,10 @@ def _kill_cmdline_matching(fragment: str, name: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ManagedProcess:
-    def __init__(self, name: str, cfg: dict) -> None:
+    def __init__(self, name: str, cfg: dict[str, object]) -> None:
         self.name = name
         self.cfg  = cfg
-        self.proc: subprocess.Popen | None = None
+        self.proc: subprocess.Popen[bytes] | None = None
         self.started_at: float | None = None
         self.alarm_sent = False
         # Timestamps of recent crashes (for rate limiting)
@@ -180,14 +183,15 @@ class ManagedProcess:
         # the one recorded in the PID file. This is the primary defence against orphan
         # accumulation: every deploy/restart cycle calls start(), which now sweeps
         # pre-existing instances before launching a fresh one.
-        fragment = self.cfg.get("cmdline_must_contain")
+        fragment = cast(str | None, self.cfg.get("cmdline_must_contain"))
         if fragment:
             _kill_cmdline_matching(fragment, self.name)
 
         # Clear internal lock files written by the managed process itself.
-        for stale in self.cfg.get("stale_pid_files", []):
+        stale_pid_files = cast(list[object], self.cfg.get("stale_pid_files", []))
+        for stale in stale_pid_files:
             try:
-                p = Path(stale)
+                p = Path(cast(str, stale))
                 if not p.exists():
                     continue
                 pid = int(p.read_text().strip())
@@ -207,12 +211,14 @@ class ManagedProcess:
                 pass
 
         CURRENT_DIR.mkdir(parents=True, exist_ok=True)
-        log_file = CURRENT_DIR / self.cfg["log"]
+        log_file = CURRENT_DIR / cast(str, self.cfg["log"])
         f = open(log_file, "ab")  # noqa: WPS515 — intentional long-lived file handle
         try:
+            cmd = cast(list[str], self.cfg["cmd"])
+            cwd = cast(Path, self.cfg["cwd"])
             self.proc = subprocess.Popen(
-                self.cfg["cmd"],
-                cwd=str(self.cfg["cwd"]),
+                cmd,
+                cwd=str(cwd),
                 stdout=f,
                 stderr=subprocess.STDOUT,
                 env=os.environ.copy(),
@@ -243,7 +249,7 @@ class ManagedProcess:
                 p.unlink(missing_ok=True)
         # Second pass: kill any stragglers matching the configured cmdline fragment.
         # Catches grandchildren that escaped the process tree (Windows venv shim).
-        fragment = self.cfg.get("cmdline_must_contain")
+        fragment = cast(str | None, self.cfg.get("cmdline_must_contain"))
         if fragment:
             _kill_cmdline_matching(fragment, self.name)
 
@@ -257,7 +263,8 @@ class ManagedProcess:
         if not lp.exists():
             return True
         age_min = (time.time() - lp.stat().st_mtime) / 60
-        return age_min > self.cfg["health_stale_min"]
+        threshold = cast(float | int | str, self.cfg["health_stale_min"])
+        return bool(age_min > float(threshold))
 
     def health(self) -> str:
         """Returns 'OK' | 'STALE' | 'DEAD'."""
@@ -282,7 +289,7 @@ class ManagedProcess:
     # ── Crash tracking + restart ──────────────────────────────────────────────
 
     def _prune_crash_times(self) -> None:
-        window = self.cfg["restart_window_min"] * 60
+        window = int(cast(int | float | str, self.cfg["restart_window_min"])) * 60
         cutoff = time.time() - window
         while self._crash_times and self._crash_times[0] < cutoff:
             self._crash_times.popleft()
@@ -295,7 +302,7 @@ class ManagedProcess:
         self._prune_crash_times()
         self._crash_times.append(now)
         crashes = len(self._crash_times)
-        max_crashes = self.cfg["restart_max"]
+        max_crashes = int(cast(int | float | str, self.cfg["restart_max"]))
 
         if crashes > max_crashes:
             if not self.alarm_sent:
@@ -459,7 +466,7 @@ class Supervisor:
         )
         memory_thread.start()
 
-        def _on_signal(signum, _frame) -> None:
+        def _on_signal(signum: int, _frame: object) -> None:
             logger.info("Signal %s received — stopping", signum)
             self._stop.set()
 
@@ -494,7 +501,7 @@ def _read_pid(path: Path) -> int | None:
 
 def _pid_alive(pid: int) -> bool:
     if psutil is not None:
-        return psutil.pid_exists(pid)
+        return cast(bool, psutil.pid_exists(pid))
     # Windows fallback via OpenProcess
     if sys.platform == "win32":
         import ctypes
@@ -565,7 +572,7 @@ _WATCHDOG_PID_PATH = RUN_DIR / "watchdog.pid"
 _WATCHDOG_LOG_PATH = Path(__file__).resolve().parents[2] / "logs" / "autostart" / "watchdog.log"
 
 
-def get_status_rows() -> list[dict]:
+def get_status_rows() -> list[dict[str, object]]:
     """Return status rows for all components (usable without running supervisor)."""
     rows = []
     all_names = ["supervisor"] + ALL_COMPONENTS
