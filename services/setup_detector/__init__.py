@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from .combo_filter import COMBO_FILTER, filter_setups, is_combo_allowed
+from .combo_filter import (
+    COMBO_FILTER,
+    MIN_ALLOWED_STRENGTH,
+    THREE_WAY_BLOCKS,
+    filter_setups,
+    is_combo_allowed,
+)
 from .loop import setup_detector_loop
 from .models import Setup, SetupBasis, SetupStatus, SetupType, make_setup, setup_side
 from .outcomes import OutcomesWriter, ProgressResult, SetupOutcome, check_setup_progress
@@ -11,6 +17,8 @@ from .tracker import setup_tracker_loop
 
 __all__ = [
     "COMBO_FILTER",
+    "MIN_ALLOWED_STRENGTH",
+    "THREE_WAY_BLOCKS",
     "filter_setups",
     "is_combo_allowed",
     "Setup",

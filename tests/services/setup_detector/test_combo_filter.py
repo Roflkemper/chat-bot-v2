@@ -2,18 +2,29 @@ from __future__ import annotations
 
 import pytest
 
-from services.setup_detector.combo_filter import COMBO_FILTER, filter_setups, is_combo_allowed
+from services.setup_detector.combo_filter import (
+    COMBO_FILTER,
+    MIN_ALLOWED_STRENGTH,
+    THREE_WAY_BLOCKS,
+    filter_setups,
+    is_combo_allowed,
+)
 from services.setup_detector.models import SetupBasis, SetupType, make_setup
 
 
-def _setup(setup_type: SetupType, regime: str) -> object:
+def _setup(
+    setup_type: SetupType,
+    regime: str,
+    session: str = "NY_PM",
+    strength: int = 9,  # default 9 = MIN_ALLOWED_STRENGTH (tests combo logic, not strength gate)
+) -> object:
     return make_setup(
         setup_type=setup_type,
         pair="BTCUSDT",
         current_price=80000.0,
         regime_label=regime,
-        session_label="NY_AM",
-        strength=8,
+        session_label=session,
+        strength=strength,
         confidence_pct=70.0,
         basis=(SetupBasis("test", 1.0, 1.0),),
         cancel_conditions=("cancel",),
@@ -105,18 +116,87 @@ def test_unknown_combo_defaults_allowed() -> None:
 
 # ── filter_setups helper ──────────────────────────────────────────────────────
 
+# ── Strength gate tests ───────────────────────────────────────────────────────
+
+def test_low_strength_blocked() -> None:
+    """strength=8 → blocked even on profitable type×regime combo."""
+    setup = _setup(SetupType.LONG_PDL_BOUNCE, "trend_down", strength=8)
+    allowed, reason = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is False
+    assert "low_strength" in reason
+    assert str(MIN_ALLOWED_STRENGTH) in reason
+
+
+def test_strength_7_blocked() -> None:
+    """strength=7 → blocked (small N in backtest, not statistically reliable)."""
+    setup = _setup(SetupType.LONG_DUMP_REVERSAL, "trend_down", strength=7)
+    allowed, _ = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is False
+
+
+def test_strength_9_passes_strength_gate() -> None:
+    """strength=9 on profitable combo → allowed."""
+    setup = _setup(SetupType.LONG_PDL_BOUNCE, "trend_down", strength=9)
+    allowed, reason = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is True
+    assert "allowed" in reason
+
+
+def test_grid_booster_bypass_strength_filter() -> None:
+    """Grid actions exempt from strength filter even at strength=5."""
+    setup = _setup(SetupType.GRID_BOOSTER_ACTIVATE, "trend_down", strength=5)
+    allowed, reason = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is True
+    assert reason == "grid_or_defensive"
+
+
+def test_defensive_bypass_strength_filter() -> None:
+    """Defensive types exempt from strength filter even at strength=5."""
+    setup = _setup(SetupType.DEFENSIVE_MARGIN_LOW, "consolidation", strength=5)
+    allowed, reason = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is True
+    assert reason == "grid_or_defensive"
+
+
+# ── 3-way block tests ─────────────────────────────────────────────────────────
+
+def test_three_way_block_long_dump_trend_down_nylunch() -> None:
+    """LONG_DUMP_REVERSAL × trend_down × NY_LUNCH = -$1,033 on year backtest → blocked."""
+    setup = _setup(SetupType.LONG_DUMP_REVERSAL, "trend_down", session="NY_LUNCH", strength=9)
+    allowed, reason = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is False
+    assert "blocked_3way" in reason
+    assert "NY_LUNCH" in reason
+
+
+def test_three_way_block_long_dump_trend_down_nyam() -> None:
+    """LONG_DUMP_REVERSAL × trend_down × NY_AM = -$886 → blocked."""
+    setup = _setup(SetupType.LONG_DUMP_REVERSAL, "trend_down", session="NY_AM", strength=9)
+    allowed, _ = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is False
+
+
+def test_three_way_allow_long_dump_trend_down_nypm() -> None:
+    """LONG_DUMP_REVERSAL × trend_down × NY_PM — NOT in THREE_WAY_BLOCKS → allowed."""
+    assert (SetupType.LONG_DUMP_REVERSAL, "trend_down", "NY_PM") not in THREE_WAY_BLOCKS
+    setup = _setup(SetupType.LONG_DUMP_REVERSAL, "trend_down", session="NY_PM", strength=9)
+    allowed, reason = is_combo_allowed(setup)  # type: ignore[arg-type]
+    assert allowed is True
+    assert "allowed" in reason
+
+
+# ── filter_setups helper ──────────────────────────────────────────────────────
+
 def test_filter_setups_separates_correctly() -> None:
     """filter_setups partitions into (allowed, blocked) lists correctly."""
     setups = [
-        _setup(SetupType.LONG_PDL_BOUNCE,    "trend_down"),    # ALLOW
-        _setup(SetupType.SHORT_RALLY_FADE,   "consolidation"), # BLOCK
-        _setup(SetupType.LONG_DUMP_REVERSAL, "trend_down"),    # ALLOW
-        _setup(SetupType.LONG_DUMP_REVERSAL, "consolidation"), # BLOCK
-        _setup(SetupType.GRID_BOOSTER_ACTIVATE, "trend_up"),   # ALLOW (exempt)
+        _setup(SetupType.LONG_PDL_BOUNCE,       "trend_down",    strength=9),  # ALLOW
+        _setup(SetupType.SHORT_RALLY_FADE,       "consolidation", strength=9),  # BLOCK (combo)
+        _setup(SetupType.LONG_DUMP_REVERSAL,     "trend_down",    strength=9),  # ALLOW
+        _setup(SetupType.LONG_DUMP_REVERSAL,     "consolidation", strength=9),  # BLOCK (combo)
+        _setup(SetupType.GRID_BOOSTER_ACTIVATE,  "trend_up",      strength=9),  # ALLOW (exempt)
+        _setup(SetupType.LONG_PDL_BOUNCE,        "trend_down",    strength=8),  # BLOCK (strength)
     ]
     allowed, blocked = filter_setups(setups)  # type: ignore[arg-type]
     assert len(allowed) == 3
-    assert len(blocked) == 2
-    assert all(s.setup_type != SetupType.SHORT_RALLY_FADE for s in allowed)
-    assert all(s.setup_type in (SetupType.SHORT_RALLY_FADE, SetupType.LONG_DUMP_REVERSAL)
-               for s in blocked)
+    assert len(blocked) == 3
