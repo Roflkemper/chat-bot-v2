@@ -4,6 +4,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
+from .combo_filter import filter_setups
 from .models import Setup
 from .setup_types import DETECTOR_REGISTRY, DetectionContext, PortfolioSnapshot
 from .storage import SetupStorage
@@ -98,8 +99,8 @@ def _run_detectors_once(
     store: SetupStorage,
     send_fn: object,
 ) -> list[Setup]:
-    """Run all detectors, store and notify new setups. Returns detected setups."""
-    new_setups: list[Setup] = []
+    """Run all detectors, apply combo filter, store and notify allowed setups."""
+    candidates: list[Setup] = []
     for detector in DETECTOR_REGISTRY:
         try:
             setup = detector(ctx)
@@ -111,19 +112,31 @@ def _run_detectors_once(
                     setup.setup_type.value, setup.strength,
                 )
                 continue
-            store.write(setup)
-            new_setups.append(setup)
-            logger.info(
-                "setup_detector.new_setup type=%s pair=%s strength=%d confidence=%.0f%%",
-                setup.setup_type.value, setup.pair, setup.strength, setup.confidence_pct,
-            )
-            if send_fn is not None:
-                card = format_telegram_card(setup)
-                try:
-                    callable(send_fn) and send_fn(card)  # type: ignore[operator]
-                except Exception:
-                    logger.exception("setup_detector.send_failed type=%s", setup.setup_type.value)
+            candidates.append(setup)
         except Exception:
             logger.exception("setup_detector.detector_failed fn=%s", detector.__name__)
+
+    allowed, blocked = filter_setups(candidates)
+
+    for s in blocked:
+        logger.info(
+            "setup_detector.combo_blocked type=%s regime=%s pair=%s",
+            s.setup_type.value, s.regime_label, s.pair,
+        )
+
+    new_setups: list[Setup] = []
+    for setup in allowed:
+        store.write(setup)
+        new_setups.append(setup)
+        logger.info(
+            "setup_detector.new_setup type=%s pair=%s strength=%d confidence=%.0f%%",
+            setup.setup_type.value, setup.pair, setup.strength, setup.confidence_pct,
+        )
+        if send_fn is not None:
+            card = format_telegram_card(setup)
+            try:
+                callable(send_fn) and send_fn(card)  # type: ignore[operator]
+            except Exception:
+                logger.exception("setup_detector.send_failed type=%s", setup.setup_type.value)
 
     return new_setups
