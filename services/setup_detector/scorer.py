@@ -26,13 +26,22 @@ _SESSION_BOOSTS: dict[str, float] = {
 
 
 def compute_strength(basis: tuple[SetupBasis, ...]) -> int:
-    """Map basis weights to 1..10 integer strength."""
+    """Map basis weights to a wider 1..10 integer strength distribution."""
     if not basis:
         return 1
-    total = sum(b.weight for b in basis)
+    total = sum(max(0.0, min(1.0, b.weight)) for b in basis)
     max_possible = float(len(basis))
-    ratio = total / max_possible
-    return max(1, min(10, round(ratio * 10)))
+    ratio = total / max_possible if max_possible > 0 else 0.0
+
+    # Non-linear mapping prevents 0.8-1.0 weight clusters from collapsing
+    # into 9-10 for almost every setup in historical replay.
+    base = 1.0 + (ratio ** 1.8) * 7.0
+    count_bonus = min(2, len(basis) // 2)
+    weak_count = sum(1 for b in basis if b.weight < 0.5)
+    weak_penalty = min(2, weak_count)
+
+    strength = int(round(base + count_bonus - weak_penalty))
+    return max(1, min(10, strength))
 
 
 def compute_confidence(

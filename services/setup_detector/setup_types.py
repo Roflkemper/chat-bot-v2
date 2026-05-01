@@ -141,6 +141,11 @@ def _grid_setup(
     param_change: dict[str, object] | None,
     window_minutes: int,
     note: str,
+    entry_price: float | None = None,
+    stop_price: float | None = None,
+    tp1_price: float | None = None,
+    tp2_price: float | None = None,
+    risk_reward: float | None = None,
 ) -> Setup | None:
     strength = compute_strength(basis)
     if strength < 6:
@@ -152,6 +157,11 @@ def _grid_setup(
         current_price=ctx.current_price,
         regime_label=ctx.regime_label,
         session_label=ctx.session_label,
+        entry_price=entry_price,
+        stop_price=stop_price,
+        tp1_price=tp1_price,
+        tp2_price=tp2_price,
+        risk_reward=risk_reward,
         grid_action=action,
         grid_target_bots=target_bots,
         grid_param_change=param_change,
@@ -642,6 +652,13 @@ def detect_grid_booster_activate(ctx: DetectionContext) -> Setup | None:
         basis_items.append(
             SetupBasis(f"Ликвидность ниже ${ctx.portfolio.liq_below_price:,.0f}", ctx.portfolio.liq_below_price, 0.9)
         )
+    recent_low = float(df1h["low"].iloc[-6:].min())
+    entry = round(ctx.current_price, 1)
+    stop = round(min(entry * 0.992, recent_low * 0.998), 1)
+    risk = max(entry - stop, entry * 0.001)
+    tp1 = round(entry + risk * 1.2, 1)
+    tp2 = round(entry + risk * 2.0, 1)
+    rr = round((tp1 - entry) / max(entry - stop, 1e-9), 2)
     return _grid_setup(
         ctx,
         setup_type=SetupType.GRID_BOOSTER_ACTIVATE,
@@ -649,7 +666,12 @@ def detect_grid_booster_activate(ctx: DetectionContext) -> Setup | None:
         action="activate_booster",
         target_bots=("Bot 6399265299",),
         param_change=None,
-        window_minutes=90,
+        entry_price=entry,
+        stop_price=stop,
+        tp1_price=tp1,
+        tp2_price=tp2,
+        risk_reward=rr,
+        window_minutes=45,
         note="P-16 активация boost-бота",
     )
 

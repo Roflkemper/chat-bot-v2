@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 _OHLCV_COLS = ("open", "high", "low", "close", "volume")
 _1M_WINDOW = 200   # 1m bars for indicators
 _1H_WINDOW = 50    # 1h bars for RSI / regime
+_NY_TZ = ZoneInfo("America/New_York")
 
 
 def _load_ohlcv(path: str | Path) -> pd.DataFrame:
@@ -74,12 +76,37 @@ def _compute_rolling_regime(df_1h: pd.DataFrame) -> pd.Series:
 
 def _session_at(ts: datetime) -> str:
     """Compute session label from UTC timestamp."""
+    ts_utc = ts if ts.tzinfo is not None else ts.replace(tzinfo=timezone.utc)
+    ts_utc = ts_utc.astimezone(timezone.utc)
     try:
         from services.advise_v2.session_intelligence import compute_session_context
-        ctx = compute_session_context(ts)
-        return str(ctx.kz_active)
-    except Exception:
-        return "NONE"
+        ctx = compute_session_context(ts_utc)
+        label = str(ctx.kz_active)
+        if label != "NONE":
+            return label
+    except Exception as exc:
+        logger.warning("historical_context.session_context_failed ts=%s error=%s", ts_utc.isoformat(), exc)
+    return _session_fallback(ts_utc)
+
+
+def _session_fallback(ts: datetime) -> str:
+    """Fallback killzone session mapper when richer calendar wiring is unavailable."""
+    ts_ny = ts.astimezone(_NY_TZ)
+    hour = ts_ny.hour
+    minute = ts_ny.minute
+    hm = hour * 60 + minute
+
+    if hm >= 20 * 60 or hm < 2 * 60:
+        return "ASIA"
+    if 2 * 60 <= hm < 5 * 60:
+        return "LONDON"
+    if 9 * 60 + 30 <= hm < 12 * 60:
+        return "NY_AM"
+    if 12 * 60 <= hm < 13 * 60 + 30:
+        return "NY_LUNCH"
+    if 13 * 60 + 30 <= hm < 16 * 60:
+        return "NY_PM"
+    return "NONE"
 
 
 class HistoricalContextBuilder:
@@ -101,11 +128,11 @@ class HistoricalContextBuilder:
 
     @property
     def start_ts(self) -> datetime:
-        return self._df_1m.index[0].to_pydatetime().replace(tzinfo=timezone.utc)
+        return datetime.fromtimestamp(self._df_1m.index[0].timestamp(), tz=timezone.utc)
 
     @property
     def end_ts(self) -> datetime:
-        return self._df_1m.index[-1].to_pydatetime().replace(tzinfo=timezone.utc)
+        return datetime.fromtimestamp(self._df_1m.index[-1].timestamp(), tz=timezone.utc)
 
     def build_context_at(self, ts: datetime) -> DetectionContext | None:
         """Build DetectionContext for given UTC timestamp. Returns None if insufficient data."""

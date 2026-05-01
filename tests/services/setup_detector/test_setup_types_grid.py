@@ -8,6 +8,7 @@ from services.setup_detector.setup_types import (
     DetectionContext,
     PortfolioSnapshot,
     detect_grid_adaptive_tighten,
+    detect_grid_booster_activate,
     detect_grid_pause_entries,
     detect_grid_raise_boundary,
 )
@@ -119,3 +120,56 @@ def test_grid_adaptive_tighten_below_min_strength() -> None:
     ctx = _ctx_grid()
     ctx.portfolio.free_margin_pct = 45.0
     assert detect_grid_adaptive_tighten(ctx) is None
+
+
+def test_grid_booster_all_conditions_met() -> None:
+    ctx = _ctx_grid()
+    ctx.regime_label = "consolidation"
+    ctx.portfolio.liq_below_price = ctx.current_price * 0.99
+    idx = pd.date_range("2026-01-01", periods=20, freq="1h", tz="UTC")
+    close = np.linspace(84000.0, 78000.0, len(idx))
+    ctx.ohlcv_1h = pd.DataFrame(
+        {
+            "open": close,
+            "high": close * 1.001,
+            "low": close * 0.999,
+            "close": close,
+            "volume": np.full(len(idx), 1000.0),
+        },
+        index=idx,
+    )
+    setup = detect_grid_booster_activate(ctx)
+    assert setup is not None
+    assert setup.setup_type == SetupType.GRID_BOOSTER_ACTIVATE
+    assert setup.grid_action == "activate_booster"
+
+
+def test_grid_booster_missing_condition() -> None:
+    ctx = _ctx_grid()
+    ctx.regime_label = "trend_up"
+    assert detect_grid_booster_activate(ctx) is None
+
+
+def test_grid_booster_trade_envelope_present_for_future_tracking() -> None:
+    ctx = _ctx_grid()
+    ctx.regime_label = "consolidation"
+    ctx.portfolio.liq_below_price = ctx.current_price * 0.99
+    idx = pd.date_range("2026-01-01", periods=20, freq="1h", tz="UTC")
+    close = np.linspace(84000.0, 78000.0, len(idx))
+    ctx.ohlcv_1h = pd.DataFrame(
+        {
+            "open": close,
+            "high": close * 1.001,
+            "low": close * 0.999,
+            "close": close,
+            "volume": np.full(len(idx), 1000.0),
+        },
+        index=idx,
+    )
+    setup = detect_grid_booster_activate(ctx)
+    assert setup is not None
+    assert setup.entry_price is not None
+    assert setup.stop_price is not None
+    assert setup.tp1_price is not None
+    assert setup.tp2_price is not None
+    assert setup.window_minutes == 45

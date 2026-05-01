@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from services.setup_detector.models import SetupBasis, SetupType
 from services.setup_detector.scorer import compute_confidence, compute_strength
 
@@ -20,7 +18,7 @@ def test_compute_strength_full_basis() -> None:
 def test_compute_strength_partial() -> None:
     basis = _basis(0.5, 0.5, 0.5)
     strength = compute_strength(basis)
-    assert strength == 5
+    assert strength == 4
 
 
 def test_compute_strength_empty_returns_one() -> None:
@@ -31,6 +29,19 @@ def test_compute_strength_range() -> None:
     for ws in [(0.1,), (0.5, 0.5), (1.0, 0.8, 0.9)]:
         s = compute_strength(_basis(*ws))
         assert 1 <= s <= 10
+
+
+def test_compute_strength_varies_across_weight_patterns() -> None:
+    weak = compute_strength(_basis(0.2, 0.3))
+    medium = compute_strength(_basis(0.6, 0.7, 0.8))
+    strong = compute_strength(_basis(0.9, 0.9, 1.0, 1.0))
+    assert weak < medium < strong
+
+
+def test_compute_strength_penalizes_weak_basis_points() -> None:
+    all_strong = compute_strength(_basis(0.9, 0.9, 0.9, 0.9))
+    mixed = compute_strength(_basis(0.9, 0.9, 0.4, 0.4))
+    assert mixed < all_strong
 
 
 # ── compute_confidence ────────────────────────────────────────────────────────
