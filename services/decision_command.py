@@ -15,6 +15,7 @@ _DECISIONS_JSONL = _JOURNAL_DIR / "manual_decisions.jsonl"
 _ICT_PARQUET = _ROOT / "data" / "ict_levels" / "BTCUSDT_ict_levels_1m.parquet"
 _ADVISE_SIGNALS = _ROOT / "state" / "advise_signals.jsonl"
 _SNAPSHOTS_CSV = _ROOT / "ginarea_live" / "snapshots.csv"
+_BOT_ALIASES_JSON = _ROOT / "ginarea_tracker" / "bot_aliases.json"
 
 MAX_NOTES = 500
 
@@ -63,14 +64,58 @@ def _load_prices() -> dict[str, float | None]:
     return {"price_btc": None, "price_eth": None, "price_xrp": None}
 
 
+def _session_from_utc(ts: datetime) -> str:
+    """Compute approximate ICT session label from UTC time without requiring the parquet."""
+    try:
+        from zoneinfo import ZoneInfo
+        nyc = ts.astimezone(ZoneInfo("America/New_York"))
+        h = nyc.hour + nyc.minute / 60.0
+        if 20.0 <= h < 24.0:
+            return "asia"
+        if 2.0 <= h < 5.0:
+            return "london"
+        if 9.5 <= h < 11.0:
+            return "ny_am"
+        if 12.0 <= h < 13.0:
+            return "ny_lunch"
+        if 13.5 <= h < 16.0:
+            return "ny_pm"
+        return "dead"
+    except Exception:
+        return "dead"
+
+
 def _load_ict_context(ts: datetime) -> dict[str, Any]:
     try:
         from services.setup_detector.ict_context import ICTContextReader
         reader = ICTContextReader.load(str(_ICT_PARQUET))
-        return reader.lookup(ts)
+        ctx = reader.lookup(ts)
+        if ctx:
+            return ctx
+        # Parquet is stale (>5 min gap) — compute session from clock, leave levels as None
+        return {"session_active": _session_from_utc(ts)}
     except Exception:
         logger.exception("decision_command.ict_context_failed")
-        return {}
+        return {"session_active": _session_from_utc(ts)}
+
+
+def _load_operator_bot_ids() -> set[str]:
+    """Return set of bot_id strings that belong to the operator (from bot_aliases.json)."""
+    try:
+        if not _BOT_ALIASES_JSON.exists():
+            return set()
+        data = json.loads(_BOT_ALIASES_JSON.read_text(encoding="utf-8"))
+        return {str(k) for k in data.keys()}
+    except Exception:
+        return set()
+
+
+def _bot_id_str(val: object) -> str:
+    """Normalize float/int bot_id from CSV to integer string ('5196832375.0' → '5196832375')."""
+    try:
+        return str(int(float(str(val))))
+    except Exception:
+        return str(val)
 
 
 def _load_bots_state() -> tuple[dict[str, Any], float | None, float | None]:
@@ -82,9 +127,14 @@ def _load_bots_state() -> tuple[dict[str, Any], float | None, float | None]:
         if df.empty:
             return {}, None, None
         df = df.sort_values("ts_utc").groupby("bot_id").last().reset_index()
+        # Filter to operator's own bots only
+        operator_ids = _load_operator_bot_ids()
+        if operator_ids:
+            mask = df["bot_id"].apply(_bot_id_str).isin(operator_ids)
+            df = df[mask]
         bots: dict[str, Any] = {}
         for _, row in df.iterrows():
-            bot_id = str(row.get("bot_id", ""))
+            bot_id = _bot_id_str(row.get("bot_id", ""))
             unrealized = float(row["current_profit"]) if pd.notna(row.get("current_profit")) else None
             bots[bot_id] = {
                 "alias": str(row.get("alias") or row.get("bot_name") or bot_id),

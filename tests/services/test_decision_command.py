@@ -132,3 +132,57 @@ def test_decision_action_normalization():
     action2, notes2, _ = dc.parse_decision_command("/DECISION CLOSE_LONG TEST")
     assert action2 == "close_long"
     assert notes2 == "TEST"
+
+
+# ── test_decision_filters_operator_bots ──────────────────────────────────────
+
+def test_decision_filters_operator_bots(tmp_path):
+    """_load_bots_state() only returns bots listed in bot_aliases.json, not all 500+ public bots."""
+    import json, pandas as pd
+    from datetime import timezone
+
+    # Fake snapshots.csv with 3 rows: 2 operator bots + 1 public bot
+    rows = [
+        {"ts_utc": "2026-05-01T10:00:00Z", "bot_id": 111.0, "bot_name": "OP_BOT_1", "alias": "OP_1",
+         "status": "2", "position": "-0.5", "profit": 100.0, "current_profit": 50.0},
+        {"ts_utc": "2026-05-01T10:00:00Z", "bot_id": 222.0, "bot_name": "OP_BOT_2", "alias": "OP_2",
+         "status": "2", "position": "0.3", "profit": 200.0, "current_profit": -30.0},
+        {"ts_utc": "2026-05-01T10:00:00Z", "bot_id": 999.0, "bot_name": "PUBLIC_BOT", "alias": "PUB",
+         "status": "2", "position": "0.0", "profit": 999999.0, "current_profit": 888888.0},
+    ]
+    csv_path = tmp_path / "snapshots.csv"
+    pd.DataFrame(rows).to_csv(csv_path, index=False)
+
+    # bot_aliases.json has only operator bots 111 + 222
+    aliases_path = tmp_path / "bot_aliases.json"
+    aliases_path.write_text(json.dumps({"111": "OP_1", "222": "OP_2"}), encoding="utf-8")
+
+    with (
+        patch.object(dc, "_SNAPSHOTS_CSV", csv_path),
+        patch.object(dc, "_BOT_ALIASES_JSON", aliases_path),
+    ):
+        bots, total_upl, _ = dc._load_bots_state()
+
+    assert "999" not in bots, "Public bot 999 should be filtered out"
+    assert len(bots) == 2
+    assert total_upl is not None
+    assert abs(total_upl - 20.0) < 0.01, f"Expected 50 + (-30) = 20, got {total_upl}"
+
+
+# ── test_ict_lookup_fallback_on_stale_parquet ─────────────────────────────────
+
+def test_ict_lookup_fallback_on_stale_parquet(tmp_path):
+    """When ICT parquet is stale (>5 min gap), _load_ict_context returns a valid session label."""
+    from datetime import datetime, timezone
+
+    # Point to non-existent parquet (simulates missing/stale data)
+    with patch.object(dc, "_ICT_PARQUET", tmp_path / "nonexistent.parquet"):
+        ts = datetime(2026, 5, 1, 14, 30, tzinfo=timezone.utc)  # 10:30 NYC EDT = ny_am
+        ctx = dc._load_ict_context(ts)
+
+    assert "session_active" in ctx
+    session = ctx["session_active"]
+    assert session in ("asia", "london", "ny_am", "ny_lunch", "ny_pm", "dead"), (
+        f"Expected valid session label, got {session!r}"
+    )
+    assert session != "", "session_active must not be empty string"
