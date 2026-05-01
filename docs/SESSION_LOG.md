@@ -1,5 +1,38 @@
 # SESSION LOG
 
+## 2026-04-30 evening — Setup detector backtest + 4-layer combo filter (7 коммитов, ~13ч)
+
+**Commits:** a04ceaf → eb2e1c7 | **Tests:** 773 → 835 green (+62), 14 pre-existing failures
+
+**TZs выполнены:**
+1. **TZ-DECISION-LOG-SILENT-MODE** — DecisionLogAlertWorker silent_mode=True; ADVISE_V2_SPEC
+2. **TZ-SETUP-DETECTOR-LIVE** — services/setup_detector/ полностью: models, indicators, 4 detector types, storage, loop 5min
+3. **TZ-SETUP-TRACKER-OUTCOMES** — outcomes.py, tracker.py (60s), stats_aggregator.py
+4. **TZ-SETUP-HISTORICAL-BACKTEST** — services/setup_backtest/ полностью: HistoricalContextBuilder, replay_engine, outcome_simulator; tools/run_setup_backtest.py
+5. **TZ-SETUP-BACKTEST-CSV-LOADER-FIX** — Fix: `parse_dates=["ts"]` на Unix-ms integers → object dtype → no `.tz`. Fix: `pd.to_datetime(df["ts"], unit="ms", utc=True)`. 3 regression tests.
+6. **TZ-SETUP-BACKTEST-OUTCOME-FIX** — Fix: `detected_at=datetime.now()` в replay (wall-clock вместо historical ts) → 100% expired в year backtest. Fix: `dataclasses.replace(s, detected_at=ts, ...)` в replay_engine. + O(log n) `.loc` в outcome_simulator, stop-before-TP worst-case.
+7. **TZ-FILTER-LOSING-COMBOS-IN-LIVE** — combo_filter.py: 2-way (type×regime) BLOCK/ALLOW table.
+8. **TZ-COMBO-FILTER-STRENGTH** — 4-layer filter: exempt → strength≥9 → 2-way → 3-way session.
+
+**Year backtest BTCUSDT 2025-05-01..2026-04-29 (18,712 setups после outcome fix):**
+- strength=9: 7,195 setups, 38.4% WR, **+$17,404/yr** (86% of PnL) ← MIN_ALLOWED_STRENGTH=9
+- Best combos: LONG_DUMP_REVERSAL×trend_down +$8,851, LONG_PDL_BOUNCE×trend_down +$5,165
+- Losing combos blocked: SHORT_RALLY_FADE×consolidation -$5,493, LONG_DUMP_REVERSAL×consolidation -$5,282
+- Best config (strength=9 + no consolidation): 4,495 setups, 43.1% WR, +$16,163, $11.30/fill
+
+**Ключевые инсайты:**
+- Root cause 0% fill rate: `make_setup(detected_at=None)` stamped wall-clock time. Все 24,545 replay-setups имели `detected_at=2026-04-30T19:48` → окно симуляции в будущем → empty → instant EXPIRED.
+- strength=8: 55% от объёма, только $384/yr (noise). strength=9: 38% объёма, 86% PnL → hard gate.
+- 3-way blocks: NY_LUNCH и NY_AM убивают LONG_DUMP_REVERSAL×trend_down (суммарно -$1,919).
+
+**Оператору:**
+- Рестарт app_runner для активации 4-layer filter в live setup_detector_loop
+- Полный year backtest re-run: `python tools/run_setup_backtest.py --start 2025-05-01 --end 2026-04-30 --frozen-path backtests/frozen/BTCUSDT_1m_2y.csv --pair BTCUSDT`
+
+**Открыто:** TZ-REGIME-RED-GREEN-FORMALIZATION (критично), TZ-ICT-SESSION-LEVELS-DETECTION (критично), TZ-OUTCOME-SIMULATOR-GRID-ACTION-HANDLER (Bug A), TZ-FLAKY-TESTS-PROTECTION-ALERTS (14 flaky)
+
+---
+
 ## 2026-04-30 — Architectural amnesia + recovery (30 коммитов, ~14ч)
 
 **Session summary:** Большая сессия в новом чате. Architect запустил без чтения MASTER + PLAYBOOK + OPPORTUNITY_MAP → создал параллельную инфраструктуру. Operator обнаружил дублирование. TZ-OPERATOR-TRADING-PROFILE-AND-CLEANUP зафиксировал profile + audit.
