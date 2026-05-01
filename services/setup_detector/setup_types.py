@@ -36,6 +36,8 @@ class DetectionContext:
     ohlcv_1m: pd.DataFrame
     ohlcv_1h: pd.DataFrame
     portfolio: PortfolioSnapshot = field(default_factory=PortfolioSnapshot)
+    # ICT level features at this bar (from ict_levels parquet). Empty if unavailable.
+    ict_context: dict = field(default_factory=dict)
 
 
 DetectorFn = Callable[[DetectionContext], Setup | None]

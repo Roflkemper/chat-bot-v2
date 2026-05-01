@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from .combo_filter import filter_setups
+from .ict_context import ICT_CONTEXT_COLS, ICTContextReader
 from .models import Setup
 from .setup_types import DETECTOR_REGISTRY, DetectionContext, PortfolioSnapshot
 from .storage import SetupStorage
@@ -14,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 _LOOP_INTERVAL_SEC = 300  # 5 min
 _MIN_STRENGTH = 6
+_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_ICT_PARQUET = _ROOT / "data" / "ict_levels" / "BTCUSDT_ict_levels_1m.parquet"
 
 
 def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
@@ -54,6 +59,7 @@ def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
             ohlcv_1m=df_1m,
             ohlcv_1h=df_1h,
             portfolio=portfolio,
+            ict_context={},  # filled by caller after context is built
         )
     except Exception:
         logger.exception("setup_detector.build_context_failed pair=%s", pair)
@@ -77,15 +83,23 @@ async def setup_detector_loop(
     send_fn: object = None,
     pairs: tuple[str, ...] = ("BTCUSDT",),
     interval_sec: float = _LOOP_INTERVAL_SEC,
+    ict_parquet: str | Path | None = None,
 ) -> None:
     """5-minute async loop: build context → run detectors → write + notify."""
     store = storage or SetupStorage()
+    ict_reader = ICTContextReader.load(ict_parquet or _DEFAULT_ICT_PARQUET)
+    if ict_reader.is_loaded():
+        logger.info("setup_detector_loop.ict_reader_ready")
+    else:
+        logger.warning("setup_detector_loop.ict_reader_empty — ICT context will be blank")
 
     while not stop_event.is_set():
+        now_utc = datetime.now(timezone.utc)
         for pair in pairs:
             ctx = _build_detection_context(pair)
             if ctx is None:
                 continue
+            ctx.ict_context = ict_reader.lookup(now_utc)
             _run_detectors_once(ctx, store, send_fn)
 
         try:
@@ -101,6 +115,8 @@ def _run_detectors_once(
 ) -> list[Setup]:
     """Run all detectors, apply combo filter, store and notify allowed setups."""
     candidates: list[Setup] = []
+    ict_ctx = ctx.ict_context  # captured once per tick
+
     for detector in DETECTOR_REGISTRY:
         try:
             setup = detector(ctx)
@@ -112,6 +128,9 @@ def _run_detectors_once(
                     setup.setup_type.value, setup.strength,
                 )
                 continue
+            # Attach ICT context to each setup (frozen dataclass → use replace)
+            if ict_ctx:
+                setup = dataclasses.replace(setup, ict_context=ict_ctx)
             candidates.append(setup)
         except Exception:
             logger.exception("setup_detector.detector_failed fn=%s", detector.__name__)

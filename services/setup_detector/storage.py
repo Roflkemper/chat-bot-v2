@@ -47,6 +47,7 @@ def _setup_to_dict(setup: Setup) -> dict[str, Any]:
         "status": setup.status.value,
         "portfolio_impact_note": setup.portfolio_impact_note,
         "recommended_size_btc": setup.recommended_size_btc,
+        "ict_context": setup.ict_context,
     }
 
 
@@ -81,6 +82,7 @@ def _setup_from_dict(d: dict[str, Any]) -> Setup:
         portfolio_impact_note=d.get("portfolio_impact_note", ""),
         recommended_size_btc=float(d.get("recommended_size_btc", 0.05)),
         detected_at=detected_at,
+        ict_context=d.get("ict_context") or {},
     )
     # Override status (make_setup always sets DETECTED)
     actual_status = SetupStatus(d.get("status", "detected"))

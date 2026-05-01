@@ -7,6 +7,7 @@ from .combo_filter import (
     filter_setups,
     is_combo_allowed,
 )
+from .ict_context import ICT_CONTEXT_COLS, ICTContextReader
 from .loop import setup_detector_loop
 from .models import Setup, SetupBasis, SetupStatus, SetupType, make_setup, setup_side
 from .outcomes import OutcomesWriter, ProgressResult, SetupOutcome, check_setup_progress
@@ -21,6 +22,8 @@ __all__ = [
     "THREE_WAY_BLOCKS",
     "filter_setups",
     "is_combo_allowed",
+    "ICT_CONTEXT_COLS",
+    "ICTContextReader",
     "Setup",
     "SetupBasis",
     "SetupStatus",

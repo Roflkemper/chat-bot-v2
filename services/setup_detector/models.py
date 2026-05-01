@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
@@ -74,6 +74,10 @@ class Setup:
     portfolio_impact_note: str
     recommended_size_btc: float
 
+    # ICT context at detection time (14 fields from ict_levels parquet).
+    # Empty dict when parquet is unavailable or not yet generated.
+    ict_context: dict[str, Any] = field(default_factory=dict)
+
 
 def make_setup(
     *,
@@ -98,6 +102,7 @@ def make_setup(
     portfolio_impact_note: str = "",
     recommended_size_btc: float = 0.05,
     detected_at: datetime | None = None,
+    ict_context: dict[str, Any] | None = None,
 ) -> Setup:
     now = detected_at if detected_at is not None else datetime.now(timezone.utc)
     setup_id = f"setup-{now.strftime('%Y-%m-%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
@@ -126,6 +131,7 @@ def make_setup(
         status=SetupStatus.DETECTED,
         portfolio_impact_note=portfolio_impact_note,
         recommended_size_btc=recommended_size_btc,
+        ict_context=ict_context if ict_context is not None else {},
     )
 
 
