@@ -206,6 +206,7 @@ class CommandActionContext:
     prefetched_snapshots: dict[str, AnalysisSnapshot] = field(default_factory=dict)
     prefetched_journal: JournalSnapshot | None = None
     prefetched_position: PositionSnapshot | None = None
+    original_command: str = ""
 
     def get_snapshot(self, timeframe: str | None = None, *, refresh: bool = False) -> AnalysisSnapshot:
         tf = timeframe or self.timeframe
@@ -1202,6 +1203,31 @@ class CommandActions:
         state = apply_manual_bot_action(bot_key, action)
         return self.ctx.plain(format_bot_manager_status(state))
 
+    def log_decision(self) -> BotResponsePayload:
+        from services.decision_command import (
+            HELP_TEXT, append_decision, build_confirmation_reply,
+            build_decision_record, parse_decision_command,
+        )
+        original = self.ctx.original_command or self.ctx.command
+        action, notes, warning = parse_decision_command(original)
+        if action is None:
+            return self.ctx.plain(HELP_TEXT)
+        record = build_decision_record(action, notes)
+        append_decision(record)
+        return self.ctx.plain(build_confirmation_reply(record, warning))
+
+    def list_decisions(self) -> BotResponsePayload:
+        from services.decision_command import build_decisions_list_text
+        parts = (self.ctx.original_command or self.ctx.command).strip().split()
+        n = 5
+        if len(parts) >= 3 and parts[2].isdigit():
+            n = max(1, min(int(parts[2]), 50))
+        return self.ctx.plain(build_decisions_list_text(n))
+
+    def decisions_stats(self) -> BotResponsePayload:
+        from services.decision_command import build_decisions_stats_text
+        return self.ctx.plain(build_decisions_stats_text())
+
 
 def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotResponsePayload]]:
     actions = CommandActions(ctx)
@@ -1273,4 +1299,7 @@ def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotRes
         '_cmd_bot_help': actions.bot_help,
         '_cmd_bot_manual_action': actions.bot_manual_action,
         '_cmd_roadmap': actions.roadmap,
+        '_cmd_log_decision': actions.log_decision,
+        '_cmd_list_decisions': actions.list_decisions,
+        '_cmd_decisions_stats': actions.decisions_stats,
     }

@@ -195,6 +195,21 @@ class CommandHandler:
             capabilities=CommandCapabilities(renderer='grid'),
         )
         registry.register('ПРИМЕНИТЬ', '_cmd_apply', capabilities=CommandCapabilities(renderer='grid'))
+        registry.register('/decision', '_cmd_log_decision', capabilities=CommandCapabilities(renderer='plain'))
+        registry.register_prefix(
+            '/decision <action>',
+            lambda t: t.startswith('/DECISION '),
+            '_cmd_log_decision',
+            capabilities=CommandCapabilities(renderer='plain'),
+        )
+        registry.register('/decisions list', '_cmd_list_decisions', capabilities=CommandCapabilities(renderer='plain'))
+        registry.register_prefix(
+            '/decisions list <n>',
+            lambda t: t.startswith('/DECISIONS LIST'),
+            '_cmd_list_decisions',
+            capabilities=CommandCapabilities(renderer='plain'),
+        )
+        registry.register('/decisions stats', '_cmd_decisions_stats', capabilities=CommandCapabilities(renderer='plain'))
         return registry
 
         active_position_analysis = CommandCapabilities(
@@ -395,6 +410,7 @@ class CommandHandler:
                 prefetched_journal=prefetched_journal,
                 prefetched_position=prefetched_position,
                 trace=trace,
+                original_command=text.strip(),
             )
             actions = build_action_map(action_ctx)
             action = actions[entry.handler_name]
