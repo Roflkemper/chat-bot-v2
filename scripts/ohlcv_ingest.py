@@ -40,7 +40,7 @@ LOG_PATH = ROOT / "docs" / "STATE" / "ohlcv_ingest_log.jsonl"
 
 _API_URL = "https://api.binance.com/api/v3/klines"
 _BATCH_BARS = 1000
-_BAR_MS = 60_000
+_INTERVAL_MS: dict[str, int] = {"1s": 1_000, "1m": 60_000}
 _SLEEP_BETWEEN_BATCHES = 0.12   # ~8 req/s, well under 1200/min Binance limit
 
 log = logging.getLogger(__name__)
@@ -200,6 +200,10 @@ def fill_gap(
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    bar_ms = _INTERVAL_MS.get(interval)
+    if bar_ms is None:
+        raise ValueError(f"Unsupported interval: {interval!r}. Supported: {list(_INTERVAL_MS)}")
+
     csv_path = frozen_dir / f"{symbol}_{interval}_2y.csv"
     _initial = False
 
@@ -213,7 +217,7 @@ def fill_gap(
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 csv.writer(f).writerow(["ts", "open", "high", "low", "close", "volume"])
             log.info("Created new file %s", csv_path)
-        last_ts = start_ms - _BAR_MS  # sentinel: no prior data
+        last_ts = start_ms - bar_ms  # sentinel: no prior data
         _initial = True
     else:
         last_ts = _read_csv_last_ts(csv_path)
@@ -222,14 +226,14 @@ def fill_gap(
         if start_ms is not None and start_ms < last_ts:
             log.info("%s %s: file exists, ignoring --start-date (using last ts)", symbol, interval)
 
-    next_start_ms = last_ts + _BAR_MS
+    next_start_ms = last_ts + bar_ms
     if next_start_ms >= target_end_ms:
         log.info("%s %s already up to date (last=%s)", symbol, interval,
                  _ms_to_dt(last_ts).isoformat())
         return {"skipped": False, "already_uptodate": True, "bars_fetched": 0}
 
-    gap_bars = (target_end_ms - next_start_ms) // _BAR_MS
-    all_batches = list(range(next_start_ms, target_end_ms, _BATCH_BARS * _BAR_MS))
+    gap_bars = (target_end_ms - next_start_ms) // bar_ms
+    all_batches = list(range(next_start_ms, target_end_ms, _BATCH_BARS * bar_ms))
 
     log.info(
         "%s %s: %s %d bars (%d batches) from %s → %s",
@@ -279,7 +283,7 @@ def fill_gap(
             ]
             all_rows.extend(rows)
             if rows:
-                cursor = rows[-1][0] + _BAR_MS
+                cursor = rows[-1][0] + bar_ms
             else:
                 break
             batch_num += 1
@@ -392,10 +396,14 @@ def _write_log(entry: dict) -> None:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="OHLCV gap-fill / initial ingest")
     p.add_argument("--symbol", default="BTCUSDT")
+    p.add_argument("--interval", "--resolution", default="1m",
+                   choices=list(_INTERVAL_MS.keys()),
+                   help="Bar resolution: 1s or 1m (default 1m)")
     p.add_argument("--target-end", default="2026-04-29T23:00:00Z",
                    help="ISO-8601 UTC end timestamp")
     p.add_argument("--start-date", default=None,
-                   help="ISO-8601 UTC start for initial download (e.g. 2024-01-01)")
+                   help="ISO-8601 UTC start for initial download (e.g. 2024-01-01). "
+                        "Required for 1s if file doesn't exist (default 30 days back).")
     p.add_argument("--frozen-dir", default=str(FROZEN_DIR))
     p.add_argument("--workers", type=int, default=4,
                    help="Parallel fetch workers for large downloads (default 4)")
@@ -413,10 +421,18 @@ def main(argv: list[str] | None = None) -> int:
     target_end_ms = _parse_target(args.target_end)
     start_ms = _parse_target(args.start_date) if args.start_date else None
     symbol = args.symbol
+    interval = args.interval
 
-    print(f"OHLCV ingest: {symbol} → {args.target_end}")
+    # 1s downloads: 86,400 bars/day. 30 days ≈ 2.6M bars. Default to 30d if no start.
+    if interval == "1s" and start_ms is None:
+        default_start_ms = target_end_ms - 30 * 86_400_000
+        start_ms = default_start_ms
+        print(f"[1s] no --start-date given, defaulting to 30 days back: "
+              f"{_ms_to_dt(start_ms).isoformat()}")
+
+    print(f"OHLCV ingest: {symbol} {interval} → {args.target_end}")
     if start_ms:
-        print(f"start_date:   {args.start_date}")
+        print(f"start_date:   {_ms_to_dt(start_ms).isoformat()}")
     print(f"frozen_dir:   {frozen_dir}")
     print(f"workers:      {args.workers}")
     if args.dry_run:
@@ -424,14 +440,18 @@ def main(argv: list[str] | None = None) -> int:
 
     ts_run = datetime.now(tz=timezone.utc).isoformat()
 
-    # Fill 1m gap (or initial download)
-    result_1m = fill_gap(symbol, "1m", target_end_ms, frozen_dir,
+    # Fill primary interval gap (or initial download)
+    result_1m = fill_gap(symbol, interval, target_end_ms, frozen_dir,
                          args.dry_run, start_ms, args.workers)
-    print(f"\n1m result: {result_1m}")
+    print(f"\n{interval} result: {result_1m}")
 
-    # Derive 1h from updated 1m
-    result_1h = fill_1h_from_1m(symbol, frozen_dir, args.dry_run)
-    print(f"1h result: {result_1h}")
+    # Derive 1h from 1m (only when primary interval is 1m)
+    if interval == "1m":
+        result_1h = fill_1h_from_1m(symbol, frozen_dir, args.dry_run)
+        print(f"1h result: {result_1h}")
+    else:
+        result_1h = {"skipped": True, "reason": f"interval={interval}, 1h derive only from 1m"}
+        print(f"1h result: skipped (interval={interval})")
 
     # Validation summary
     val = result_1m.get("validation", {})
@@ -454,8 +474,8 @@ def main(argv: list[str] | None = None) -> int:
         }
         if val:
             log_entry["range_filled"] = {
-                "from": _ms_to_dt(_read_csv_last_ts(frozen_dir / f"{symbol}_1m_2y.csv") or 0
-                                   - (result_1m.get("bars_fetched", 0) * _BAR_MS)).isoformat(),
+                "from": _ms_to_dt(_read_csv_last_ts(frozen_dir / f"{symbol}_{interval}_2y.csv") or 0
+                                   - (result_1m.get("bars_fetched", 0) * _INTERVAL_MS[interval])).isoformat(),
                 "to": val.get("last_ts_dt", ""),
             }
             log_entry["bars_count"] = val.get("new_rows", 0)
