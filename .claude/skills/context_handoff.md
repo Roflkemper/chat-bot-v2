@@ -26,17 +26,29 @@ Apply ALWAYS when ANY of:
 ## When starting a new session — DO THIS FIRST
 
 ```
-Read docs/CONTEXT/PROJECT_CONTEXT.md
-Read docs/CONTEXT/STATE_CURRENT.md
-Read docs/CONTEXT/ latest SESSION_DELTA_*.md
+Read docs/CONTEXT/HANDOFF_<latest>.md   ← contains all 6 parts below
 ```
 
-Then confirm in ≤5 lines:
-1. Main project goal
-2. Current phase status + top blocker
-3. Top-3 open TZs
-4. Latest calibration K numbers
-5. First action you'll take
+Or if reading separately:
+```
+Read docs/CONTEXT/PROJECT_CONTEXT.md   (PART 1 — mechanics, strategy, phase map)
+Read docs/CONTEXT/STATE_CURRENT.md     (PART 2 — current state, K numbers, open TZs)
+Read docs/CONTEXT/ latest SESSION_DELTA_*.md  (PART 3 — recent session work)
+Read PART 5 of HANDOFF — Skills Inventory    (all .claude/skills/ content)
+Read PART 6 of HANDOFF — Architecture Gaps  (dashboard, param sweep, debts)
+```
+
+Then confirm in 7 lines:
+1. Главная цель проекта
+2. Что построено в последней сессии (из SESSION_DELTA)
+3. Year backtest BTCUSDT — главные числа
+4. ВСЕ skills из PART 5 — каждый с trigger condition (одной строкой)
+5. Known gaps из PART 6 — что из них blocking
+6. Operator feedback — что НЕ делать (из SESSION_DELTA decisions)
+7. Что считаешь next critical TZ
+
+**Обязательное правило:** каждый TZ завершается секцией `Skills applied: <list>`.
+Без этой секции TZ некорректен и возвращается на доработку.
 
 ## When ending a session — DO THIS
 

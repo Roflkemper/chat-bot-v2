@@ -54,6 +54,56 @@ def _git_log_today() -> str:
         return "(git unavailable)"
 
 
+def _load_skills() -> list[tuple[str, str]]:
+    """Return (filename_stem, content) for all .md files in .claude/skills/."""
+    skills_dir = ROOT / ".claude" / "skills"
+    if not skills_dir.exists():
+        return []
+    result = []
+    for p in sorted(skills_dir.glob("*.md")):
+        result.append((p.stem, _read(p)))
+    return result
+
+
+_ARCHITECTURE_GAPS = """
+### GAP-01: Dashboard HTTP Server
+
+- `services/dashboard/http_server.py` — РЕАЛИЗОВАН и подключён в `app_runner.py`
+- Служит `docs/dashboard.html` на `http://127.0.0.1:8765/` (или 8766/8767)
+- Запускается вместе с ботом через `python app_runner.py`
+- `state/dashboard_state.json` пересобирается каждые 5 минут через `state_builder.py`
+- Инструмент открытия: `tools/dashboard_open.py`
+- Статус: **РАБОТАЕТ** при запущенном app_runner.py
+
+### GAP-02: Param Sweep Infrastructure
+
+- `tools/sweep_runner.py` — CLI runner для sweep конфигураций
+- `tools/klod_impulse_grid_search.py` — 96-combo trigger param search (TZ-KLOD-IMPULSE-GRID-SEARCH)
+- `services/coordinated_grid/grid_search.py` — 256 конфигураций coordinated grid
+- `services/coordinated_grid/trim_analyzer.py` — инструментированный wrapper, захватывает trim events
+- Статус: инфраструктура есть. Следующие sweep: TZ-057/065/066 (ждут H10 backtest overnight)
+
+### GAP-03: _recovery/restored/ модули
+
+- `_recovery/restored/` содержит 34 модуля из прошлой сессии восстановления
+- Статус каждого: задокументирован в `docs/STATE/RESTORED_FEATURES_AUDIT_*.json`
+- НЕ реактивировать cascade.py — известный дубликат
+- Перед реактивацией любого: прочитать audit + пройти skill `project_inventory_first`
+
+### GAP-04: DEBT-04 — 91 collection errors
+
+- Split plan готов: `reports/debt_04_split_plan_2026-05-02.md`
+- TZ-DEBT-04-A..E в backlog
+- Приоритет: FIX-BEFORE-PHASE-2
+
+### GAP-05: Instop semantics для LONG (operator action needed)
+
+- TZ-ENGINE-FIX-INSTOP-SEMANTICS-B открыт
+- Нужно подтверждение оператора: Semant A или B для LONG_C/D
+- Блокирует полную reconcile v3
+"""
+
+
 def _strip_frontmatter_comment(text: str) -> str:
     """Remove leading # comment lines (used as front-matter in context docs)."""
     lines = text.splitlines()
@@ -75,7 +125,7 @@ def _strip_frontmatter_comment(text: str) -> str:
 # ── generate ─────────────────────────────────────────────────────────────────
 
 def generate(output_date: str | None = None, output_path: Path | None = None) -> Path:
-    """Generate HANDOFF_YYYY-MM-DD.md combining all 3 layers."""
+    """Generate HANDOFF_YYYY-MM-DD.md combining all 3 layers + skills + gaps."""
     today = output_date or date.today().isoformat()
     out = output_path or (CONTEXT_DIR / f"HANDOFF_{today}.md")
 
@@ -83,6 +133,7 @@ def generate(output_date: str | None = None, output_path: Path | None = None) ->
     state_text = _read(STATE_CURRENT)
     deltas = _latest_session_deltas(2)
     git_log = _git_log_today()
+    skills = _load_skills()
 
     lines: list[str] = [
         f"# Claude Session Handoff — {today}",
@@ -129,15 +180,51 @@ def generate(output_date: str | None = None, output_path: Path | None = None) ->
         "",
         "---",
         "",
+        "## PART 5 — Skills Inventory (.claude/skills/)",
+        "",
+        "> ОБЯЗАТЕЛЬНО для нового Claude: каждый TZ должен завершаться секцией",
+        '> "Skills applied: <list>". Без этой секции TZ некорректен.',
+        "",
+    ]
+
+    if skills:
+        lines.append(f"Всего skills: {len(skills)}\n")
+        for stem, content in skills:
+            lines.append(f"### Skill: {stem}")
+            lines.append("")
+            lines.append(content.strip())
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+    else:
+        lines.append("*(skills directory not found or empty)*")
+        lines.append("")
+
+    lines += [
+        "---",
+        "",
+        "## PART 6 — Architecture Gaps & Known State",
+        "",
+        _ARCHITECTURE_GAPS.strip(),
+        "",
+        "---",
+        "",
         "## How to use this handoff",
         "",
         "Paste this document into a new Claude chat. Then say:",
         "",
-        '> "Прочитай handoff. Подтверди в 5 строках: (1) главная цель проекта,'
-        ' (2) текущий phase статус, (3) топ-3 open TZ, (4) последние calibration K-числа,'
-        ' (5) что ты сделаешь первым делом."',
+        '> "Прочитай handoff. Подтверди в 7 строках:',
+        '> 1. Главная цель проекта',
+        '> 2. Что построено в последней сессии (из SESSION_DELTA)',
+        '> 3. Year backtest BTCUSDT — главные числа',
+        '> 4. ВСЕ skills из PART 5 — назови каждый с trigger condition (одной строкой)',
+        '> 5. Known gaps из PART 6 — что из них blocking',
+        '> 6. Operator feedback — что НЕ делать (из SESSION_DELTA decisions)',
+        '> 7. Что считаешь next critical TZ"',
         "",
         "Не задавай оператору объяснять стратегию — всё в §2-§3 выше.",
+        "Не создавай новые модули без прохождения skill `project_inventory_first`.",
+        "Каждый TZ завершается: `Skills applied: <list>`.",
     ]
 
     out.parent.mkdir(parents=True, exist_ok=True)

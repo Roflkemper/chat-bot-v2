@@ -67,6 +67,8 @@ class TestHandoffIncludesAllSections:
         assert "PART 2" in content, "Missing PART 2 — Current State"
         assert "PART 3" in content, "Missing PART 3 — Recent Session Deltas"
         assert "PART 4" in content, "Missing PART 4 — Git log"
+        assert "PART 5" in content, "Missing PART 5 — Skills Inventory"
+        assert "PART 6" in content, "Missing PART 6 — Architecture Gaps"
         assert "How to use this handoff" in content, "Missing usage instructions"
 
 
