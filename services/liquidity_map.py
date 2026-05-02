@@ -133,8 +133,16 @@ def _slice_lookback(
     if df is None or df.empty:
         return pd.DataFrame()
     start = ts - pd.Timedelta(hours=lookback_hours)
-    out = df[(df.index >= start) & (df.index < ts)].copy()
-    return out.sort_index()
+    # Perf: assume df has a sorted DatetimeIndex; .loc[] is O(log n) vs the
+    # boolean-mask O(n) + extra .sort_index() the previous version did on
+    # every backtest bar (~17k calls × full df).
+    if not isinstance(df.index, pd.DatetimeIndex):
+        return df[(df.index >= start) & (df.index < ts)].sort_index()
+    # Use slice, then drop a possible exact ts match to preserve `< ts` semantics.
+    out = df.loc[start:ts]
+    if len(out) and out.index[-1] == ts:
+        out = out.iloc[:-1]
+    return out
 
 
 def _build_bins(current_price: float, bin_size: float, price_range_pct: float = 0.05) -> np.ndarray:
