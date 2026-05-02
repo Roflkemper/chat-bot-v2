@@ -29,6 +29,7 @@ from typing import Literal
 
 from .indicator_gate import PricePercentIndicator
 from .instop_semant_a import InstopTracker
+from .out_stop_group import GroupOrder, OutStopGroup
 
 Mode = Literal["raw", "intra_bar"]
 Side = Literal["SHORT", "LONG"]
@@ -64,6 +65,9 @@ class GridBotSim:
         instop_pct: float = 0.0,
         indicator_period: int = 0,
         indicator_threshold_pct: float = 0.0,
+        use_out_stop_group: bool = False,
+        max_stop_pct: float = 0.0,
+        min_stop_pct: float = 0.0,
     ) -> None:
         self.side = side
         self.order_size = order_size
@@ -93,6 +97,15 @@ class GridBotSim:
             InstopTracker(side, instop_pct, grid_step_pct)
             if self._use_instop else None
         )
+
+        # ---- Out Stop Group (opt-in) ---------------------------------------
+        # Provenance: engine_v2/group.py + PROJECT_CONTEXT §2 (operator
+        # confirmed 2026-05-02). When enabled, orders that hit their `tp`
+        # are added to a trailing group instead of being closed immediately.
+        self._use_out_stop = use_out_stop_group
+        self._max_stop_pct = max_stop_pct
+        self._min_stop_pct = min_stop_pct
+        self._group: OutStopGroup | None = None
 
     # ------------------------------------------------------------------
     def feed_bar(self, o: float, h: float, l: float, c: float, mode: Mode) -> None:
@@ -139,47 +152,106 @@ class GridBotSim:
         # has the latest extremum.
         if self._instop is not None:
             self._instop.update_extremum(price)
+        # Out-stop-group trailing: must update BEFORE the close check so
+        # the new extreme is reflected on this tick.
+        if self._use_out_stop and self._group is not None:
+            self._group.update_trailing(price)
+            if self._group.should_close(price):
+                self._close_group(price)
         self._check_tp(price)
         self._check_open(price)
 
     def _check_tp(self, price: float) -> None:
         if not self.open_orders:
             return
+        # Triggered orders: orders whose tp boundary has been crossed.
+        triggered: list[_Order] = []
+        surviving: list[_Order] = []
         if self.side == "SHORT":
             if price > self.open_orders[-1].tp:
                 return
-            surviving: list[_Order] = []
-            any_closed = False
             for o in self.open_orders:
                 if price <= o.tp:
-                    self.realized_pnl       += o.qty * (o.entry - o.tp)
-                    self.trading_volume_usd += o.qty * (o.tp + o.entry)
-                    self.num_fills          += 1
-                    any_closed = True
+                    triggered.append(o)
                 else:
                     surviving.append(o)
         else:
             if price < self.open_orders[-1].tp:
                 return
-            surviving = []
-            any_closed = False
             for o in self.open_orders:
                 if price >= o.tp:
-                    self.realized_pnl       += o.qty * (1.0 / o.entry - 1.0 / o.tp)
-                    self.trading_volume_usd += o.qty * 2
-                    self.num_fills          += 1
-                    any_closed = True
+                    triggered.append(o)
                 else:
                     surviving.append(o)
+        if not triggered:
+            return
+
+        if self._use_out_stop:
+            # Convert to GroupOrder and add to (or create) the trailing group.
+            group_orders = [self._to_group_order(o) for o in triggered]
+            if self._group is None:
+                self._group = OutStopGroup.from_triggered(
+                    group_orders, current_price=price,
+                    side=self.side, max_stop_pct=self._max_stop_pct,
+                )
+            else:
+                for go in group_orders:
+                    self._group.add_order(go)
+            self.open_orders = surviving
+            # max_stop_pct == 0 → group fires on first touch (this same tick).
+            if self._group.should_close(price):
+                self._close_group(price)
+            return
+
+        # ---- Legacy: immediate-close at tp ----------------------------------
+        if self.side == "SHORT":
+            for o in triggered:
+                self.realized_pnl       += o.qty * (o.entry - o.tp)
+                self.trading_volume_usd += o.qty * (o.tp + o.entry)
+                self.num_fills          += 1
+        else:
+            for o in triggered:
+                self.realized_pnl       += o.qty * (1.0 / o.entry - 1.0 / o.tp)
+                self.trading_volume_usd += o.qty * 2
+                self.num_fills          += 1
         self.open_orders = surviving
-        if any_closed and not self.open_orders:
-            # Full-close: restart grid from current price AND reset indicator
-            # gate (PROJECT_CONTEXT §2: indicator fires once per cycle).
-            self.last_in_price = price
-            if self._indicator is not None:
-                self._is_indicator_passed = False
-            if self._instop is not None:
-                self._instop.reset(price)
+        if not self.open_orders:
+            self._on_full_close(price)
+
+    def _to_group_order(self, o: _Order) -> GroupOrder:
+        """Translate sim _Order → GroupOrder.
+
+        stop_price is derived from the TRIGGER (not entry), matching
+        engine_v2/order.py:59-70. For SHORT, stop sits ABOVE trigger by
+        min_stop_pct%; for LONG, BELOW trigger by min_stop_pct%.
+        """
+        if self.side == "SHORT":
+            stop_price = o.tp * (1.0 + self._min_stop_pct / 100.0)
+        else:
+            stop_price = o.tp * (1.0 - self._min_stop_pct / 100.0)
+        return GroupOrder(entry=o.entry, qty=o.qty, trigger_price=o.tp,
+                          stop_price=stop_price)
+
+    def _close_group(self, price: float) -> None:
+        """Close the active trailing group at `price`. Updates realized
+        PnL, volume, num_fills and triggers _on_full_close path."""
+        if self._group is None:
+            return
+        pnl, vol, n = self._group.close_all(price)
+        self.realized_pnl += pnl
+        self.trading_volume_usd += vol
+        self.num_fills += n
+        self._group = None
+        if not self.open_orders:
+            self._on_full_close(price)
+
+    def _on_full_close(self, price: float) -> None:
+        """Common full-close handling: restart grid + reset indicator+instop."""
+        self.last_in_price = price
+        if self._indicator is not None:
+            self._is_indicator_passed = False
+        if self._instop is not None:
+            self._instop.reset(price)
 
     def _check_open(self, price: float) -> None:
         if self.last_in_price is None:
@@ -299,12 +371,18 @@ def run_sim(
     instop_pct: float = 0.0,
     indicator_period: int = 0,
     indicator_threshold_pct: float = 0.0,
+    use_out_stop_group: bool = False,
+    max_stop_pct: float = 0.0,
+    min_stop_pct: float = 0.0,
 ) -> SimResult:
     bot = GridBotSim(
         side, order_size, grid_step_pct, target_pct, max_orders,
         instop_pct=instop_pct,
         indicator_period=indicator_period,
         indicator_threshold_pct=indicator_threshold_pct,
+        use_out_stop_group=use_out_stop_group,
+        max_stop_pct=max_stop_pct,
+        min_stop_pct=min_stop_pct,
     )
     for o, h, l, c in bars:
         bot.feed_bar(o, h, l, c, mode)
