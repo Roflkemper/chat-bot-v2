@@ -1,0 +1,112 @@
+#!/bin/bash
+# bot7 pre-commit hook
+# Sources: TZ-055 / TZ-059 / TZ-064 / TZ-068 (existing) + TZ-VALIDATE-TZ-CI-PRECOMMIT (new)
+
+set -e
+
+# ---------------------------------------------------------------------------
+# TZ-055: Block commit if critical docs are missing
+# ---------------------------------------------------------------------------
+CRITICAL_DOCS=(
+    "docs/MASTER.md"
+    "docs/PLAYBOOK.md"
+    "docs/OPPORTUNITY_MAP_v1.md"
+    "docs/GINAREA_MECHANICS.md"
+    "docs/SESSION_LOG.md"
+    ".claude/PROJECT_RULES.md"
+    "docs/STATE/QUEUE.md"
+)
+for doc in "${CRITICAL_DOCS[@]}"; do
+    if [ ! -f "$doc" ]; then
+        echo "ERROR: Critical doc $doc is missing. Aborting commit."
+        exit 1
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# TZ-064: Block commit if HANDOFF*.md is missing
+# ---------------------------------------------------------------------------
+if ! ls docs/HANDOFF*.md 1>/dev/null 2>&1; then
+    echo "ERROR: No docs/HANDOFF*.md found. Aborting commit."
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# TZ-059: Block commit if any of the required skills files are missing
+# ---------------------------------------------------------------------------
+SKILLS=(
+    "data_freshness_check"
+    "live_position_safety"
+    "result_sanity_check"
+    "incident_log_writer"
+    "param_provenance_tracker"
+    "cost_aware_executor"
+    "telegram_signal_validator"
+    "regression_baseline_keeper"
+    "state_drift_detector"
+    "encoding_safety"
+    "state_first_protocol"
+    "operator_role_boundary"
+    "project_inventory_first"
+    "session_handoff_protocol"
+    "architect_inventory_first"
+)
+for skill in "${SKILLS[@]}"; do
+    if [ ! -f ".claude/skills/${skill}.md" ]; then
+        echo "ERROR: Skill file .claude/skills/${skill}.md is missing. Aborting commit."
+        exit 1
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# TZ-068: Block deletion of state_first_protocol skill
+# ---------------------------------------------------------------------------
+DELETED_FILES=$(git diff --cached --diff-filter=D --name-only)
+if echo "$DELETED_FILES" | grep -q ".claude/skills/state_first_protocol.md"; then
+    echo "BLOCKED: .claude/skills/state_first_protocol.md cannot be deleted."
+    echo "This skill protects against stale-state advice in new sessions."
+    echo "If intentional, run: git commit --no-verify"
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# TZ-VALIDATE-TZ-CI-PRECOMMIT: validate any staged docs/TZ/*.md proposal
+# ---------------------------------------------------------------------------
+TZ_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -iE '^docs/tz/.*\.md$' || true)
+
+if [ -n "$TZ_FILES" ]; then
+    PYTHON_BIN=""
+    for cand in ".venv/Scripts/python.exe" ".venv/bin/python" "python" "python3"; do
+        if command -v "$cand" >/dev/null 2>&1 || [ -x "$cand" ]; then
+            PYTHON_BIN="$cand"
+            break
+        fi
+    done
+    if [ -z "$PYTHON_BIN" ]; then
+        echo "ERROR: python not found on PATH; cannot run tools/validate_tz.py"
+        exit 1
+    fi
+
+    # Block only on REJECTED verdict (hard errors). REVIEW_NEEDED warnings
+    # such as missing phase tag or title-overlap are surfaced but do NOT
+    # block the commit — the operator decides.
+    fail=0
+    for f in $TZ_FILES; do
+        echo "[validate_tz] checking $f"
+        output=$("$PYTHON_BIN" tools/validate_tz.py --file "$f" 2>&1) || true
+        echo "$output" 1>&2
+        if echo "$output" | grep -q "^VERDICT: REJECTED"; then
+            fail=1
+        fi
+    done
+
+    if [ "$fail" -ne 0 ]; then
+        echo ""
+        echo "BLOCKED: one or more staged docs/tz/*.md files were REJECTED by validate_tz.py."
+        echo "Fix the errors above (look for ERRORS lines), re-stage, and commit again."
+        echo "If intentional, run: git commit --no-verify"
+        exit 1
+    fi
+fi
+
+exit 0

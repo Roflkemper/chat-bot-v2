@@ -31,6 +31,35 @@
 RUN_TESTS.bat
 ```
 
+## Pre-commit hooks
+
+Репо использует общие хуки в `.githooks/`. Установить один раз после `git clone`:
+
+```powershell
+.venv\Scripts\python.exe tools\install_hooks.py
+```
+
+Команда выставляет `core.hooksPath = .githooks` (idempotent — повторный запуск
+безопасен) и помечает скрипты исполняемыми. Проверка статуса:
+
+```powershell
+.venv\Scripts\python.exe tools\install_hooks.py --check
+```
+
+Текущие проверки `pre-commit`:
+
+- TZ-055 / TZ-064 — критические docs (`MASTER.md`, `PLAYBOOK.md`, `SESSION_LOG.md`,
+  `HANDOFF*.md`, `STATE/QUEUE.md`, `PROJECT_RULES.md`, `GINAREA_MECHANICS.md`,
+  `OPPORTUNITY_MAP_v1.md`) присутствуют.
+- TZ-059 — все обязательные файлы скиллов в `.claude/skills/`.
+- TZ-068 — `state_first_protocol.md` нельзя удалять.
+- **TZ-VALIDATE-TZ-CI-PRECOMMIT** — каждый staged `docs/tz/*.md` проходит
+  `python tools/validate_tz.py --file <path>`. Коммит блокируется только при
+  `VERDICT: REJECTED` (hard errors). `REVIEW_NEEDED` warnings выводятся, но
+  коммит проходит — оператор сам решает.
+
+Bypass (только сознательно): `git commit --no-verify`.
+
 Важно:
 
 ## frozen/ — исторические данные
