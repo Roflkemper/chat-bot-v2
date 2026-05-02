@@ -119,6 +119,32 @@ SKILL_KEYWORD_RULES: list[tuple[tuple[str, ...], str]] = [
         ("run_tests", "regression", "commit"),
         "regression_baseline_keeper",
     ),
+    # New trading-research integrity rules (TZ-ADD-TRADING-SKILLS):
+    (
+        ("k_short", "k_long", "k_factor", "calibration constant",
+         "expected_pnl", "/advise"),
+        "calibration_drift_monitor",
+    ),
+    (
+        ("best config", "winning", "champion config", "top params",
+         "оптимальн", "лучшая комбинация", "grid search", "sweep"),
+        "survivorship_audit",
+    ),
+    (
+        ("backtest", "reconcile", "replay", "simulate", "sim",
+         "бэктест"),
+        "lookahead_bias_guard",
+    ),
+    (
+        ("$/year", "% apy", "annualized", "expected edge",
+         "годовая доходность"),
+        "multi_year_validator",
+    ),
+    (
+        ("ohlcv", "frozen csv", "ground_truth", "snapshots.csv",
+         "_2y.csv", "_1y_full"),
+        "dataset_provenance_tracker",
+    ),
 ]
 
 # Phase 2/3/4 trigger keywords — enforce phase_aware_planning
