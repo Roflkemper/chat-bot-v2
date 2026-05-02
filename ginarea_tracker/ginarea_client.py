@@ -1,6 +1,7 @@
 """GinArea HTTP API client with JWT auth, auto TOTP, and retry logic."""
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from typing import Any
@@ -39,23 +40,35 @@ class GinAreaClient:
     # --- Public API ---
 
     def login(self) -> None:
-        """Full login: email + password + auto-generated TOTP code."""
-        totp_code = self._totp.now()
-        data = self._post_noauth("/auth/login", {
+        """Two-step login: /accounts/login → /accounts/twoFactor (TOTP)."""
+        step1 = self._post_noauth("/accounts/login", {
             "email": self._email,
-            "password": self._password,
-            "totp": totp_code,
+            "password": hashlib.sha1(self._password.encode()).hexdigest(),
         })
-        self._access_token = data["accessToken"]
-        self._refresh_token = data["refreshToken"]
-        logger.info("Login successful")
+        if step1.get("twoFactorEnable"):
+            initial_token = step1["accessToken"]
+            resp = self._session.post(
+                self._api_url + "/accounts/twoFactor",
+                json={"code": self._totp.now()},
+                headers={"Authorization": f"Bearer {initial_token}"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            final = resp.json()
+            self._access_token = final["accessToken"]
+            self._refresh_token = final["refreshToken"]
+            logger.info("Login successful (2FA)")
+        else:
+            self._access_token = step1["accessToken"]
+            self._refresh_token = step1["refreshToken"]
+            logger.info("Login successful (no 2FA)")
 
     def refresh(self) -> bool:
         """Refresh access token via refreshToken. Returns True on success."""
         if not self._refresh_token:
             return False
         try:
-            data = self._post_noauth("/auth/refresh", {"refreshToken": self._refresh_token})
+            data = self._post_noauth("/accounts/refresh", {"refreshToken": self._refresh_token})
             self._access_token = data["accessToken"]
             if "refreshToken" in data:
                 self._refresh_token = data["refreshToken"]
