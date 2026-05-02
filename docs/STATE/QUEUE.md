@@ -50,7 +50,7 @@
 |---|---|---|---|---|---|---|
 | TZ-ENGINE-FIX-STALE-INIT | Reconcile v2: запустить sim с bot.started_at (16.04) вместо первого snapshot | Code | 3h | (а) стратегически | — | ✅ DONE (Fix #1 applied) |
 | TZ-FIX-CONTRACT-TYPE-LABEL | state_snapshot.py: contract_type inverted (TEST_1/2/3 = linear, не inverse) | Code | 30m | (в) точность данных | — | ✅ DONE (state_snapshot.py:442 fixed) |
-| TZ-ENGINE-FIX-INSTOP-SEMANTICS-B | Верифицировать instop для LONG_C/D: Semant A или B? | Оператор+Code | 1h | (а) стратегически | — | ⬜ OPEN |
+| TZ-ENGINE-FIX-INSTOP-SEMANTICS-B | Верифицировать instop для LONG_C/D: Semant A или B? | Оператор+Code | 1h | (а) стратегически | — | ✅ DONE 2026-05-02 — Semant A confirmed by operator (TZ-CLOSE-GAP-05) |
 | TZ-ADD-ORDER-SIZE-TO-STATE | Добавить order_size в state_latest.json (хардкод из GINAREA_MECHANICS) | Code | 30m | (в) точность данных | — | ✅ INLINE DONE (reconcile only; state_latest.json pending) |
 | TZ-ENGINE-FIX-RESOLUTION | Reconcile v3: 1-секундные bars для 0.03% grid (1m слишком грубо — 4–12× под-трейдинг) | Code | 4h | (а) стратегически | 1s OHLCV данные | ⬜ OPEN |
 
