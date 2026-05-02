@@ -27,6 +27,7 @@ SLASH_COMMAND_ALIASES: dict[str, str] = {
     '/analysis': 'BTC 1H',
     '/summary': 'BTC SUMMARY',
     '/decision': 'FINAL DECISION',
+    '/advise': '/advise',
     '/entry': '⚡ ЧТО ДЕЛАТЬ СЕЙЧАС',
     '/exit': 'BTC SMART EXIT',
     '/position': 'МОЯ ПОЗИЦИЯ',
@@ -345,7 +346,24 @@ class TelegramBotApp:
                 reply_markup=build_main_keyboard(),
             )
 
-        @self.bot.message_handler(commands=['help', 'status', 'market', 'analysis', 'summary', 'decision', 'entry', 'exit', 'position', 'manage', 'bots', 'forecast'])
+        @self.bot.message_handler(commands=['handoff'])
+        def handle_handoff(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            try:
+                self.bot.send_message(chat_id, '⏳ Generating handoff document...')
+                from tools.handoff import generate
+                out = generate()
+                with out.open("rb") as fh:
+                    self.bot.send_document(chat_id, fh, visible_file_name=out.name)
+                self.bot.send_message(chat_id, f'✅ Handoff generated: {out.name}\nPaste into new Claude chat.')
+            except Exception as exc:
+                logger.exception('handoff_command.failed')
+                self.bot.send_message(chat_id, f'❌ Handoff failed: {exc}')
+
+        @self.bot.message_handler(commands=['help', 'status', 'market', 'analysis', 'summary', 'decision', 'advise', 'entry', 'exit', 'position', 'manage', 'bots', 'forecast'])
         def handle_commands(message) -> None:
             chat_id = int(message.chat.id)
             if not self._is_allowed(chat_id):
