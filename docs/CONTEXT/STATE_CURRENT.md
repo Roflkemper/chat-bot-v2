@@ -99,7 +99,6 @@ TZ-057 (H10 dedup), TZ-065 (H10 live), TZ-066 (H10 calibration) — ждут ove
 |---|---|---|
 | Загрузить 1s OHLCV (BTC+XRP) | `scripts/ohlcv_ingest.py --resolution 1s` | 15 мин |
 | Запустить H10 overnight backtest | `scripts/run_backtest_h10_overnight.bat` | 5 мин (overnight) |
-| Подтвердить instop direction для LONG (semant A/B?) | Telegram → Code | 5 мин |
 | Подтвердить деплой idempotent write в tracker | При следующем restart tracker | 2 мин |
 
 ---
