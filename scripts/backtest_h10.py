@@ -26,7 +26,39 @@ from services.liquidity_map import build_liquidity_map
 
 OHLCV_1H = ROOT / "backtests" / "frozen" / "BTCUSDT_1h_2y.csv"
 OHLCV_1M = ROOT / "backtests" / "frozen" / "BTCUSDT_1m_2y.csv"
+LIQUIDATIONS_ROOT = ROOT / "market_live" / "liquidations"
 REPORTS_DIR = ROOT / "reports"
+
+
+def _preload_liquidations(symbol: str = "BTCUSDT") -> pd.DataFrame:
+    """Load all available liquidation parquet files once for the backtest run.
+
+    `liquidity_map._load_liquidations` reads parquet from disk on every call;
+    in a 17k-bar backtest that's 17k × (glob + read) per call. Preloading
+    once and passing via build_liquidity_map(liquidations=...) skips that.
+    """
+    if not LIQUIDATIONS_ROOT.exists():
+        return pd.DataFrame()
+    frames: list[pd.DataFrame] = []
+    for exchange_dir in LIQUIDATIONS_ROOT.iterdir():
+        if not exchange_dir.is_dir():
+            continue
+        symbol_dir = exchange_dir / symbol
+        if not symbol_dir.exists():
+            continue
+        for path in symbol_dir.glob("*.parquet"):
+            try:
+                frames.append(pd.read_parquet(path))
+            except Exception:
+                continue
+    if not frames:
+        return pd.DataFrame()
+    df = pd.concat(frames, ignore_index=True)
+    if "ts_ms" not in df.columns:
+        return pd.DataFrame()
+    df["ts"] = pd.to_datetime(df["ts_ms"], unit="ms", utc=True, errors="coerce")
+    df = df.dropna(subset=["ts", "price", "value_usd"])
+    return df.sort_values("ts").reset_index(drop=True)
 
 
 def _utc(dt: datetime | None) -> pd.Timestamp | None:
@@ -137,6 +169,7 @@ def backtest_h10(
     end: Optional[datetime] = None,
     params_grid: Optional[list[ProbeParams]] = None,
     step_hours: int = 1,
+    liquidations: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """Walk 1h data, detect setups, simulate probes for each param set.
 
@@ -156,10 +189,26 @@ def backtest_h10(
     rows: list[dict] = []
     print(f"Scanning {len(ts_index)} hourly bars for H10 setups...")
 
+    # Pre-index liquidations on `ts` for cheap per-bar slicing.
+    liq_indexed: pd.DataFrame | None = None
+    if liquidations is not None and not liquidations.empty:
+        liq_indexed = liquidations.set_index("ts").sort_index()
+
     for ts in tqdm(ts_index[::step_hours]):
         ts_py = ts.to_pydatetime()
 
-        liq_map = build_liquidity_map(ts_py, ohlcv_1h, lookback_hours=72)
+        # Slice the 72h liquidation window once (O(log n)) instead of letting
+        # build_liquidity_map glob the disk every iteration.
+        if liq_indexed is not None:
+            liq_start = ts - pd.Timedelta(hours=72)
+            liq_window = liq_indexed.loc[liq_start:ts].reset_index()
+        else:
+            liq_window = pd.DataFrame()
+
+        liq_map = build_liquidity_map(
+            ts_py, ohlcv_1h, lookback_hours=72,
+            liquidations=liq_window,
+        )
         if not liq_map:
             continue
 
@@ -250,10 +299,18 @@ def main() -> None:
     ohlcv_1m = _load_ohlcv(OHLCV_1M)
     print(f"  1m: {len(ohlcv_1m)} bars")
 
+    print("Preloading liquidations...")
+    liquidations = _preload_liquidations()
+    print(f"  liquidations: {len(liquidations)} rows")
+
     params_grid = _full_params_grid() if args.full_grid else _default_params_grid()
     print(f"Param combinations: {len(params_grid)}")
 
-    df = backtest_h10(ohlcv_1h, ohlcv_1m, start=start, end=end, params_grid=params_grid)
+    df = backtest_h10(
+        ohlcv_1h, ohlcv_1m,
+        start=start, end=end, params_grid=params_grid,
+        liquidations=liquidations,
+    )
     print(f"\nResults: {len(df)} rows ({df['setup_ts'].nunique() if len(df) else 0} unique setups)")
 
     REPORTS_DIR.mkdir(exist_ok=True)

@@ -40,7 +40,16 @@ def simulate_probe(
     ohlcv_1m: pd.DataFrame,
     params: ProbeParams,
 ) -> ProbeResult | None:
-    sim = ohlcv_1m[ohlcv_1m.index >= _to_utc(setup.timestamp)].sort_index()
+    # Perf: assume ohlcv_1m has a sorted DatetimeIndex (set in _load_ohlcv).
+    # `.loc[start:end]` is O(log n) on a sorted index; the previous
+    # boolean-mask + .sort_index() was O(n) and ran on the full ~1M-row
+    # DataFrame for every (bar × params) call.
+    # Upper bound: 24h is well above any reasonable time_stop_hours
+    # (default 2, max in full-grid 4), so we never miss an exit but cap
+    # the worst-case loop length at ≤1440 rows even when grid never fills.
+    start_ts = _to_utc(setup.timestamp)
+    end_ts = start_ts + pd.Timedelta(hours=24)
+    sim = ohlcv_1m.loc[start_ts:end_ts]
     if sim.empty:
         return None
 
@@ -50,17 +59,20 @@ def simulate_probe(
     first_fill_ts: pd.Timestamp | None = None
     max_drawdown_pct = 0.0
 
-    for bar_ts, bar in sim.iterrows():
-        filled_this_bar = []
+    # Perf: itertuples is ~5x faster than iterrows on this row count.
+    for row in sim.itertuples():
+        bar_ts = row.Index
+        bar_low = float(row.low)
+        bar_high = float(row.high)
+        bar_close = float(row.close)
         for price in list(grid_prices):
             touched = (
-                setup.target_side == "long_probe" and float(bar["low"]) <= price
+                setup.target_side == "long_probe" and bar_low <= price
             ) or (
-                setup.target_side == "short_probe" and float(bar["high"]) >= price
+                setup.target_side == "short_probe" and bar_high >= price
             )
             if touched:
                 fills.append((price, size_per_order))
-                filled_this_bar.append(price)
                 grid_prices.remove(price)
 
         if not fills:
@@ -69,7 +81,7 @@ def simulate_probe(
             first_fill_ts = bar_ts
 
         avg_entry = _vwap(fills)
-        exit_close = float(bar["close"])
+        exit_close = bar_close
         unrealized_pct = _unrealized_pct(setup.target_side, avg_entry, exit_close)
         max_drawdown_pct = min(max_drawdown_pct, unrealized_pct)
 
@@ -86,9 +98,9 @@ def simulate_probe(
 
         tp_price = _tp_price(setup.target_side, avg_entry, params.tp_pct)
         tp_hit = (
-            setup.target_side == "long_probe" and float(bar["high"]) >= tp_price
+            setup.target_side == "long_probe" and bar_high >= tp_price
         ) or (
-            setup.target_side == "short_probe" and float(bar["low"]) <= tp_price
+            setup.target_side == "short_probe" and bar_low <= tp_price
         )
         if tp_hit:
             return _make_result(

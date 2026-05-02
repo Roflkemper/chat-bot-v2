@@ -61,7 +61,15 @@ def detect_setup(
     cluster_radius_max: float = _CLUSTER_RADIUS_MAX,
 ) -> H10Setup | None:
     ts_utc = _to_utc(ts)
-    window = ohlcv_1h[ohlcv_1h.index < ts_utc].sort_index()
+    # Perf: ohlcv_1h is loaded sorted in scripts/backtest_h10.py::_load_ohlcv;
+    # .loc[:ts_utc] is O(log n). The previous boolean-mask + .sort_index()
+    # was O(n) on the full DataFrame for every backtest bar.
+    if isinstance(ohlcv_1h.index, pd.DatetimeIndex):
+        window = ohlcv_1h.loc[:ts_utc]
+        if len(window) and window.index[-1] == ts_utc:
+            window = window.iloc[:-1]
+    else:
+        window = ohlcv_1h[ohlcv_1h.index < ts_utc].sort_index()
 
     # Need enough history for impulse + consolidation + pre-impulse context
     if len(window) < consol_min_hours + min(_IMPULSE_WINDOWS) + 1:
