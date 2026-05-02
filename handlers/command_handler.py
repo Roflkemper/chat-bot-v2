@@ -210,7 +210,6 @@ class CommandHandler:
             capabilities=CommandCapabilities(renderer='plain'),
         )
         registry.register('/decisions stats', '_cmd_decisions_stats', capabilities=CommandCapabilities(renderer='plain'))
-        return registry
 
         active_position_analysis = CommandCapabilities(
             requires_analysis=True,
