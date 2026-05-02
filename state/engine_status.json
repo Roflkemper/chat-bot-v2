@@ -1,0 +1,15 @@
+{
+  "calibration_done_at": "2026-04-30T10:36:00Z",
+  "bugs_detected": 4,
+  "bugs_fixed": 2,
+  "open_issues": [
+    "TZ-ENGINE-FIX-RESOLUTION (blocked on 1s OHLCV)",
+    "TZ-ENGINE-FIX-INSTOP-SEMANTICS-B (blocked on operator confirm)"
+  ],
+  "fix_eta": "TZ-ENGINE-FIX-RESOLUTION blocked on 1s OHLCV upload",
+  "k_short": 9.637,
+  "k_long": 4.275,
+  "k_short_status": "STABLE (CV=3.0%, n=6)",
+  "k_long_status": "TD-DEPENDENT (CV=24.9%, structural)",
+  "last_updated": "2026-05-02T00:00:00Z"
+}

@@ -14,6 +14,7 @@
 | TZ-FIX-COMBO-STOP-GEOMETRY | K=-0.99 fix already applied (entry_floor guard). TD-dependent K structural. | reports/combo_stop_geometry_fix_2026-05-02.md, tests/engine_v2/test_long_combo_stop_geometry.py |
 | TZ-DEDUP-SNAPSHOTS-CSV | 45k dupes removed, decisions 71→86 on clean data | ginarea_live/snapshots.csv, ginarea_tracker/storage.py, scripts/dedup_snapshots.py |
 | TZ-CONTEXT-HANDOFF-SKILL | docs/CONTEXT/ 3-layer + tools/handoff.py CLI + Telegram /handoff + 6 тестов | docs/CONTEXT/, tools/handoff.py, .claude/skills/context_handoff.md |
+| TZ-COORDINATED-GRID-TRIM-DETAILS | 1039 реальных trim событий (не 17); механика, распределение, playbook | reports/coordinated_grid_trim_practical_2026-05-02.md, services/coordinated_grid/trim_analyzer.py |
 
 ## Key findings
 

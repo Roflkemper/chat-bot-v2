@@ -33,6 +33,7 @@
 | TZ-FIX-COMBO-STOP-GEOMETRY | Case A confirmed — entry_floor guard уже применён (K fix) |
 | TZ-DEDUP-SNAPSHOTS-CSV | 45k дублей удалены, decisions 71→86, idempotent write |
 | TZ-CONTEXT-HANDOFF-SKILL | ✅ DONE — docs/CONTEXT/ + tools/handoff.py + skill + 6 тестов |
+| TZ-COORDINATED-GRID-TRIM-DETAILS | ✅ DONE — 1039 trim событий, playbook rule для оператора |
 
 ### Completed 2026-04-30 → 2026-05-01 (предыдущая сессия)
 
@@ -105,6 +106,7 @@ TZ-057 (H10 dedup), TZ-065 (H10 live), TZ-066 (H10 calibration) — ждут ove
 ## §6 CHANGELOG (date → что изменилось)
 
 ```
+2026-05-02 | TZ-COORDINATED-GRID-TRIM-DETAILS: 1039 trim events, playbook rule, trim_analyzer.py
 2026-05-02 | TZ-CONTEXT-HANDOFF-SKILL: docs/CONTEXT/ layer + tools/handoff.py CLI + Telegram /handoff
 2026-05-02 | TZ-DEDUP: snapshots.csv dedup 160k→115k строк
 2026-05-02 | TZ-DIAGNOSE-TRACKER: PID fallback + cmdline_must_contain fix

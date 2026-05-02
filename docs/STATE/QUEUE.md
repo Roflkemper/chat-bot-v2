@@ -1,6 +1,14 @@
-# Queue Navigator — 2026-04-29 night
+# Queue Navigator — 2026-05-02
 
 > Живой навигатор очереди. Обновлять при каждом изменении статуса.
+
+---
+
+## Сегодня (поток B — Code)
+
+| ID | Задача | Кто | Время | Trader-first | Блокер | Статус |
+|---|---|---|---|---|---|---|
+| TZ-COORDINATED-GRID-TRIM-DETAILS | Механика asymmetric trim победившего конфига $2k → playbook для оператора | Code | 2-3h | (а) стратегически | — | ✅ DONE |
 
 ---
 
@@ -88,10 +96,20 @@
 
 | ID | Долг | Статус |
 |---|---|---|
-| DEBT-02 | Re-arm logic в bt-симуляторе | 📋 BACKLOG |
-| DEBT-03 | 12 pre-existing failures в test_protection_alerts.py | 📋 BACKLOG |
-| DEBT-04 | 49 collection errors в RUN_TESTS | 📋 BACKLOG |
-| DEBT-05 | Naming sync collectors vs market_collector в docs | 📋 BACKLOG |
+| DEBT-02 | Re-arm logic в bt-симуляторе | 📋 BACKLOG — classified P2 / FIX-WHEN-TOUCH-AREA ([DEBT_CLASSIFICATION_2026-05-02.md](C:/bot7/docs/STATE/DEBT_CLASSIFICATION_2026-05-02.md)) |
+| DEBT-03 | 12 pre-existing failures в test_protection_alerts.py | 📋 BACKLOG — classified P3 / ACCEPTED (stale debt; standalone test green) ([DEBT_CLASSIFICATION_2026-05-02.md](C:/bot7/docs/STATE/DEBT_CLASSIFICATION_2026-05-02.md)) |
+| DEBT-04 | 49 collection errors в RUN_TESTS | ⬜ OPEN — split plan prepared (`TZ-DEBT-04-A`..`E`), current collect-only shows 91 errors ([debt_04_split_plan_2026-05-02.md](C:/bot7/reports/debt_04_split_plan_2026-05-02.md)) |
+| DEBT-05 | Naming sync collectors vs market_collector в docs | 📋 BACKLOG — classified P3 / ACCEPTED ([DEBT_CLASSIFICATION_2026-05-02.md](C:/bot7/docs/STATE/DEBT_CLASSIFICATION_2026-05-02.md)) |
+
+### DEBT-04 split backlog (Phase 0.5 / Phase 2 prep)
+
+| ID | Задача | Кто | Время | Trader-first | Блокер | Статус |
+|---|---|---|---|---|---|---|
+| TZ-DEBT-04-A-IMPORT-SURFACE | Normalize import surface for `features/services/renderers/whatif/core` | Code | 2-3h | (б) инфраструктура | — | 📋 BACKLOG |
+| TZ-DEBT-04-B-LEGACY-API-DRIFT | Fix missing exported symbols / stale API imports after import-surface cleanup | Code | 1-2h | (б) инфраструктура | TZ-DEBT-04-A | 📋 BACKLOG |
+| TZ-DEBT-04-C-DUPLICATE-MODULE-NAMES | Resolve pytest import-mismatch / duplicate basename collisions | Code | 30-45m | (б) инфраструктура | — | 📋 BACKLOG |
+| TZ-DEBT-04-D-SERVICE-SUBPACKAGES-COLLECT | Clean remaining grouped service test families after root import fixes | Code | 1-2h | (б) инфраструктура | TZ-DEBT-04-A | 📋 BACKLOG |
+| TZ-DEBT-04-E-COLLECT-SHIELD | Add collect-only regression guard after cleanup | Code | 30-60m | (б) инфраструктура | TZ-DEBT-04-A/B/C/D | 📋 BACKLOG |
 
 ---
 

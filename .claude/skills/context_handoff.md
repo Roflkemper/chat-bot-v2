@@ -59,7 +59,21 @@ Create `docs/CONTEXT/SESSION_DELTA_YYYY-MM-DD.md` with:
 - Not changed (intentional)
 - Next session priorities (≤5 items)
 
-### Step 3: Generate HANDOFF
+### Step 3: Update dashboard data
+
+After updating STATE_CURRENT.md and QUEUE.md, update `state/engine_status.json` with:
+- `bugs_fixed` / `bugs_detected` — реальные числа из текущих TZ
+- `k_short`, `k_long` — если перекалибровка была
+- `last_updated` — сегодняшняя дата ISO
+
+Then rebuild dashboard state:
+```bash
+python -c "from services.dashboard.state_builder import build_and_save_state; build_and_save_state()"
+```
+
+Output: `docs/STATE/dashboard_state.json` (читается браузером через HTTP server).
+
+### Step 4: Generate HANDOFF
 
 ```bash
 python tools/handoff.py generate --preview
@@ -67,16 +81,16 @@ python tools/handoff.py generate --preview
 
 Output: `docs/CONTEXT/HANDOFF_YYYY-MM-DD.md`
 
-### Step 4: Validate (optional but recommended)
+### Step 5: Validate (optional but recommended)
 
 ```bash
 python tools/handoff.py validate
 ```
 
-### Step 5: Commit
+### Step 6: Commit
 
 ```bash
-git add docs/CONTEXT/
+git add docs/CONTEXT/ docs/STATE/ state/engine_status.json
 git commit -m "docs: handoff YYYY-MM-DD + state update"
 ```
 
