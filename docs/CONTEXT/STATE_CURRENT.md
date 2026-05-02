@@ -34,6 +34,7 @@
 | TZ-DEDUP-SNAPSHOTS-CSV | 45k дублей удалены, decisions 71→86, idempotent write |
 | TZ-CONTEXT-HANDOFF-SKILL | ✅ DONE — docs/CONTEXT/ + tools/handoff.py + skill + 6 тестов |
 | TZ-COORDINATED-GRID-TRIM-DETAILS | ✅ DONE — 1039 trim событий, playbook rule для оператора |
+| TZ-HANDOFF-FIX-INCLUDE-FULL-SKILLS-AND-GAPS | ✅ DONE — PART 5 (16 скилов) + PART 6 (gaps) в handoff; 7-строчный onboarding |
 
 ### Completed 2026-04-30 → 2026-05-01 (предыдущая сессия)
 
@@ -106,6 +107,7 @@ TZ-057 (H10 dedup), TZ-065 (H10 live), TZ-066 (H10 calibration) — ждут ove
 ## §6 CHANGELOG (date → что изменилось)
 
 ```
+2026-05-02 | TZ-HANDOFF-FIX: PART 5 (16 skills) + PART 6 (gaps) + 7-line onboarding в handoff generator
 2026-05-02 | TZ-COORDINATED-GRID-TRIM-DETAILS: 1039 trim events, playbook rule, trim_analyzer.py
 2026-05-02 | TZ-CONTEXT-HANDOFF-SKILL: docs/CONTEXT/ layer + tools/handoff.py CLI + Telegram /handoff
 2026-05-02 | TZ-DEDUP: snapshots.csv dedup 160k→115k строк
