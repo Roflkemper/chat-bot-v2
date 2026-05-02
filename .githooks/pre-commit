@@ -50,6 +50,13 @@ SKILLS=(
     "project_inventory_first"
     "session_handoff_protocol"
     "architect_inventory_first"
+    "trader_first_filter"
+    "phase_aware_planning"
+    "calibration_drift_monitor"
+    "survivorship_audit"
+    "lookahead_bias_guard"
+    "multi_year_validator"
+    "dataset_provenance_tracker"
 )
 for skill in "${SKILLS[@]}"; do
     if [ ! -f ".claude/skills/${skill}.md" ]; then

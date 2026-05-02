@@ -232,15 +232,19 @@ def _make_skills_dir(skill_names: list[str]) -> Path:
     return tmp_dir
 
 
-# All 18 actual project skills — used as the existing-skills set in tests.
+# All 23 actual project skills — used as the existing-skills set in tests.
 _ALL_SKILLS = [
     "architect_inventory_first",
+    "calibration_drift_monitor",
     "context_handoff",
     "cost_aware_executor",
     "data_freshness_check",
+    "dataset_provenance_tracker",
     "encoding_safety",
     "incident_log_writer",
     "live_position_safety",
+    "lookahead_bias_guard",
+    "multi_year_validator",
     "operator_role_boundary",
     "param_provenance_tracker",
     "phase_aware_planning",
@@ -250,6 +254,7 @@ _ALL_SKILLS = [
     "session_handoff_protocol",
     "state_drift_detector",
     "state_first_protocol",
+    "survivorship_audit",
     "telegram_signal_validator",
     "trader_first_filter",
 ]
@@ -431,8 +436,11 @@ class TestValidatePipelineWithSkills:
         assert any("Skills applied" in e for e in result.errors)
 
     def test_approved_with_full_skills_section(self):
+        # Generic phase0 keyword (collector/tracker) — does not trigger any
+        # of the keyword→skill mandatory rules, so the only required skill
+        # is the always-mandatory trader_first_filter.
         text = (
-            "TZ-OHLCV: update collector tracker\n"
+            "TZ-COLLECTOR: update tracker fixture\n"
             "Skills applied:\n"
             "- trader_first_filter\n"
             "\n"
