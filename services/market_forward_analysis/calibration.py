@@ -226,6 +226,24 @@ def _compute_signals_batch(features_df: pd.DataFrame, horizon: str = "1h") -> pd
             bull_score += df[brk_hi].values.astype(float) * 0.12
             bear_score += df[brk_lo].values.astype(float) * 0.12
 
+    # Tier-2: volume profile structural context
+    if "vol_profile_poc_dist_pct" in df.columns:
+        poc_dist = df["vol_profile_poc_dist_pct"].values
+        # POC within 0.2% = price at high-volume magnet → potential stall/reversal
+        bear_score += np.where(np.abs(poc_dist) < 0.2, 0.05, 0.0)
+
+    if "vol_profile_position" in df.columns:
+        vp_pos = df["vol_profile_position"].values
+        bear_score += np.where(vp_pos == 1, 0.05, 0.0)   # above value area = overextended
+        bull_score += np.where(vp_pos == -1, 0.05, 0.0)  # below value area = oversold zone
+
+    # Volume regime multiplier on D score (apply before net calculation)
+    if "vol_regime_int" in df.columns:
+        vr = df["vol_regime_int"].values
+        vol_mult = np.where(vr == 0, 0.7, np.where(vr == 2, 1.2, 1.0))
+        bear_score = bear_score * vol_mult
+        bull_score = bull_score * vol_mult
+
     d_net = bear_score - bull_score
     d_dir = np.sign(d_net)
     d_dir[np.abs(d_net) < 0.1] = 0
@@ -270,6 +288,41 @@ def _compute_signals_batch(features_df: pd.DataFrame, horizon: str = "1h") -> pd
             np.clip(0.2 + np.where(rvol > 1.5, 0.1, 0) + cci_xl * 0.1, 0, 0.6),
             0.0
         ))))
+
+    # Tier-2: RSI derivative augmentation
+    orsi = df["orsi_14"].values if "orsi_14" in df.columns else np.zeros(n)
+    vwrsi = df["rsi_14_volume_weighted"].values if "rsi_14_volume_weighted" in df.columns else rsi_14
+    rsi_div = df["rsi_divergence_5h"].values if "rsi_divergence_5h" in df.columns else np.zeros(n)
+    xup  = df["rsi_crossover_up"].values   if "rsi_crossover_up"   in df.columns else np.zeros(n)
+    xdn  = df["rsi_crossover_down"].values if "rsi_crossover_down" in df.columns else np.zeros(n)
+
+    # ORSI momentum exhaustion confirmation
+    e_mag = np.where(e_dir == -1,
+                     np.clip(e_mag + np.where(orsi > 5, 0.05, 0.0), 0, 0.9), e_mag)
+    e_mag = np.where(e_dir == 1,
+                     np.clip(e_mag + np.where(orsi < -5, 0.05, 0.0), 0, 0.9), e_mag)
+
+    # Crossover events: only fire when RSI was in an elevated zone before crossing
+    # (rsi14 prev >60 before crossing down, <40 before crossing up)
+    # Filters out mid-band noise crossovers (reduces activation from ~19% to ~3-5%)
+    rsi14_prev = np.roll(rsi_14, 1)
+    rsi14_prev[0] = 50.0
+    xdn_extreme = (xdn == 1) & (rsi14_prev > 60)
+    xup_extreme = (xup == 1) & (rsi14_prev < 40)
+    e_dir = np.where((e_dir == 0) & xdn_extreme, -1.0, e_dir)
+    e_mag = np.where(xdn_extreme & (e_dir == -1.0), np.clip(e_mag + 0.08, 0, 0.9), e_mag)
+    e_dir = np.where((e_dir == 0) & xup_extreme, 1.0, e_dir)
+    e_mag = np.where(xup_extreme & (e_dir == 1.0), np.clip(e_mag + 0.08, 0, 0.9), e_mag)
+
+    # RSI divergence (5h lookback)
+    e_dir = np.where((e_dir == 0) & (rsi_div == -1), -1.0, e_dir)
+    e_mag = np.where(rsi_div == -1, np.clip(e_mag + 0.10, 0, 0.9), e_mag)
+    e_dir = np.where((e_dir == 0) & (rsi_div == 1), 1.0, e_dir)
+    e_mag = np.where(rsi_div == 1, np.clip(e_mag + 0.10, 0, 0.9), e_mag)
+
+    # VW-RSI extreme confirmation (additive to existing signal)
+    e_mag = np.where((e_dir == -1) & (vwrsi > 75), np.clip(e_mag + 0.05, 0, 0.9), e_mag)
+    e_mag = np.where((e_dir == 1)  & (vwrsi < 25), np.clip(e_mag + 0.05, 0, 0.9), e_mag)
 
     # Confidence boosted when both RSI and CCI agree
     rsi_extreme = np.abs(rsi_14 - 50) > 25

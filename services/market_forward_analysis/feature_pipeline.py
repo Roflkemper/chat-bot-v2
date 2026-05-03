@@ -298,6 +298,68 @@ def _build_microstructure_features_5m(whatif_1m: pd.DataFrame) -> pd.DataFrame:
     return out.sort_index()
 
 
+# ── Tier-2 features (volume profile + RSI derivatives) ───────────────────────
+
+def _build_tier2_features_5m(df: pd.DataFrame, high: pd.Series, low: pd.Series) -> pd.DataFrame:
+    """Compute Tier-2 features on an already-merged 5m DataFrame.
+
+    Requires: close, volume, atr_14, rsi_14, rsi_50 in df.
+    high/low must be aligned Series (from raw OHLCV source).
+    """
+    out = df.copy()
+    close  = out["close"]
+    volume = out["volume"] if "volume" in out.columns else pd.Series(1.0, index=out.index)
+    rsi14  = out["rsi_14"]
+    rsi50  = out["rsi_50"] if "rsi_50" in out.columns else pd.Series(50.0, index=out.index)
+
+    # ── Volume Profile (100-bar VWAP as POC proxy) ──
+    window = 100
+    typical = (high + low + close) / 3
+    vwap100  = (typical * volume).rolling(window, min_periods=20).sum() / volume.rolling(window, min_periods=20).sum()
+    pstd     = typical.rolling(window, min_periods=20).std()
+    va_high  = vwap100 + pstd
+    va_low   = vwap100 - pstd
+
+    out["vol_profile_poc_dist_pct"]    = ((close - vwap100) / (vwap100 + 1e-9) * 100).clip(-50, 50)
+    out["vol_profile_va_high_dist_pct"] = ((close - va_high) / (va_high + 1e-9) * 100).clip(-50, 50)
+    out["vol_profile_va_low_dist_pct"]  = ((close - va_low)  / (va_low  + 1e-9) * 100).clip(-50, 50)
+    out["vol_profile_position"] = np.where(close > va_high, 1, np.where(close < va_low, -1, 0)).astype(np.int8)
+
+    # Realized vol percentile (ATR rank in 24h rolling window)
+    atr_pctile = out["atr_14"].rolling(288, min_periods=10).apply(lambda x: (x <= x[-1]).mean(), raw=True).fillna(0.5)
+    out["realized_vol_pctile_24h"] = atr_pctile.clip(0, 1)
+    out["vol_regime_int"] = pd.cut(atr_pctile, bins=[0, 0.33, 0.67, 1.0],
+                                   labels=[0, 1, 2], include_lowest=True).astype(float).fillna(1).astype(np.int8)
+
+    # ── RSI Derivatives ──
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = (-delta).clip(lower=0)
+    vw_gain = (gain * volume).rolling(14, min_periods=14).sum() / volume.rolling(14, min_periods=14).sum()
+    vw_loss = (loss * volume).rolling(14, min_periods=14).sum() / volume.rolling(14, min_periods=14).sum()
+    rs = vw_gain / (vw_loss + 1e-9)
+    out["rsi_14_volume_weighted"] = (100 - 100 / (1 + rs)).fillna(50).clip(0, 100)
+
+    out["orsi_14"] = (rsi14 - rsi14.ewm(span=9, min_periods=3).mean()).clip(-50, 50)
+
+    out["rsi_zone_int"] = pd.cut(rsi14, bins=[0, 30, 50, 70, 100],
+                                 labels=[0, 1, 2, 3], include_lowest=True).astype(float).fillna(1).astype(np.int8)
+
+    prev14 = rsi14.shift(1)
+    prev50 = rsi50.shift(1)
+    out["rsi_crossover_up"]   = ((rsi14 > rsi50) & (prev14 <= prev50)).astype(np.int8)
+    out["rsi_crossover_down"] = ((rsi14 < rsi50) & (prev14 >= prev50)).astype(np.int8)
+
+    lag = 60  # 5h at 5m resolution
+    price_ago = close.shift(lag)
+    rsi_ago   = rsi14.shift(lag)
+    bear_div = ((close > price_ago) & (rsi14 < rsi_ago)).astype(np.int8)
+    bull_div = ((close < price_ago) & (rsi14 > rsi_ago)).astype(np.int8)
+    out["rsi_divergence_5h"] = np.where(bear_div, -1, np.where(bull_div, 1, 0)).astype(np.int8)
+
+    return out.sort_index()
+
+
 # ── OI-price divergence (needs both) ─────────────────────────────────────────
 
 def _add_oi_price_divergence(df: pd.DataFrame) -> pd.DataFrame:
