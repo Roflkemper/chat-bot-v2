@@ -154,8 +154,8 @@ def _compute_signals_batch(features_df: pd.DataFrame) -> pd.DataFrame:
 
     c_conf = np.where((ls_long_ext == 1) | (ls_short_ext == 1), 0.6, 0.3)
 
-    # Signal D: structural context (vectorized — key features only)
-    in_prem = df["in_premium_zone"].values
+    # Signal D: structural context (vectorized)
+    in_prem  = df["in_premium_zone"].values
     dist_pdh = df["dist_to_pdh_pct"].values
     dist_pdl = df["dist_to_pdl_pct"].values
     dist_nh  = df["dist_to_nearest_unmitigated_high_pct"].values
@@ -172,6 +172,32 @@ def _compute_signals_batch(features_df: pd.DataFrame) -> pd.DataFrame:
         np.where((dist_pdl <= 0) & (dist_pdl > -0.5), 0.3, np.where((dist_pdl <= 0) & (dist_pdl > -1.5), 0.15, 0.0))
         + np.where((dist_nl < 2.0) & (nl_age < 24), 0.25, 0.0)
     )
+
+    # Session-specific structural context (Tier-1 expansion)
+    # Price above key session highs = bearish structural resistance
+    # Price below key session lows = bullish structural support test
+    for hi_col, lo_col in [
+        ("dist_to_asia_high_pct",   "dist_to_asia_low_pct"),
+        ("dist_to_london_high_pct", "dist_to_london_low_pct"),
+        ("dist_to_ny_am_high_pct",  "dist_to_ny_am_low_pct"),
+    ]:
+        if hi_col in df.columns and lo_col in df.columns:
+            d_hi = df[hi_col].values
+            d_lo = df[lo_col].values
+            # Very close to session high (within 0.3%) = resistance, bearish
+            bear_score += np.where((d_hi >= 0) & (d_hi < 0.3), 0.1, 0.0)
+            # Very close to session low (within 0.3%) = support, bullish
+            bull_score += np.where((d_lo <= 0) & (d_lo > -0.3), 0.1, 0.0)
+
+    # MSB proxy: recent session high break = bullish structural shift
+    for brk_hi, brk_lo in [
+        ("asia_high_broken", "asia_low_broken"),
+        ("london_high_broken", "london_low_broken"),
+    ]:
+        if brk_hi in df.columns and brk_lo in df.columns:
+            bull_score += df[brk_hi].values.astype(float) * 0.12
+            bear_score += df[brk_lo].values.astype(float) * 0.12
+
     d_net = bear_score - bull_score
     d_dir = np.sign(d_net)
     d_dir[np.abs(d_net) < 0.1] = 0
@@ -184,20 +210,44 @@ def _compute_signals_batch(features_df: pd.DataFrame) -> pd.DataFrame:
     uw_dom = df["upper_wick_dominance"].values
     lw_dom = df["lower_wick_dominance"].values
 
+    # CCI augmentation (if available — Tier-1 expansion)
+    cci = df["cci_20"].values if "cci_20" in df.columns else np.zeros(n)
+    cci_ob = (cci > 100).astype(float)
+    cci_os = (cci < -100).astype(float)
+    cci_xh = (cci > 300).astype(float)
+    cci_xl = (cci < -300).astype(float)
+
     e_dir = np.zeros(n, dtype=np.float32)
     e_mag = np.zeros(n, dtype=np.float32)
 
-    ob = rsi_14 > 75
+    # Primary trigger: RSI extremes (unchanged)
+    ob  = rsi_14 > 75
     os_ = rsi_14 < 25
-    e_dir = np.where(ob, -1.0, np.where(os_, 1.0, 0.0))
+    # Secondary trigger: CCI overbought/oversold even when RSI not extreme
+    ob_cci  = (~ob)  & (cci_ob == 1)
+    os_cci  = (~os_) & (cci_os == 1)
+
+    e_dir = np.where(ob,  -1.0, np.where(os_, 1.0,
+            np.where(ob_cci, -1.0, np.where(os_cci, 1.0, 0.0))))
+
     e_mag = np.where(ob,
-        np.clip(0.3 + np.where(rvol > 1.5, 0.15, 0) + np.where(uw_dom > 0.4, 0.15, 0), 0, 0.9),
+        np.clip(0.3 + np.where(rvol > 1.5, 0.15, 0) + np.where(uw_dom > 0.4, 0.15, 0)
+                + cci_xh * 0.1, 0, 0.9),
         np.where(os_,
-            np.clip(0.3 + np.where(rvol > 1.5, 0.15, 0) + np.where(lw_dom > 0.4, 0.15, 0), 0, 0.9),
+            np.clip(0.3 + np.where(rvol > 1.5, 0.15, 0) + np.where(lw_dom > 0.4, 0.15, 0)
+                    + cci_xl * 0.1, 0, 0.9),
+        np.where(ob_cci,
+            np.clip(0.2 + np.where(rvol > 1.5, 0.1, 0) + cci_xh * 0.1, 0, 0.6),
+        np.where(os_cci,
+            np.clip(0.2 + np.where(rvol > 1.5, 0.1, 0) + cci_xl * 0.1, 0, 0.6),
             0.0
-        )
-    )
-    e_conf = np.where(np.abs(rsi_14 - 50) > 25, 0.5, 0.3)
+        ))))
+
+    # Confidence boosted when both RSI and CCI agree
+    rsi_extreme = np.abs(rsi_14 - 50) > 25
+    cci_extreme = np.abs(cci) > 100
+    e_conf = np.where(rsi_extreme & cci_extreme, 0.65,
+             np.where(rsi_extreme | cci_extreme, 0.5, 0.3))
 
     # Return signal array: (n, 5_signals × 3_fields)
     signals = pd.DataFrame({

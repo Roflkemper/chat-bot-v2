@@ -126,9 +126,9 @@ def _build_deriv_features(oi: pd.DataFrame, ls: pd.DataFrame, funding: pd.DataFr
 
 def _build_ict_features_5m(ict_1m: pd.DataFrame) -> pd.DataFrame:
     """Downsample ICT 1m features to 5m (last bar of each 5m window)."""
-    # Resample: take last 1m bar in each 5m window
     ict_5m = ict_1m.resample("5min").last()
 
+    # Pre-computed dist columns already in ICT parquet
     cols_needed = [
         "dist_to_pdh_pct", "dist_to_pdl_pct",
         "dist_to_pwh_pct", "dist_to_pwl_pct",
@@ -138,18 +138,71 @@ def _build_ict_features_5m(ict_1m: pd.DataFrame) -> pd.DataFrame:
         "nearest_unmitigated_high_above_age_h",
         "nearest_unmitigated_low_below_age_h",
         "unmitigated_count_7d",
+        # Asia dist — pre-computed in ICT parquet
+        "dist_to_asia_high_pct",
+        "dist_to_asia_low_pct",
+        # Kill zone midpoint — pre-computed in ICT parquet
+        "dist_to_kz_mid_pct",
+        # Raw session levels for derived distances + MSB proxy
+        "close", "london_high", "london_low",
+        "ny_am_high", "ny_am_low",
+        "ny_pm_high", "ny_pm_low",
         "session_active",
     ]
     available = [c for c in cols_needed if c in ict_5m.columns]
     out = ict_5m[available].copy()
 
+    # Compute london/ny_am/ny_pm distances from raw levels (not pre-computed in parquet)
+    if "close" in out.columns:
+        close = out["close"]
+        for sess, hi, lo in [
+            ("london",  "london_high",  "london_low"),
+            ("ny_am",   "ny_am_high",   "ny_am_low"),
+            ("ny_pm",   "ny_pm_high",   "ny_pm_low"),
+        ]:
+            hi_col = f"dist_to_{sess}_high_pct"
+            lo_col = f"dist_to_{sess}_low_pct"
+            if hi in out.columns:
+                out[hi_col] = (close - out[hi]) / out[hi].replace(0, np.nan) * 100
+                out[lo_col] = (close - out[lo]) / out[lo].replace(0, np.nan) * 100
+
+        # MSB proxy: did close break a prior session level?
+        # Negative dist means close is BELOW the level (break of high = price below it = no break)
+        # dist_to_X_high_pct < 0 means close < session_high (inside)
+        # dist_to_X_high_pct > 0 means close > session_high (break above = bullish MSB)
+        for dist_hi_col, dist_lo_col, flag_prefix in [
+            ("dist_to_asia_high_pct",   "dist_to_asia_low_pct",   "asia"),
+            ("dist_to_london_high_pct", "dist_to_london_low_pct", "london"),
+            ("dist_to_ny_am_high_pct",  "dist_to_ny_am_low_pct",  "ny_am"),
+        ]:
+            if dist_hi_col in out.columns and dist_lo_col in out.columns:
+                broke_high = (out[dist_hi_col] > 0).astype(np.int8)
+                broke_low  = (out[dist_lo_col] < 0).astype(np.int8)
+                out[f"{flag_prefix}_high_broken"] = broke_high
+                out[f"{flag_prefix}_low_broken"]  = broke_low
+
+        # Rolling bars since last session high/low break (capped at 48 bars = 4h)
+        # Uses Asia as primary MSB proxy (most liquid reference session)
+        if "asia_high_broken" in out.columns:
+            not_broken_h = (out["asia_high_broken"] == 0).astype(int)
+            not_broken_l = (out["asia_low_broken"]  == 0).astype(int)
+            # Cumsum trick: bars since last break = bar_idx - last_break_bar_idx
+            grp_h = not_broken_h.cumsum()
+            grp_l = not_broken_l.cumsum()
+            out["bars_since_asia_high_break"] = out.groupby(grp_h).cumcount().clip(0, 48).astype(np.int8)
+            out["bars_since_asia_low_break"]  = out.groupby(grp_l).cumcount().clip(0, 48).astype(np.int8)
+
+    # Drop raw level columns used only for distance computation
+    raw_level_cols = ["close", "london_high", "london_low",
+                      "ny_am_high", "ny_am_low", "ny_pm_high", "ny_pm_low"]
+    out = out.drop(columns=[c for c in raw_level_cols if c in out.columns])
+
     # Derived: in premium zone (price above d_open) and discount zone (below)
-    # dist_to_d_open_pct: positive = above open (premium), negative = below (discount)
     if "dist_to_d_open_pct" in out.columns:
         out["in_premium_zone"] = (out["dist_to_d_open_pct"] > 0).astype(np.int8)
         out["in_discount_zone"] = (out["dist_to_d_open_pct"] < 0).astype(np.int8)
 
-    # Session active as integer (string categorical: asia/london/ny_am/ny_lunch/ny_pm/dead)
+    # Session active as integer
     if "session_active" in out.columns:
         sess_map = {"dead": 0, "asia": 1, "london": 2, "ny_am": 3, "ny_lunch": 4, "ny_pm": 5}
         out["session_int"] = out["session_active"].map(sess_map).fillna(0).astype(np.int8)
@@ -211,6 +264,20 @@ def _build_microstructure_features_5m(whatif_1m: pd.DataFrame) -> pd.DataFrame:
         rv_5m = ret.rolling(1).std()
         rv_30m = ret.rolling(6, min_periods=2).std()
         out["realized_vol_ratio"] = rv_5m / (rv_30m + 1e-9)
+
+    # CCI(20) on hlc3
+    if all(c in out.columns for c in ["high", "low", "close"]):
+        hlc3 = (out["high"] + out["low"] + out["close"]) / 3
+        sma20 = hlc3.rolling(20, min_periods=5).mean()
+        mean_dev = hlc3.rolling(20, min_periods=5).apply(
+            lambda x: np.mean(np.abs(x - x.mean())), raw=True
+        )
+        out["cci_20"] = (hlc3 - sma20) / (0.015 * mean_dev.replace(0, np.nan))
+        out["cci_20"] = out["cci_20"].fillna(0.0).clip(-500, 500)
+        out["cci_overbought"]   = (out["cci_20"] > 100).astype(np.int8)
+        out["cci_oversold"]     = (out["cci_20"] < -100).astype(np.int8)
+        out["cci_extreme_high"] = (out["cci_20"] > 300).astype(np.int8)
+        out["cci_extreme_low"]  = (out["cci_20"] < -300).astype(np.int8)
 
     # Regime encoding
     if "regime_24h" in out.columns:
