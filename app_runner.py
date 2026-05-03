@@ -129,6 +129,24 @@ async def _run_setup_tracker(stop_event: asyncio.Event) -> None:
     await setup_tracker_loop(stop_event=stop_event)
 
 
+async def _run_exit_advisor(stop_event: asyncio.Event) -> None:
+    from services.exit_advisor.loop import exit_advisor_loop
+
+    await exit_advisor_loop(stop_event=stop_event)
+
+
+async def _run_market_intelligence(stop_event: asyncio.Event) -> None:
+    from services.market_intelligence.loop import market_intelligence_loop
+
+    await market_intelligence_loop(stop_event=stop_event)
+
+
+async def _run_market_forward_analysis(stop_event: asyncio.Event) -> None:
+    from services.market_forward_analysis.loop import market_forward_analysis_loop
+
+    await market_forward_analysis_loop(stop_event=stop_event)
+
+
 async def _shutdown_task(task: asyncio.Task, *, timeout: float) -> None:
     try:
         await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
@@ -173,10 +191,13 @@ async def main(
     dashboard_task = asyncio.create_task(_run_dashboard(stop_event), name="dashboard")
     setup_detector_task = asyncio.create_task(_run_setup_detector(stop_event), name="setup_detector")
     setup_tracker_task = asyncio.create_task(_run_setup_tracker(stop_event), name="setup_tracker")
+    exit_advisor_task = asyncio.create_task(_run_exit_advisor(stop_event), name="exit_advisor")
+    market_intelligence_task = asyncio.create_task(_run_market_intelligence(stop_event), name="market_intelligence")
+    market_forward_task = asyncio.create_task(_run_market_forward_analysis(stop_event), name="market_forward_analysis")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     done, pending = await asyncio.wait(
-        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, decision_log_task, dashboard_task, setup_detector_task, setup_tracker_task, stop_task},
+        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, decision_log_task, dashboard_task, setup_detector_task, setup_tracker_task, exit_advisor_task, market_intelligence_task, market_forward_task, stop_task},
         return_when=asyncio.FIRST_COMPLETED,
     )
 
