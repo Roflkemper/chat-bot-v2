@@ -174,27 +174,51 @@ def _compute_signals_batch(features_df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Session-specific structural context (Tier-1 expansion)
-    # Price above key session highs = bearish structural resistance
-    # Price below key session lows = bullish structural support test
+    # Price within 0.3% of session high = resistance (bearish); session low = support (bullish)
     for hi_col, lo_col in [
         ("dist_to_asia_high_pct",   "dist_to_asia_low_pct"),
         ("dist_to_london_high_pct", "dist_to_london_low_pct"),
         ("dist_to_ny_am_high_pct",  "dist_to_ny_am_low_pct"),
+        ("dist_to_ny_pm_high_pct",  "dist_to_ny_pm_low_pct"),
     ]:
         if hi_col in df.columns and lo_col in df.columns:
             d_hi = df[hi_col].values
             d_lo = df[lo_col].values
-            # Very close to session high (within 0.3%) = resistance, bearish
             bear_score += np.where((d_hi >= 0) & (d_hi < 0.3), 0.1, 0.0)
-            # Very close to session low (within 0.3%) = support, bullish
             bull_score += np.where((d_lo <= 0) & (d_lo > -0.3), 0.1, 0.0)
 
-    # MSB proxy: recent session high break = bullish structural shift
-    for brk_hi, brk_lo in [
-        ("asia_high_broken", "asia_low_broken"),
-        ("london_high_broken", "london_low_broken"),
+    # Kill zone midpoint: price at KZ mid = potential reversal zone (weak signal)
+    if "dist_to_kz_mid_pct" in df.columns:
+        kz_mid = df["dist_to_kz_mid_pct"].values
+        bear_score += np.where(np.abs(kz_mid) < 0.2, 0.05, 0.0)
+
+    # MSB decay: recent session break gives time-decayed structural boost.
+    # bars_since < 12 (< 1h on 5m bars) → full boost tapering to 0 at 12 bars.
+    # Replaces the static binary broken flag.
+    _decay_max_bars = 12
+    for since_hi, since_lo in [
+        ("bars_since_asia_high_break",   "bars_since_asia_low_break"),
+        ("bars_since_london_high_break", "bars_since_london_low_break"),
+        ("bars_since_ny_am_high_break",  "bars_since_ny_am_low_break"),
     ]:
-        if brk_hi in df.columns and brk_lo in df.columns:
+        if since_hi in df.columns and since_lo in df.columns:
+            s_hi = df[since_hi].values.astype(float)
+            s_lo = df[since_lo].values.astype(float)
+            decay_hi = np.where(s_hi < _decay_max_bars,
+                                0.12 * (1.0 - s_hi / _decay_max_bars), 0.0)
+            decay_lo = np.where(s_lo < _decay_max_bars,
+                                0.12 * (1.0 - s_lo / _decay_max_bars), 0.0)
+            bull_score += decay_hi   # broke session high recently → bullish
+            bear_score += decay_lo   # broke session low recently → bearish
+
+    # Fallback: if bars_since not available, use binary broken flag (backward compat)
+    for brk_hi, brk_lo, since_hi, since_lo in [
+        ("asia_high_broken",    "asia_low_broken",
+         "bars_since_asia_high_break",   "bars_since_asia_low_break"),
+        ("london_high_broken",  "london_low_broken",
+         "bars_since_london_high_break", "bars_since_london_low_break"),
+    ]:
+        if brk_hi in df.columns and since_hi not in df.columns:
             bull_score += df[brk_hi].values.astype(float) * 0.12
             bear_score += df[brk_lo].values.astype(float) * 0.12
 
