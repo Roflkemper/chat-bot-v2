@@ -1,0 +1,174 @@
+{
+  "1h": {
+    "test_brier": 0.1995,
+    "train_brier": 0.2034,
+    "baseline_brier": 0.25,
+    "improvement_vs_baseline": 0.0505,
+    "gate": "GREEN",
+    "target_met": true,
+    "sharpness": 0.0609,
+    "best_weights": [
+      0.5632,
+      0.3535,
+      0.0,
+      0.0043,
+      0.0789
+    ],
+    "base_weights": [
+      0.3,
+      0.35,
+      0.1,
+      0.1,
+      0.15
+    ],
+    "reliability": [
+      {
+        "pred_range": "0.0-0.2",
+        "mean_pred": 0.184,
+        "actual_up_frac": 0.375,
+        "n": 48,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.2-0.4",
+        "mean_pred": 0.351,
+        "actual_up_frac": 0.218,
+        "n": 2307,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.4-0.6",
+        "mean_pred": 0.442,
+        "actual_up_frac": 0.186,
+        "n": 678,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.6-0.8",
+        "mean_pred": 0.609,
+        "actual_up_frac": 0.179,
+        "n": 28,
+        "calibrated": false
+      }
+    ],
+    "train_size": 12244,
+    "test_size": 3061,
+    "outcome_distribution": {
+      "up_frac": 0.213,
+      "down_frac": 0.242,
+      "range_frac": 0.544
+    }
+  },
+  "4h": {
+    "test_brier": 0.2239,
+    "train_brier": 0.2146,
+    "baseline_brier": 0.25,
+    "improvement_vs_baseline": 0.0261,
+    "gate": "YELLOW",
+    "target_met": false,
+    "sharpness": 0.0478,
+    "best_weights": [
+      0.6382,
+      0.2785,
+      0.0,
+      0.0043,
+      0.0789
+    ],
+    "base_weights": [
+      0.35,
+      0.3,
+      0.1,
+      0.1,
+      0.15
+    ],
+    "reliability": [
+      {
+        "pred_range": "0.0-0.2",
+        "mean_pred": 0.196,
+        "actual_up_frac": 0.0,
+        "n": 13,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.2-0.4",
+        "mean_pred": 0.342,
+        "actual_up_frac": 0.326,
+        "n": 2734,
+        "calibrated": true
+      },
+      {
+        "pred_range": "0.4-0.6",
+        "mean_pred": 0.446,
+        "actual_up_frac": 0.338,
+        "n": 314,
+        "calibrated": false
+      }
+    ],
+    "train_size": 12244,
+    "test_size": 3061,
+    "outcome_distribution": {
+      "up_frac": 0.325,
+      "down_frac": 0.406,
+      "range_frac": 0.269
+    }
+  },
+  "1d": {
+    "test_brier": 0.298,
+    "train_brier": 0.2206,
+    "baseline_brier": 0.25,
+    "improvement_vs_baseline": -0.048,
+    "gate": "RED",
+    "target_met": false,
+    "sharpness": 0.0323,
+    "best_weights": [
+      0.7362,
+      0.1901,
+      0.0,
+      0.0,
+      0.0737
+    ],
+    "base_weights": [
+      0.45,
+      0.25,
+      0.08,
+      0.07,
+      0.15
+    ],
+    "reliability": [
+      {
+        "pred_range": "0.2-0.4",
+        "mean_pred": 0.325,
+        "actual_up_frac": 0.549,
+        "n": 2971,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.4-0.6",
+        "mean_pred": 0.431,
+        "actual_up_frac": 0.533,
+        "n": 90,
+        "calibrated": false
+      }
+    ],
+    "train_size": 12244,
+    "test_size": 3061,
+    "outcome_distribution": {
+      "up_frac": 0.548,
+      "down_frac": 0.402,
+      "range_frac": 0.05
+    }
+  },
+  "_summary": {
+    "regime": "MARKDOWN",
+    "n_total": 15305,
+    "n_train": 12244,
+    "n_test": 3061,
+    "train_period": "2025-05-05 01:30:00+00:00 to 2026-02-23 03:45:00+00:00",
+    "test_period": "2026-02-23 03:50:00+00:00 to 2026-04-13 00:25:00+00:00",
+    "best_brier": 0.1995,
+    "worst_brier": 0.298,
+    "overall_gate": "RED",
+    "target_brier": 0.22,
+    "hard_stop_brier": 0.28
+  }
+}

@@ -294,3 +294,41 @@ def test_markup_calibration_live():
     elif gate == "YELLOW":
         msg += f"  -> STOP -- worst={worst:.4f} between 0.22-0.28, operator decision required\n"
     sys.stdout.buffer.write(msg.encode("utf-8", errors="replace"))
+
+
+# ── MARKDOWN model tests ──────────────────────────────────────────────────────
+
+def test_markdown_module_importable():
+    """MARKDOWN module imports cleanly."""
+    from services.market_forward_analysis.regime_models import markdown as md
+    assert hasattr(md, "run_markdown_calibration")
+    assert hasattr(md, "load_best_weights")
+    assert hasattr(md, "_MARKDOWN_BASE_WEIGHTS")
+
+
+def test_markdown_base_weights_shape():
+    """MARKDOWN base weights match (1h, 4h, 1d) x 5 signals shape."""
+    from services.market_forward_analysis.regime_models.markdown import _MARKDOWN_BASE_WEIGHTS
+    assert set(_MARKDOWN_BASE_WEIGHTS.keys()) == {"1h", "4h", "1d"}
+    for hz, w in _MARKDOWN_BASE_WEIGHTS.items():
+        assert len(w) == 5, f"{hz}: expected 5 weights, got {len(w)}"
+        assert abs(sum(w) - 1.0) < 1e-6, f"{hz}: weights don't sum to 1.0"
+
+
+@pytest.mark.skipif(
+    not Path("data/forecast_features/regime_splits/regime_markdown.parquet").exists(),
+    reason="Live MARKDOWN features not built",
+)
+def test_markdown_calibration_live():
+    """Run full calibration on live MARKDOWN data and report gate."""
+    from services.market_forward_analysis.regime_models.markdown import run_markdown_calibration
+    result = run_markdown_calibration(n_trials=400)
+    summary = result["_summary"]
+    worst   = summary["worst_brier"]
+    gate    = summary["overall_gate"]
+    import sys
+    msg = f"\nMARKDOWN calibration gate: {gate}  (worst_brier={worst:.4f})\n"
+    sys.stdout.buffer.write(msg.encode("utf-8", errors="replace"))
+    # Soft check: at least one horizon must beat random baseline
+    best = summary["best_brier"]
+    assert best < 0.25, f"All horizons worse than random baseline: best={best:.4f}"
