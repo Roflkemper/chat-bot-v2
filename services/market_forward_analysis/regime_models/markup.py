@@ -89,14 +89,13 @@ def run_markup_calibration(
 
     logger.info("markup calibration: train=%d  test=%d", split, n - split)
 
-    # Batch signal computation
-    logger.info("markup calibration: computing signals (batch)...")
-    train_signals = _compute_signals_batch(train_feat)
-    test_signals  = _compute_signals_batch(test_feat)
-
     results: dict = {}
 
     for horizon in ["1h", "4h", "1d"]:
+        logger.info("markup calibration: computing signals for %s (horizon-gated)...", horizon)
+        train_signals = _compute_signals_batch(train_feat, horizon=horizon)
+        test_signals  = _compute_signals_batch(test_feat,  horizon=horizon)
+
         logger.info("markup calibration: optimizing weights for %s...", horizon)
         actual_col = f"actual_dir_{horizon}"
 

@@ -79,12 +79,17 @@ def _compute_outcomes(close: pd.Series) -> pd.DataFrame:
 
 # ── Fast vectorized signal computation ───────────────────────────────────────
 
-def _compute_signals_batch(features_df: pd.DataFrame) -> pd.DataFrame:
+def _compute_signals_batch(features_df: pd.DataFrame, horizon: str = "1h") -> pd.DataFrame:
     """Compute signals B/C/D/E for all rows at once (vectorized).
 
     Phase signal A requires MTFPhaseState (not pre-computed), so we use
     regime_int as proxy for historical phase bias:
       regime_int: 1=bullish, -1=bearish, 0=neutral
+
+    horizon controls Signal D MSB decay gating:
+      '1h'  — no broken-flag or decay signal (noise at short timeframe)
+      '4h'  — bars_since decay, window=12 bars (1h)
+      '1d'  — bars_since decay, window=48 bars (4h, older breaks still relevant)
     """
     df = features_df.copy()
     n = len(df)
@@ -194,7 +199,6 @@ def _compute_signals_batch(features_df: pd.DataFrame) -> pd.DataFrame:
 
     # MSB decay: recent session break gives time-decayed structural boost.
     # bars_since < 12 (< 1h on 5m bars) → full boost tapering to 0 at 12 bars.
-    # Replaces the static binary broken flag.
     _decay_max_bars = 12
     for since_hi, since_lo in [
         ("bars_since_asia_high_break",   "bars_since_asia_low_break"),
@@ -208,8 +212,8 @@ def _compute_signals_batch(features_df: pd.DataFrame) -> pd.DataFrame:
                                 0.12 * (1.0 - s_hi / _decay_max_bars), 0.0)
             decay_lo = np.where(s_lo < _decay_max_bars,
                                 0.12 * (1.0 - s_lo / _decay_max_bars), 0.0)
-            bull_score += decay_hi   # broke session high recently → bullish
-            bear_score += decay_lo   # broke session low recently → bearish
+            bull_score += decay_hi
+            bear_score += decay_lo
 
     # Fallback: if bars_since not available, use binary broken flag (backward compat)
     for brk_hi, brk_lo, since_hi, since_lo in [
@@ -344,17 +348,15 @@ def run_calibration(
 
     logger.info("calibration: train=%d test=%d", split, n - split)
 
-    # Compute signals for both sets
-    logger.info("calibration: computing signals (batch)...")
-    train_signals = _compute_signals_batch(train_feat)
-    test_signals  = _compute_signals_batch(test_feat)
-
     results = {}
 
     from .projection_v2 import _HORIZON_WEIGHTS
 
     for horizon in ["1h", "4h", "1d"]:
-        logger.info("calibration: optimizing weights for %s horizon...", horizon)
+        logger.info("calibration: computing signals for %s (horizon-gated)...", horizon)
+        train_signals = _compute_signals_batch(train_feat, horizon=horizon)
+        test_signals  = _compute_signals_batch(test_feat,  horizon=horizon)
+
         actual_col = f"actual_dir_{horizon}"
         if actual_col not in train_out.columns:
             continue
@@ -469,7 +471,6 @@ def run_per_phase_calibration(
     best_weights: dict[str, list[float]],
 ) -> dict:
     """Compute Brier per phase (uses regime_int as phase proxy)."""
-    signals = _compute_signals_batch(features)
     phase_map = {1: "markup", -1: "markdown", 0: "range/transition"}
 
     results = {}
@@ -477,12 +478,13 @@ def run_per_phase_calibration(
         mask = features["regime_int"] == phase_val
         if mask.sum() < 20:
             continue
-        phase_signals = signals[mask]
-        phase_out = outcomes[mask]
+        phase_feat = features[mask]
+        phase_out  = outcomes[mask]
         for horizon in ["1h", "4h", "1d"]:
             actual_col = f"actual_dir_{horizon}"
             if actual_col not in phase_out.columns:
                 continue
+            phase_signals = _compute_signals_batch(phase_feat, horizon=horizon)
             w = best_weights.get(horizon, [0.2] * 5)
             prob_up = _signals_to_prob_up(phase_signals, w)
             actual = phase_out[actual_col].values
