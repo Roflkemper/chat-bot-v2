@@ -70,7 +70,8 @@
 
 | ID | Дата | Результат |
 |----|------|-----------|
-| TZ-FINAL-HANDOFF-2026-05-03 | 2026-05-03 | ✅ DONE — WEEK plan expanded, MAIN prompt ready, handoff complete |
+| TZ-SESSION-CLOSE-PROPER-HANDOFF-2026-05-03 | 2026-05-03 | ✅ DONE — MAIN prompt rewritten (physical constraints), setup guide, Day 1 pre-generated |
+| TZ-FINAL-HANDOFF-2026-05-03 | 2026-05-03 | ✅ SUPERSEDED by TZ-SESSION-CLOSE-PROPER-HANDOFF |
 | TZ-MAIN-COORDINATOR-INFRASTRUCTURE | 2026-05-03 | ✅ DONE — 12 deliverables, 29 tests |
 | TZ-MARKET-FORECAST-QUALITY-UPGRADE (ETAP 1-3) | 2026-05-03 | ✅ COMPLETED PARTIAL — CP3 reached, ceiling documented; ETAPs 4-7 superseded by WEEK plan (Variant C) |
 | TZ-FIX-EXISTING-TELEGRAM-ALERTS | 2026-05-03 | ✅ DONE — stale filter, enriched format, 20 tests |

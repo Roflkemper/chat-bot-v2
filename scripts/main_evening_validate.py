@@ -381,7 +381,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     report = validate_sprint(sprint_path, strict=args.strict, run_verify=not args.no_verify)
-    print(_format_report(report, strict=args.strict))
+    output = _format_report(report, strict=args.strict)
+    sys.stdout.buffer.write(output.encode("utf-8", errors="replace"))
+    sys.stdout.buffer.write(b"\n")
     return 0 if report.all_passed else 1
 
 
