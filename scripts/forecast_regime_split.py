@@ -103,8 +103,8 @@ def split_features(dry_run: bool = False) -> dict:
 
     print(f"Loading features: {FEATURES_PATH}")
     features = pd.read_parquet(FEATURES_PATH)
-    print(f"Features: {features.shape[0]:,} rows × {features.shape[1]} cols")
-    print(f"Date range: {features.index.min()} → {features.index.max()}")
+    print(f"Features: {features.shape[0]:,} rows x {features.shape[1]} cols")
+    print(f"Date range: {features.index.min()} to {features.index.max()}")
 
     # Build regime labels from phase classifier
     labels = _build_regime_labels()

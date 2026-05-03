@@ -214,7 +214,8 @@ def _build_microstructure_features_5m(whatif_1m: pd.DataFrame) -> pd.DataFrame:
 
     # Regime encoding
     if "regime_24h" in out.columns:
-        regime_map = {"bullish": 1, "bearish": -1, "neutral": 0, "range": 0}
+        regime_map = {"bullish": 1, "bearish": -1, "neutral": 0, "range": 0,
+                      "uptrend": 1, "downtrend": -1, "sideways": 0}
         out["regime_int"] = out["regime_24h"].map(regime_map).fillna(0).astype(np.int8)
         out = out.drop(columns=["regime_24h"])
 
