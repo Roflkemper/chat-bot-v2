@@ -123,3 +123,32 @@ Operator would watch Telegram alerts and react to each signal individually.
 **Do NOT:**
 - Use >0.5% threshold for 1h bars without checking class balance first
 - Mistake low Brier at 1% for "good calibration"
+
+---
+
+## DP-006 — Trend-following features in unified forecast model
+
+**Status:** REJECTED 2026-05-03 (Variant B from CP3 gate)
+**Was proposed as:** Option B in CP3 GO/NO-GO (add EMA crossovers, momentum to fix signal inversion)
+**Replacement:** Variant C hybrid — regime-conditional models (separate model per regime)
+
+**What it was:**
+Adding trend-following features (EMA crossovers, momentum signals) to the *unified* forecast model
+to counter systematic bearish bias of contrarian signals in bull market conditions.
+
+**Why rejected:**
+- Strong overfit risk: training on 1y bull data (2025-2026) makes trend features bullish
+- Trend features would fail in MARKDOWN, RANGE, DISTRIBUTION regimes
+- Fixes symptom (wrong direction bias) not root cause (one model for all regimes is wrong)
+- Operator decision 2026-05-03: "полноценная система что бы понимало и просчитывало все режимы рынка"
+
+**What replaced it:**
+- Regime-conditional models: separate calibrated model per regime (MARKUP, MARKDOWN, RANGE, DISTRIBUTION)
+- Each regime's model trained on episodes of *that* regime only
+- Auto-switching engine selects model based on real-time phase classification
+- See WEEK_2026-05-04_to_2026-05-10.md ETAPs 2.1-2.3
+
+**Do NOT:**
+- Add trend-following features to the shared/unified forecast pipeline
+- Propose "add momentum" as a fix when calibration fails — first check regime distribution
+- Train one model on mixed-regime data and expect it to generalize

@@ -138,6 +138,35 @@
 
 ---
 
+## DRIFT-006 — Minimum viable scope when operator asked for full system
+
+**Date:** 2026-05-03
+**Type:** drift- (wrong direction — scoped too small for the actual goal)
+**Detected by:** Operator clarification after CP3 gate
+
+**Symptoms:**
+- Architect proposed "qualitative briefs only" and "accept calibration ceiling" as final answer
+- Options given: (A) accept ceiling, (B) add trend features, (C) other
+- Operator clarified: "полноценная система... что бы понимало и просчитывало все режимы рынка"
+- Architect had been solving the *minimum viable* version, not the actual goal
+
+**Root cause:**
+- CP3 gate framed as binary: Brier good enough vs not good enough
+- Missed that the fundamental architecture (one unified model) was wrong
+- Should have asked: "what does success look like end-state?" before building ETAP 1-3
+
+**Fix:**
+- Variant C: regime-conditional calibration — separate model per regime
+- Full week plan with 7 ETAPs: qualitative → regime models → auto-switch → OOS → self-monitor
+- DEPRECATED: trend-following in unified model (DP-006)
+
+**Prevention rule:**
+> Before any 5+ hour TZ: ask operator "what does end-state look like when this is truly done?"
+> If operator says "полноценная" / "sustainable" / "practical and useful" → that is a MAJOR PROJECT, not a TZ.
+> Scope explicitly before starting any ETAP sequence.
+
+---
+
 ## DRIFT-PATTERN SUMMARY
 
 | Pattern | Count | Typical trigger |
@@ -147,6 +176,8 @@
 | Context exhaustion mid-TZ | 1 | >6 deliverable TZs |
 | Calibration ceiling chasing | 1 | Missing explicit stop criterion |
 | Service confusion (RUNNING ≠ active) | 1 | Tracker status misread |
+| Minimum viable scope vs full system | 1 | CP3 gate framed too narrowly |
 
 **Most common:** Premature TZ without checking prerequisites.
 **Highest impact:** INERT-BOTS confusion (2+ days of false confidence).
+**New pattern:** Scope mismatch — ask "what does done look like?" before any major ETAP sequence.

@@ -288,7 +288,8 @@ def main(argv: list[str] | None = None) -> int:
     content = generate_sprint(week_path, target_date, dry_run=args.dry_run)
 
     if args.dry_run:
-        print(content)
+        sys.stdout.buffer.write(content.encode("utf-8", errors="replace"))
+        sys.stdout.buffer.write(b"\n")
         return 0
 
     SPRINTS_DIR.mkdir(parents=True, exist_ok=True)

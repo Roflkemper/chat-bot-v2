@@ -1,7 +1,27 @@
 # PENDING TZ — открытые задачи
 # Обновлять при открытии/закрытии TZ.
 # Формат: ID | Описание | Приоритет | Статус | Блокер
-# Последнее обновление: 2026-05-03
+# Последнее обновление: 2026-05-03 EOD
+
+---
+
+## THIS WEEK (2026-05-04 → 2026-05-10) — Forecast system full build
+
+| ID | Описание | День | Статус | Блокер |
+|----|----------|------|--------|--------|
+| TZ-FORECAST-QUALITATIVE-DEPLOY | Live Telegram briefs 4×day + watch-for triggers | Mon | OPEN | — |
+| TZ-FORECAST-REGIME-SPLIT | Data pipeline per-regime split (foundation) | Mon | OPEN | TZ-FORECAST-QUALITATIVE-DEPLOY |
+| TZ-REGIME-MODEL-MARKUP | MARKUP model: trend continuation, Brier ≤0.22 | Tue | OPEN | regime split done |
+| TZ-REGIME-MODEL-MARKDOWN | MARKDOWN model: bear features, Brier ≤0.22 | Wed | OPEN | regime split done |
+| TZ-REGIME-MODEL-RANGE | RANGE model: mean reversion | Thu | OPEN | regime split done |
+| TZ-REGIME-MODEL-DISTRIBUTION | DISTRIBUTION model: contrarian | Thu | OPEN | TZ-REGIME-MODEL-RANGE |
+| TZ-REGIME-AUTO-SWITCH | Auto-switching engine + hysteresis | Fri | OPEN | all regime models |
+| TZ-REGIME-OOS-VALIDATE | Out-of-sample validation on bear/range episodes | Sat | OPEN | auto-switch done |
+| TZ-REGIME-SELFMONITOR | Live Brier tracking + calibration deg alert | Sun | OPEN | OOS GO |
+| TZ-REGIME-DOCS-TESTS | ≥30 tests + documentation | Sun | OPEN | TZ-REGIME-SELFMONITOR |
+
+**Week success gate:** All 4 regime models Brier ≤0.22 + auto-switch + OOS passed
+**Failure rule:** Regime failing 0.28 hard stop → ship that regime as qualitative only. No timeline extension.
 
 ---
 
@@ -36,19 +56,6 @@
 
 ---
 
-## Forecast quality — awaiting operator decision
-
-| ID | Описание | Приоритет | Статус | Блокер |
-|----|----------|-----------|--------|--------|
-| TZ-MARKET-FORECAST-QUALITY-UPGRADE (ETAPs 4-7) | GA evidence layer + output enrichment | P1 | BLOCKED | Operator GO/NO-GO at CP3 (Brier 0.257, gate 0.22-0.28) |
-
-**CP3 decision options for operator:**
-- (A) Accept ceiling → qualitative briefs only, no numeric Brier
-- (B) Add trend-following features (momentum, EMA crossovers) to fix signal inversion
-- (C) Other approach
-
----
-
 ## Blocked on backtest results
 
 | ID | Описание | Статус |
@@ -63,8 +70,9 @@
 
 | ID | Дата | Результат |
 |----|------|-----------|
+| TZ-FINAL-HANDOFF-2026-05-03 | 2026-05-03 | ✅ DONE — WEEK plan expanded, MAIN prompt ready, handoff complete |
 | TZ-MAIN-COORDINATOR-INFRASTRUCTURE | 2026-05-03 | ✅ DONE — 12 deliverables, 29 tests |
-| TZ-MARKET-FORECAST-QUALITY-UPGRADE (ETAP 1-3) | 2026-05-03 | ✅ DONE — CP3 gate triggered |
+| TZ-MARKET-FORECAST-QUALITY-UPGRADE (ETAP 1-3) | 2026-05-03 | ✅ COMPLETED PARTIAL — CP3 reached, ceiling documented; ETAPs 4-7 superseded by WEEK plan (Variant C) |
 | TZ-FIX-EXISTING-TELEGRAM-ALERTS | 2026-05-03 | ✅ DONE — stale filter, enriched format, 20 tests |
 | TZ-MARKET-FORWARD-ANALYSIS | 2026-05-03 | ✅ DONE — 45 tests green |
 | TZ-CONTEXT-HANDOFF-SKILL | 2026-05-02 | ✅ DONE |
