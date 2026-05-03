@@ -1,0 +1,174 @@
+{
+  "1h": {
+    "test_brier": 0.2581,
+    "train_brier": 0.2463,
+    "baseline_brier": 0.25,
+    "improvement_vs_baseline": -0.0081,
+    "gate": "YELLOW",
+    "target_met": false,
+    "sharpness": 0.0581,
+    "best_weights": [
+      0.0,
+      0.0451,
+      0.4144,
+      0.1347,
+      0.4058
+    ],
+    "base_weights": [
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3
+    ],
+    "reliability": [
+      {
+        "pred_range": "0.2-0.4",
+        "mean_pred": 0.373,
+        "actual_up_frac": 0.196,
+        "n": 506,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.4-0.6",
+        "mean_pred": 0.507,
+        "actual_up_frac": 0.196,
+        "n": 13558,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.6-0.8",
+        "mean_pred": 0.631,
+        "actual_up_frac": 0.261,
+        "n": 967,
+        "calibrated": false
+      }
+    ],
+    "train_size": 60120,
+    "test_size": 15031,
+    "outcome_distribution": {
+      "up_frac": 0.2,
+      "down_frac": 0.193,
+      "range_frac": 0.607
+    }
+  },
+  "4h": {
+    "test_brier": 0.2559,
+    "train_brier": 0.2472,
+    "baseline_brier": 0.25,
+    "improvement_vs_baseline": -0.0059,
+    "gate": "YELLOW",
+    "target_met": false,
+    "sharpness": 0.0451,
+    "best_weights": [
+      0.042,
+      0.0439,
+      0.4447,
+      0.1932,
+      0.2763
+    ],
+    "base_weights": [
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3
+    ],
+    "reliability": [
+      {
+        "pred_range": "0.2-0.4",
+        "mean_pred": 0.385,
+        "actual_up_frac": 0.347,
+        "n": 95,
+        "calibrated": true
+      },
+      {
+        "pred_range": "0.4-0.6",
+        "mean_pred": 0.511,
+        "actual_up_frac": 0.332,
+        "n": 14350,
+        "calibrated": false
+      },
+      {
+        "pred_range": "0.6-0.8",
+        "mean_pred": 0.62,
+        "actual_up_frac": 0.401,
+        "n": 586,
+        "calibrated": false
+      }
+    ],
+    "train_size": 60120,
+    "test_size": 15031,
+    "outcome_distribution": {
+      "up_frac": 0.335,
+      "down_frac": 0.315,
+      "range_frac": 0.35
+    }
+  },
+  "1d": {
+    "test_brier": 0.2497,
+    "train_brier": 0.2505,
+    "baseline_brier": 0.25,
+    "improvement_vs_baseline": 0.0003,
+    "gate": "YELLOW",
+    "target_met": false,
+    "sharpness": 0.0382,
+    "best_weights": [
+      0.108,
+      0.0439,
+      0.4447,
+      0.1932,
+      0.2103
+    ],
+    "base_weights": [
+      0.15,
+      0.15,
+      0.2,
+      0.25,
+      0.25
+    ],
+    "reliability": [
+      {
+        "pred_range": "0.2-0.4",
+        "mean_pred": 0.39,
+        "actual_up_frac": 0.32,
+        "n": 25,
+        "calibrated": true
+      },
+      {
+        "pred_range": "0.4-0.6",
+        "mean_pred": 0.513,
+        "actual_up_frac": 0.47,
+        "n": 14681,
+        "calibrated": true
+      },
+      {
+        "pred_range": "0.6-0.8",
+        "mean_pred": 0.616,
+        "actual_up_frac": 0.622,
+        "n": 325,
+        "calibrated": true
+      }
+    ],
+    "train_size": 60120,
+    "test_size": 15031,
+    "outcome_distribution": {
+      "up_frac": 0.473,
+      "down_frac": 0.383,
+      "range_frac": 0.145
+    }
+  },
+  "_summary": {
+    "regime": "RANGE",
+    "n_total": 75151,
+    "n_train": 60120,
+    "n_test": 15031,
+    "train_period": "2025-05-01 00:05:00+00:00 to 2026-02-01 20:45:00+00:00",
+    "test_period": "2026-02-01 20:50:00+00:00 to 2026-04-30 00:00:00+00:00",
+    "best_brier": 0.2497,
+    "worst_brier": 0.2581,
+    "overall_gate": "YELLOW",
+    "target_brier": 0.22,
+    "hard_stop_brier": 0.28
+  }
+}

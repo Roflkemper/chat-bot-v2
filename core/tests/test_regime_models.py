@@ -332,3 +332,40 @@ def test_markdown_calibration_live():
     # Soft check: at least one horizon must beat random baseline
     best = summary["best_brier"]
     assert best < 0.25, f"All horizons worse than random baseline: best={best:.4f}"
+
+
+# ── RANGE model tests ────────────────────────────────────────────────────────
+
+def test_range_module_importable():
+    """RANGE module imports cleanly."""
+    from services.market_forward_analysis.regime_models import range as rng
+    assert hasattr(rng, "run_range_calibration")
+    assert hasattr(rng, "load_best_weights")
+    assert hasattr(rng, "_RANGE_BASE_WEIGHTS")
+
+
+def test_range_base_weights_shape():
+    """RANGE base weights match (1h, 4h, 1d) x 5 signals shape."""
+    from services.market_forward_analysis.regime_models.range import _RANGE_BASE_WEIGHTS
+    assert set(_RANGE_BASE_WEIGHTS.keys()) == {"1h", "4h", "1d"}
+    for hz, w in _RANGE_BASE_WEIGHTS.items():
+        assert len(w) == 5
+        assert abs(sum(w) - 1.0) < 1e-6
+
+
+@pytest.mark.skipif(
+    not Path("data/forecast_features/regime_splits/regime_range.parquet").exists(),
+    reason="Live RANGE features not built",
+)
+def test_range_calibration_live():
+    """Run full calibration on live RANGE data."""
+    from services.market_forward_analysis.regime_models.range import run_range_calibration
+    result = run_range_calibration(n_trials=400)
+    summary = result["_summary"]
+    worst   = summary["worst_brier"]
+    gate    = summary["overall_gate"]
+    import sys
+    msg = f"\nRANGE calibration gate: {gate}  (worst_brier={worst:.4f})\n"
+    sys.stdout.buffer.write(msg.encode("utf-8", errors="replace"))
+    best = summary["best_brier"]
+    assert best < 0.27, f"All horizons worse than random by margin: best={best:.4f}"
