@@ -167,6 +167,102 @@
 
 ---
 
+## DRIFT-007 — Estimates в человеко-часах vs wall-clock Claude Code
+
+**Date:** 2026-05-04
+**Type:** drift- (некорректное планирование, пересмотр)
+**Detected by:** оператор после 20-минутного закрытия 5-часового плана Day 1
+
+**Symptoms:**
+- Week plan estimates: 4–5h на TZ
+- Actual wall-clock: 2 сек – 3 мин на TZ
+- Расхождение ×10 – ×100
+
+**Root cause:**
+- Week plan был написан с unit "developer hours from scratch", не "Claude Code wall-clock с full context"
+- Coordinator (MAIN) этого не пересмотрел в morning brief
+
+**Fix:**
+- Switched to block-based protocol (не daily ETAP frame)
+- Removed morning brief / EOD report ceremony when blocks <30 мин
+- Continued protocol через CP snapshots + verdict
+
+**Prevention rule:**
+> Estimates writes в wall-clock Claude Code, не в developer-hours.
+> При первом значимом mismatch — pivot на block-based.
+
+---
+
+## DRIFT-008 — Inference about ceiling from numbers measured on inconsistent splits
+
+**Date:** 2026-05-04
+**Type:** drift+ (преждевременный вывод на грязных данных)
+**Detected by:** оператор-bot exchange при tracking sample size после regime_int fix
+
+**Symptoms:**
+- Coordinator неоднократно объявлял "потолок 0.253 реальный" на основе сравнений
+- Все pre-Tier-1-wired сравнения были на различных train/test splits (29,953 mixed → 14,085 clean MARKUP)
+- При первой пересборке split sample упал на 53% — данные не сравнимы
+
+**Root cause:**
+- Не verified split integrity перед каждым ceiling-claim
+- "Apples-to-apples" подтверждалось только по seed, не по dataset state
+
+**Fix:**
+- Введён STAGE 0 verification mandatory для каждого regime model block (MARKDOWN, RANGE — оба обнаружили stale splits, оба regenerated)
+- Все ceiling-claims после Tier-1 wired сравниваются только в рамках одного валидного split
+
+**Prevention rule:**
+> Перед любым ceiling-claim: verify (1) sample size matches expected from regime classifier output,
+> (2) regime_int distribution на 100% соответствует метке режима,
+> (3) outcome distribution sane для режима.
+> Ceiling claims на single split всегда tentative до CV.
+
+---
+
+## DRIFT-009 — Per-horizon failure rule интерпретация
+
+**Date:** 2026-05-04
+**Type:** positive deviation (расширение интерпретации правила)
+**Detected by:** coordinator при анализе MARKUP результатов (1d GREEN, 1h YELLOW)
+
+**Symptoms:**
+- Failure rule был "ANY regime failing Brier 0.28 hard stop → ship qualitative only"
+- Buchstabe rule = per regime
+- Реальность: matrix regime × horizon, разные ячейки имеют разные predictability
+
+**Resolution:**
+- Operator approved расширение интерпретации
+- Per-horizon delivery matrix вместо all-or-nothing per regime
+- 7/9 numeric ячеек вместо нулевого numeric coverage если бы держались buchstabe
+
+**Prevention rule:**
+> Failure rules написаны на одном уровне абстракции.
+> При появлении более детальной структуры (per-horizon, per-pair, per-session) — explicit operator approval для расширения интерпретации, фиксация в DRIFT_HISTORY.
+
+---
+
+## DRIFT-010 — Single-window Brier claims must be CV-validated
+
+**Date:** 2026-05-04
+**Type:** drift+ (преждевременная уверенность в numeric claim)
+**Detected by:** MARKDOWN-1d diagnostic, потом OOS validation
+
+**Symptoms:**
+- MARKUP-1d Brier 0.226 объявлен GREEN на single window
+- CV выявил: mean 0.235, σ=0.114, max 0.294 — фактически window-sensitive
+- Single-window estimates систематически смещены к best-case в trending данных
+
+**Root cause:**
+- Time-series with regime structure имеют high inter-window variance
+- Single split testing не отражает production behavior
+
+**Prevention rule:**
+> Любой claim "GREEN/YELLOW gate passed" — tentative до CV (минимум 4 windows).
+> Production deployment решений не принимать на single-window evidence.
+
+---
+
 ## DRIFT-PATTERN SUMMARY
 
 | Pattern | Count | Typical trigger |
@@ -174,10 +270,14 @@
 | Premature TZ (no inventory check) | 3 | Optimistic scheduling |
 | Reactive builds (no operator validation) | 2 | Alert-first design |
 | Context exhaustion mid-TZ | 1 | >6 deliverable TZs |
-| Calibration ceiling chasing | 1 | Missing explicit stop criterion |
+| Calibration ceiling chasing | 2 | Missing explicit stop criterion / inconsistent splits |
 | Service confusion (RUNNING ≠ active) | 1 | Tracker status misread |
 | Minimum viable scope vs full system | 1 | CP3 gate framed too narrowly |
+| Estimate-unit mismatch (dev-h vs wall-clock) | 1 | Plan written without Claude Code calibration |
+| Single-window claim treated as CV-validated | 1 | High inter-window variance in time-series |
+| Per-regime rule applied to per-cell structure | 1 | Failure rule written at coarser abstraction |
 
 **Most common:** Premature TZ without checking prerequisites.
 **Highest impact:** INERT-BOTS confusion (2+ days of false confidence).
-**New pattern:** Scope mismatch — ask "what does done look like?" before any major ETAP sequence.
+**Recurring pattern:** Drawing inferences from data measured under shifting conditions (DRIFT-005 ceiling-chasing, DRIFT-008 inconsistent splits, DRIFT-010 single-window).
+**Process insight:** When a rule meets a more-detailed structure than it was written for, get explicit operator approval (DRIFT-009).
