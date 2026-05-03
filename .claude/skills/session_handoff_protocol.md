@@ -87,6 +87,20 @@ First step: <exact first action new Claude should take>
 docs/HANDOFF_<YYYY-MM-DD>_<part>.md
 ```
 
+## Integration with MAIN coordinator
+
+After generating the handoff, also:
+1. Update `docs/STATE/STATE_CURRENT.md` §2 and §6 (changelog)
+2. If session ends mid-TZ: mark it IN_PROGRESS in `docs/STATE/PENDING_TZ.md`
+3. Notify MAIN coordinator (paste handoff summary in MAIN chat)
+
+MAIN coordinator uses `docs/CONTEXT/` layer for cross-session context:
+- `docs/CONTEXT/STATE_CURRENT.md` — living state (updated EOD)
+- `docs/CONTEXT/DEPRECATED_PATHS.md` — what not to rebuild
+- `docs/CONTEXT/DRIFT_HISTORY.md` — known anti-patterns
+
+See skill `main_coordinator_protocol` for full MAIN protocol.
+
 ## Why this skill exists
 
 **INC-012** (2026-04-29): After context exhaustion, new chat session started with no knowledge of:
