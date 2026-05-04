@@ -15,7 +15,26 @@ EVENTS_PATH = Path("state/decision_log/events.jsonl")
 LIQ_CLUSTERS_PATH = Path("state/liq_clusters/active.json")
 COMPETITION_PATH = Path("state/competition_state.json")
 ENGINE_STATUS_PATH = Path("state/engine_status.json")
+REGIME_STATE_PATH = Path("data/regime/switcher_state.json")
+LATEST_FORECAST_PATH = Path("data/forecast_features/latest_forecast.json")
+VIRTUAL_TRADER_LOG_PATH = Path("data/virtual_trader/positions_log.jsonl")
 OUTPUT_PATH = Path("docs/STATE/dashboard_state.json")
+
+# CV-validated mean Brier per regime/horizon (from oos_validation_*.json).
+# Used to assign band (green/yellow/red) when no live forecast is present.
+_CV_BRIER: dict[str, dict[str, float]] = {
+    "MARKUP":   {"1h": 0.2733, "4h": 0.2590, "1d": 0.2346},
+    "MARKDOWN": {"1h": 0.2042, "4h": 0.2278, "1d": 0.2801},
+    "RANGE":    {"1h": 0.2467, "4h": 0.2478, "1d": 0.2502},
+}
+
+# Validated delivery matrix — mirrors regime_switcher._DELIVERY_MATRIX.
+_DELIVERY_MATRIX: dict[str, dict[str, str]] = {
+    "MARKUP":       {"1h": "qualitative", "4h": "numeric",     "1d": "gated"},
+    "MARKDOWN":     {"1h": "numeric",     "4h": "numeric",     "1d": "qualitative"},
+    "RANGE":        {"1h": "numeric",     "4h": "numeric",     "1d": "numeric"},
+    "DISTRIBUTION": {"1h": "qualitative", "4h": "qualitative", "1d": "qualitative"},
+}
 
 PHASE_1_TOTAL_DAYS = 14
 
@@ -214,6 +233,167 @@ def _build_competition(comp_cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _brier_band(brier: float | None) -> str:
+    """GREEN ≤0.22 / YELLOW 0.22–0.265 / RED >0.265 / 'qualitative' for None."""
+    if brier is None:
+        return "qualitative"
+    if brier <= 0.22:
+        return "green"
+    if brier <= 0.265:
+        return "yellow"
+    return "red"
+
+
+def _build_regime(regime_state: dict[str, Any]) -> dict[str, Any]:
+    """Render current regime block: label, confidence, stability, hysteresis."""
+    if not regime_state:
+        return {
+            "label": None,
+            "confidence": None,
+            "stability": None,
+            "stable_bars": None,
+            "switch_pending": False,
+            "candidate_regime": None,
+            "last_updated": None,
+            "note": "no live regime state — start app_runner with switcher persistence enabled",
+        }
+    return {
+        "label": regime_state.get("regime"),
+        "confidence": regime_state.get("regime_confidence"),
+        "stability": regime_state.get("regime_stability"),
+        "stable_bars": regime_state.get("bars_in_current_regime"),
+        "switch_pending": bool(regime_state.get("candidate_regime")),
+        "candidate_regime": regime_state.get("candidate_regime"),
+        "candidate_bars": regime_state.get("candidate_bars", 0),
+        "last_updated": regime_state.get("updated_at"),
+    }
+
+
+def _build_forecast(latest_forecast: dict[str, Any], regime: str | None) -> dict[str, Any]:
+    """Render 1h/4h/1d forecast with brier-band colors.
+
+    If a live forecast file exists, use it. Otherwise emit static delivery
+    matrix entries (mode + CV-mean brier) so the panel renders meaningfully
+    on first load.
+    """
+    out: dict[str, Any] = {"horizons": {}, "source": None}
+    horizons = ("1h", "4h", "1d")
+
+    if latest_forecast and "horizons" in latest_forecast:
+        out["source"] = "live"
+        out["bar_time"] = latest_forecast.get("bar_time")
+        out["regime_at_forecast"] = latest_forecast.get("regime")
+        for hz in horizons:
+            entry = latest_forecast["horizons"].get(hz, {})
+            mode = entry.get("mode", "qualitative")
+            value = entry.get("value")
+            brier = entry.get("brier")
+            out["horizons"][hz] = {
+                "mode": mode,
+                "value": value,
+                "brier": brier,
+                "band": _brier_band(brier) if mode == "numeric" else "qualitative",
+                "caveat": entry.get("caveat"),
+            }
+        return out
+
+    # Fallback: emit CV-validated delivery matrix entries for current regime
+    out["source"] = "cv_matrix"
+    if regime in _CV_BRIER:
+        for hz in horizons:
+            mode_spec = _DELIVERY_MATRIX[regime][hz]
+            cv_brier = _CV_BRIER[regime][hz]
+            if mode_spec == "qualitative":
+                out["horizons"][hz] = {
+                    "mode": "qualitative",
+                    "value": None,
+                    "brier": cv_brier,
+                    "band": "qualitative",
+                    "caveat": "delivered as qualitative per validated matrix",
+                }
+            elif mode_spec == "gated":
+                out["horizons"][hz] = {
+                    "mode": "gated",
+                    "value": None,
+                    "brier": cv_brier,
+                    "band": _brier_band(cv_brier),
+                    "caveat": "numeric only when regime_stability > 0.70",
+                }
+            else:
+                out["horizons"][hz] = {
+                    "mode": "numeric",
+                    "value": None,
+                    "brier": cv_brier,
+                    "band": _brier_band(cv_brier),
+                    "caveat": None,
+                }
+    else:
+        for hz in horizons:
+            out["horizons"][hz] = {
+                "mode": "qualitative",
+                "value": None,
+                "brier": None,
+                "band": "qualitative",
+                "caveat": "no regime",
+            }
+    return out
+
+
+def _build_virtual_trader(rows: list[dict[str, Any]], now: datetime) -> dict[str, Any]:
+    """Aggregate virtual_trader positions_log.jsonl over 7d window."""
+    cutoff = now - timedelta(days=7)
+    # latest record per position_id
+    latest: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        pid = r.get("position_id")
+        if pid:
+            latest[pid] = r
+
+    wins = losses = open_n = 0
+    rr_realized: list[float] = []
+    open_positions: list[dict[str, Any]] = []
+    for r in latest.values():
+        try:
+            entry_time = datetime.fromisoformat(str(r.get("entry_time", "")).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if entry_time < cutoff:
+            continue
+        status = r.get("status")
+        r_real = r.get("r_realized")
+        if status in ("open", "tp1_hit"):
+            open_n += 1
+            open_positions.append({
+                "position_id": r.get("position_id"),
+                "direction": r.get("direction"),
+                "entry_price": r.get("entry_price"),
+                "entry_time": r.get("entry_time"),
+                "sl": r.get("sl"),
+                "tp1": r.get("tp1"),
+                "tp2": r.get("tp2"),
+                "half_closed": r.get("half_closed", False),
+            })
+        elif r_real is not None:
+            if r_real > 0:
+                wins += 1
+            else:
+                losses += 1
+            rr_realized.append(float(r_real))
+
+    avg_rr = round(sum(rr_realized) / len(rr_realized), 2) if rr_realized else 0.0
+    decided = wins + losses
+    win_rate_pct = round(wins / decided * 100, 1) if decided > 0 else None
+    return {
+        "signals_7d": wins + losses + open_n,
+        "wins": wins,
+        "losses": losses,
+        "open": open_n,
+        "win_rate_pct": win_rate_pct,
+        "avg_rr": avg_rr,
+        "open_positions": open_positions[:5],
+    }
+
+
 def build_state(
     *,
     now: datetime | None = None,
@@ -225,6 +405,9 @@ def build_state(
     liq_path: Path = LIQ_CLUSTERS_PATH,
     competition_path: Path = COMPETITION_PATH,
     engine_path: Path = ENGINE_STATUS_PATH,
+    regime_state_path: Path = REGIME_STATE_PATH,
+    latest_forecast_path: Path = LATEST_FORECAST_PATH,
+    virtual_trader_log_path: Path = VIRTUAL_TRADER_LOG_PATH,
 ) -> dict[str, Any]:
     now = now or datetime.now(timezone.utc)
     snapshots = _read_csv_latest_by_bot(snapshots_path)
@@ -235,6 +418,9 @@ def build_state(
     liq_raw = _load_json(liq_path)
     competition_cfg = _load_json(competition_path)
     engine_cfg = _load_json(engine_path)
+    regime_state = _load_json(regime_state_path)
+    latest_forecast = _load_json(latest_forecast_path)
+    vt_rows = _read_jsonl(virtual_trader_log_path)
 
     # Current price: last signal → state_latest → None
     current_price: float | None = None
@@ -255,6 +441,7 @@ def build_state(
 
     liq_clusters: list[Any] = liq_raw.get("clusters", []) if isinstance(liq_raw, dict) else []
 
+    regime_block = _build_regime(regime_state)
     return {
         "last_updated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "current_price_btc": current_price,
@@ -266,6 +453,9 @@ def build_state(
         "recent_decisions": _build_recent_decisions(events),
         "active_liq_clusters": liq_clusters if isinstance(liq_clusters, list) else [],
         "alerts_24h": _build_alerts_24h(events, now),
+        "regime": regime_block,
+        "forecast": _build_forecast(latest_forecast, regime_block.get("label")),
+        "virtual_trader": _build_virtual_trader(vt_rows, now),
     }
 
 
@@ -281,6 +471,9 @@ def build_and_save_state(
     liq_path: Path = LIQ_CLUSTERS_PATH,
     competition_path: Path = COMPETITION_PATH,
     engine_path: Path = ENGINE_STATUS_PATH,
+    regime_state_path: Path = REGIME_STATE_PATH,
+    latest_forecast_path: Path = LATEST_FORECAST_PATH,
+    virtual_trader_log_path: Path = VIRTUAL_TRADER_LOG_PATH,
 ) -> dict[str, Any]:
     state = build_state(
         now=now,
@@ -292,6 +485,9 @@ def build_and_save_state(
         liq_path=liq_path,
         competition_path=competition_path,
         engine_path=engine_path,
+        regime_state_path=regime_state_path,
+        latest_forecast_path=latest_forecast_path,
+        virtual_trader_log_path=virtual_trader_log_path,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")

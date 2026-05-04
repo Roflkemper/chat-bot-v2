@@ -44,6 +44,144 @@ function renderHeader(S) {
   setText('btc-price', price);
 }
 
+// ── Regime / Forecast / Virtual trader (P4 wire-in 2026-05-05) ───────────────
+
+function renderRegime(R) {
+  if (!R || !R.label) {
+    set('regime-card', `<span class="muted">${R?.note || 'Нет данных о режиме.'}</span>`);
+    return;
+  }
+  const conf = R.confidence != null ? Number(R.confidence).toFixed(2) : '—';
+  const stab = R.stability  != null ? Number(R.stability).toFixed(2)  : '—';
+  const stableBars = R.stable_bars != null ? R.stable_bars : '—';
+  const switchInfo = R.switch_pending
+    ? `<span class="yellow">кандидат: ${R.candidate_regime} (${R.candidate_bars} баров)</span>`
+    : '<span class="green">смены не ожидается</span>';
+  const updated = R.last_updated ? ageStr(R.last_updated) : '—';
+  set('regime-card', `
+    <div class="grid3">
+      <div>
+        <div class="stat-label">Текущий режим</div>
+        <div class="stat-value">${R.label}</div>
+        <div class="muted" style="font-size:11px">обновлено ${updated}</div>
+      </div>
+      <div>
+        <div class="stat-label">Уверенность / Стабильность</div>
+        <div class="stat-value">${conf} / ${stab}</div>
+        <div class="muted" style="font-size:11px">стабильно ${stableBars} баров</div>
+      </div>
+      <div>
+        <div class="stat-label">Авто-переключение</div>
+        <div style="font-size:13px;margin-top:4px">${switchInfo}</div>
+      </div>
+    </div>
+  `);
+}
+
+function bandClass(band) {
+  if (band === 'green') return 'green';
+  if (band === 'yellow') return 'yellow';
+  if (band === 'red') return 'red';
+  return 'muted';
+}
+
+function renderForecast(F) {
+  if (!F || !F.horizons) {
+    set('forecast-card', '<span class="muted">Нет данных прогноза.</span>');
+    return;
+  }
+  const sourceLabel = F.source === 'live'
+    ? 'live прогноз'
+    : (F.source === 'cv_matrix' ? 'CV-валидированная матрица (default)' : F.source || '—');
+  const barTime = F.bar_time ? ageStr(F.bar_time) : '';
+  const rows = ['1h', '4h', '1d'].map(hz => {
+    const e = F.horizons[hz] || {};
+    const cls = bandClass(e.band);
+    const brierStr = e.brier != null ? Number(e.brier).toFixed(4) : '—';
+    let valueStr;
+    if (e.mode === 'numeric' && typeof e.value === 'number') {
+      const probUp = e.value;
+      const arrow = probUp >= 0.55 ? '▲' : (probUp <= 0.45 ? '▼' : '•');
+      const dir = probUp >= 0.55 ? 'вверх' : (probUp <= 0.45 ? 'вниз' : 'нейтрально');
+      const pct = (probUp >= 0.5 ? probUp : 1 - probUp) * 100;
+      valueStr = `${arrow} ${pct.toFixed(0)}% ${dir} (prob_up=${probUp.toFixed(2)})`;
+    } else if (e.mode === 'gated') {
+      valueStr = `<span class="yellow">gated</span> — нумер. при regime_stability > 0.70`;
+    } else {
+      valueStr = `<span class="muted">качественный</span> ${e.value ? '— ' + e.value : ''}`;
+    }
+    const caveat = e.caveat ? `<div class="muted" style="font-size:11px;margin-top:2px">${e.caveat}</div>` : '';
+    return `
+      <tr>
+        <td><strong>${hz}</strong></td>
+        <td><span class="${cls}">●</span> ${e.mode}</td>
+        <td>${valueStr}</td>
+        <td class="${cls}">${brierStr}</td>
+      </tr>
+      ${caveat ? `<tr><td colspan="4" style="padding-top:0">${caveat}</td></tr>` : ''}
+    `;
+  }).join('');
+  set('forecast-card', `
+    <table>
+      <thead>
+        <tr><th>Гориз.</th><th>Режим вывода</th><th>Значение</th><th>Brier (CV)</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="muted" style="font-size:11px;margin-top:8px">
+      Источник: ${sourceLabel}${barTime ? ` • bar ${barTime}` : ''}
+      ${F.regime_at_forecast ? ` • regime ${F.regime_at_forecast}` : ''}
+    </div>
+  `);
+}
+
+function renderVirtualTrader(V) {
+  if (!V) {
+    set('virtual-trader-card', '<span class="muted">Нет данных.</span>');
+    return;
+  }
+  const decided = V.wins + V.losses;
+  const wrLabel = V.win_rate_pct != null ? `${V.win_rate_pct}%` : '—';
+  const wrCls = V.win_rate_pct != null && V.win_rate_pct >= 50 ? 'green' : (V.win_rate_pct != null ? 'red' : 'muted');
+  const rrCls = V.avg_rr > 0 ? 'green' : (V.avg_rr < 0 ? 'red' : 'muted');
+  const openRows = (V.open_positions || []).map(p => {
+    const dir = p.direction === 'short' ? 'Шорт' : 'Лонг';
+    const dirCls = p.direction === 'short' ? 'red' : 'green';
+    const half = p.half_closed ? ' <span class="yellow">[TP1]</span>' : '';
+    return `
+      <tr>
+        <td><span class="${dirCls}">${dir}</span>${half}</td>
+        <td>${fmt(p.entry_price, 0)}</td>
+        <td>${ageStr(p.entry_time)}</td>
+        <td>SL ${fmt(p.sl, 0)} / TP1 ${fmt(p.tp1, 0)} / TP2 ${fmt(p.tp2, 0)}</td>
+      </tr>
+    `;
+  }).join('');
+  const openTable = openRows
+    ? `<table style="margin-top:8px"><thead><tr><th>Направ.</th><th>Вход</th><th>Открыто</th><th>SL/TP1/TP2</th></tr></thead><tbody>${openRows}</tbody></table>`
+    : '<div class="muted" style="margin-top:6px;font-size:11px">Открытых виртуальных позиций нет.</div>';
+  set('virtual-trader-card', `
+    <div class="grid3">
+      <div>
+        <div class="stat-label">Сигналов / Win / Loss / Open</div>
+        <div class="stat-value">${V.signals_7d} / ${V.wins} / ${V.losses} / ${V.open}</div>
+      </div>
+      <div>
+        <div class="stat-label">Win-rate (по решённым ${decided})</div>
+        <div class="stat-value ${wrCls}">${wrLabel}</div>
+      </div>
+      <div>
+        <div class="stat-label">Средний R:R</div>
+        <div class="stat-value ${rrCls}">${V.avg_rr != null ? V.avg_rr.toFixed(2) : '—'}</div>
+      </div>
+    </div>
+    ${openTable}
+    <div class="muted" style="font-size:11px;margin-top:8px">
+      Тренд для отладки модели, не торговый совет.
+    </div>
+  `);
+}
+
 function renderPositions(pos) {
   if (!pos) return;
   const shorts = pos.shorts || {};
@@ -224,6 +362,9 @@ function renderAlerts(alerts) {
 
 function renderAll(S) {
   renderHeader(S);
+  renderRegime(S.regime);
+  renderForecast(S.forecast);
+  renderVirtualTrader(S.virtual_trader);
   renderPositions(S.positions);
   renderCompetition(S.competition);
   renderPhase1(S.phase_1_paper_journal);

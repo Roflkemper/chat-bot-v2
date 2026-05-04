@@ -1,0 +1,11 @@
+{
+  "regime": "RANGE",
+  "regime_confidence": 0.85,
+  "regime_stability": 0.8,
+  "bars_in_current_regime": 1,
+  "candidate_regime": null,
+  "candidate_bars": 0,
+  "bar_time": "2026-05-01T00:00:00+00:00",
+  "updated_at": "2026-05-04T11:50:23Z",
+  "source": "scripts/dashboard_bootstrap_state.py"
+}
