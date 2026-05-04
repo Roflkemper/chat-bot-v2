@@ -2,26 +2,42 @@
 
 Ширина шкал — 10 или 15 символов для хорошего отображения на мобильных.
 Используются блочные символы U+2580-U+259F которые надёжно рендерятся в Telegram.
+
+Mobile-safety guarantees (TZ-METRICS-RENDER-FIX 2026-05-05):
+- Maximum line width clamped to MAX_LINE_WIDTH (28 chars) so no helper here
+  can produce a line that wraps awkwardly on mobile Telegram.
+- separator() never emits >MAX_LINE_WIDTH characters even if caller asks for more.
+- bias_scale() and progress_bar() widths likewise clamped.
+
+Diagnostic note: in the operator's reported "broken ASCII" pattern after
+"ADX 1ч: 34, Биас: +43" (2026-05-05 morning brief), the long underscore-like
+lines are most likely produced by some renderer NOT in this module —
+visuals.py currently has no callers in the codebase. The defensive width
+clamp here ensures that whenever a future metrics renderer wires these
+helpers in, mobile-safety is preserved by construction.
 """
+
+MAX_LINE_WIDTH = 28
 
 
 def bias_scale(score: int, width: int = 10) -> str:
     """Шкала bias от −100 до +100 с маркером позиции.
-    
+
     score ∈ [-100, +100]
-    width — общая ширина шкалы в символах (рекомендуется 10)
-    
+    width — общая ширина шкалы в символах (рекомендуется 10, max MAX_LINE_WIDTH)
+
     Примеры:
       +24  →  ━━━━━▓━━━━  (справа от центра)
       −35  →  ━━━▓━━━━━━  (слева от центра)
         0  →  ━━━━━●━━━━  (точно по центру)
     """
+    width = max(3, min(MAX_LINE_WIDTH, int(width)))
     score = max(-100, min(100, score))
     center = width // 2
     # Позиция маркера от 0 до width
     pos = center + round(score / 100 * center)
     pos = max(0, min(width - 1, pos))
-    
+
     marker = "●" if abs(score) < 5 else "▓"
     chars = ["━"] * width
     chars[pos] = marker
@@ -46,6 +62,7 @@ def progress_bar(value: float, vmax: float = 100, width: int = 15,
       82%  →  ████████████▓░░  ⚠
       95%  →  ██████████████░  🔴
     """
+    width = max(3, min(MAX_LINE_WIDTH, int(width)))
     value = max(0, min(vmax, value))
     filled = round(value / vmax * width)
     bar = "█" * filled + "░" * (width - filled)
@@ -90,5 +107,25 @@ def regime_header(regime_en: str, age_bars: int, tick_minutes: int = 15) -> str:
 
 
 def separator(width: int = 28) -> str:
-    """Разделитель для сообщений."""
+    """Разделитель для сообщений. Width clamped to MAX_LINE_WIDTH."""
+    width = max(1, min(MAX_LINE_WIDTH, int(width)))
     return "━" * width
+
+
+def metrics_block(adx_1h: float, bias_score: int, *, separator_width: int = 28) -> list[str]:
+    """Compact metrics block for Telegram. Returns list of lines, each ≤ MAX_LINE_WIDTH.
+
+    Replaces ad-hoc renderers that produced overly-long underscore-like lines
+    on mobile. Single canonical formatter.
+
+    Example output:
+        ADX 1ч: 34
+        Биас: +43  ━━━━━▓━━━━
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    """
+    bias_marker = "+" if bias_score >= 0 else ""
+    return [
+        f"ADX 1ч: {int(adx_1h)}",
+        f"Биас: {bias_marker}{int(bias_score)}  {bias_scale(int(bias_score), width=10)}",
+        separator(separator_width),
+    ]
