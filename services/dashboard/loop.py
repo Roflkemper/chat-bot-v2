@@ -8,7 +8,7 @@ from .state_builder import OUTPUT_PATH, build_and_save_state
 
 logger = logging.getLogger(__name__)
 
-INTERVAL_SECONDS = 300
+INTERVAL_SECONDS = 60  # bumped from 300 → 60 for live freshness (TZ-DASHBOARD-LIVE-FRESHNESS)
 
 
 async def dashboard_state_loop(

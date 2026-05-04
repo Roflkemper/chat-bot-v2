@@ -244,6 +244,71 @@ def _brier_band(brier: float | None) -> str:
     return "red"
 
 
+def _file_age_minutes(path: Path, now: datetime) -> float | None:
+    """Return age of file mtime in minutes, or None if file missing."""
+    if not path.exists():
+        return None
+    try:
+        mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    except OSError:
+        return None
+    return round((now - mtime).total_seconds() / 60.0, 1)
+
+
+def _build_freshness(
+    *,
+    now: datetime,
+    snapshots_path: Path,
+    latest_forecast_path: Path,
+    regime_state_path: Path,
+) -> dict[str, Any]:
+    """Per-source freshness ages + warning level.
+
+    Warning levels:
+      "ok"     — all sources < 10 min old
+      "yellow" — at least one source 10-120 min old (positions stale or forecast hours-old)
+      "red"    — at least one source > 120 min old (likely the live tracker is down)
+    """
+    ages = {
+        "snapshots_min": _file_age_minutes(snapshots_path, now),
+        "latest_forecast_min": _file_age_minutes(latest_forecast_path, now),
+        "regime_state_min": _file_age_minutes(regime_state_path, now),
+    }
+    # Warning derivation
+    level = "ok"
+    notes: list[str] = []
+    pos_age = ages["snapshots_min"]
+    fc_age = ages["latest_forecast_min"]
+    if pos_age is None:
+        level = "red"
+        notes.append("snapshots.csv missing — tracker not running")
+    elif pos_age > 120:
+        level = "red"
+        notes.append(f"snapshots stale ({pos_age:.0f} min) — tracker may be down")
+    elif pos_age > 10:
+        level = max(level, "yellow", key=["ok", "yellow", "red"].index)
+        notes.append(f"snapshots {pos_age:.0f} min old")
+
+    if fc_age is None:
+        notes.append("no live forecast — using CV-matrix fallback")
+    elif fc_age > 1440:  # >24h
+        level = "red"
+        notes.append(f"forecast {fc_age/60:.0f}h stale — bootstrap may need re-run")
+    elif fc_age > 120:  # >2h
+        level = max(level, "yellow", key=["ok", "yellow", "red"].index)
+        notes.append(f"forecast {fc_age:.0f} min old")
+
+    return {
+        "level": level,
+        "ages_min": ages,
+        "notes": notes,
+        "exchange_api_status": (
+            "absent — using GinArea snapshots.csv as live data source. "
+            "BitMEX/Binance direct API integration not present in current codebase."
+        ),
+    }
+
+
 def _build_regime(regime_state: dict[str, Any]) -> dict[str, Any]:
     """Render current regime block: label, confidence, stability, hysteresis."""
     if not regime_state:
@@ -456,6 +521,12 @@ def build_state(
         "regime": regime_block,
         "forecast": _build_forecast(latest_forecast, regime_block.get("label")),
         "virtual_trader": _build_virtual_trader(vt_rows, now),
+        "freshness": _build_freshness(
+            now=now,
+            snapshots_path=snapshots_path,
+            latest_forecast_path=latest_forecast_path,
+            regime_state_path=regime_state_path,
+        ),
     }
 
 

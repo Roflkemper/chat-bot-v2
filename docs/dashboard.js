@@ -44,6 +44,34 @@ function renderHeader(S) {
   setText('btc-price', price);
 }
 
+// ── Freshness banner (TZ-DASHBOARD-LIVE-FRESHNESS) ──────────────────────────
+
+function renderFreshness(F) {
+  if (!F) return;
+  const banner = el('freshness-banner');
+  if (!banner) return;
+  const lvl = F.level || 'ok';
+  if (lvl === 'ok' && (!F.notes || F.notes.length === 0)) {
+    banner.style.display = 'none';
+    return;
+  }
+  const colors = { ok: 'var(--green)', yellow: 'var(--yellow)', red: 'var(--red)' };
+  const icons = { ok: 'OK', yellow: '⚠', red: '🔴' };
+  const ages = F.ages_min || {};
+  const ageLines = [];
+  if (ages.snapshots_min != null) ageLines.push(`позиции ${ages.snapshots_min} мин`);
+  if (ages.latest_forecast_min != null) ageLines.push(`прогноз ${ages.latest_forecast_min} мин`);
+  if (ages.regime_state_min != null) ageLines.push(`регим ${ages.regime_state_min} мин`);
+  banner.innerHTML = `
+    <div style="background: ${colors[lvl]}; padding: 8px; border-radius: 4px; margin-bottom: 12px; font-size: 12px;">
+      <strong>${icons[lvl]} Свежесть данных:</strong> ${ageLines.join(' • ')}<br>
+      ${(F.notes || []).map(n => `• ${n}`).join('<br>')}
+      <div style="font-size: 10px; opacity: 0.7; margin-top: 4px">${F.exchange_api_status || ''}</div>
+    </div>
+  `;
+  banner.style.display = 'block';
+}
+
 // ── Regime / Forecast / Virtual trader (P4 wire-in 2026-05-05) ───────────────
 
 function renderRegime(R) {
@@ -362,6 +390,7 @@ function renderAlerts(alerts) {
 
 function renderAll(S) {
   renderHeader(S);
+  renderFreshness(S.freshness);
   renderRegime(S.regime);
   renderForecast(S.forecast);
   renderVirtualTrader(S.virtual_trader);

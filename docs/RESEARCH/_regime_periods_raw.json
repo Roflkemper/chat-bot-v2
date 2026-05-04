@@ -1,0 +1,147 @@
+{
+  "window_start": "2025-05-01 00:00:00+00:00",
+  "window_end": "2026-05-01 00:00:00+00:00",
+  "n_hours_total": 8761,
+  "time_spent_per_regime": {
+    "MARKUP": {
+      "hours": 1135,
+      "pct": 12.96
+    },
+    "MARKDOWN": {
+      "hours": 1309,
+      "pct": 14.94
+    },
+    "RANGE": {
+      "hours": 6317,
+      "pct": 72.1
+    }
+  },
+  "episodes": {
+    "MARKUP": {
+      "count": 147,
+      "mean_h": 7.7,
+      "median_h": 3,
+      "p25_h": 1,
+      "p75_h": 13,
+      "p90_h": 23,
+      "max_h": 38
+    },
+    "MARKDOWN": {
+      "count": 175,
+      "mean_h": 7.5,
+      "median_h": 3,
+      "p25_h": 1,
+      "p75_h": 10,
+      "p90_h": 23,
+      "max_h": 43
+    },
+    "RANGE": {
+      "count": 323,
+      "mean_h": 19.6,
+      "median_h": 8,
+      "p25_h": 2,
+      "p75_h": 22,
+      "p90_h": 57,
+      "max_h": 179
+    }
+  },
+  "transitions": {
+    "RANGE->MARKUP": 147,
+    "MARKUP->RANGE": 147,
+    "RANGE->MARKDOWN": 175,
+    "MARKDOWN->RANGE": 175
+  },
+  "transitions_by_hour_utc": {
+    "0": 28,
+    "1": 31,
+    "2": 26,
+    "3": 26,
+    "4": 23,
+    "5": 20,
+    "6": 16,
+    "7": 20,
+    "8": 21,
+    "9": 21,
+    "10": 18,
+    "11": 18,
+    "12": 23,
+    "13": 22,
+    "14": 31,
+    "15": 52,
+    "16": 37,
+    "17": 33,
+    "18": 32,
+    "19": 33,
+    "20": 26,
+    "21": 26,
+    "22": 27,
+    "23": 34
+  },
+  "per_month_pct": {
+    "2025-05": {
+      "MARKUP": 16.9,
+      "MARKDOWN": 6.9,
+      "RANGE": 76.2
+    },
+    "2025-06": {
+      "MARKUP": 9.6,
+      "MARKDOWN": 8.8,
+      "RANGE": 81.7
+    },
+    "2025-07": {
+      "MARKUP": 11.3,
+      "MARKDOWN": 4.6,
+      "RANGE": 84.1
+    },
+    "2025-08": {
+      "MARKUP": 7.7,
+      "MARKDOWN": 17.7,
+      "RANGE": 74.6
+    },
+    "2025-09": {
+      "MARKUP": 8.2,
+      "MARKDOWN": 6.2,
+      "RANGE": 85.6
+    },
+    "2025-10": {
+      "MARKUP": 15.1,
+      "MARKDOWN": 17.9,
+      "RANGE": 67.1
+    },
+    "2025-11": {
+      "MARKUP": 11.0,
+      "MARKDOWN": 24.9,
+      "RANGE": 64.2
+    },
+    "2025-12": {
+      "MARKUP": 12.2,
+      "MARKDOWN": 16.4,
+      "RANGE": 71.4
+    },
+    "2026-01": {
+      "MARKUP": 6.7,
+      "MARKDOWN": 15.2,
+      "RANGE": 78.1
+    },
+    "2026-02": {
+      "MARKUP": 16.7,
+      "MARKDOWN": 33.0,
+      "RANGE": 50.3
+    },
+    "2026-03": {
+      "MARKUP": 21.9,
+      "MARKDOWN": 21.4,
+      "RANGE": 56.7
+    },
+    "2026-04": {
+      "MARKUP": 18.5,
+      "MARKDOWN": 7.8,
+      "RANGE": 73.8
+    },
+    "2026-05": {
+      "MARKUP": 0.0,
+      "MARKDOWN": 0.0,
+      "RANGE": 100.0
+    }
+  }
+}
