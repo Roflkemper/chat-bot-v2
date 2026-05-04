@@ -1,15 +1,16 @@
 {
-  "calibration_done_at": "2026-04-30T10:36:00Z",
+  "calibration_done_at": "2026-05-04T08:36:00Z",
   "bugs_detected": 4,
   "bugs_fixed": 2,
   "open_issues": [
-    "TZ-ENGINE-FIX-RESOLUTION (blocked on 1s OHLCV)",
     "TZ-ENGINE-FIX-INSTOP-SEMANTICS-B (blocked on operator confirm)"
   ],
-  "fix_eta": "TZ-ENGINE-FIX-RESOLUTION blocked on 1s OHLCV upload",
-  "k_short": 9.637,
-  "k_long": 4.275,
-  "k_short_status": "STABLE (CV=3.0%, n=6)",
-  "k_long_status": "TD-DEPENDENT (CV=24.9%, structural)",
-  "last_updated": "2026-05-02T00:00:00Z"
+  "fix_eta": "TZ-ENGINE-FIX-RESOLUTION resolved via reconcile_direct_k on 1s OHLCV",
+  "k_short": 8.87,
+  "k_long": 4.13,
+  "k_short_status": "DIRECT-1S (median, n=6, CV=31.8%)",
+  "k_long_status": "DIRECT-1S (median, n=6, CV=43.1%, structurally unstable — DP-001 confirmed)",
+  "k_source": "scripts/reconcile_direct_k.py on 31.5M 1s bars (2025-05-01 → 2026-04-30)",
+  "k_report": "data/calibration/reconcile_direct_k_20260504T083655Z.json",
+  "last_updated": "2026-05-04T03:30:00Z"
 }

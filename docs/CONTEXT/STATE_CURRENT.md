@@ -1,5 +1,5 @@
 # STATE CURRENT — Grid Orchestrator
-# Последнее обновление: 2026-05-02 (конец дня)
+# Последнее обновление: 2026-05-04 EOD
 # НАЗНАЧЕНИЕ: Текущее состояние проекта. Обновляется в конце каждой сессии.
 # Формат: обновляй секции §1-§5, добавляй в §6 Changelog строку.
 
@@ -10,17 +10,40 @@
 | Фаза | Название | Статус | Прогресс |
 |---|---|---|---|
 | 0 | Infrastructure | 🔄 in_progress | Долги классифицированы, DEBT-04 split plan готов |
-| 0.5 | Engine validation | 🔄 in_progress | Combo-stop fixed, reconcile blocked на 1s OHLCV |
-| 1 | Paper Journal | 🔄 in_progress | Day 4/14, 6 advise signals |
-| 2 | Operator Augmentation | ⬜ planned | — |
+| 0.5 | Engine validation | ✅ UNBLOCKED | direct_k done on 31.5M 1s bars: K_SHORT=8.87, K_LONG=4.13 (DP-001 confirmed) |
+| 1 | Paper Journal | 🔄 in_progress | Day 4/14 + forecast pipeline OPERATIONAL |
+| 2 | Operator Augmentation | ⬜ planned | actionability layer next (sizing/direction-aware) |
 | 3 | Tactical Bot Management | ⬜ planned | — |
 | 4 | Full Auto | ⬜ planned | — |
 
-**Текущий фокус:** Phase 0.5 unblock (1s OHLCV) + Phase 1 продолжение (paper journal 14 дней)
+**Текущий фокус:** week 2 — actionability layer (sizing multiplier, direction-aware workflow, setup wiring к forecast switcher)
 
 ---
 
 ## §2 ПОСЛЕДНИЕ RESULTS (что нового относительно прошлой сессии)
+
+### Completed 2026-05-04 (full week 1 closed)
+
+| TZ | Результат |
+|---|---|
+| TZ-FORECAST-QUALITATIVE-DEPLOY | ✅ Russian briefs + 3 trigger types deployed |
+| TZ-FORECAST-REGIME-SPLIT | ✅ regime split foundation |
+| TZ-FIX-REGIME-INT-MAPPING | ✅ emergency: feature_pipeline.py:217 mapping fix |
+| TZ-DATA-INVENTORY / TZ-FEATURE-INVENTORY | ✅ discovery |
+| TZ-TIER1-FEATURE-EXPANSION + COMPLETE-WIRING | ✅ 44→72 cols, Signal D/E extended |
+| TZ-TIER2-MARKUP | ✅ +12 vol-profile + RSI-derivative features (84 cols) |
+| TZ-MARKDOWN-1D-DIAGNOSTIC | ✅ 1d Brier 0.298 → window-specific contamination, не systemic |
+| TZ-REGIME-MODEL-MARKUP | ✅ 1h qualitative, 4h numeric, 1d gated |
+| TZ-REGIME-MODEL-MARKDOWN | ✅ 1h GREEN 0.20, 4h YELLOW, 1d qualitative |
+| TZ-REGIME-MODEL-RANGE | ✅ all 3 horizons numeric, most stable (CV 0.003-0.039) |
+| TZ-REGIME-MODEL-DISTRIBUTION | ✅ closed как априори qualitative (576 rows insufficient) |
+| TZ-REGIME-OOS-VALIDATE | ✅ 7/9 numeric cells validated across 5 windows |
+| TZ-REGIME-AUTO-SWITCH | ✅ RegimeForecastSwitcher + hysteresis + transition gating |
+| TZ-REGIME-SELFMONITOR | ✅ live_monitor.py rolling Brier + alerts |
+| TZ-REGIME-DOCS-TESTS | ✅ 55/55 tests, README documented |
+| TZ-OPERATOR-NIGHT-DOWNLOAD-PREP | ✅ instructions for 1s OHLCV backfill |
+| TZ-DASHBOARD-DISCOVERY | ✅ inventory + sync mechanism recommendation |
+| TZ-ENGINE-FIX-RESOLUTION | ✅ resolved via reconcile_direct_k.py — K factors computed |
 
 ### Completed 2026-05-02
 
@@ -52,23 +75,46 @@
 
 | Метрика | Значение | Статус |
 |---|---|---|
-| K_SHORT | 9.637 | ✅ STABLE (CV 3.0%, n=6) |
-| K_LONG | 4.275 | ⚠️ TD-DEPENDENT (CV 24.9%, n=6) |
+| K_SHORT (direct 1s) | 8.87 median (mean 10.16) | ⚠️ DIRECT-1S (CV 31.8%, n=6, range [7.90, 17.32]) |
+| K_LONG (direct 1s) | 4.13 median (mean 4.84) | ❌ DIRECT-1S (CV 43.1%, structurally unstable — DP-001 confirmed) |
 | Coordinated grid best | $37,769/year | 🔬 1 year, needs multi-year |
 | Decisions (operator_journal) | 86 | ✅ clean data после dedup |
 | Setup detector WR (strength=9) | 43.1%, +$16,163 | 1y BTCUSDT |
 | LONG ground truth | −0.5 BTC/year | 6 GinArea backtests |
 | SHORT ground truth | +$31k..+$50k/year | 6 GinArea backtests |
+| **Forecast pipeline (validated CV matrix)** | | |
+| MARKUP | 1h qual / 4h yel 0.259 / 1d gated 0.235 | ✅ deployed |
+| MARKDOWN | 1h GREEN 0.204 / 4h yel 0.228 / 1d qual | ✅ deployed |
+| RANGE | 1h yel 0.247 / 4h yel 0.248 / 1d yel 0.250 | ✅ deployed (most stable) |
+| Test count (regime pipeline) | 55/55 | ✅ green |
+| 1s OHLCV coverage | 31.5M bars (2025-05-01 → 2026-04-30) | ✅ 100% GA window |
 
 ---
 
 ## §4 OPEN TZs & BLOCKERS
 
-### Высокий приоритет (Phase 0.5 unblock)
+### Week 2 priorities (see PENDING_TZ.md for full list)
+
+**Priority 1 — Actionability layer:**
+- TZ-SETUP-DETECTION-WIRE (connect setup_detector to forecast switcher)
+- TZ-SIZING-MULTIPLIER-ENGINE (0–2× multiplier with reasoning)
+- TZ-DIRECTION-AWARE-WORKFLOW (promote in MARKUP, normal flow elsewhere)
+
+**Priority 2 — Regime-aware bot management:**
+- TZ-BOT-STATE-INVENTORY (deployed vs manual)
+- TZ-K-TARGET-CONDITIONAL (K = f(target_pct, side) regression)
+- TZ-RESEARCH-DIRS-AUDIT (countertrend/defensive/exhaustion применимость)
+
+**Priority 3 — MARKUP-1h numeric:**
+- TZ-MARKUP-1H-IMPROVEMENT (regime-specific signal logic OR lightGBM — lightGBM требует operator approval)
+
+**Priority 4 — Dashboard wire-in:**
+- TZ-DASHBOARD-PHASE-1 (forecast/regime/virtual_trader → state_builder)
+
+### Остаточный engine blocker
 
 | ID | Задача | Блокер |
 |---|---|---|
-| TZ-ENGINE-FIX-RESOLUTION | Reconcile v3: 1s OHLCV resolution | **Оператор: загрузить 1s OHLCV** |
 | TZ-ENGINE-FIX-INSTOP-SEMANTICS-B | Проверить instop direction для LONG | Оператор: подтвердить Semant A или B |
 
 ### Phase 1 (paper journal продолжение)
@@ -97,8 +143,9 @@ TZ-057 (H10 dedup), TZ-065 (H10 live), TZ-066 (H10 calibration) — ждут ove
 
 | Действие | Файл/команда | Оценка |
 |---|---|---|
-| Загрузить 1s OHLCV (BTC+XRP) | `scripts/ohlcv_ingest.py --resolution 1s` | 15 мин |
-| Запустить H10 overnight backtest | `scripts/run_backtest_h10_overnight.bat` | 5 мин (overnight) |
+| Подтвердить Semant A или B для LONG instop | TZ-ENGINE-FIX-INSTOP-SEMANTICS-B | 5 мин |
+| Загрузить XRP 1s OHLCV (опционально) | `python scripts/ohlcv_ingest.py --symbol XRPUSDT --interval 1s --start-date 2025-05-01T00:00:00Z --target-end 2026-04-30T23:59:59Z --workers 4` | 3-6h overnight |
+| Запустить H10 overnight backtest | `scripts/run_backtest_h10_overnight.bat` | overnight |
 | Подтвердить деплой idempotent write в tracker | При следующем restart tracker | 2 мин |
 
 ---
@@ -106,6 +153,12 @@ TZ-057 (H10 dedup), TZ-065 (H10 live), TZ-066 (H10 calibration) — ждут ove
 ## §6 CHANGELOG (date → что изменилось)
 
 ```
+2026-05-04 | TZ-ENGINE-FIX-RESOLUTION ✅ via reconcile_direct_k.py: K_SHORT=8.87, K_LONG=4.13 (DP-001 confirmed)
+2026-05-04 | 1s OHLCV backfill complete: 31.5M bars covering full GA window (2025-05-01 → 2026-04-30)
+2026-05-04 | Forecast pipeline OPERATIONAL: 3 regime models, 7/9 numeric cells CV-validated, switcher + virtual trader + RU briefs
+2026-05-04 | regime_int mapping bug fixed (feature_pipeline.py:217), all regime splits regenerated with STAGE 0 verification
+2026-05-04 | Tier-1 + Tier-2 features: 44 → 84 cols (session levels, bars_since decay, vol profile, RSI derivatives)
+2026-05-04 | DRIFT-007..015 + META-PATTERN-001 logged
 2026-05-02 | TZ-HANDOFF-FIX: PART 5 (16 skills) + PART 6 (gaps) + 7-line onboarding в handoff generator
 2026-05-02 | TZ-COORDINATED-GRID-TRIM-DETAILS: 1039 trim events, playbook rule, trim_analyzer.py
 2026-05-02 | TZ-CONTEXT-HANDOFF-SKILL: docs/CONTEXT/ layer + tools/handoff.py CLI + Telegram /handoff

@@ -263,12 +263,109 @@
 
 ---
 
+## DRIFT-011 — Coordinator inherited single-track week plan
+
+**Date:** 2026-05-04
+**Type:** drift- (отсутствие project mapping at session start)
+
+**Symptoms:**
+- Started session with focus только на forecast pipeline, не сделал inventory всех направлений проекта (GinArea LONG fix, engine validation, research dirs)
+- Operator явно указал на это: "это первое что должен был сделать координатор"
+
+**Prevention rule:**
+> Каждая новая coordinator-сессия начинается с project map check (что в проекте, какие приоритеты), даже если есть готовый week plan. Inherit the plan, don't inherit the scope.
+
+---
+
+## DRIFT-012 — Forecast pipeline built без подключения к боту
+
+**Date:** 2026-05-04
+**Type:** drift- (analytics layer без integration)
+
+**Symptoms:**
+- Closed forecast pipeline за день, но он стоит idle — не плюгнут ни к GinArea, ни к ручной торговле, ни к operator workflow
+- 55 тестов green, но zero downstream consumers
+
+**Prevention rule:**
+> Перед building analytics layer спросить у оператора как analytics будет переводиться в action. Если ответ "разберёмся потом" — это research, не production.
+
+---
+
+## DRIFT-013 — Coordinator built tools без actionability layer
+
+**Date:** 2026-05-04
+**Type:** drift- (technical work без user pain alignment)
+
+**Symptoms:**
+- Forecast выдаёт probability, но не sizing multiplier
+- Operator pain "перебираю/недобираю" не закрыта построенной системой
+- Probability → action gap не закрыт ни кодом, ни планом
+
+**Prevention rule:**
+> Map operator pains to deliverables до начала building. Если deliverable не закрывает pain — это research, не production.
+
+---
+
+## DRIFT-014 — Operator workflow assumed not asked
+
+**Date:** 2026-05-04
+**Type:** drift- (predefined assumption)
+
+**Symptoms:**
+- Coordinator predefined "operator замечает setup, спрашивает систему" workflow в roadmap
+- Operator поправил: "это я замечаю setup? я думал система говорит вот сетап"
+- Inverted direction of information flow not validated before write
+
+**Prevention rule:**
+> Operator workflows нельзя додумывать. Когда дизайнишь интерфейс — спросить explicitly у оператора кто инициатор и кто получатель в каждом канале коммуникации.
+
+---
+
+## DRIFT-015 — Fictional CLI command transmitted to operator
+
+**Date:** 2026-05-04
+**Type:** drift- (transmission of unverified instruction)
+
+**Symptoms:**
+- Worker написал `python -m services.calibration.reconcile_v3 --mode direct_k` в TZ-OPERATOR-NIGHT-DOWNLOAD-PREP D5 как next step
+- Module не имел CLI — это library file без `if __name__ == "__main__":`
+- Coordinator передал команду оператору без verification
+- Operator запустил, exit code 0, no output — потеряли время на диагностику
+
+**Prevention rule:**
+> Любая operator-facing команда от worker должна быть verified. Запросить у worker'а demonstration что команда runs (хотя бы --help output). Особенно когда команда — "next step" а не "тест проверь работает ли".
+
+---
+
+## META-PATTERN-001 — Inference under shifting conditions
+
+**Date:** 2026-05-04 (consolidation of DRIFT-005, 008, 010)
+**Type:** meta-pattern (cross-incident)
+
+**Pattern:**
+Когда base data меняется (regime_int fix, split regeneration, sample size change) — все предшествующие inference на этих данных tentative и требуют re-verification. Coordinator склонен accumulating claims без revisiting basis.
+
+**Examples:**
+- DRIFT-005 — ceiling-chasing without explicit stop
+- DRIFT-008 — inconsistent splits (29k → 14k after regime_int fix invalidated all prior ceiling claims)
+- DRIFT-010 — single-window 0.226 GREEN claim refuted by CV (mean 0.235, σ 0.114)
+
+**Prevention rule:**
+> Перед любым ceiling/gate claim проверять три уровня одновременно:
+> 1. **Data integrity** — sample size, label distribution, outcome distribution sane
+> 2. **Cross-experiment consistency** — claim сделан на same dataset как предыдущие comparisons
+> 3. **Cross-window stability** — variance acceptable across multiple time-series splits
+> Failure любого слоя ставит ВСЕ claims под сомнение, не только напрямую затронутый.
+
+---
+
 ## DRIFT-PATTERN SUMMARY
 
 | Pattern | Count | Typical trigger |
 |---------|-------|----------------|
 | Premature TZ (no inventory check) | 3 | Optimistic scheduling |
 | Reactive builds (no operator validation) | 2 | Alert-first design |
+| Analytics layer без integration / actionability | 2 | Building tools without user pain mapping (D-012, D-013) |
 | Context exhaustion mid-TZ | 1 | >6 deliverable TZs |
 | Calibration ceiling chasing | 2 | Missing explicit stop criterion / inconsistent splits |
 | Service confusion (RUNNING ≠ active) | 1 | Tracker status misread |
@@ -276,8 +373,12 @@
 | Estimate-unit mismatch (dev-h vs wall-clock) | 1 | Plan written without Claude Code calibration |
 | Single-window claim treated as CV-validated | 1 | High inter-window variance in time-series |
 | Per-regime rule applied to per-cell structure | 1 | Failure rule written at coarser abstraction |
+| Coordinator inherited plan без project map | 1 | Single-track focus, no inventory at session start |
+| Workflow assumed not asked | 1 | Predefined operator interaction pattern |
+| Unverified CLI transmitted to operator | 1 | "next step" assumption without demonstration |
 
 **Most common:** Premature TZ without checking prerequisites.
 **Highest impact:** INERT-BOTS confusion (2+ days of false confidence).
-**Recurring pattern:** Drawing inferences from data measured under shifting conditions (DRIFT-005 ceiling-chasing, DRIFT-008 inconsistent splits, DRIFT-010 single-window).
-**Process insight:** When a rule meets a more-detailed structure than it was written for, get explicit operator approval (DRIFT-009).
+**Recurring pattern (META-PATTERN-001):** Drawing inferences from data measured under shifting conditions (DRIFT-005, 008, 010).
+**Process insight (DRIFT-009):** When a rule meets a more-detailed structure than it was written for, get explicit operator approval.
+**New session-opening rule (DRIFT-011):** Every coordinator session starts with project map check, even with inherited plan.
