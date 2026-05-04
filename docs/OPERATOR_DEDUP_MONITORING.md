@@ -1,65 +1,88 @@
-# Operator Monitoring — POSITION_CHANGE dedup wrapper (24h period)
+# Operator Monitoring — Telegram dedup wrappers (24h period)
 
-**Status:** PRODUCTION WIRE-UP (TZ-G, 2026-05-05)
-**Scope:** ONE event type (POSITION_CHANGE) wrapped with `services.telegram.dedup_layer.DedupLayer`. All other Telegram emitters unaffected.
+**Status:** PRODUCTION WIRE-UP (`POSITION_CHANGE` from TZ-G, `BOUNDARY_BREACH` from TZ-J)
+**Scope:** Two event types are wrapped with `services.telegram.dedup_layer.DedupLayer`: `POSITION_CHANGE` and `BOUNDARY_BREACH`. Other Telegram emitters remain on signature dedup only.
 
 ## What's running now
 
 Inside `DecisionLogAlertWorker` (the worker that emits Telegram messages from `state/decision_log/events.jsonl`):
 
 1. Existing signature-based dedup (`_is_duplicate_recent`) runs first — unchanged.
-2. NEW: For events of type `POSITION_CHANGE`, a `DedupLayer` second-stage check runs.
-3. Layer config (frozen for v1):
-   - `cooldown_sec = 300` — 5 minutes between emits per (event_type, bot_id) key
-   - `value_delta_min = 0.05` — net BTC position must change by ≥0.05 BTC since last emit to re-emit
-   - `cluster_enabled = False`
-4. Other event types (PNL_EVENT, BOUNDARY_BREACH, PNL_EXTREME, etc.) **bypass the new layer** and only go through the original signature check.
+2. For events of type `POSITION_CHANGE`, a `DedupLayer` second-stage check runs.
+3. For events of type `BOUNDARY_BREACH`, a separate `DedupLayer` second-stage check runs after signature dedup.
+4. Other event types (`PNL_EVENT`, `PNL_EXTREME`, etc.) bypass the new layer and only go through the original signature check.
 
-## Feature flag
+## Feature flags
 
 Environment variable: `DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE`
 - `1` (default) → layer ON
 - `0` → layer disabled, behavior reverts to pre-TZ-G state
 
-To disable without restarting: set the env var to `0` and restart the worker process. State accumulates in `data/telegram/dedup_state.json`.
+Environment variable: `DEDUP_LAYER_ENABLED_FOR_BOUNDARY_BREACH`
+- `1` (default) → layer ON
+- `0` → layer disabled, behavior reverts to signature-dedup-only path for `BOUNDARY_BREACH`
+
+To disable either wrapper: set the env var to `0` and restart the worker process. State accumulates in `data/telegram/dedup_state.json`.
+
+## Frozen configs
+
+### POSITION_CHANGE
+
+- `cooldown_sec = 300`
+- `value_delta_min = 0.05`
+- `cluster_enabled = False`
+
+### BOUNDARY_BREACH
+
+- `cooldown_sec = 600`
+- `value_delta_min = 0`
+- `cluster_enabled = False`
+- Per-bot isolation key: `str(bot_id)`
 
 ## Counters surfaced
 
 The worker tracks per-emitter:
 - `emitted` — sent to Telegram successfully
-- `suppressed_layer` — blocked by the new layer (cooldown or state-Δ)
-- `suppressed_signature` — blocked by the existing signature dedup (existed pre-TZ-G)
+- `suppressed_layer` — blocked by the new layer
+- `suppressed_signature` — blocked by the existing signature dedup
 
-Read via `worker.dedup_metrics()` — returns `{"POSITION_CHANGE": {emitted, suppressed_layer, suppressed_signature}, "layer_enabled_position_change": bool}`.
+Read via `worker.dedup_metrics()`.
 
-## 24h monitoring checklist (operator)
+## 24h monitoring checklist — POSITION_CHANGE
 
-Confirm during the next 24h:
+- [ ] `POSITION_CHANGE` alerts still arrive in Telegram. They should not stop completely; the layer's job is to thin the stream, not silence it.
+- [ ] No duplicates within 5 min for the same bot at same position size.
+- [ ] Position changes ≥0.05 BTC emit after cooldown expiry.
+- [ ] TEST_1 and TEST_2 remain independent with no cross-suppression.
 
-- [ ] **POSITION_CHANGE alerts still arrive in Telegram.** They should not stop completely; the layer's job is to thin the stream, not silence it. Expect 1-2 per active trading hour with significant position movement.
-- [ ] **No duplicates within 5 min** for the same bot at same position size. (Pre-TZ-G this could happen if the signature changed but state was effectively the same.)
-- [ ] **Position changes ≥0.05 BTC always emit** (after cooldown expires). 0.05 BTC = ~$4k notional at $80k BTC — material enough to inform.
-- [ ] **Per-bot independence** — TEST_1 and TEST_2 emit independently (no cross-suppression between bots).
+## 24h monitoring checklist — BOUNDARY_BREACH
+
+- [ ] `BOUNDARY_BREACH` alerts still arrive in Telegram during real LEVEL_BREAK cascades. Expect meaningful reduction, not disappearance.
+- [ ] Repeated breaches from the same bot inside 10 minutes are suppressed even if top/bottom boundary differs.
+- [ ] Different bots stay isolated: `TEST_1` boundary spam must not suppress `TEST_2`.
+- [ ] Observed suppression is directionally near the dry-run baseline: around half of cascade spam removed, not 90%+ silence.
+
+Note: `BOUNDARY_BREACH` tuned baseline is `49.1%` suppression on the 4-day sample, so operator should expect roughly half of raw cascade noise to disappear.
 
 ## Rollback procedure
 
-If POSITION_CHANGE alerts behave wrong (silent, duplicate, or operator wants the previous behavior back):
+If `POSITION_CHANGE` alerts behave wrong:
 
 1. Set `DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE=0` in env.
 2. Restart the worker process.
-3. Layer state file `data/telegram/dedup_state.json` can be safely deleted — it'll regenerate when the layer is re-enabled.
-4. No data loss — events.jsonl is the source of truth and is unaffected.
 
-## Why only POSITION_CHANGE in v1
+If `BOUNDARY_BREACH` alerts behave wrong:
 
-Per `docs/RESEARCH/DEDUP_DRY_RUN_2026-05-04.md`:
-- POSITION_CHANGE: 10.6% suppression on 4-day production sample = HEALTHY band
-- BOUNDARY_BREACH: 95.0% TOO AGGRESSIVE — needs cluster collapse first
-- PNL_EVENT: 88.6% HIGH — needs threshold tuning ($200 → $400-500)
-- PNL_EXTREME: 99.2% TOO AGGRESSIVE — operator decides scope first
+1. Set `DEDUP_LAYER_ENABLED_FOR_BOUNDARY_BREACH=0` in env.
+2. Restart the worker process.
 
-POSITION_CHANGE is the only event type whose default config the dry-run validated. The other types are deferred to future TZs after threshold-tuning iterations.
+Shared note:
 
-## Next-block prerequisite
+1. `data/telegram/dedup_state.json` can be safely deleted — it regenerates when the layer is re-enabled.
+2. No data loss — `events.jsonl` remains the source of truth and is unaffected.
 
-After 24h of operator-confirmed correct behavior, the next dedup wire-up TZ can move on to BOUNDARY_BREACH (with cluster collapse enabled per `services/telegram/dedup_layer.py:DedupConfig.cluster_enabled=True`). Until then, only POSITION_CHANGE is wrapped.
+## Current rollout boundary
+
+- Wired now: `POSITION_CHANGE`, `BOUNDARY_BREACH`
+- Not wired yet: `PNL_EVENT`, `PNL_EXTREME`
+- Cluster collapse remains disabled in production v1 for all wired emitters

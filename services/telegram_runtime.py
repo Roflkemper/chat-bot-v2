@@ -445,17 +445,16 @@ class SignalAlertWorker(threading.Thread):
 # Different from detector's 5-min JSONL dedup: here we compare payload content, not just type.
 _ALERT_DEDUP_WINDOW_MINUTES = 30
 
-# TZ-DEDUP-WIRE-PRODUCTION (POSITION_CHANGE only).
-# Production wire-up of services.telegram.dedup_layer for the one event type
-# whose dry-run suppression rate (10.6%) sits in the healthy 20-70% band.
-# Other event types (PNL_EVENT, BOUNDARY_BREACH, PNL_EXTREME) keep using only
-# the signature-based _is_duplicate_recent path until their thresholds are tuned.
+# TZ-DEDUP-WIRE-PRODUCTION.
+# Production wire-up of services.telegram.dedup_layer for selected emitters
+# with frozen tuned thresholds. Other event types keep using only the
+# signature-based _is_duplicate_recent path until separately wired.
 DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE = bool(
     int(os.environ.get("DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE", "1"))
 )
-
-# Per-emitter config for the layer wrapper; mirrors dedup_layer_dry_run defaults.
-_POSITION_CHANGE_DEDUP_CFG = None  # lazy-init in worker
+DEDUP_LAYER_ENABLED_FOR_BOUNDARY_BREACH = bool(
+    int(os.environ.get("DEDUP_LAYER_ENABLED_FOR_BOUNDARY_BREACH", "1"))
+)
 
 
 class DecisionLogAlertWorker(threading.Thread):
@@ -470,31 +469,38 @@ class DecisionLogAlertWorker(threading.Thread):
         self._seen_event_ids: set[str] = self._load_seen_ids()
         self._recent_pings: deque[dict] = deque(maxlen=200)
 
-        # TZ-DEDUP-WIRE-PRODUCTION: per-emitter dedup layer (POSITION_CHANGE only).
-        # Lazy-init so import failures (e.g. tests without services.telegram on path)
-        # don't break the worker startup.
-        # `dedup_state_path` allows tests to inject an isolated state file.
         self._position_change_layer = None
+        self._boundary_breach_layer = None
         self._dedup_counters = {
             "POSITION_CHANGE": {"emitted": 0, "suppressed_layer": 0, "suppressed_signature": 0},
+            "BOUNDARY_BREACH": {"emitted": 0, "suppressed_layer": 0, "suppressed_signature": 0},
         }
-        if DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE:
-            try:
-                from services.telegram.dedup_layer import DedupLayer, DedupConfig, _STATE_PATH
-                cfg = DedupConfig(
-                    cooldown_sec=300,         # 5 min between emits
-                    value_delta_min=0.05,     # BTC position delta ≥ 0.05 to re-emit
-                    cluster_enabled=False,
-                )
-                state_path = dedup_state_path if dedup_state_path is not None else _STATE_PATH
+        try:
+            from services.telegram.dedup_layer import DedupLayer, _STATE_PATH
+            from services.telegram.dedup_configs import (
+                BOUNDARY_BREACH_DEDUP_CONFIG,
+                POSITION_CHANGE_DEDUP_CONFIG,
+            )
+
+            state_path = dedup_state_path if dedup_state_path is not None else _STATE_PATH
+            if DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE:
+                cfg = POSITION_CHANGE_DEDUP_CONFIG
                 self._position_change_layer = DedupLayer(cfg, state_path=state_path)
                 logger.info(
                     "decision_log_alert_worker.dedup_layer_enabled type=POSITION_CHANGE "
                     "cooldown_sec=%d value_delta_min=%.2f state=%s",
                     cfg.cooldown_sec, cfg.value_delta_min, state_path,
                 )
-            except Exception:
-                logger.exception("decision_log_alert_worker.dedup_layer_init_failed")
+            if DEDUP_LAYER_ENABLED_FOR_BOUNDARY_BREACH:
+                cfg = BOUNDARY_BREACH_DEDUP_CONFIG
+                self._boundary_breach_layer = DedupLayer(cfg, state_path=state_path)
+                logger.info(
+                    "decision_log_alert_worker.dedup_layer_enabled type=BOUNDARY_BREACH "
+                    "cooldown_sec=%d value_delta_min=%.2f state=%s",
+                    cfg.cooldown_sec, cfg.value_delta_min, state_path,
+                )
+        except Exception:
+            logger.exception("decision_log_alert_worker.dedup_layer_init_failed")
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -526,7 +532,7 @@ class DecisionLogAlertWorker(threading.Thread):
 
     def _compute_signature(self, event) -> str:
         """Canonical payload signature used for Telegram dedup comparison."""
-        et = event.event_type  # EventType(str, Enum) — direct comparison works
+        et = event.event_type
         p: dict = event.payload or {}
         if et == "PNL_EVENT":
             bucket = round(float(p.get("delta_pnl_usd", 0)) / 100) * 100
@@ -545,16 +551,11 @@ class DecisionLogAlertWorker(threading.Thread):
         ).hexdigest()[:16]
 
     def _position_change_value(self, event) -> float:
-        """Extract the dedup-layer 'value' for a POSITION_CHANGE event.
-
-        Uses absolute net BTC position so cooldown + state-Δ work meaningfully.
-        Handles both dict-form and dataclass-form portfolio_context.
-        Falls back to 0.0 on missing fields.
-        """
+        """Extract the dedup-layer value for a POSITION_CHANGE event."""
         portfolio = getattr(event, "portfolio_context", None)
         if portfolio is None:
             return 0.0
-        # Support dict, dataclass (frozen+slots → no __dict__), and Mapping
+
         def _get(obj, key, default=0.0):
             if isinstance(obj, dict):
                 return obj.get(key, default)
@@ -562,60 +563,74 @@ class DecisionLogAlertWorker(threading.Thread):
 
         shorts = abs(float(_get(portfolio, "shorts_position_btc") or 0.0))
         longs_usd = float(_get(portfolio, "longs_position_usd") or 0.0)
-        # Convert long USD notional to BTC-equivalent at $80k floor (rough; OK for delta math)
         longs_btc = longs_usd / 80000.0
         return round(shorts + longs_btc, 4)
 
-    def _evaluate_position_change_layer(self, event):
-        """Run DedupLayer.evaluate() for a POSITION_CHANGE event.
+    def _boundary_breach_value(self, event) -> float:
+        """Extract the dedup-layer value for a BOUNDARY_BREACH event."""
+        market = getattr(event, "market_context", None)
+        if market is None:
+            return 0.0
+        if isinstance(market, dict):
+            return float(market.get("price_btc") or 0.0)
+        return float(getattr(market, "price_btc", 0.0) or 0.0)
 
-        Returns a DedupDecision; caller decides whether to emit.
-        """
+    @staticmethod
+    def _event_ts(event) -> float | None:
+        try:
+            return event.ts.timestamp() if hasattr(event.ts, "timestamp") else None
+        except Exception:
+            return None
+
+    def _evaluate_position_change_layer(self, event):
         layer = self._position_change_layer
         bot_id = getattr(event, "bot_id", None) or "global"
-        try:
-            ts = event.ts.timestamp() if hasattr(event.ts, "timestamp") else None
-        except Exception:
-            ts = None
         return layer.evaluate(
             emitter="POSITION_CHANGE",
             key=str(bot_id),
             value=self._position_change_value(event),
-            now_ts=ts,
+            now_ts=self._event_ts(event),
+        )
+
+    def _evaluate_boundary_breach_layer(self, event):
+        layer = self._boundary_breach_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        return layer.evaluate(
+            emitter="BOUNDARY_BREACH",
+            key=str(bot_id),
+            value=self._boundary_breach_value(event),
+            now_ts=self._event_ts(event),
         )
 
     def _record_position_change_emit(self, event) -> None:
-        """Mark this POSITION_CHANGE as emitted in the DedupLayer state."""
         layer = self._position_change_layer
         bot_id = getattr(event, "bot_id", None) or "global"
-        try:
-            ts = event.ts.timestamp() if hasattr(event.ts, "timestamp") else None
-        except Exception:
-            ts = None
         layer.record_emit(
             emitter="POSITION_CHANGE",
             key=str(bot_id),
             value=self._position_change_value(event),
-            now_ts=ts,
+            now_ts=self._event_ts(event),
+        )
+
+    def _record_boundary_breach_emit(self, event) -> None:
+        layer = self._boundary_breach_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        layer.record_emit(
+            emitter="BOUNDARY_BREACH",
+            key=str(bot_id),
+            value=self._boundary_breach_value(event),
+            now_ts=self._event_ts(event),
         )
 
     def dedup_metrics(self) -> dict:
-        """Expose per-emitter dedup metrics for monitoring (operator visibility).
-
-        Returns counts of emit / suppressed_layer / suppressed_signature
-        accumulated since worker start. Read by /dedup_metrics command and/or
-        dashboard.
-        """
         return {
             "POSITION_CHANGE": dict(self._dedup_counters["POSITION_CHANGE"]),
+            "BOUNDARY_BREACH": dict(self._dedup_counters["BOUNDARY_BREACH"]),
             "layer_enabled_position_change": self._position_change_layer is not None,
+            "layer_enabled_boundary_breach": self._boundary_breach_layer is not None,
         }
 
     def _is_duplicate_recent(self, event) -> bool:
-        """Return True if a ping with the same content was sent within _ALERT_DEDUP_WINDOW_MINUTES.
-
-        Fails open on error so real events are never silently dropped.
-        """
         try:
             sig = self._compute_signature(event)
             cutoff = datetime.now(timezone.utc) - timedelta(minutes=_ALERT_DEDUP_WINDOW_MINUTES)
@@ -631,7 +646,7 @@ class DecisionLogAlertWorker(threading.Thread):
             return False
         except Exception:
             logger.exception("decision_log_alert_worker.dedup_check_failed")
-            return False  # fail open
+            return False
 
     def run(self) -> None:
         logger.info("decision_log_alert_worker.start path=%s", self.events_path)
@@ -640,30 +655,31 @@ class DecisionLogAlertWorker(threading.Thread):
                 from services.decision_log import build_event_keyboard, format_event_message
 
                 for event in self._read_new_events():
+                    emitter = str(event.event_type)
                     if self._is_duplicate_recent(event):
                         logger.info(
                             "decision_log_alert_worker.dedup_skip event_type=%s bot_id=%s",
                             event.event_type, event.bot_id,
                         )
-                        if str(event.event_type) == "POSITION_CHANGE":
-                            self._dedup_counters["POSITION_CHANGE"]["suppressed_signature"] += 1
+                        if emitter in self._dedup_counters:
+                            self._dedup_counters[emitter]["suppressed_signature"] += 1
                         continue
 
-                    # TZ-DEDUP-WIRE-PRODUCTION: state-change + cooldown layer
-                    # for POSITION_CHANGE. Only this event type is wrapped in v1.
-                    if (
-                        self._position_change_layer is not None
-                        and str(event.event_type) == "POSITION_CHANGE"
-                    ):
+                    decision = None
+                    if self._position_change_layer is not None and emitter == "POSITION_CHANGE":
                         decision = self._evaluate_position_change_layer(event)
-                        if not decision.should_emit:
-                            self._dedup_counters["POSITION_CHANGE"]["suppressed_layer"] += 1
-                            logger.info(
-                                "decision_log_alert_worker.dedup_layer_suppress "
-                                "event_type=POSITION_CHANGE reason=%s",
-                                decision.reason_ru,
-                            )
-                            continue
+                    elif self._boundary_breach_layer is not None and emitter == "BOUNDARY_BREACH":
+                        decision = self._evaluate_boundary_breach_layer(event)
+
+                    if decision is not None and not decision.should_emit:
+                        self._dedup_counters[emitter]["suppressed_layer"] += 1
+                        logger.info(
+                            "decision_log_alert_worker.dedup_layer_suppress "
+                            "event_type=%s reason=%s",
+                            emitter,
+                            decision.reason_ru,
+                        )
+                        continue
 
                     if self._silent_mode:
                         logger.info(
@@ -677,19 +693,18 @@ class DecisionLogAlertWorker(threading.Thread):
                             self.bot.send_message(chat_id, text, reply_markup=markup)
                             time.sleep(0.1)
 
-                    # Record emit in both layers
                     self._recent_pings.append({
                         "event_type": event.event_type,
                         "bot_id": event.bot_id,
                         "ts": datetime.now(timezone.utc),
                         "payload_signature": self._compute_signature(event),
                     })
-                    if (
-                        self._position_change_layer is not None
-                        and str(event.event_type) == "POSITION_CHANGE"
-                    ):
+                    if self._position_change_layer is not None and emitter == "POSITION_CHANGE":
                         self._record_position_change_emit(event)
                         self._dedup_counters["POSITION_CHANGE"]["emitted"] += 1
+                    elif self._boundary_breach_layer is not None and emitter == "BOUNDARY_BREACH":
+                        self._record_boundary_breach_emit(event)
+                        self._dedup_counters["BOUNDARY_BREACH"]["emitted"] += 1
             except Exception:
                 logger.exception("decision_log_alert_worker.loop_failed")
             self._stop_event.wait(self.poll_interval_sec)

@@ -146,7 +146,32 @@ Hours with lowest transition density:
 
 ## §7 Conclusions
 
-_Empty placeholder — operator + MAIN to fill jointly._
+**Conclusions (operator + MAIN review, 2026-05-04)**
+
+Регim classifier на годе 2025-05-01 → 2026-05-01 даёт structurally clean transitions — zero direct MARKUP↔MARKDOWN transitions, all 644 transitions проходят через RANGE buffer. Это feature, не artifact: classifier hysteresis обеспечивает что система всегда даёт coordinator buffer time для переключения bot configurations.
+
+Time distribution в bullish year 2025-2026:
+
+- RANGE: 72% (6306 hours) — primary mode
+- MARKDOWN: 14.9% (1303 hours)
+- MARKUP: 12.1% (1055 hours)
+- DISTRIBUTION: absent в данных (0 episodes labeled, см. Block 12 finding)
+
+Implications для P8 ensemble design:
+
+- Range bots — primary investment. 72% времени бот должен находиться в "range mode". Любая ensemble архитектура где range bots вторичные — игнорирует структурную реальность данных.
+- Trend bots — secondary opportunity moments. MARKUP + MARKDOWN combined = 27% времени. Trend bots должны активироваться только в эти периоды.
+- Coordinator получает predictable transition pattern. RANGE buffer между trend regimes означает coordinator должен реагировать на sequence "trending → RANGE → other_trending" — есть pause moments для clean state transitions.
+- Max single RANGE episode = 179h (7.5 days). Это upper bound for "stable single-mode operation". Coordinator не может предполагать что system будет в одном regime месяцами; transition events случаются хотя бы раз в неделю в worst case.
+- Bullish year bias confirmed: MARKUP + RANGE upward-biased = 84% combined. MARKDOWN краток и редок. Это объясняет почему single-bot LONG configurations (BT-001..004) проигрывали систематически — большую часть времени в RANGE при upward drift, плюс MARKUP-эпизоды без сильных pullbacks.
+
+Caveats:
+
+- Применимость на DISTRIBUTION-heavy years untested (DISTRIBUTION в этом году отсутствует)
+- Hysteresis settings frozen — варьирование hysteresis значений могло бы дать другие transition patterns
+- Time-of-day clustering показал что transitions слегка clustered around session boundaries (Asia/London/NY) — это feature classifier'а или данных, в обоих случаях используется coordinator design
+
+Related downstream read: [REGIME_OVERLAY_v1.md](REGIME_OVERLAY_v1.md) uses these regime-hour distributions to allocate backtest PnL/triggers by proportional weight.
 
 ---
 

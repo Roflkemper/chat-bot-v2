@@ -359,6 +359,124 @@
 
 ---
 
+## DRIFT-016 — Backtest brief написан без production parameters (Block 12)
+
+**Date:** 2026-05-05
+**Type:** drift- (parameter mismatch in research artifact)
+
+**Symptoms:**
+- TZ-RGE-RESEARCH-EXPANSION specified `grid_step_pct=0.5`, `target_pct=1.0`, `order_size=0.005 BTC` as defaults
+- Live SHORT bots run at `grid_step=0.03`, `target=0.25`, `size=0.001` — order of magnitude different
+- Result: 5×3 PnL matrix (`docs/RESEARCH/P8_RGE_EXPANSION_RESULTS_v0_1.md`) carries research-only parameter assumption invisible from headline numbers
+
+**Detection:** TZ-BACKTEST-AUDIT (CP19) cross-referenced sim params vs `GINAREA_MECHANICS §6 "Живые параметры"` and surfaced 7 ⚠️-partial entries.
+
+**Prevention rule:**
+> Every backtest brief (especially "default sensible values") must explicitly state which production live config (or named research config from MASTER §6) it mirrors. If it doesn't mirror any → flag as research-only in the headline.
+
+---
+
+## DRIFT-017 — Same pattern in Block 13 (sim parameters ≠ production)
+
+**Date:** 2026-05-05
+**Type:** drift- (recurrence of DRIFT-016 within same session)
+
+**Symptoms:**
+- TZ-LONG-TP-SWEEP froze `order_size=$100`, `grid_step=0.03`, `max_orders=10⁹` (uncapped per "boundaries disabled")
+- $100 size matches live BTC-LONG-C ✓; gs matches ✓
+- BUT: max_orders=10⁹ is stress-test condition, NOT production (live = 220); indicator and instop OFF (live LONG: dsblin=OFF actually matches, but other live LONG bots have different settings)
+- Headline net PnL numbers ($564 → $1,476 across TPs) thus represent stress-test, not production-replica behavior
+
+**Detection:** Same audit at CP19 surfaced this in row #6 (coordinated grid) and similar audits would flag LONG_TP_SWEEP if it had been included.
+
+**Prevention rule:**
+> When a brief uses words like "boundaries disabled" / "uncapped" / "no instop" / "frozen at default" — the result is a stress test, not a production forecast. Headline should label it as such. Operator-decision-grade numbers always require production-replica parameter set.
+
+---
+
+## DRIFT-018 — CP2 GREEN announced before visual check (recovered to PARTIAL)
+
+**Date:** 2026-05-05
+**Type:** drift+ (premature confidence in deliverable)
+
+**Symptoms:**
+- TZ-DASHBOARD-PHASE-1 declared CP2 GREEN after backend tests passed
+- Visual smoke test on actual browser was NOT performed
+- D77 (BitMEX position wire) was missing entirely; only flagged after operator-side review
+- Verdict revised to PARTIAL post-hoc
+
+**Prevention rule:**
+> For UI deliverables (dashboard, brief, Telegram render), test passing is necessary but not sufficient. CP cannot be GREEN until at least one of: (a) operator visual confirmation, (b) screenshot in handoff, or (c) explicit `still need visual check` caveat in CP message.
+
+---
+
+## DRIFT-019 — Missed prior knowledge that live bots run at different instop values
+
+**Date:** 2026-05-05
+**Type:** drift- (failure to consult MASTER §6 before backtest design)
+
+**Symptoms:**
+- Coordinator brief for TZ-LONG-TP-SWEEP set `instop=0` as "minimally-reasonable default"
+- `GINAREA_MECHANICS.md §6` explicitly lists TEST_1 / TEST_2 / TEST_3 as running at `instop ∈ {0, 0.018, 0.03}` — NOT all-zero
+- The 4-row LONG annual sweep in registry (BT-001..004) is exactly an instop sweep — coordinator brief did not link to that evidence
+
+**Detection:** Operator pointed out the live config diversity mid-session; led to TZ-BACKTEST-AUDIT being scoped.
+
+**Prevention rule:**
+> Before specifying any "default" parameter in a backtest brief, read `MASTER.md §6 "Каталог пресетов ботов"` + `GINAREA_MECHANICS.md §6 "Живые параметры ботов"`. If "default" differs from any live config row, document the divergence. If matching evidence already exists in the registry, cite the BT-XXX rows.
+
+---
+
+## DRIFT-020 — Read Codex audit as a map of problems, not as a list of actions
+
+**Date:** 2026-05-05
+**Type:** drift- (passive consumption of analytical output)
+
+**Symptoms:**
+- TZ-BACKTEST-AUDIT produced trust map with 7 ⚠️ partial / 1 ❌ default rows
+- Coordinator initially treated it as documentation ("now we know the problems")
+- Audit explicitly listed concrete recommendations per row (Recalibrate / Mark Legacy / Re-derive / Accept)
+- Action items did NOT immediately become TZs in PENDING; only after operator follow-up did `TZ-K-RECALIBRATE-PRODUCTION-CONFIGS` get queued
+
+**Prevention rule:**
+> Audit + diagnosis docs end with §"Recommendations" — that section's rows MUST become PENDING_TZ entries (or explicit "Accept-as-is" decisions) before the audit closes. No audit deliverable counts as closed until its recommendations are enqueued or rejected.
+
+---
+
+## DRIFT-021 — Asked operator "согласен ли с интерпретацией" instead of verifying data first
+
+**Date:** 2026-05-05
+**Type:** drift- (deferring to operator instead of independent verification)
+
+**Symptoms:**
+- After dashboard showed `shorts.total_btc = -2.241 BTC`, coordinator initially asked operator "хочешь чтобы я разобрался почему?" rather than running diagnostic immediately
+- The data flow path was within coordinator's read access; verification would have taken <5 minutes
+- Operator had to explicitly request the diagnosis
+
+**Detection:** Operator response made it clear the diagnostic ask was the actionable path, not the framing question.
+
+**Prevention rule:**
+> When dashboard / report numbers conflict with operator's lived reality, the first move is verification (read the data, trace the flow), NOT a meta-question to the operator. Reserve "what would you like" for genuinely scope-ambiguous situations.
+
+---
+
+## DRIFT-022 — Distributed foundation logic TZ to Codex when it should have been Claude
+
+**Date:** 2026-05-05
+**Type:** drift- (work-routing mistake)
+
+**Symptoms:**
+- TZ-CROSS-CHECK-FINDING-A initially considered for Codex (worker tier) on the basis of "computational"
+- Actual content was foundational reasoning: methodology defense, two-layer proportional allocation logic, verdict framing
+- Codex tier is right for batch numerical work; Claude tier is right for foundational analytical TZs that produce shared artifact (here: the cross-check verdict that downstream P8 work depends on)
+
+**Detection:** Operator routed it to Claude on second pass; output included reasoning sections (methodology, sign-flip framing) that benefit from Claude-tier writing.
+
+**Prevention rule:**
+> Routing rule: "if the deliverable is a JSON/CSV table that downstream tooling consumes" → Codex tier OK. "If the deliverable is a markdown doc with a verdict section that humans read for decision-making" → Claude tier. Foundational documents (audit reports, design docs, cross-check verdicts) always Claude-tier even when they include numerical computation.
+
+---
+
 ## DRIFT-PATTERN SUMMARY
 
 | Pattern | Count | Typical trigger |

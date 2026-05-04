@@ -1,35 +1,33 @@
 # PENDING TZ — открытые задачи
 # Обновлять при открытии/закрытии TZ.
 # Формат: ID | Описание | Приоритет | Статус | Блокер
-# Последнее обновление: 2026-05-04 EOD
+# Последнее обновление: 2026-05-05 EOD (week 2 close)
 
 ---
 
-## THIS WEEK (2026-05-11 → 2026-05-17) — Actionability layer + bot management
+## NEXT WEEK (week 3, 2026-05-06 → 2026-05-12) — Production K recalibration + clean A/B backtests + dedup expansion
 
-### Priority 1 — Actionability layer
+### Priority 1 — Audit-driven backtests + recalibrations (closes Findings A confounding + K trustworthiness)
 | ID | Описание | Статус | Блокер |
 |----|----------|--------|--------|
-| TZ-SETUP-DETECTION-WIRE | Connect setup_detector to RegimeForecastSwitcher (forecast → setup gate) | OPEN | — |
-| TZ-SIZING-MULTIPLIER-ENGINE | 0–2× sizing multiplier с reasoning (regime + forecast + setup confluence) | OPEN | TZ-SETUP-DETECTION-WIRE |
-| TZ-DIRECTION-AWARE-WORKFLOW | Promote in MARKUP, normal flow elsewhere | OPEN | TZ-SIZING-MULTIPLIER-ENGINE |
+| TZ-TRANSITION-MODE-COMPARE-BACKTEST | Operator-side GinArea backtest of 3 candidate TRANSITION_MODE policies (closes P8 §9 Q2) | OPEN | operator GinArea run |
+| TZ-PURE-INDICATOR-AB-ISOLATION | Operator-side: BT-014..017 *without* indicator on 86-day window — isolates Finding A from confounded variables (order_count, max_stop, instop) | OPEN | operator GinArea run |
+| TZ-K-RECALIBRATE-PRODUCTION-CONFIGS | Re-run direct_k with live configs (size 0.001 BTC / $100, count 200/220, indicator+instop where applicable). Closes audit rows 1-6. | OPEN | — (script ready) |
 
-### Priority 2 — Regime-aware bot management
+### Priority 2 — Dedup wrapper expansion (after 24h monitoring)
 | ID | Описание | Статус | Блокер |
 |----|----------|--------|--------|
-| TZ-BOT-STATE-INVENTORY | Что deployed, что manual, что paper | OPEN | — |
-| TZ-K-TARGET-CONDITIONAL | Regression K = f(target_pct, side) на 12+ точках, посмотреть структуру outliers (target<0.25 → K boost ×1.5–2) | OPEN | direct_k results (✅ done) |
-| TZ-RESEARCH-DIRS-AUDIT | countertrend / defensive / exhaustion применимость или decommission | OPEN | — |
+| TZ-DEDUP-WIRE-PNL_EVENT | Wire DedupLayer for PNL_EVENT type after threshold tune $200 → $400-500 | OPEN | 24h BOUNDARY_BREACH monitoring confirmed |
+| TZ-DEDUP-WIRE-PNL_EXTREME | Wire DedupLayer for PNL_EXTREME after PNL_EVENT validated | OPEN | TZ-DEDUP-WIRE-PNL_EVENT |
 
-### Priority 3 — MARKUP-1h numeric improvement
+### Priority 3 — Audit follow-ups + technical debt
 | ID | Описание | Статус | Блокер |
 |----|----------|--------|--------|
-| TZ-MARKUP-1H-IMPROVEMENT | Try regime-specific signal logic OR lightGBM (lightGBM требует explicit operator approval per failure rule) | OPEN | operator approval для lightGBM track |
-
-### Priority 4 — Dashboard wire-in
-| ID | Описание | Статус | Блокер |
-|----|----------|--------|--------|
-| TZ-DASHBOARD-PHASE-1 | Wire forecast / regime / virtual_trader → state_builder.py (3 hooks, ~30 мин) | OPEN | — |
+| TZ-CSV-CONSUMERS-AUDIT | Finding 1 follow-up: audit other consumers of `ginarea_live/snapshots.csv` for the legacy `.0` bot_id issue (decision_log/event_detector + scripts) | OPEN | — |
+| TZ-FIX-COLLECTION-ERRORS | 4 broken test files surfaced by full-suite run + brittle datetime test cleanup | OPEN | — |
+| TZ-SELF-REGULATING-BOT-RESEARCH | Operator side-idea track (separate from coordinator implementation) | OPEN | operator-defined scope |
+| TZ-DASHBOARD-CONTENT-VALIDATION | Low priority — content correctness checks beyond mtime-based freshness | OPEN | — |
+| TZ-IMPULSE-RECALIBRATE | KLOD impulse trigger 0 firings/week — re-tune or remove from P8 catalog (Q3 in coordinator design) | OPEN | operator decision |
 
 ### Deferred
 | ID | Описание | Note |
@@ -89,6 +87,39 @@
 ---
 
 ## ✅ Закрытые (последние)
+
+### Week 2 close — 2026-05-05 (16 CPs)
+
+| ID | CP | Результат |
+|----|-----|-----------|
+| TZ-RGE-RESEARCH-EXPANSION | CP15-17 | 5×3 expansion variant matrix, 0.9s; B variant DP-001-visible; D variant only one differing in RANGE |
+| TZ-LONG-TP-SWEEP | CP18 | 5 TP × 4 windows; net PnL monotonic with TP ($564→$1,476); MARKUP cells flagged as discontinuous-bars artifact |
+| TZ-BACKTEST-AUDIT | CP19 | Trust map: 7 ⚠️ partial / 1 ❌ default / 2 ✅ signal-side; coord grid $37k overstated ~10× |
+| TZ-BACKTEST-DATA-CONSOLIDATION | CP20 | 17 GinArea backtests structured BT-001..017; 13 clean A/B + 4 confounded |
+| TZ-REGIME-CLASSIFIER-PERIODS-ANALYSIS | CP21 | 1y stats: RANGE 72%, ZERO direct trend↔trend transitions, 645 episodes |
+| TZ-DEDUP-DRY-RUN-PRODUCTION-LOG | CP22 | 4-day decision_log: BOUNDARY 95% TOO AGGRESSIVE, POSITION_CHANGE 10.6% HEALTHY |
+| TZ-DASHBOARD-LIVE-FRESHNESS | CP23 | 60s loop + 3-tier freshness layer + corruption regression test |
+| TZ-REGIME-OVERLAY | CP24 | BT × regime PnL allocation table (96-99% coverage) |
+| TZ-CP28-JOINT-FINDINGS | CP28 | Findings A/B/C operator+MAIN consolidated |
+| TZ-K-DUAL-MODE-COORDINATOR-DESIGN | CP30 | docs/DESIGN/P8_DUAL_MODE_COORDINATOR_v0_1.md (12 sections, 5 op questions) |
+| TZ-CROSS-CHECK-FINDING-A | CP31 | Verdict A: sign-flip survives period correction (~0.40 BTC swing on 86-day window) |
+| TZ-DASHBOARD-POSITION-DEDUP | CP32 / CP-Y | Bot_id `.0` legacy suffix dedup; shorts.total_btc -2.241 → -1.296 (matches operator) |
+| TZ-DEDUP-WIRE-PRODUCTION (POSITION_CHANGE) | CP-G | DedupLayer wired in DecisionLogAlertWorker; 12 tests; 24h monitoring required |
+| TZ-DEDUP-WIRE-BOUNDARY_BREACH | CP-G2 | Cluster-collapse for BOUNDARY_BREACH; 10 tests |
+| TZ-DASHBOARD-FRESHNESS-FINALIZE | CP-H | D77 closed: snapshots.csv accepted as v1 source; README Data flow added |
+| TZ-MORNING-BRIEF-MULTITRACK-ADAPT | (P6) | --roadmap mode + 14 tests |
+| TZ-BOT-ALIAS-HYGIENE | (P6) | bot_registry stable UIDs + migration script + 20 tests |
+| TZ-METRICS-RENDER-FIX | (P7) | mobile-safe visuals (MAX_LINE_WIDTH=28) + canonical metrics_block + 14 tests |
+| TZ-ALERT-DEDUP-LAYER | (P7) | services/telegram/dedup_layer.py + 17 tests |
+| TZ-SETUP-DETECTION-WIRE | (P1) | services/market_forward_analysis/setup_bridge.py + 20 tests |
+| TZ-SIZING-MULTIPLIER-ENGINE | (P1) | services/sizing/* v0.1 rule-based + 31 tests |
+| TZ-DIRECTION-AWARE-WORKFLOW | (P1) | apply_direction_workflow() post-clamp layer + 12 tests |
+| TZ-DASHBOARD-PHASE-1 | (P4) | Wire forecast/regime/virtual_trader → state_builder + 16 tests |
+| TZ-BOT-STATE-INVENTORY | (P2) | docs/STATE/BOT_INVENTORY.md — 22 bots + P8 role gaps |
+| TZ-RGE-RANGE-DETECTION | (P8) | docs/DESIGN/P8_RANGE_DETECTION_v0_1.md — Method D Hybrid recommended |
+| TZ-TELEGRAM-INVENTORY | (P7) | docs/STATE/TELEGRAM_EMITTERS_INVENTORY.md — 18 emitters mapped |
+
+### Earlier closed entries
 
 | ID | Дата | Результат |
 |----|------|-----------|

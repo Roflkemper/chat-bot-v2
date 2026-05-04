@@ -159,3 +159,28 @@ This list is **not** a recommendation to run all of these — it's a roadmap of 
 - No claim that these 17 represent the "true" GinArea performance distribution — they're operator-curated experiments, not random samples.
 
 This registry is a structural input to downstream work, not a decision artifact in its own right.
+
+---
+
+## Conclusions
+
+**Conclusions (operator + MAIN review, 2026-05-04)**
+
+Эта registry консолидирует 17 GinArea backtest results собранных operator'ом 2026-05-04, охватывающих 4 серии: LONG annual instop sweep (BT-001..004), SHORT 3m mixed config (BT-005..008), SHORT 02may TP sweep (BT-009..013), LONG 02may TP sweep (BT-014..017).
+
+Key structural observation: 13/17 backtests являются clean A/B testable (vary one parameter). Только G2 SHORT 3m series (BT-005..008) confounded — varying threshold + min/max stop simultaneously, что делает atomic isolation того или иного эффекта невозможной без дополнительных тестов.
+
+Coverage gaps идентифицированы для будущих запусков:
+
+- SHORT annual для зеркала LONG annual (DEFAULT GRID configuration)
+- LONG в DEFAULT GRID на 3-месячном окне (для isolation effect indicator gate vs annual data)
+- SHORT с indicator gate в зеркало LONG 02may (нужно для понимания работает ли indicator-gate структурно для SHORT тоже)
+- Multi-regime explicit windows (отдельные backtests на чисто MARKUP / MARKDOWN / RANGE periods)
+- Rebate-aware variant некоторых выше (волю объёма должны менять break-even point)
+- Размер-варьирующиеся series (live size 0.001 vs 0.003 / 100 vs 200)
+
+Status of registry: v1 — может расширяться по мере появления новых backtests. Каждый new backtest получает sequential BT-XXX и попадает в эту registry.
+
+Downstream links:
+- Regime-window structure used for overlay allocation lives in [REGIME_PERIODS_2025_2026.md](REGIME_PERIODS_2025_2026.md).
+- Per-backtest regime allocation built on this registry lives in [REGIME_OVERLAY_v1.md](REGIME_OVERLAY_v1.md).
