@@ -81,7 +81,26 @@ def _read_jsonl(path: Path, *, limit: int | None = None) -> list[dict[str, Any]]
     return rows[-limit:] if limit is not None else rows
 
 
+def _normalize_bot_id(raw: str) -> str:
+    """Canonicalize bot_id by stripping legacy '.0' float suffix.
+
+    GinArea tracker historically wrote bot IDs as floats ('5196832375.0');
+    a later fix switched to integer strings ('5196832375'). The CSV thus
+    contains both formats for the same bot. Without normalization the dashboard
+    counted such bots twice (TZ-DASHBOARD-POSITION-DEDUP, 2026-05-05).
+    """
+    s = str(raw or "").strip()
+    if s.endswith(".0") and s[:-2].isdigit():
+        return s[:-2]
+    return s
+
+
 def _read_csv_latest_by_bot(path: Path) -> list[dict[str, str]]:
+    """Return latest snapshot per unique bot_id (canonical form).
+
+    Dedups across legacy '.0' suffix variations: '5196832375' and
+    '5196832375.0' map to one canonical key, latest ts_utc wins.
+    """
     if not path.exists():
         return []
     latest: dict[str, dict[str, str]] = {}
@@ -89,7 +108,7 @@ def _read_csv_latest_by_bot(path: Path) -> list[dict[str, str]]:
         with path.open("r", encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
             for row in reader:
-                bot_id = str(row.get("bot_id", "")).strip()
+                bot_id = _normalize_bot_id(row.get("bot_id", ""))
                 ts = str(row.get("ts_utc", ""))
                 if not bot_id:
                     continue

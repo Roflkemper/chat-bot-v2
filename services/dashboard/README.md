@@ -39,7 +39,7 @@ Port fallback: 8765 → 8766 → 8767. Bound host is always `127.0.0.1` (localho
 | Key | Source |
 |-----|--------|
 | `market` | Last signal `market_context` + clock-based ICT session |
-| `portfolio` | `ginarea_live/snapshots.csv` filtered by `ginarea_tracker/bot_aliases.json` |
+| `portfolio` | `ginarea_live/snapshots.csv` filtered by `ginarea_tracker/bot_aliases.json`. **Bot IDs are normalized** (legacy `.0` suffix stripped) before dedup — see TZ-DASHBOARD-POSITION-DEDUP, `_normalize_bot_id` in `state_builder.py` |
 | `queue` | `docs/STATE/QUEUE.md` — rows with `⬜ OPEN` status |
 | `positions` | Aggregated longs/shorts from snapshots |
 | `competition` | `state/competition_state.json` |
