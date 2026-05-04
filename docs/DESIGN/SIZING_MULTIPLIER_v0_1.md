@@ -87,9 +87,10 @@ After steps 1-2 we have `M_pre`. WR adjustment is **last**, applied as a multipl
 
 | 7d WR (decided trades) | Multiplier on M_pre | Reasoning |
 |------------------------|---------------------|-----------|
-| ≥60% | × 1.1 | "недельная статистика подтверждает" |
-| 40–59% (or `None` — fewer than 5 decided trades) | × 1.0 | "недельная статистика нейтральна" |
-| <40% | × 0.7 | "недельная статистика против — снижаем" |
+| ≥60% (≥10 decided trades) | × 1.1 | "недельная статистика подтверждает" |
+| 40–59% (≥10 decided trades) | × 1.0 | "недельная статистика нейтральна" |
+| <40% (≥10 decided trades) | × 0.7 | "недельная статистика против — снижаем" |
+| `None` or <10 decided trades | × 1.0 | "недельной статистики недостаточно" |
 
 **Floor & ceiling:** final multiplier clamped to `[0.0, 2.0]`. Round to 1 decimal place.
 
@@ -210,13 +211,15 @@ def compute_sizing(
 
 ---
 
-## Open questions for operator
+## Decisions (locked 2026-05-05)
 
-1. **Are 1.4 / 1.0 / 0.6 the right base multipliers** for MARKDOWN green/yellow/red? They are calibrated to today's CV-mean Brier ranking; if you have intuitions from your own trade history that disagree, we adjust before implementation.
-2. **WR threshold of 5 decided trades** — too low? Too high? With paper journal at Day 5/14 we don't have much data yet, so the `None` branch (ignore WR) will fire often during week 2.
-3. **Direction conflict handling** — should the cap be 0.5 or 0.0? Argument for 0.0: any conflict = abstain. Argument for 0.5: occasional small position to test the hypothesis.
-4. **Reasoning string language** — Russian fixed, or operator wants both RU and EN?
-5. **Where does `SizingDecision` get rendered** — only in the morning brief (alongside forecast), or also as a Telegram alert when a strong signal fires mid-day?
+Q1–Q5 closed by MAIN coordinator before block 3 implementation. These are the frozen v0.1 parameters:
+
+1. **Base multipliers**: 1.4 / 1.0 / 0.6 confirmed (regime × Brier band table above is canonical). Calibrated to today's CV-mean Brier ranking.
+2. **WR threshold**: **10 decided trades** in the bucket. Below 10 → WR multiplier = 1.0 (neutral). Replaces the earlier "5" placeholder.
+3. **Direction conflict cap**: **0.5** (soft cap). Allows a small probe position rather than full abstain.
+4. **Reasoning string language**: **Russian only** for v0.1. Bilingual deferred.
+5. **Output channels for v0.1**: **morning brief + dashboard**. Telegram alert integration deferred to P7.
 
 ---
 
