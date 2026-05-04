@@ -1,0 +1,248 @@
+{
+  "version": "v0.1",
+  "updated_at": "2026-05-04T15:55:51.898218+00:00",
+  "bots": {
+    "binance:test:btcusdt:001": {
+      "ginarea_id": "5196832375",
+      "display_name": "🐉GPT🐉TEST  1",
+      "alias_short": "TEST_1",
+      "platform": "binance",
+      "side": "test",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:test:btcusdt:002": {
+      "ginarea_id": "5017849873",
+      "display_name": "🐉GPT🐉TEST  2",
+      "alias_short": "TEST_2",
+      "platform": "binance",
+      "side": "test",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:test:btcusdt:003": {
+      "ginarea_id": "4524162672",
+      "display_name": "🐉GPT🐉TEST  3",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "test",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:long:btcusdt:001": {
+      "ginarea_id": "6075975963",
+      "display_name": "😎😎 ЛОНГ__БТС_-++КЛОД  ИМПУЛЬС ++-",
+      "alias_short": "КЛОД_ИМПУЛЬС",
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:long:btcusdt:002": {
+      "ginarea_id": "5427983401",
+      "display_name": "BTC-LONG-B",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:long:btcusdt:003": {
+      "ginarea_id": "531216717",
+      "display_name": "BTC-LONG-C",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:long:btcusdt:004": {
+      "ginarea_id": "5154651487",
+      "display_name": "BTC-LONG-D-volume✨",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:short:btcusdt:001": {
+      "ginarea_id": "6399265299",
+      "display_name": "🐉GPT🐉% SHORT 1.1%",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "short",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:short:xrpusdt:001": {
+      "ginarea_id": "4826691675",
+      "display_name": "💎 XRP ШОРТ 2.5  КЛОД + ЖПТ",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "short",
+      "symbol": "XRPUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:long:xrpusdt:001": {
+      "ginarea_id": "5257298144",
+      "display_name": "💎 XRP_ЛОНГ 2.5_ КЛОД",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "XRPUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:long:xrpusdt:002": {
+      "ginarea_id": "5478969754",
+      "display_name": "💎 XRP_ЛОНГ ИМПУЛЬС -++3.3_ КЛОД_c++-",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "XRPUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "running",
+      "notes": ""
+    },
+    "binance:spot:btcusdt:001": {
+      "ginarea_id": "4361055038",
+      "display_name": "spot btc Новый",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "spot",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "paused",
+      "notes": ""
+    },
+    "binance:short:btcusdt:002": {
+      "ginarea_id": "4539437207",
+      "display_name": "🐉GPT🐉% SHORT выходной",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "short",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "paused",
+      "notes": ""
+    },
+    "binance:long:btcusdt:005": {
+      "ginarea_id": "6256800305",
+      "display_name": "😎😎 ЛОНГ_1%",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "paused",
+      "notes": ""
+    },
+    "binance:short:btcusdt:003": {
+      "ginarea_id": "543668054",
+      "display_name": "🐉🐉% SHORT 1%",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "short",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "paused",
+      "notes": ""
+    },
+    "binance:short:btcusdt:004": {
+      "ginarea_id": "4516992123",
+      "display_name": "STOP✨5M_BTC_SHORT_BTC_5m",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "short",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "paused",
+      "notes": ""
+    },
+    "binance:long:btcusdt:006": {
+      "ginarea_id": "5142606207",
+      "display_name": "🌿 Щёлкающий_Холм_N7",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "unknown",
+      "notes": ""
+    },
+    "binance:long:btcusdt:007": {
+      "ginarea_id": "5522444824",
+      "display_name": "✨ Хихикающий_Путник_V",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "unknown",
+      "notes": ""
+    },
+    "binance:long:btcusdt:008": {
+      "ginarea_id": "4874082917",
+      "display_name": "бектест ЛОНГ таргет - 0.50",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "off",
+      "notes": ""
+    },
+    "binance:short:btcusdt:005": {
+      "ginarea_id": "6161205316",
+      "display_name": "бектест ШОРТ таргет - 0.6",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "short",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "off",
+      "notes": ""
+    },
+    "binance:short:btcusdt:006": {
+      "ginarea_id": "5629971258",
+      "display_name": "БЕктест индикатор шорт",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "short",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "off",
+      "notes": ""
+    },
+    "binance:long:btcusdt:009": {
+      "ginarea_id": "4651067955",
+      "display_name": "бектест лонг индикатор",
+      "alias_short": null,
+      "platform": "binance",
+      "side": "long",
+      "symbol": "BTCUSDT",
+      "first_seen": "2026-05-04T15:55:51.898218+00:00",
+      "status": "off",
+      "notes": ""
+    }
+  }
+}
