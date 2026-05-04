@@ -102,15 +102,45 @@ def test_freshness_yellow_when_snapshots_15min(tmp_path):
     assert out["level"] == "yellow"
 
 
-def test_freshness_includes_exchange_api_note(tmp_path):
-    """exchange_api_status documents the absent BitMEX integration finding."""
+def test_freshness_data_source_documented(tmp_path):
+    """data_source field documents the v1 live source decision (snapshots.csv)."""
     out = _build_freshness(
         now=_NOW,
         snapshots_path=tmp_path / "snap.csv",
         latest_forecast_path=tmp_path / "fc.json",
         regime_state_path=tmp_path / "regime.json",
     )
-    assert "BitMEX" in out["exchange_api_status"] or "GinArea" in out["exchange_api_status"]
+    assert "data_source" in out
+    assert "snapshots.csv" in out["data_source"]
+
+
+def test_freshness_corrupted_snapshots_recent_mtime_stays_ok(tmp_path):
+    """Corruption test: snapshots.csv exists with fresh mtime but is zero-byte.
+
+    Documented behavior: freshness layer judges by mtime, not content.
+    A zero-byte file with recent mtime reports level=ok BUT the downstream
+    snapshots reader returns []. This is intentional — the corruption shows
+    up downstream as "no positions" rather than as a freshness alert.
+
+    The test exists to pin this behavior so future changes are deliberate.
+    """
+    snap = tmp_path / "snap.csv"
+    snap.write_bytes(b"")  # zero-byte (corruption proxy)
+    fc = tmp_path / "fc.json"
+    fc.write_text("{}", encoding="utf-8")
+    regime = tmp_path / "regime.json"
+    regime.write_text("{}", encoding="utf-8")
+    out = _build_freshness(
+        now=datetime.now(tz=timezone.utc),
+        snapshots_path=snap,
+        latest_forecast_path=fc,
+        regime_state_path=regime,
+    )
+    # All three files exist with fresh mtime → level stays ok.
+    # Content corruption surfaces downstream, not in freshness layer.
+    assert out["level"] == "ok"
+    # If we wanted content-aware checks, that would be a separate _build_*_health
+    # function — out of scope for v1.
 
 
 def test_freshness_forecast_24h_stale_yields_red(tmp_path):
@@ -151,4 +181,4 @@ def test_build_state_includes_freshness_key(tmp_path):
     assert "freshness" in state
     assert state["freshness"]["level"] == "red"  # all missing
     assert "ages_min" in state["freshness"]
-    assert "exchange_api_status" in state["freshness"]
+    assert "data_source" in state["freshness"]

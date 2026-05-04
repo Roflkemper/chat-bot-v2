@@ -66,7 +66,7 @@ function renderFreshness(F) {
     <div style="background: ${colors[lvl]}; padding: 8px; border-radius: 4px; margin-bottom: 12px; font-size: 12px;">
       <strong>${icons[lvl]} Свежесть данных:</strong> ${ageLines.join(' • ')}<br>
       ${(F.notes || []).map(n => `• ${n}`).join('<br>')}
-      <div style="font-size: 10px; opacity: 0.7; margin-top: 4px">${F.exchange_api_status || ''}</div>
+      <div style="font-size: 10px; opacity: 0.7; margin-top: 4px">${F.data_source || F.exchange_api_status || ''}</div>
     </div>
   `;
   banner.style.display = 'block';

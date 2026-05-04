@@ -445,9 +445,21 @@ class SignalAlertWorker(threading.Thread):
 # Different from detector's 5-min JSONL dedup: here we compare payload content, not just type.
 _ALERT_DEDUP_WINDOW_MINUTES = 30
 
+# TZ-DEDUP-WIRE-PRODUCTION (POSITION_CHANGE only).
+# Production wire-up of services.telegram.dedup_layer for the one event type
+# whose dry-run suppression rate (10.6%) sits in the healthy 20-70% band.
+# Other event types (PNL_EVENT, BOUNDARY_BREACH, PNL_EXTREME) keep using only
+# the signature-based _is_duplicate_recent path until their thresholds are tuned.
+DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE = bool(
+    int(os.environ.get("DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE", "1"))
+)
+
+# Per-emitter config for the layer wrapper; mirrors dedup_layer_dry_run defaults.
+_POSITION_CHANGE_DEDUP_CFG = None  # lazy-init in worker
+
 
 class DecisionLogAlertWorker(threading.Thread):
-    def __init__(self, bot, chat_ids: Iterable[int], events_path: Path, *, poll_interval_sec: int = 15, silent_mode: bool = False) -> None:
+    def __init__(self, bot, chat_ids: Iterable[int], events_path: Path, *, poll_interval_sec: int = 15, silent_mode: bool = False, dedup_state_path: Path | None = None) -> None:
         super().__init__(daemon=True, name="decision-log-alert-worker")
         self.bot = bot
         self.chat_ids = list(chat_ids)
@@ -457,6 +469,32 @@ class DecisionLogAlertWorker(threading.Thread):
         self._stop_event = threading.Event()
         self._seen_event_ids: set[str] = self._load_seen_ids()
         self._recent_pings: deque[dict] = deque(maxlen=200)
+
+        # TZ-DEDUP-WIRE-PRODUCTION: per-emitter dedup layer (POSITION_CHANGE only).
+        # Lazy-init so import failures (e.g. tests without services.telegram on path)
+        # don't break the worker startup.
+        # `dedup_state_path` allows tests to inject an isolated state file.
+        self._position_change_layer = None
+        self._dedup_counters = {
+            "POSITION_CHANGE": {"emitted": 0, "suppressed_layer": 0, "suppressed_signature": 0},
+        }
+        if DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE:
+            try:
+                from services.telegram.dedup_layer import DedupLayer, DedupConfig, _STATE_PATH
+                cfg = DedupConfig(
+                    cooldown_sec=300,         # 5 min between emits
+                    value_delta_min=0.05,     # BTC position delta ≥ 0.05 to re-emit
+                    cluster_enabled=False,
+                )
+                state_path = dedup_state_path if dedup_state_path is not None else _STATE_PATH
+                self._position_change_layer = DedupLayer(cfg, state_path=state_path)
+                logger.info(
+                    "decision_log_alert_worker.dedup_layer_enabled type=POSITION_CHANGE "
+                    "cooldown_sec=%d value_delta_min=%.2f state=%s",
+                    cfg.cooldown_sec, cfg.value_delta_min, state_path,
+                )
+            except Exception:
+                logger.exception("decision_log_alert_worker.dedup_layer_init_failed")
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -506,6 +544,73 @@ class DecisionLogAlertWorker(threading.Thread):
             json.dumps(p, sort_keys=True, default=str).encode()
         ).hexdigest()[:16]
 
+    def _position_change_value(self, event) -> float:
+        """Extract the dedup-layer 'value' for a POSITION_CHANGE event.
+
+        Uses absolute net BTC position so cooldown + state-Δ work meaningfully.
+        Handles both dict-form and dataclass-form portfolio_context.
+        Falls back to 0.0 on missing fields.
+        """
+        portfolio = getattr(event, "portfolio_context", None)
+        if portfolio is None:
+            return 0.0
+        # Support dict, dataclass (frozen+slots → no __dict__), and Mapping
+        def _get(obj, key, default=0.0):
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+
+        shorts = abs(float(_get(portfolio, "shorts_position_btc") or 0.0))
+        longs_usd = float(_get(portfolio, "longs_position_usd") or 0.0)
+        # Convert long USD notional to BTC-equivalent at $80k floor (rough; OK for delta math)
+        longs_btc = longs_usd / 80000.0
+        return round(shorts + longs_btc, 4)
+
+    def _evaluate_position_change_layer(self, event):
+        """Run DedupLayer.evaluate() for a POSITION_CHANGE event.
+
+        Returns a DedupDecision; caller decides whether to emit.
+        """
+        layer = self._position_change_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        try:
+            ts = event.ts.timestamp() if hasattr(event.ts, "timestamp") else None
+        except Exception:
+            ts = None
+        return layer.evaluate(
+            emitter="POSITION_CHANGE",
+            key=str(bot_id),
+            value=self._position_change_value(event),
+            now_ts=ts,
+        )
+
+    def _record_position_change_emit(self, event) -> None:
+        """Mark this POSITION_CHANGE as emitted in the DedupLayer state."""
+        layer = self._position_change_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        try:
+            ts = event.ts.timestamp() if hasattr(event.ts, "timestamp") else None
+        except Exception:
+            ts = None
+        layer.record_emit(
+            emitter="POSITION_CHANGE",
+            key=str(bot_id),
+            value=self._position_change_value(event),
+            now_ts=ts,
+        )
+
+    def dedup_metrics(self) -> dict:
+        """Expose per-emitter dedup metrics for monitoring (operator visibility).
+
+        Returns counts of emit / suppressed_layer / suppressed_signature
+        accumulated since worker start. Read by /dedup_metrics command and/or
+        dashboard.
+        """
+        return {
+            "POSITION_CHANGE": dict(self._dedup_counters["POSITION_CHANGE"]),
+            "layer_enabled_position_change": self._position_change_layer is not None,
+        }
+
     def _is_duplicate_recent(self, event) -> bool:
         """Return True if a ping with the same content was sent within _ALERT_DEDUP_WINDOW_MINUTES.
 
@@ -540,7 +645,26 @@ class DecisionLogAlertWorker(threading.Thread):
                             "decision_log_alert_worker.dedup_skip event_type=%s bot_id=%s",
                             event.event_type, event.bot_id,
                         )
+                        if str(event.event_type) == "POSITION_CHANGE":
+                            self._dedup_counters["POSITION_CHANGE"]["suppressed_signature"] += 1
                         continue
+
+                    # TZ-DEDUP-WIRE-PRODUCTION: state-change + cooldown layer
+                    # for POSITION_CHANGE. Only this event type is wrapped in v1.
+                    if (
+                        self._position_change_layer is not None
+                        and str(event.event_type) == "POSITION_CHANGE"
+                    ):
+                        decision = self._evaluate_position_change_layer(event)
+                        if not decision.should_emit:
+                            self._dedup_counters["POSITION_CHANGE"]["suppressed_layer"] += 1
+                            logger.info(
+                                "decision_log_alert_worker.dedup_layer_suppress "
+                                "event_type=POSITION_CHANGE reason=%s",
+                                decision.reason_ru,
+                            )
+                            continue
+
                     if self._silent_mode:
                         logger.info(
                             "decision_log_alert_worker.silent_mode event_type=%s bot_id=%s",
@@ -552,12 +676,20 @@ class DecisionLogAlertWorker(threading.Thread):
                         for chat_id in self.chat_ids:
                             self.bot.send_message(chat_id, text, reply_markup=markup)
                             time.sleep(0.1)
+
+                    # Record emit in both layers
                     self._recent_pings.append({
                         "event_type": event.event_type,
                         "bot_id": event.bot_id,
                         "ts": datetime.now(timezone.utc),
                         "payload_signature": self._compute_signature(event),
                     })
+                    if (
+                        self._position_change_layer is not None
+                        and str(event.event_type) == "POSITION_CHANGE"
+                    ):
+                        self._record_position_change_emit(event)
+                        self._dedup_counters["POSITION_CHANGE"]["emitted"] += 1
             except Exception:
                 logger.exception("decision_log_alert_worker.loop_failed")
             self._stop_event.wait(self.poll_interval_sec)

@@ -302,10 +302,7 @@ def _build_freshness(
         "level": level,
         "ages_min": ages,
         "notes": notes,
-        "exchange_api_status": (
-            "absent — using GinArea snapshots.csv as live data source. "
-            "BitMEX/Binance direct API integration not present in current codebase."
-        ),
+        "data_source": "ginarea_live/snapshots.csv (accepted as v1 live source — see services/dashboard/README.md §Data flow)",
     }
 
 
