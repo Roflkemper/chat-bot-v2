@@ -223,6 +223,45 @@ Q1–Q5 closed by MAIN coordinator before block 3 implementation. These are the 
 
 ---
 
+## Direction-aware workflow layer (block 4, locked 2026-05-05)
+
+Applied AFTER the v0.1 base pipeline (`base × WR × conflict_cap × clamp`) as a final regime-direction adjustment. Complements but does not replace the direction conflict cap (which kicks in when *forecast* and *setup* disagree).
+
+### Rules
+
+| Regime | Setup direction | Factor | Reasoning fragment |
+|--------|-----------------|--------|---------------------|
+| MARKUP | long | **×1.1** | "MARKUP режим → LONG promoted ×1.1" |
+| MARKUP | short | **×0.9** | "MARKUP режим → SHORT damped ×0.9" |
+| MARKDOWN | short | **×1.1** | "MARKDOWN режим → SHORT promoted ×1.1" |
+| MARKDOWN | long | **×0.9** | "MARKDOWN режим → LONG damped ×0.9" |
+| RANGE | any | **×1.0** | unchanged |
+| DISTRIBUTION | any | n/a | unchanged (already 0.0 from short-circuit) |
+| any regime | grid / unknown direction | **×1.0** | unchanged |
+
+### Apply order (frozen)
+```
+base [regime, band] → setup_delta → conflict_cap → WR_multiplier → clamp → direction_workflow → final_clamp
+```
+
+The final clamp re-applies `[0, 2]` after the direction factor. Result rounded to 1 dp.
+
+### Why post-clamp, not pre-clamp
+
+Applying *after* the v0.1 clamp means the direction layer is a clean final adjustment that an operator can audit independently:
+- `inputs_snapshot["direction_workflow"]` records `before` and `after` values
+- Setting `apply_workflow=False` reproduces v0.1 base behavior exactly (backward compat)
+- v0.2 evolution (e.g. session-aware factors, ML weighting) can replace this layer without touching the base pipeline
+
+### Examples
+
+- MARKDOWN green + SHORT strength=8 + WR 65/12 + workflow ON: base 1.6 × 1.1 (WR) = 1.76 → 1.8 → workflow ×1.1 → 1.98 → **2.0** (clamp)
+- MARKDOWN green + LONG (against regime) strength=8 + WR 65/12: base 1.6 × 1.1 = 1.76 → 1.8 → workflow ×0.9 → **1.6**
+- MARKUP green + LONG strength=8 + WR 65/12: base 1.6 × 1.1 = 1.76 → 1.8 → workflow ×1.1 → 1.98 → **2.0**
+- RANGE yellow + GRID strength=7: 1.0 → workflow no-op → **1.0**
+
+---
+
 ## Acceptance for v0.1 implementation (next TZ)
 
 - All 5 worked examples reproducible from the implementation

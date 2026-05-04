@@ -65,6 +65,12 @@ _FORECAST_SHORT_THRESHOLD = 0.45  # prob_up <= → short bias
 
 _FINAL_MIN, _FINAL_MAX = 0.0, 2.0
 
+# Direction-aware workflow (block 4, locked 2026-05-05):
+# Applied AFTER base × WR × conflict_cap × clamp. Promotes setups aligned with
+# regime direction, dampens contrarian. RANGE/DISTRIBUTION untouched.
+_DIRECTION_PROMOTE = 1.1
+_DIRECTION_DAMP = 0.9
+
 
 # ── Output dataclass ─────────────────────────────────────────────────────────
 
@@ -178,6 +184,53 @@ def _wr_adjustment(wr_history: Optional[dict]) -> tuple[float, str]:
     return _WR_INSUFFICIENT
 
 
+def apply_direction_workflow(
+    sizing: "SizingDecision",
+    regime: str,
+    setup_direction: Optional[str],
+) -> "SizingDecision":
+    """Direction-aware promotion/dampening layer (block 4).
+
+    Applied AFTER `compute_sizing()` clamp. Returns a NEW SizingDecision.
+
+    Rules:
+        MARKUP   × long  → ×1.1 (promote)
+        MARKUP   × short → ×0.9 (damp)
+        MARKDOWN × short → ×1.1 (promote)
+        MARKDOWN × long  → ×0.9 (damp)
+        RANGE / DISTRIBUTION × any → unchanged
+        unknown setup_direction → unchanged
+
+    Final clamp [0, 2] re-applied after factor.
+    """
+    if regime not in {"MARKUP", "MARKDOWN"}:
+        return sizing
+    if setup_direction not in {"long", "short"}:
+        return sizing
+
+    if (regime == "MARKUP" and setup_direction == "long") or \
+       (regime == "MARKDOWN" and setup_direction == "short"):
+        factor, frag = _DIRECTION_PROMOTE, f"{regime} режим → {setup_direction.upper()} promoted ×{_DIRECTION_PROMOTE}"
+    else:
+        factor, frag = _DIRECTION_DAMP, f"{regime} режим → {setup_direction.upper()} damped ×{_DIRECTION_DAMP}"
+
+    new_mult = max(_FINAL_MIN, min(_FINAL_MAX, round(sizing.multiplier * factor, 1)))
+    new_reasoning = f"{sizing.reasoning.rstrip('.×')} → {frag}, итог {new_mult}×."
+    new_snapshot = dict(sizing.inputs_snapshot)
+    new_snapshot["direction_workflow"] = {
+        "regime": regime,
+        "setup_direction": setup_direction,
+        "factor": factor,
+        "before": sizing.multiplier,
+        "after": new_mult,
+    }
+    return SizingDecision(
+        multiplier=new_mult,
+        reasoning=new_reasoning,
+        inputs_snapshot=new_snapshot,
+    )
+
+
 # ── Public entry point ───────────────────────────────────────────────────────
 
 def compute_sizing(
@@ -185,10 +238,15 @@ def compute_sizing(
     forecast_1h: Any,
     setup_context: Optional[dict],
     wr_history: Optional[dict] = None,
+    apply_workflow: bool = True,
 ) -> SizingDecision:
     """Compute sizing multiplier v0.1.
 
     See docs/DESIGN/SIZING_MULTIPLIER_v0_1.md for full spec.
+
+    apply_workflow: when True (default), applies direction-aware workflow layer
+    after the clamp (block 4). Set False to disable for backward-compat
+    or A/B comparison.
     """
     snapshot = {
         "regime": regime,
@@ -241,8 +299,15 @@ def compute_sizing(
     final = max(_FINAL_MIN, min(_FINAL_MAX, round(final, 1)))
 
     reasoning = f"{base_frag}, {setup_frag}, {wr_frag} — размер {final}×."
-    return SizingDecision(
+    decision = SizingDecision(
         multiplier=final,
         reasoning=reasoning,
         inputs_snapshot=snapshot,
     )
+
+    # Block 4 — direction-aware workflow layer (after clamp)
+    if apply_workflow and setup_context:
+        setup_dir = setup_context.get("direction") if isinstance(setup_context, dict) else None
+        decision = apply_direction_workflow(decision, regime, setup_dir)
+
+    return decision
