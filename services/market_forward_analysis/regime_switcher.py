@@ -57,6 +57,10 @@ class ForecastResult:
     value: float | str  # prob_up if numeric, label string if qualitative
     confidence: float   # 1 - normalized_brier; 0..1
     caveat: Optional[str] = None
+    # Optional setup context attached by setup_bridge.attach_setups().
+    # When present: dict with keys {setup_type, direction, strength, confidence_pct,
+    # entry, sl, tp1, tp2, basis_summary}. None when no matching setup was detected.
+    setup_context: Optional[dict] = None
 
 
 @dataclass

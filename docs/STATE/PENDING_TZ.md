@@ -40,6 +40,11 @@
 | TZ-HEATMAP-OPERATOR-OVERRIDE | Operator override input для heatmaps | next-week or later |
 | TZ-VIRTUAL-TRADER-VALIDATE | Time-gated review virtual trader stats | после 2-4 недель накопления |
 
+### P6 — Tooling / infrastructure debt (low-priority chores)
+| ID | Описание | Статус | Блокер |
+|----|----------|--------|--------|
+| TZ-MORNING-BRIEF-MULTITRACK-ADAPT | Fix `scripts/main_morning_brief.py` для multi-track roadmap input (currently emits empty template after WEEK_*.md → ROADMAP migration). Spec: `docs/TZs/TZ-MORNING-BRIEF-MULTITRACK-ADAPT.md` | OPEN | — |
+
 ---
 
 ## Phase 0.5 — Engine validation
