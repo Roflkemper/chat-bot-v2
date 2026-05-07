@@ -299,6 +299,96 @@ def _load_anti_spam_cfg() -> dict:
         return defaults
 
 
+# ── P3 of TZ-DASHBOARD-USABILITY-FIX-PHASE-1: regulation-relevance gating ──
+#
+# Filter signal-stream events before forwarding to Telegram so the operator
+# sees only events that change the admissible action set per
+# REGULATION_v0_1_1.md §3, or that affect ongoing cleanup state.
+#
+# Activation: TELEGRAM_REGULATION_FILTER_ENABLED=1 in env (default OFF — opt-in
+# during Phase 1 while operator validates the filter does not silence anything
+# important). When OFF, this module is a no-op and behavior matches pre-P3.
+#
+# Policy:
+#   FORWARD always:
+#     LIQ_CASCADE          (risk event; already exempted from dedup)
+#     REGIME_CHANGE        (changes activation matrix → operator action update)
+#   FORWARD only when within cleanup_critical_levels USD distance:
+#     LEVEL_BREAK          (key levels operator supplied via env)
+#   SUPPRESS:
+#     RSI_EXTREME          (raw indicator, no regulation impact alone)
+#     other unknown types  (default-suppress; explicit opt-in needed)
+#
+# Cleanup-critical levels can be set via env TELEGRAM_FILTER_CRITICAL_LEVELS_USD
+# as comma-separated USD prices; LEVEL_BREAK signals within
+# TELEGRAM_FILTER_CRITICAL_PROXIMITY_USD (default $300) of any listed level
+# are forwarded.
+
+_REGULATION_FILTER_ENABLED = bool(
+    int(os.environ.get("TELEGRAM_REGULATION_FILTER_ENABLED", "0"))
+)
+
+
+def _regulation_filter_critical_levels() -> list[float]:
+    raw = os.environ.get("TELEGRAM_FILTER_CRITICAL_LEVELS_USD", "")
+    out: list[float] = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            out.append(float(part))
+        except ValueError:
+            continue
+    return out
+
+
+def _regulation_filter_critical_proximity() -> float:
+    try:
+        return float(os.environ.get("TELEGRAM_FILTER_CRITICAL_PROXIMITY_USD", "300"))
+    except ValueError:
+        return 300.0
+
+
+def regulation_relevance_decision(row: dict) -> tuple[bool, str]:
+    """Return (should_forward, reason).
+
+    Pure decision function — no side effects. Tested in
+    tests/services/test_telegram_regulation_filter.py.
+    """
+    sig = row.get("signal_type", "")
+    # Always-forward: risk events and admissibility changes.
+    if sig in ("LIQ_CASCADE", "REGIME_CHANGE"):
+        return True, f"always-forward: {sig} affects regulation/risk state"
+    # LEVEL_BREAK: forward only near operator-declared critical levels.
+    if sig == "LEVEL_BREAK":
+        try:
+            details = json.loads(row.get("details_json", "{}") or "{}")
+        except Exception:
+            details = {}
+        level = details.get("level")
+        try:
+            level_f = float(level) if level is not None else None
+        except (TypeError, ValueError):
+            level_f = None
+        if level_f is None:
+            return False, "LEVEL_BREAK with unparseable level"
+        critical = _regulation_filter_critical_levels()
+        if not critical:
+            return False, "LEVEL_BREAK suppressed: no critical levels configured"
+        proximity = _regulation_filter_critical_proximity()
+        for crit in critical:
+            if abs(level_f - crit) <= proximity:
+                return True, f"LEVEL_BREAK within {proximity:.0f} USD of critical level {crit:.0f}"
+        return False, (
+            f"LEVEL_BREAK at {level_f:.0f} not within {proximity:.0f} USD of any critical level"
+        )
+    # RSI_EXTREME and unknown: suppress by default.
+    if sig == "RSI_EXTREME":
+        return False, "RSI_EXTREME suppressed: raw indicator without regulation impact"
+    return False, f"signal_type={sig!r} not in regulation-relevance allowlist"
+
+
 class SignalAlertWorker(threading.Thread):
     """Polls signals.csv and sends new signals to Telegram.
 
@@ -334,10 +424,37 @@ class SignalAlertWorker(threading.Thread):
         self._spam_enabled: bool = bool(_cfg.get("enabled", True))
         self._cooldowns: dict[str, int] = dict(_cfg.get("cooldowns_sec", {}))
         self._log_deduped: bool = bool(_cfg.get("log_deduped", True))
-        self._last_sent: dict[str, float] = {}  # dedup_key → epoch
+        # Persistent dedup: переживает рестарт supervisor/worker, иначе после
+        # каждого крэша cooldown обнулялся и LEVEL_BREAK / RSI_EXTREME слали повторно.
+        self._dedup_state_path = Path("state/signal_alert_last_sent.json")
+        self._last_sent: dict[str, float] = self._load_last_sent()
 
     def stop(self) -> None:
         self._stop_event.set()
+
+    # ------------------------------------------------------------------ persistent dedup
+
+    def _load_last_sent(self) -> dict[str, float]:
+        try:
+            if self._dedup_state_path.exists():
+                raw = json.loads(self._dedup_state_path.read_text(encoding="utf-8"))
+                if isinstance(raw, dict):
+                    return {str(k): float(v) for k, v in raw.items()}
+        except Exception:
+            logger.exception("signal_alert_worker.dedup_state_load_failed")
+        return {}
+
+    def _save_last_sent(self) -> None:
+        try:
+            self._dedup_state_path.parent.mkdir(parents=True, exist_ok=True)
+            # Prune entries старше максимального cooldown × 2, чтобы файл не рос.
+            max_cd = max(self._cooldowns.values(), default=3600)
+            cutoff = time.time() - max_cd * 2
+            d = {k: v for k, v in self._last_sent.items() if v >= cutoff}
+            self._last_sent = d
+            self._dedup_state_path.write_text(json.dumps(d), encoding="utf-8")
+        except Exception:
+            logger.exception("signal_alert_worker.dedup_state_save_failed")
 
     # ------------------------------------------------------------------ dedup
 
@@ -357,13 +474,36 @@ class SignalAlertWorker(threading.Thread):
             rsi = details.get("rsi", 0)
             return f"RSI_EXTREME|{tf}|{cond}|{round(float(rsi))}"
         if sig == "LEVEL_BREAK":
+            # Direction NOT in key — это анти-флап: цена качается через уровень
+            # туда-сюда внутри cooldown окна, но это один и тот же "пробой",
+            # не два независимых события. Иначе шлём 2× на каждое колебание.
             level = details.get("level", 0)
-            direction = details.get("direction", "")
-            return f"LEVEL_BREAK|{round(float(level))}|{direction}"
+            return f"LEVEL_BREAK|{round(float(level))}"
         return None
 
     def _should_send(self, row: dict) -> bool:
-        """Return True if signal should be sent, False if deduplicated."""
+        """Return True if signal should be sent, False if deduplicated.
+
+        Two filters apply in order:
+          1. P3 regulation-relevance filter (opt-in via env, default OFF)
+          2. anti-spam dedup (existing behavior)
+        """
+        # P3 regulation-relevance filter: when enabled, suppress events that
+        # do not change admissible action set or affect cleanup state.
+        if _REGULATION_FILTER_ENABLED:
+            forward, reason = regulation_relevance_decision(row)
+            if not forward:
+                if self._log_deduped:
+                    logger.info(
+                        "signal_alert.regulation_filter_suppressed signal_type=%s reason=%s",
+                        row.get("signal_type", ""), reason,
+                    )
+                return False
+            # Annotate logs when forwarded for observability
+            logger.info(
+                "signal_alert.regulation_filter_forward signal_type=%s reason=%s",
+                row.get("signal_type", ""), reason,
+            )
         if not self._spam_enabled:
             return True
         key = self._dedup_key(row)
@@ -384,6 +524,7 @@ class SignalAlertWorker(threading.Thread):
                 )
             return False
         self._last_sent[key] = now
+        self._save_last_sent()
         return True
 
     # ------------------------------------------------------------------ helpers
@@ -426,13 +567,20 @@ class SignalAlertWorker(threading.Thread):
                 new_signals = self._read_new_signals()
                 if new_signals:
                     self._last_ts = max(s.get("ts_utc", "") for s in new_signals)
+                    from services.telegram.send_dedup import should_send as _ss, mark_sent as _ms
                     for row in new_signals:
                         if not self._should_send(row):
                             continue
                         text = self._format_signal(row)
                         for chat_id in self.chat_ids:
+                            # Belt-and-suspenders: persistent file-based dedup
+                            # protects against duplicate alerts caused by parallel
+                            # workers / process restarts / race conditions.
+                            if not _ss(chat_id, text):
+                                continue
                             try:
                                 self.bot.send_message(chat_id, text)
+                                _ms(chat_id, text)
                                 time.sleep(0.1)
                             except Exception:
                                 logger.exception("signal_alert_worker.send_failed chat_id=%s", chat_id)
@@ -455,6 +603,15 @@ DEDUP_LAYER_ENABLED_FOR_POSITION_CHANGE = bool(
 DEDUP_LAYER_ENABLED_FOR_BOUNDARY_BREACH = bool(
     int(os.environ.get("DEDUP_LAYER_ENABLED_FOR_BOUNDARY_BREACH", "1"))
 )
+# P3 of TZ-DASHBOARD-AND-TELEGRAM-USABILITY-PHASE-1: extend DedupLayer wiring
+# to PNL_EVENT and PNL_EXTREME with loosened thresholds. Default = ON; env can
+# disable for diagnostics.
+DEDUP_LAYER_ENABLED_FOR_PNL_EVENT = bool(
+    int(os.environ.get("DEDUP_LAYER_ENABLED_FOR_PNL_EVENT", "1"))
+)
+DEDUP_LAYER_ENABLED_FOR_PNL_EXTREME = bool(
+    int(os.environ.get("DEDUP_LAYER_ENABLED_FOR_PNL_EXTREME", "1"))
+)
 
 
 class DecisionLogAlertWorker(threading.Thread):
@@ -471,15 +628,21 @@ class DecisionLogAlertWorker(threading.Thread):
 
         self._position_change_layer = None
         self._boundary_breach_layer = None
+        self._pnl_event_layer = None
+        self._pnl_extreme_layer = None
         self._dedup_counters = {
             "POSITION_CHANGE": {"emitted": 0, "suppressed_layer": 0, "suppressed_signature": 0},
             "BOUNDARY_BREACH": {"emitted": 0, "suppressed_layer": 0, "suppressed_signature": 0},
+            "PNL_EVENT":       {"emitted": 0, "suppressed_layer": 0, "suppressed_signature": 0},
+            "PNL_EXTREME":     {"emitted": 0, "suppressed_layer": 0, "suppressed_signature": 0},
         }
         try:
             from services.telegram.dedup_layer import DedupLayer, _STATE_PATH
             from services.telegram.dedup_configs import (
                 BOUNDARY_BREACH_DEDUP_CONFIG,
                 POSITION_CHANGE_DEDUP_CONFIG,
+                PNL_EVENT_DEDUP_CONFIG,
+                PNL_EXTREME_DEDUP_CONFIG,
             )
 
             state_path = dedup_state_path if dedup_state_path is not None else _STATE_PATH
@@ -496,6 +659,22 @@ class DecisionLogAlertWorker(threading.Thread):
                 self._boundary_breach_layer = DedupLayer(cfg, state_path=state_path)
                 logger.info(
                     "decision_log_alert_worker.dedup_layer_enabled type=BOUNDARY_BREACH "
+                    "cooldown_sec=%d value_delta_min=%.2f state=%s",
+                    cfg.cooldown_sec, cfg.value_delta_min, state_path,
+                )
+            if DEDUP_LAYER_ENABLED_FOR_PNL_EVENT:
+                cfg = PNL_EVENT_DEDUP_CONFIG
+                self._pnl_event_layer = DedupLayer(cfg, state_path=state_path)
+                logger.info(
+                    "decision_log_alert_worker.dedup_layer_enabled type=PNL_EVENT "
+                    "cooldown_sec=%d value_delta_min=%.2f state=%s",
+                    cfg.cooldown_sec, cfg.value_delta_min, state_path,
+                )
+            if DEDUP_LAYER_ENABLED_FOR_PNL_EXTREME:
+                cfg = PNL_EXTREME_DEDUP_CONFIG
+                self._pnl_extreme_layer = DedupLayer(cfg, state_path=state_path)
+                logger.info(
+                    "decision_log_alert_worker.dedup_layer_enabled type=PNL_EXTREME "
                     "cooldown_sec=%d value_delta_min=%.2f state=%s",
                     cfg.cooldown_sec, cfg.value_delta_min, state_path,
                 )
@@ -576,6 +755,38 @@ class DecisionLogAlertWorker(threading.Thread):
         return float(getattr(market, "price_btc", 0.0) or 0.0)
 
     @staticmethod
+    def _pnl_event_value(event) -> float:
+        """Extract dedup-layer value for PNL_EVENT — current cumulative PnL USD.
+
+        Prefer cumulative PnL (state-change semantics: value moves to a new
+        level). If only delta is available, fall back to delta.
+        """
+        p = getattr(event, "payload", None) or {}
+        if isinstance(p, dict):
+            for key in ("pnl_total_usd", "current_pnl_usd", "delta_pnl_usd"):
+                v = p.get(key)
+                if v is not None:
+                    try:
+                        return float(v)
+                    except (TypeError, ValueError):
+                        continue
+        return 0.0
+
+    @staticmethod
+    def _pnl_extreme_value(event) -> float:
+        """Extract dedup-layer value for PNL_EXTREME — extreme PnL value USD."""
+        p = getattr(event, "payload", None) or {}
+        if isinstance(p, dict):
+            for key in ("value", "extreme_pnl_usd", "pnl_total_usd"):
+                v = p.get(key)
+                if v is not None:
+                    try:
+                        return float(v)
+                    except (TypeError, ValueError):
+                        continue
+        return 0.0
+
+    @staticmethod
     def _event_ts(event) -> float | None:
         try:
             return event.ts.timestamp() if hasattr(event.ts, "timestamp") else None
@@ -602,6 +813,26 @@ class DecisionLogAlertWorker(threading.Thread):
             now_ts=self._event_ts(event),
         )
 
+    def _evaluate_pnl_event_layer(self, event):
+        layer = self._pnl_event_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        return layer.evaluate(
+            emitter="PNL_EVENT",
+            key=str(bot_id),
+            value=self._pnl_event_value(event),
+            now_ts=self._event_ts(event),
+        )
+
+    def _evaluate_pnl_extreme_layer(self, event):
+        layer = self._pnl_extreme_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        return layer.evaluate(
+            emitter="PNL_EXTREME",
+            key=str(bot_id),
+            value=self._pnl_extreme_value(event),
+            now_ts=self._event_ts(event),
+        )
+
     def _record_position_change_emit(self, event) -> None:
         layer = self._position_change_layer
         bot_id = getattr(event, "bot_id", None) or "global"
@@ -622,12 +853,36 @@ class DecisionLogAlertWorker(threading.Thread):
             now_ts=self._event_ts(event),
         )
 
+    def _record_pnl_event_emit(self, event) -> None:
+        layer = self._pnl_event_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        layer.record_emit(
+            emitter="PNL_EVENT",
+            key=str(bot_id),
+            value=self._pnl_event_value(event),
+            now_ts=self._event_ts(event),
+        )
+
+    def _record_pnl_extreme_emit(self, event) -> None:
+        layer = self._pnl_extreme_layer
+        bot_id = getattr(event, "bot_id", None) or "global"
+        layer.record_emit(
+            emitter="PNL_EXTREME",
+            key=str(bot_id),
+            value=self._pnl_extreme_value(event),
+            now_ts=self._event_ts(event),
+        )
+
     def dedup_metrics(self) -> dict:
         return {
             "POSITION_CHANGE": dict(self._dedup_counters["POSITION_CHANGE"]),
             "BOUNDARY_BREACH": dict(self._dedup_counters["BOUNDARY_BREACH"]),
+            "PNL_EVENT":       dict(self._dedup_counters["PNL_EVENT"]),
+            "PNL_EXTREME":     dict(self._dedup_counters["PNL_EXTREME"]),
             "layer_enabled_position_change": self._position_change_layer is not None,
             "layer_enabled_boundary_breach": self._boundary_breach_layer is not None,
+            "layer_enabled_pnl_event":       self._pnl_event_layer is not None,
+            "layer_enabled_pnl_extreme":     self._pnl_extreme_layer is not None,
         }
 
     def _is_duplicate_recent(self, event) -> bool:
@@ -670,6 +925,10 @@ class DecisionLogAlertWorker(threading.Thread):
                         decision = self._evaluate_position_change_layer(event)
                     elif self._boundary_breach_layer is not None and emitter == "BOUNDARY_BREACH":
                         decision = self._evaluate_boundary_breach_layer(event)
+                    elif self._pnl_event_layer is not None and emitter == "PNL_EVENT":
+                        decision = self._evaluate_pnl_event_layer(event)
+                    elif self._pnl_extreme_layer is not None and emitter == "PNL_EXTREME":
+                        decision = self._evaluate_pnl_extreme_layer(event)
 
                     if decision is not None and not decision.should_emit:
                         self._dedup_counters[emitter]["suppressed_layer"] += 1
@@ -705,6 +964,12 @@ class DecisionLogAlertWorker(threading.Thread):
                     elif self._boundary_breach_layer is not None and emitter == "BOUNDARY_BREACH":
                         self._record_boundary_breach_emit(event)
                         self._dedup_counters["BOUNDARY_BREACH"]["emitted"] += 1
+                    elif self._pnl_event_layer is not None and emitter == "PNL_EVENT":
+                        self._record_pnl_event_emit(event)
+                        self._dedup_counters["PNL_EVENT"]["emitted"] += 1
+                    elif self._pnl_extreme_layer is not None and emitter == "PNL_EXTREME":
+                        self._record_pnl_extreme_emit(event)
+                        self._dedup_counters["PNL_EXTREME"]["emitted"] += 1
             except Exception:
                 logger.exception("decision_log_alert_worker.loop_failed")
             self._stop_event.wait(self.poll_interval_sec)
@@ -750,6 +1015,15 @@ class TelegramBotApp:
             poll_interval_sec=15,
             silent_mode=True,
         )
+        # P2 of TZ-DASHBOARD-AND-TELEGRAM-USABILITY-PHASE-1: VERBOSE channel
+        # subscription registry. Default = OFF for all chats; operator opts in
+        # per-chat via /verbose.
+        try:
+            from services.telegram.alert_router import VerboseSubscriptionRegistry
+            self.verbose_subs = VerboseSubscriptionRegistry()
+        except Exception:
+            logger.exception('verbose_subs.init_failed')
+            self.verbose_subs = None
         self._register_handlers()
 
     def _is_allowed(self, chat_id: int) -> bool:
@@ -801,6 +1075,22 @@ class TelegramBotApp:
                 self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
                 return
             self._dispatch(chat_id, str(message.text or '').strip())
+
+        @self.bot.message_handler(commands=['verbose'])
+        def handle_verbose(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            if self.verbose_subs is None:
+                self.bot.send_message(chat_id, '⚠️ VERBOSE registry недоступен (init failed).')
+                return
+            from services.telegram.alert_router import handle_verbose_command
+            text = str(message.text or '').strip()
+            # Strip leading `/verbose` to get args
+            args = text[len('/verbose'):].strip() if text.lower().startswith('/verbose') else ''
+            reply = handle_verbose_command(chat_id, args, self.verbose_subs)
+            self.bot.send_message(chat_id, reply)
 
         @self.bot.message_handler(commands=['protect_status'])
         def handle_protect_status(message) -> None:
@@ -1247,15 +1537,33 @@ class TelegramBotApp:
         if self.allowed_chat_ids and not self.decision_log_alert_worker.is_alive():
             self.decision_log_alert_worker.start()
         logger.info('telegram_bot.start config_source=%s allowed_chat_ids=%s', getattr(config, 'CONFIG_SOURCE', ''), self.allowed_chat_ids)
+        # Same custom-polling pattern as run_polling_blocking (handles 409 cleanly).
+        offset = 0
+        consecutive_errors = 0
         while True:
             try:
-                self.bot.infinity_polling(skip_pending=True, timeout=25, long_polling_timeout=25)
+                updates = self.bot.get_updates(offset=offset, timeout=25, long_polling_timeout=25)
+                for upd in updates:
+                    offset = upd.update_id + 1
+                    try:
+                        self.bot.process_new_updates([upd])
+                    except Exception:
+                        logger.exception('telegram_bot.update_dispatch_failed update_id=%s', upd.update_id)
+                consecutive_errors = 0
             except KeyboardInterrupt:
                 logger.info('telegram_bot.stopped_by_keyboard')
                 raise
-            except Exception:
-                logger.exception('telegram_bot.polling_failed; restart in 5s')
-                time.sleep(5)
+            except Exception as exc:
+                consecutive_errors += 1
+                msg = str(exc)
+                if '409' in msg or 'Conflict' in msg:
+                    backoff = min(60, 5 * consecutive_errors)
+                    logger.warning('telegram_bot.polling_conflict (409); backoff %ds', backoff)
+                    time.sleep(backoff)
+                else:
+                    backoff = min(30, 2 * consecutive_errors)
+                    logger.exception('telegram_bot.polling_failed; backoff %ds (consecutive=%d)', backoff, consecutive_errors)
+                    time.sleep(backoff)
 
     def run_polling_blocking(self) -> None:
         if (
@@ -1276,12 +1584,39 @@ class TelegramBotApp:
             self.allowed_chat_ids,
         )
         import time as _time
+        # Custom polling loop with explicit 409-Conflict backoff. The library's
+        # infinity_polling() spam-loops on Conflict (>100/s) which masks
+        # everything else and makes the bot non-responsive. Here we drive
+        # get_updates() manually so any error exits cleanly with backoff.
+        offset = 0
+        consecutive_errors = 0
         while True:
             try:
-                self.bot.infinity_polling(skip_pending=True, timeout=25, long_polling_timeout=25)
+                updates = self.bot.get_updates(offset=offset, timeout=25, long_polling_timeout=25)
+                for upd in updates:
+                    offset = upd.update_id + 1
+                    try:
+                        self.bot.process_new_updates([upd])
+                    except Exception:
+                        logger.exception('telegram_bot.update_dispatch_failed update_id=%s', upd.update_id)
+                consecutive_errors = 0
             except KeyboardInterrupt:
                 logger.info('telegram_bot.stopped_by_keyboard')
                 raise
-            except Exception:
-                logger.exception('telegram_bot.polling_failed; restart in 10s')
-                _time.sleep(10)
+            except Exception as exc:
+                consecutive_errors += 1
+                msg = str(exc)
+                if '409' in msg or 'Conflict' in msg:
+                    backoff = min(60, 5 * consecutive_errors)
+                    logger.warning(
+                        'telegram_bot.polling_conflict (409) — likely concurrent poller; backoff %ds',
+                        backoff,
+                    )
+                    _time.sleep(backoff)
+                else:
+                    backoff = min(30, 2 * consecutive_errors)
+                    logger.exception(
+                        'telegram_bot.polling_failed; backoff %ds (consecutive=%d)',
+                        backoff, consecutive_errors,
+                    )
+                    _time.sleep(backoff)

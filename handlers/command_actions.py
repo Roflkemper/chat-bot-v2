@@ -431,8 +431,17 @@ class CommandActions:
         return self.ctx.plain(handle_state_command())
 
     def advise(self) -> BotResponsePayload:
-        from telegram_ui.advisor.advise import handle_advise_command
-        return self.ctx.plain(handle_advise_command())
+        # /advise — алиас на v2 (рынок + сетапы + paper trades).
+        # Legacy v0.1 ("ADVISOR v2 — multi-asset / cold start") отключён по
+        # требованию оператора 2026-05-07: давать выводы и сетапы, а не "cold start".
+        try:
+            from services.advisor import build_advisor_v2_text
+            text = build_advisor_v2_text()
+        except Exception as exc:
+            logger.exception("advise.failed")
+            return self.ctx.plain(f"❌ advise failed: {exc}")
+        self._log_manual_command(action="ADVISOR_V2")
+        return self.ctx.plain(text)
 
     def regime(self) -> BotResponsePayload:
         from core.pipeline import build_full_snapshot
@@ -598,6 +607,163 @@ class CommandActions:
         store.remove_bot(key)
         self._log_manual_command(action="BOT_REMOVE")
         return self.ctx.plain(f"🗃 БОТ АРХИВИРОВАН: {key}")
+
+    def papertrader(self) -> BotResponsePayload:
+        """Paper trader stats — open trades + recent performance.
+
+        See TZ-PAPER-TRADER (2026-05-07).
+        """
+        try:
+            from services.paper_trader import journal, daily_summary, PAPER_NOTIONAL_USD, CONFIDENCE_THRESHOLD
+        except Exception as exc:
+            logger.exception("papertrader.import_failed")
+            return self.ctx.plain(f"❌ paper trader недоступен: {exc}")
+
+        opens = journal.open_trades()
+        summary_24h = daily_summary(days_back=1)
+        summary_7d = daily_summary(days_back=7)
+
+        lines = [
+            "📊 PAPER TRADER v0.1",
+            f"Notional per trade: ${PAPER_NOTIONAL_USD:,.0f} | Conf threshold: {CONFIDENCE_THRESHOLD:.0f}%",
+            "",
+            f"Open trades: {len(opens)}",
+        ]
+        for tr in opens[:5]:
+            side = "LONG" if tr.get("side") == "long" else "SHORT"
+            entry = tr.get("entry") or 0
+            sl = tr.get("sl") or 0
+            tp1 = tr.get("tp1") or 0
+            stype = tr.get("setup_type", "?")
+            lines.append(f"  • {side} @ {entry:.0f} | SL {sl:.0f} | TP1 {tp1:.0f} | {stype}")
+        if len(opens) > 5:
+            lines.append(f"  ... +{len(opens)-5} more")
+        lines.append("")
+        lines.append("24h:")
+        lines.append(
+            f"  opens={summary_24h['n_opens']} closes={summary_24h['n_closes']} "
+            f"wins={summary_24h['n_wins']} losses={summary_24h['n_losses']}"
+        )
+        lines.append(
+            f"  net=${summary_24h['net_pnl_usd']:+.0f} | win_rate={summary_24h['win_rate_pct']}% | avg_rr={summary_24h['avg_rr']}"
+        )
+        lines.append("")
+        lines.append("7d:")
+        lines.append(
+            f"  opens={summary_7d['n_opens']} closes={summary_7d['n_closes']} "
+            f"wins={summary_7d['n_wins']} losses={summary_7d['n_losses']}"
+        )
+        lines.append(
+            f"  net=${summary_7d['net_pnl_usd']:+.0f} | win_rate={summary_7d['win_rate_pct']}% | avg_rr={summary_7d['avg_rr']}"
+        )
+        if summary_7d.get("by_setup_type"):
+            lines.append("")
+            lines.append("7d by setup type:")
+            for stype, n in sorted(summary_7d["by_setup_type"].items(), key=lambda x: -x[1])[:8]:
+                lines.append(f"  {stype}: {n}")
+        self._log_manual_command(action="PAPERTRADER")
+        return self.ctx.plain("\n".join(lines))
+
+    def regime_v2(self) -> BotResponsePayload:
+        """Multi-timeframe regime view: 4h + 1h + 15m simultaneously.
+
+        Solves the META-issue where v1 classifier marks bull-drift as RANGE
+        because ADX>25 strict criterion fails inside short pullbacks.
+        v2 introduces SLOW_UP/SLOW_DOWN/DRIFT_UP/DRIFT_DOWN states that
+        catch this case (calibrated on 1y data + verified on operator window).
+        """
+        try:
+            from services.regime_classifier_v2 import build_multi_timeframe_view
+            v = build_multi_timeframe_view()
+        except Exception as exc:
+            logger.exception("regime_v2.failed")
+            return self.ctx.plain(f"❌ regime_v2 failed: {exc}")
+
+        lines = ["🌡️ REGIME v2 — мульти-таймфрейм"]
+        lines.append("")
+        for tf_name, bar in [("4h", v.bar_4h), ("1h", v.bar_1h), ("15m", v.bar_15m)]:
+            if bar is None:
+                lines.append(f"  {tf_name}: НЕТ ДАННЫХ")
+                continue
+            ind = bar.indicators
+            lines.append(f"  {tf_name}: **{bar.state_v2}** → {bar.state_3state}")
+            close = bar.last_bar_close
+            ema200 = ind.get("ema200")
+            dist = ind.get("dist_to_ema200_pct") or 0
+            slope = ind.get("ema50_slope_pct") or 0
+            atr = ind.get("atr_pct") or 0
+            move_24h = ind.get("move_24h_pct") or 0
+            ema200_str = f"{ema200:.0f}" if ema200 is not None else "n/a"
+            lines.append(
+                f"    close={close:.0f} ema200={ema200_str} dist={dist:+.2f}% slope_12h={slope:+.3f}%"
+            )
+            lines.append(
+                f"    atr={atr:.2f}% 24h_move={move_24h:+.2f}%"
+            )
+        lines.append("")
+        if v.macro_micro_diverge:
+            lines.append("⚠️ MACRO ≠ MICRO — 4h и 15m показывают разные направления")
+        else:
+            lines.append("✓ Macro и micro согласованы")
+        lines.append("")
+        lines.append("Состояния v2:")
+        lines.append("  STRONG_*  — сильный тренд (ADX>25)")
+        lines.append("  SLOW_*    — слабый тренд (EMA stack + slope)")
+        lines.append("  DRIFT_*   — низковолатильный grind")
+        lines.append("  CASCADE_* — быстрое движение")
+        lines.append("  RANGE/COMPRESSION — без направления")
+
+        self._log_manual_command(action="REGIME_V2")
+        return self.ctx.plain("\n".join(lines))
+
+    def advisor(self) -> BotResponsePayload:
+        """Advisor v0.2 — рыночный анализ с выводами и торговыми сетапами.
+
+        Без позиции, без distance to liquidation. С verdict, multi-TF
+        regime, momentum, flow, OI/funding, session levels, активные
+        setup'ы, paper trades. См. TZ-ADVISOR-V0_2 (2026-05-07).
+        """
+        try:
+            from services.advisor import build_advisor_v2_text
+            text = build_advisor_v2_text()
+        except Exception as exc:
+            logger.exception("advisor.failed")
+            return self.ctx.plain(f"❌ advisor failed: {exc}")
+        self._log_manual_command(action="ADVISOR_V2")
+        return self.ctx.plain(text)
+
+    def margin(self) -> BotResponsePayload:
+        """Operator-supplied margin data for Decision Layer M-* family.
+
+        Usage: /margin <coefficient> <available_margin_usd> <distance_to_liq_pct>
+        Example: /margin 0.97 20434 18.0
+
+        Validates ranges, appends to state/manual_overrides/margin_overrides.jsonl,
+        replies with confirmation. See TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-06.
+        """
+        from services.margin import (
+            MarginCommandError,
+            append_override,
+            parse_override_command,
+        )
+
+        try:
+            record = parse_override_command(self.ctx.command)
+        except MarginCommandError as exc:
+            return self.ctx.plain(f"❌ {exc}")
+        try:
+            append_override(record)
+        except OSError as exc:
+            return self.ctx.plain(f"❌ Не удалось записать override: {exc}")
+        self._log_manual_command(action="MARGIN_OVERRIDE")
+        return self.ctx.plain(
+            "✅ MARGIN OVERRIDE СОХРАНЁН\n"
+            f"coefficient: {record.coefficient:.4f}\n"
+            f"available_margin: {record.available_margin_usd:,.0f} USD\n"
+            f"distance_to_liq: {record.distance_to_liquidation_pct:.1f}%\n"
+            f"ts: {record.ts}\n"
+            f"source: {record.source}"
+        )
 
     def blackout(self) -> BotResponsePayload:
         from core.orchestrator.regime_classifier import RegimeStateStore
@@ -1252,6 +1418,10 @@ def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotRes
         '_cmd_bot_add': actions.bot_add,
         '_cmd_bot_remove': actions.bot_remove,
         '_cmd_blackout': actions.blackout,
+        '_cmd_margin': actions.margin,
+        '_cmd_advisor': actions.advisor,
+        '_cmd_regime_v2': actions.regime_v2,
+        '_cmd_papertrader': actions.papertrader,
         '_cmd_apply': actions.apply,
         '_cmd_killswitch': actions.killswitch,
         '_cmd_killswitch_status': actions.killswitch_status,

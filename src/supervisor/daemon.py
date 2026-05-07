@@ -216,12 +216,20 @@ class ManagedProcess:
         try:
             cmd = cast(list[str], self.cfg["cmd"])
             cwd = cast(Path, self.cfg["cwd"])
+            popen_kwargs: dict = {}
+            if hasattr(subprocess, "STARTUPINFO"):  # Windows
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = 0  # SW_HIDE — hides the console window
+                popen_kwargs["startupinfo"] = si
+                popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
             self.proc = subprocess.Popen(
                 cmd,
                 cwd=str(cwd),
                 stdout=f,
                 stderr=subprocess.STDOUT,
                 env=os.environ.copy(),
+                **popen_kwargs,
             )
         except Exception as exc:
             logger.error("%s: failed to start: %s", self.name, exc)
@@ -256,7 +264,37 @@ class ManagedProcess:
     # ── Health ────────────────────────────────────────────────────────────────
 
     def is_running(self) -> bool:
-        return self.proc is not None and self.proc.poll() is None
+        """Check if the managed component is alive.
+
+        On Windows, subprocess.Popen often launches a venv shim that exits
+        after spawning the real interpreter as a child. Once the shim exits,
+        proc.poll() returns an exit code even though the real worker is still
+        running. To avoid false-DEAD detections, we verify either:
+          (a) our direct child (shim or real) is still alive, OR
+          (b) any process matching the configured cmdline fragment exists.
+        """
+        if self.proc is None:
+            return False
+        if self.proc.poll() is None:
+            return True
+        # Shim exited — check whether a cmdline-matching descendant is still alive.
+        fragment = cast(str | None, self.cfg.get("cmdline_must_contain"))
+        if not fragment or psutil is None:
+            return False
+        try:
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    pname = (proc.name() or "").lower()
+                    if "python" not in pname:
+                        continue
+                    cmdline = " ".join(proc.cmdline() or [])
+                    if fragment in cmdline and proc.pid != os.getpid():
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+        except Exception:
+            pass
+        return False
 
     def log_stale(self) -> bool:
         lp = log_path(self.name)
@@ -587,7 +625,12 @@ def get_status_rows() -> list[dict[str, object]]:
 
         pid = _read_pid(p)
         cfg = COMPONENTS.get(name, {})
-        cmdline_check = cfg.get("cmdline_must_contain") if name != "supervisor" else None
+        if name == "supervisor":
+            # Supervisor cmdline contains "src.supervisor.daemon" — guard
+            # against Windows PID reuse when checking liveness.
+            cmdline_check = "src.supervisor.daemon"
+        else:
+            cmdline_check = cfg.get("cmdline_must_contain")
         alive = _pid_alive_for(pid, cmdline_check) if pid else False
 
         if not alive:
@@ -629,10 +672,13 @@ def get_status_rows() -> list[dict[str, object]]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _acquire_lock() -> bool:
-    """Return True if this process acquired the lock; False if another supervisor is running."""
+    """Return True if this process acquired the lock; False if another supervisor is running.
+
+    Uses cmdline check to avoid false-alive on Windows PID-reuse.
+    """
     if LOCK_PATH.exists():
         pid = _read_pid(LOCK_PATH)
-        if pid and _pid_alive(pid):
+        if pid and _pid_alive_for(pid, cmdline_must_contain="src.supervisor.daemon"):
             logger.warning("Another supervisor already running (PID=%s) — exiting duplicate", pid)
             return False
         LOCK_PATH.unlink(missing_ok=True)
