@@ -167,13 +167,16 @@ def _format_state_header(state: PositionStateSnapshot) -> str:
         lines.append("")
         lines.append(
             f"SHORT total: {state.short_side.bot_count} ботов "
-            f"| {state.short_side.total_position_btc:+.3f} BTC "
+            f"| {state.short_side.total_position_btc:+.3f} BTC (inverse, COIN-M) "
             f"| {state.short_side.total_unrealized_usd:+,.0f} USD"
         )
     if state.long_side.bot_count > 0:
+        # 2026-05-07: position_btc для LONG-linear — это USD-нотом, не BTC.
+        # Tracker не различает units — баг в position_state. Здесь корректно
+        # подписываем как 'USD' чтобы не вводить в заблуждение.
         lines.append(
             f"LONG total: {state.long_side.bot_count} ботов "
-            f"| {state.long_side.total_position_btc:+.3f} BTC "
+            f"| ~${state.long_side.total_position_btc:,.0f} (linear, USDT-M) "
             f"| {state.long_side.total_unrealized_usd:+,.0f} USD"
         )
 
@@ -211,6 +214,52 @@ def _format_playbook_block(state: PositionStateSnapshot) -> str:
     return "\n".join(lines)
 
 
+def _format_balance_block(state: PositionStateSnapshot) -> str:
+    """Two-engine portfolio balance check (MASTER §16.2).
+
+    Operator stratery: торгуем в обе стороны (LONG-USDT + SHORT-COIN-M).
+    Если переизбыток в одной стороне — рекомендуем работать с другой
+    как балансировкой (P-15 idea + Q-5 в OPERATOR_QUESTIONS).
+    """
+    short_btc = abs(state.short_side.total_position_btc)
+    long_btc = state.long_side.total_position_btc  # для linear-LONG это USD-нотом
+    short_unr = state.short_side.total_unrealized_usd
+    long_unr = state.long_side.total_unrealized_usd
+
+    # Проверка переизбытка SHORT (на 50%+ больше LONG в USD-эквиваленте)
+    # short_btc × current_price = USD value of SHORT exposure
+    # long_btc (linear) уже в USD
+    short_usd_eq = short_btc * state.current_price if state.current_price > 0 else 0
+    long_usd_eq = long_btc  # linear notional = USD
+
+    lines = ["⚖️ БАЛАНС ДВУХ ДВИЖКОВ (MASTER §16.2)"]
+    lines.append("")
+    if short_usd_eq > 0:
+        lines.append(f"SHORT exposure: ~${short_usd_eq:,.0f} ({short_btc:.3f} BTC × ${state.current_price:,.0f}) | uPnL {short_unr:+,.0f}$")
+    if long_usd_eq > 0:
+        lines.append(f"LONG exposure:  ~${long_usd_eq:,.0f} | uPnL {long_unr:+,.0f}$")
+
+    if short_usd_eq > 0 and long_usd_eq > 0:
+        ratio = short_usd_eq / long_usd_eq
+        net_btc = long_usd_eq / state.current_price - short_btc if state.current_price > 0 else 0
+        lines.append(f"SHORT/LONG ratio: {ratio:.2f}x | Net BTC exposure: {net_btc:+.3f}")
+
+        if ratio > 1.5:
+            lines.append("")
+            lines.append("⚠️ ПЕРЕИЗБЫТОК SHORT (>1.5×). Идеи балансировки:")
+            lines.append("  • Усилить LONG-движок (увеличить order_size / уменьшить gs)")
+            lines.append("  • LONG-grid быстрее набирает на росте → снижает net SHORT exposure")
+            lines.append("  • Q-5 в OPERATOR_QUESTIONS: 'SHORT мог сократить позицию пропорционально на откате'")
+            lines.append("  • P-15 (DRAFT): на retracement SHORT закрывает часть в плюс/нулём → reentry с более высоких цен")
+        elif ratio < 0.7:
+            lines.append("")
+            lines.append("⚠️ ПЕРЕИЗБЫТОК LONG (>1.4×). Идеи балансировки:")
+            lines.append("  • Усилить SHORT-движок (если bull-тренд истощился)")
+            lines.append("  • SHORT-grid currency cushion при росте")
+
+    return "\n".join(lines)
+
+
 def format_honest_advisory(state: PositionStateSnapshot) -> str:
     """Format honest advisory: facts + playbook context, NO fake EV.
 
@@ -227,6 +276,8 @@ def format_honest_advisory(state: PositionStateSnapshot) -> str:
         _format_state_header(state),
         "",
         _format_playbook_block(state),
+        "",
+        _format_balance_block(state),
         "",
         "─" * 30,
         "Это observation, не команда к действию.",

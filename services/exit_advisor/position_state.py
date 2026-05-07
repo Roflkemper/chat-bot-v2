@@ -33,7 +33,7 @@ _DD_MODERATE = -7.0
 _DD_SEVERE = -12.0
 _DD_CRITICAL = -20.0
 _EARLY_DURATION_H = 4.0
-_LIQ_URGENT_PCT = 15.0
+_LIQ_URGENT_PCT = 5.0  # 2026-05-07: was 15 — too liberal. 14% distance to liq на inverse означает 14% движение цены ВВЕРХ — это далеко не URGENT. Реальный риск только при <5%.
 
 
 class ScenarioClass(str, Enum):
@@ -195,8 +195,15 @@ def build_position_state(
         dd_onset_cache = {}
 
     bots: list[BotState] = []
-    total_balance = 0.0
-    seen_balance = False
+
+    # 2026-05-07: snapshots.csv содержит multiple exchange accounts
+    # (BitMEX inverse + Binance USDT-M + ...). Каждый bot_id имеет свой
+    # последний row, но balance этих rows фиксируется в разное время.
+    # Раньше код брал первый non-zero balance — давал случайное значение.
+    # Сейчас: берём balance только из rows с timestamp == latest_ts (это
+    # обеспечивает что balance актуальные именно на текущий момент).
+    latest_ts = max((r.get("ts_utc", "") for r in rows), default="")
+    unique_balances: set[float] = set()
 
     for row in rows:
         bot_id = row.get("bot_id", "").strip()
@@ -208,10 +215,13 @@ def build_position_state(
         avg_entry = _safe_float(row.get("average_price", "0"))
         liq_price = _safe_float(row.get("liquidation_price", "0"))
         balance = _safe_float(row.get("balance", "0"))
+        row_ts = row.get("ts_utc", "")
 
-        if not seen_balance and balance > 0:
-            total_balance = balance
-            seen_balance = True
+        # Балансы только из rows с актуальным ts (свежий snapshot, не из
+        # архивных rows для других bot_id). Накапливаем uniq значения
+        # (округляем чтобы свернуть мелкие флуктуации в одну группу).
+        if balance > 0 and row_ts == latest_ts:
+            unique_balances.add(round(balance, 0))  # round to dollar — exchange accounts отличаются на сотни
 
         # Distance to liq
         if liq_price > 0 and current_price > 0:
@@ -263,6 +273,9 @@ def build_position_state(
             side.worst_bot = b
 
     total_unrealized = sum(b.unrealized_usd for b in bots if b.status == 2)
+
+    # Sum unique balance values per exchange account (BitMEX + Binance + ...)
+    total_balance = sum(unique_balances) if unique_balances else 0.0
     free_margin_pct = ((total_balance + total_unrealized) / total_balance * 100) if total_balance > 0 else 100.0
 
     scenario, notes = _classify_scenario(bots, total_balance)

@@ -158,18 +158,24 @@ def _tick(
     if state.scenario_class == ScenarioClass.MONITORING:
         return
 
-    # 2. Dedup check
+    # 2. Dedup check.
+    # 2026-05-07: убрал escalated-обход (was: alert проходил каждый рестарт
+    # потому что last_severity in-memory обнулялся → 0→6 = escalation).
+    # Теперь dedup_window=2h применяется СТРОГО, без escalation override.
+    # Если scenario действительно ухудшился (CYCLE_DEATH → SEVERE → CRITICAL)
+    # — для каждого свой sc_key → каждый получит свой alert.
     now = state.captured_at
     sc_key = state.scenario_class.value
     last_sent = dedup_cache.get(sc_key)
     current_severity = _SEVERITY_ORDER.get(state.scenario_class, 0)
-    prev_severity = last_severity_holder[0]
-
-    escalated = current_severity > prev_severity
     within_window = last_sent is not None and (now - last_sent) < timedelta(seconds=_DEDUP_WINDOW_SEC)
 
-    if within_window and not escalated:
-        logger.debug("exit_advisor.dedup_suppressed scenario=%s", sc_key)
+    if within_window:
+        ago_min = (now - last_sent).total_seconds() / 60
+        logger.info(
+            "exit_advisor.dedup_suppressed scenario=%s last_sent_ago=%.0fmin window=%dmin",
+            sc_key, ago_min, _DEDUP_WINDOW_SEC // 60,
+        )
         last_severity_holder[0] = current_severity
         return
 
