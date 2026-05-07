@@ -382,6 +382,23 @@ def _summary_verdict(regime: dict, f: dict, setups: list[dict]) -> tuple[str, li
     return verdict, reasons
 
 
+def _read_margin_block() -> dict | None:
+    """Read margin block from state_latest.json (set by state_snapshot_loop).
+
+    Source: state/manual_overrides/margin_overrides.jsonl ← /margin operator command.
+    """
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        p = _Path("docs/STATE/state_latest.json")
+        if not p.exists():
+            return None
+        data = _json.loads(p.read_text(encoding="utf-8"))
+        return data.get("margin")
+    except Exception:
+        return None
+
+
 def build_advisor_v2_text() -> str:
     """Compose full advisor v2 message."""
     now = datetime.now(timezone.utc)
@@ -410,6 +427,23 @@ def build_advisor_v2_text() -> str:
     for r in reasoning:
         lines.append(f"   • {r}")
     lines.append(f"━━━━━━━━━━━━━━━━━━━━")
+
+    # ── Margin status (TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-07)
+    # Operator sets via /margin <coef> <available> <dist>. Stale > 6h = warn.
+    margin_block = _read_margin_block()
+    if margin_block:
+        lines.append("")
+        lines.append("💰 MARGIN (operator-supplied)")
+        coef = margin_block.get("coefficient")
+        avail = margin_block.get("available_margin_usd")
+        dist = margin_block.get("distance_to_liquidation_pct")
+        age_min = margin_block.get("data_age_minutes", 0)
+        if coef is not None:
+            lines.append(f"  Margin coef: {coef:.4f} | Available: ${avail:,.0f} | Dist to liq: {dist:.1f}%")
+        if age_min > 360:  # > 6h
+            lines.append(f"  ⚠️ Margin data {age_min/60:.1f}h old — обнови через /margin")
+        elif age_min > 60:
+            lines.append(f"  Margin data {age_min:.0f}min old")
 
     # ── Regime multi-TF
     lines.append("")

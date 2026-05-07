@@ -214,6 +214,20 @@ def _format_playbook_block(state: PositionStateSnapshot) -> str:
     return "\n".join(lines)
 
 
+def _read_margin_override() -> dict | None:
+    """Read operator margin from state_latest.json (TZ-MARGIN-COEFFICIENT-INPUT-WIRE)."""
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        p = _Path("docs/STATE/state_latest.json")
+        if not p.exists():
+            return None
+        data = _json.loads(p.read_text(encoding="utf-8"))
+        return data.get("margin")
+    except Exception:
+        return None
+
+
 def _format_balance_block(state: PositionStateSnapshot) -> str:
     """Two-engine portfolio balance check (MASTER §16.2).
 
@@ -274,6 +288,24 @@ def format_honest_advisory(state: PositionStateSnapshot) -> str:
 
     parts = [
         _format_state_header(state),
+    ]
+
+    # Margin override (operator-supplied) — most authoritative.
+    margin = _read_margin_override()
+    if margin and margin.get("coefficient") is not None:
+        age_min = margin.get("data_age_minutes", 0)
+        coef = margin.get("coefficient")
+        avail = margin.get("available_margin_usd")
+        dist = margin.get("distance_to_liquidation_pct")
+        parts.append("")
+        parts.append(
+            f"💰 Margin (operator /margin): coef={coef:.4f} | "
+            f"available ${avail:,.0f} | dist_liq {dist:.1f}%"
+        )
+        if age_min > 360:  # > 6h
+            parts.append(f"  ⚠️ {age_min/60:.1f}h old — обнови /margin")
+
+    parts.extend([
         "",
         _format_playbook_block(state),
         "",
@@ -282,5 +314,5 @@ def format_honest_advisory(state: PositionStateSnapshot) -> str:
         "─" * 30,
         "Это observation, не команда к действию.",
         "Решение остаётся за оператором. /advise для рыночного контекста.",
-    ]
+    ])
     return "\n".join(parts)
