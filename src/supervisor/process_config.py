@@ -37,6 +37,17 @@ COMPONENTS: dict[str, dict] = {
         "restart_window_min": 10,
         "stale_pid_files":   [ROOT / "market_collector" / "run" / "collector.pid"],
     },
+    "state_snapshot": {
+        # 2026-05-07: replaces bot7-state-snapshot scheduled task. Was disabled
+        # for orphan-cleanup, never re-enabled — paper_journal stale 4900s.
+        # Now managed by supervisor → always restarts on crash.
+        "cmd":               [sys.executable, "scripts/state_snapshot_loop.py", "--interval-sec", "300"],
+        "cwd":               ROOT,
+        "log":               "state_snapshot.log",
+        "health_stale_min":  10,
+        "restart_max":       3,
+        "restart_window_min": 10,
+    },
 }
 
 ALL_COMPONENTS = list(COMPONENTS.keys())

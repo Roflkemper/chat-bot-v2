@@ -43,6 +43,22 @@ CRITICAL_SOURCES = {
         "max_age_min": 60,  # liquidations sparse — даже спокойный рынок 1+ event/hr
         "label": "Liquidation stream (Bybit+Binance WS)",
     },
+    "setups_jsonl": {
+        # 2026-05-07 incident: setup_detector сломался 06.05 13:39 → 07.05 13:21
+        # (24+ hours), build_context_failed каждую минуту, но никто не алертился.
+        # 1h threshold: setup_detector tick = 60s, на любом активном рынке
+        # минимум 1 setup детектится за час. Если час тишины — что-то сломано.
+        "path": "state/setups.jsonl",
+        "max_age_min": 60,
+        "label": "Setup detector output",
+    },
+    "state_latest_json": {
+        # 2026-05-07: state_snapshot moved from scheduled task to supervisor.
+        # paper_journal и decision_log зависят от свежести.
+        "path": "docs/STATE/state_latest.json",
+        "max_age_min": 15,  # state_snapshot interval = 5 min, threshold с запасом
+        "label": "State snapshot (paper_journal/decision_log input)",
+    },
 }
 
 STATE_PATH = Path("state/stale_monitor_state.json")
