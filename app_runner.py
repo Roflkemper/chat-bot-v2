@@ -184,14 +184,19 @@ async def _run_setup_tracker(stop_event: asyncio.Event) -> None:
 async def _run_exit_advisor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Exit advisory for live SHORT/LONG positions.
 
-    2026-05-07 fix: было запущено без send_fn, поэтому за 5 дней data/exit_advisor/
-    оставалась пуста — alerts строились но не отправлялись (silent skip в loop.py:157).
-    Теперь wire'имся к shared Telegram bot, как paper_trader/stale_monitor.
+    2026-05-07: ОПАСНЫЙ модуль (operator complaint 14:56). Шлёт 'EMERGENCY: Close ALL SHORT'
+    с EV +$2 одинаковым для всех вариантов — scoring сломан, советы несоответствуют
+    realistic backtest (closing in DD = worst-case per OPPORTUNITY_MAP_v2 HARD BAN).
+
+    По умолчанию send_fn=None (loop работает, copies в jsonl, но в Telegram молчит).
+    Чтобы включить: EXIT_ADVISOR_SEND_TELEGRAM=1 в env (после починки EV scoring).
     """
+    import os as _os
     from services.exit_advisor.loop import exit_advisor_loop
 
     send_fn = None
-    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+    enable_telegram = _os.environ.get("EXIT_ADVISOR_SEND_TELEGRAM", "0") == "1"
+    if enable_telegram and telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
         chat_ids = list(telegram_app.allowed_chat_ids)
         bot = telegram_app.bot
 
@@ -203,6 +208,8 @@ async def _run_exit_advisor(stop_event: asyncio.Event, *, telegram_app=None) -> 
                     logger.exception("exit_advisor.telegram_send_failed cid=%s", cid)
 
         send_fn = _send
+    else:
+        logger.warning("exit_advisor.telegram_disabled (set EXIT_ADVISOR_SEND_TELEGRAM=1 to enable)")
 
     await exit_advisor_loop(stop_event=stop_event, send_fn=send_fn)
 
