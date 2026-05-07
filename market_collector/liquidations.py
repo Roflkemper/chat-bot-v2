@@ -77,15 +77,24 @@ def _run_bybit_ws(stop_event: threading.Event) -> None:
                     if data.get("op") == "pong" or data.get("ret_msg") == "pong":
                         continue
                     if data.get("topic") == "allLiquidation.BTCUSDT":
-                        liq = data.get("data", {})
-                        side = "long" if str(liq.get("side", "")).lower() == "sell" else "short"
-                        _write_liq({
-                            "ts_utc": _ts_utc_now(),
-                            "exchange": "bybit",
-                            "side": side,
-                            "qty": liq.get("size", ""),
-                            "price": liq.get("price", ""),
-                        })
+                        # 2026-05-07: Bybit allLiquidation.* отдаёт `data` как
+                        # СПИСОК objects, не один object. Был баг — `liq.get()`
+                        # падал на list. Теперь iterate.
+                        liq_data = data.get("data", [])
+                        if isinstance(liq_data, dict):
+                            liq_data = [liq_data]
+                        for liq in liq_data:
+                            if not isinstance(liq, dict):
+                                continue
+                            # Bybit: side="Sell" значит liquidated long position
+                            side = "long" if str(liq.get("side", "")).lower() == "sell" else "short"
+                            _write_liq({
+                                "ts_utc": _ts_utc_now(),
+                                "exchange": "bybit",
+                                "side": side,
+                                "qty": liq.get("size", ""),
+                                "price": liq.get("price", ""),
+                            })
                 except Exception:
                     logger.warning("bybit_ws.parse_error", exc_info=True)
                     continue  # parse-ошибка не должна закрывать соединение
