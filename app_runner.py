@@ -117,10 +117,62 @@ async def _run_dashboard(stop_event: asyncio.Event) -> None:
     await dashboard_state_loop(stop_event=stop_event)
 
 
+async def _run_dashboard_http(stop_event: asyncio.Event) -> None:
+    from services.dashboard.http_server import dashboard_http_server
+
+    await dashboard_http_server(stop_event=stop_event)
+
+
 async def _run_setup_detector(stop_event: asyncio.Event) -> None:
     from services.setup_detector.loop import setup_detector_loop
 
     await setup_detector_loop(stop_event=stop_event)
+
+
+async def _run_stale_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Stale data monitor — alerts via Telegram when critical sources go stale."""
+    from services.stale_monitor import stale_monitor_loop
+
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(text: str) -> None:
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, text)
+                except Exception:
+                    logger.exception("stale_monitor.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    await stale_monitor_loop(stop_event=stop_event, send_fn=send_fn)
+
+
+async def _run_paper_trader(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Paper trader v0.1 (TZ-PAPER-TRADER 2026-05-07).
+
+    Reads setups.jsonl + current price, opens/closes paper trades, sends
+    Telegram alerts via the SHARED bot instance (no second polling client).
+    """
+    from services.paper_trader.loop import paper_trader_loop
+
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(text: str) -> None:
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, text)
+                except Exception:
+                    logger.exception("paper_trader.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    await paper_trader_loop(stop_event=stop_event, send_fn=send_fn)
 
 
 async def _run_setup_tracker(stop_event: asyncio.Event) -> None:
@@ -189,29 +241,50 @@ async def main(
     paper_journal_task = asyncio.create_task(_run_paper_journal(stop_event), name="paper_journal")
     decision_log_task = asyncio.create_task(_run_decision_log(stop_event), name="decision_log")
     dashboard_task = asyncio.create_task(_run_dashboard(stop_event), name="dashboard")
+    dashboard_http_task = asyncio.create_task(_run_dashboard_http(stop_event), name="dashboard_http")
     setup_detector_task = asyncio.create_task(_run_setup_detector(stop_event), name="setup_detector")
+    paper_trader_task = asyncio.create_task(_run_paper_trader(stop_event, telegram_app=app), name="paper_trader")
+    stale_monitor_task = asyncio.create_task(_run_stale_monitor(stop_event, telegram_app=app), name="stale_monitor")
     setup_tracker_task = asyncio.create_task(_run_setup_tracker(stop_event), name="setup_tracker")
     exit_advisor_task = asyncio.create_task(_run_exit_advisor(stop_event), name="exit_advisor")
     market_intelligence_task = asyncio.create_task(_run_market_intelligence(stop_event), name="market_intelligence")
     market_forward_task = asyncio.create_task(_run_market_forward_analysis(stop_event), name="market_forward_analysis")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
-    done, pending = await asyncio.wait(
-        {polling_task, orchestrator_task, protection_task, counter_long_task, boundary_expand_task, adaptive_grid_task, paper_journal_task, decision_log_task, dashboard_task, setup_detector_task, setup_tracker_task, exit_advisor_task, market_intelligence_task, market_forward_task, stop_task},
-        return_when=asyncio.FIRST_COMPLETED,
-    )
+    # Critical tasks: their failure forces full shutdown.
+    # Non-critical tasks: log error but keep running (telegram bot must stay live).
+    critical_tasks = {polling_task, orchestrator_task, stop_task}
+    all_tasks = {
+        polling_task, orchestrator_task, protection_task, counter_long_task,
+        boundary_expand_task, adaptive_grid_task, paper_journal_task,
+        decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
+        setup_tracker_task, exit_advisor_task, market_intelligence_task,
+        market_forward_task, paper_trader_task, stale_monitor_task, stop_task,
+    }
 
     exit_code = 0
-    for task in done:
-        if task is stop_task:
-            logger.info("app_runner.shutdown_requested_by_signal")
-            continue
-        exc = task.exception() if not task.cancelled() else None
-        if exc:
-            logger.exception("app_runner.subtask_crashed name=%s", task.get_name(), exc_info=exc)
-        else:
-            logger.warning("app_runner.subtask_finished_unexpectedly name=%s", task.get_name())
-        exit_code = 1
+    pending = set(all_tasks)
+    while True:
+        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+        # Collect crashes; only critical task failure ends the loop.
+        critical_completed = False
+        for task in done:
+            if task is stop_task:
+                logger.info("app_runner.shutdown_requested_by_signal")
+                critical_completed = True
+                continue
+            exc = task.exception() if not task.cancelled() else None
+            if exc:
+                logger.error("app_runner.subtask_crashed name=%s exc=%s", task.get_name(), exc, exc_info=exc)
+            else:
+                logger.warning("app_runner.subtask_finished_unexpectedly name=%s", task.get_name())
+            if task in critical_tasks:
+                logger.error("app_runner.critical_task_down name=%s — initiating shutdown", task.get_name())
+                exit_code = 1
+                critical_completed = True
+            # Non-critical: just log and let other tasks continue
+        if critical_completed:
+            break
 
     logger.info("app_runner.shutting_down")
     orchestrator.stop()
