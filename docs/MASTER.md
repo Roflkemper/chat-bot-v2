@@ -37,6 +37,7 @@
 - К25: "X тестов зелёных" в отчёте ≠ работает в проде (повтор К14). Обязательная проверка через продовый лог через 24h после деплоя.
 - К26: `git clean -fdx` УНИЧТОЖАЕТ untracked файлы включая критические docs. До выполнения — обязателен `git stash --include-untracked`. Критические docs ДОЛЖНЫ быть tracked (не `??`). TZ-055 incident: PLAYBOOK.md, GINAREA_MECHANICS.md, HANDOFF, NEXT_CHAT_PROMPT — потеряны и восстановлены из stash@{2}^3.
 - К27 (GRID/TRADER VIEW separation, ex-PROJECT_MANIFEST): GRID VIEW и TRADER VIEW держать раздельно. В GRID VIEW не тянуть trigger/entry/manual trader поля. Для GRID VIEW priority считать от layers/impulse/structure, не просто от bias. Structure flags считать отдельным модулем и передавать в engine через snapshot.
+- К28 (Inventory docs ≠ live state, 2026-05-07): любой документ типа RUNNING_SERVICES_INVENTORY / PROJECT_MAP / CANON отражает состояние **на момент написания**. Перед утверждением "X работает / Y running" — обязательно `ls -la` файлов данных (есть ли свежий mtime), `Get-Process` процесса (живой ли), `tail -1` лога (пишет ли). Источник INC-014 / 2026-05-07 incident: я сказал оператору "Liquidations stream + OI + Funding running", а они мертвы 4 дня — поверил RUNNING_SERVICES_INVENTORY_2026-04-30 без disk-check.
 
 ---
 

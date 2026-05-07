@@ -116,13 +116,10 @@ class TriggerChecker:
             if rsi_1h < RSI_1H_OVERSOLD:
                 self._fire("RSI_EXTREME", {"timeframe": "1h", "rsi": rsi_1h, "condition": "oversold"})
                 return
-        rsi_15m = compute_rsi_from_csv(OHLCV_15M_CSV)
-        if rsi_15m is not None:
-            if rsi_15m > RSI_15M_OVERBOUGHT:
-                self._fire("RSI_EXTREME", {"timeframe": "15m", "rsi": rsi_15m, "condition": "overbought"})
-                return
-            if rsi_15m < RSI_15M_OVERSOLD:
-                self._fire("RSI_EXTREME", {"timeframe": "15m", "rsi": rsi_15m, "condition": "oversold"})
+        # 15m RSI_EXTREME отключён 2026-05-07 по требованию оператора:
+        # 15m oversold/overbought = шум 30% времени без context, спамит чат.
+        # RSI divergences остаются через services/market_intelligence/event_detectors/rsi_divergence.py
+        # (там логика серьёзнее — price HH + RSI LH).
 
     def _check_level_break(self, price: float) -> None:
         if self._prev_price is None or self._prev_price == price:

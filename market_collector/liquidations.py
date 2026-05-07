@@ -39,6 +39,7 @@ def _write_liq(row: dict) -> None:
 
 
 def _run_bybit_ws(stop_event: threading.Event) -> None:
+    """Bybit liquidation WS с keepalive ping каждые 20с (per Bybit docs)."""
     import websocket  # websocket-client
 
     backoff = WS_RECONNECT_BASE_SEC
@@ -46,18 +47,37 @@ def _run_bybit_ws(stop_event: threading.Event) -> None:
         try:
             ws = websocket.WebSocket()
             ws.connect(BYBIT_WS_URL, timeout=10)
+            # Read timeout — без него recv() блокируется навсегда, idle connection
+            # закрывается сервером и наша сторона не узнаёт.
+            ws.settimeout(30)
             ws.send(json.dumps({"op": "subscribe", "args": ["allLiquidation.BTCUSDT"]}))
             backoff = WS_RECONNECT_BASE_SEC
+            last_ping = time.time()
             logger.info("bybit_ws.connected")
             while not stop_event.is_set():
+                # Keepalive: Bybit требует ping каждые 20s, иначе закрывает.
+                if time.time() - last_ping >= 20:
+                    try:
+                        ws.send(json.dumps({"op": "ping"}))
+                        last_ping = time.time()
+                    except Exception:
+                        logger.warning("bybit_ws.ping_failed", exc_info=True)
+                        break
                 try:
                     msg = ws.recv()
-                    if not msg:
-                        continue
+                except (websocket.WebSocketTimeoutException, TimeoutError, OSError):
+                    # Read timeout — норма, продолжаем (даём шанс отправить ping).
+                    # OSError ловит низкоуровневые SSL timeouts.
+                    continue
+                if not msg:
+                    continue
+                try:
                     data = json.loads(msg)
+                    # Pong от Bybit на наш ping — пропускаем тихо.
+                    if data.get("op") == "pong" or data.get("ret_msg") == "pong":
+                        continue
                     if data.get("topic") == "allLiquidation.BTCUSDT":
                         liq = data.get("data", {})
-                        # Bybit: side="Sell" means a long position was liquidated
                         side = "long" if str(liq.get("side", "")).lower() == "sell" else "short"
                         _write_liq({
                             "ts_utc": _ts_utc_now(),
@@ -67,9 +87,12 @@ def _run_bybit_ws(stop_event: threading.Event) -> None:
                             "price": liq.get("price", ""),
                         })
                 except Exception:
-                    logger.warning("bybit_ws.recv_error", exc_info=True)
-                    break
-            ws.close()
+                    logger.warning("bybit_ws.parse_error", exc_info=True)
+                    continue  # parse-ошибка не должна закрывать соединение
+            try:
+                ws.close()
+            except Exception:
+                pass
         except Exception:
             logger.warning("bybit_ws.connect_failed backoff=%.1fs", backoff, exc_info=True)
             stop_event.wait(backoff)
@@ -77,6 +100,7 @@ def _run_bybit_ws(stop_event: threading.Event) -> None:
 
 
 def _run_binance_ws(stop_event: threading.Event) -> None:
+    """Binance forceOrder WS — отвечаем pong на их ping (per Binance docs)."""
     import websocket  # websocket-client
 
     backoff = WS_RECONNECT_BASE_SEC
@@ -84,16 +108,31 @@ def _run_binance_ws(stop_event: threading.Event) -> None:
         try:
             ws = websocket.WebSocket()
             ws.connect(BINANCE_WS_URL, timeout=10)
+            ws.settimeout(190)  # Binance ping interval ≈ 3 min
             backoff = WS_RECONNECT_BASE_SEC
             logger.info("binance_ws.connected")
             while not stop_event.is_set():
                 try:
-                    msg = ws.recv()
-                    if not msg:
-                        continue
-                    data = json.loads(msg)
+                    opcode, frame_data = ws.recv_data()
+                except (websocket.WebSocketTimeoutException, TimeoutError, OSError):
+                    # Read timeout — норма (даём шанс отправить pong/продолжить).
+                    # OSError ловит низкоуровневые SSL timeouts на Windows.
+                    continue
+                # Binance шлёт ping (opcode 0x9) — отвечаем pong (opcode 0xA)
+                if opcode == 0x9:
+                    try:
+                        ws.pong(frame_data)
+                    except Exception:
+                        logger.warning("binance_ws.pong_failed", exc_info=True)
+                        break
+                    continue
+                if opcode != 0x1 and opcode != 0x2:  # not text/binary
+                    continue
+                if not frame_data:
+                    continue
+                try:
+                    data = json.loads(frame_data)
                     order = data.get("o", {})
-                    # Binance: S="SELL" means long liquidation
                     side = "long" if order.get("S") == "SELL" else "short"
                     _write_liq({
                         "ts_utc": _ts_utc_now(),
@@ -103,9 +142,12 @@ def _run_binance_ws(stop_event: threading.Event) -> None:
                         "price": order.get("p", ""),
                     })
                 except Exception:
-                    logger.warning("binance_ws.recv_error", exc_info=True)
-                    break
-            ws.close()
+                    logger.warning("binance_ws.parse_error", exc_info=True)
+                    continue
+            try:
+                ws.close()
+            except Exception:
+                pass
         except Exception:
             logger.warning("binance_ws.connect_failed backoff=%.1fs", backoff, exc_info=True)
             stop_event.wait(backoff)
