@@ -75,6 +75,88 @@ def _fetch_oi_hist_1h(symbol: str) -> float | None:
         return None
 
 
+def _fetch_binance_long_short(symbol: str) -> dict | None:
+    """Binance global account L/S + top trader + taker buy/sell — 5min snapshot.
+
+    3 endpoints (free, no auth):
+      /futures/data/globalLongShortAccountRatio  — все аккаунты
+      /futures/data/topLongShortPositionRatio    — top traders, по объёму позиций
+      /futures/data/takerlongshortRatio          — taker buy/sell volume
+    """
+    out: dict = {}
+    # 1) Global accounts
+    data = _binance_get(
+        "/futures/data/globalLongShortAccountRatio",
+        {"symbol": symbol, "period": "5m", "limit": 1},
+    )
+    if isinstance(data, list) and data:
+        try:
+            r = data[0]
+            out["global_long_account_pct"] = round(float(r["longAccount"]) * 100, 1)
+            out["global_short_account_pct"] = round(float(r["shortAccount"]) * 100, 1)
+            out["global_ls_ratio"] = round(float(r["longShortRatio"]), 3)
+        except (KeyError, ValueError, TypeError):
+            pass
+    # 2) Top trader positions (smart money по объёму)
+    data = _binance_get(
+        "/futures/data/topLongShortPositionRatio",
+        {"symbol": symbol, "period": "5m", "limit": 1},
+    )
+    if isinstance(data, list) and data:
+        try:
+            r = data[0]
+            out["top_trader_long_pct"] = round(float(r["longAccount"]) * 100, 1)
+            out["top_trader_short_pct"] = round(float(r["shortAccount"]) * 100, 1)
+            out["top_trader_ls_ratio"] = round(float(r["longShortRatio"]), 3)
+        except (KeyError, ValueError, TypeError):
+            pass
+    # 3) Taker buy/sell volume (последние 5 мин)
+    data = _binance_get(
+        "/futures/data/takerlongshortRatio",
+        {"symbol": symbol, "period": "5m", "limit": 1},
+    )
+    if isinstance(data, list) and data:
+        try:
+            r = data[0]
+            buy_vol = float(r["buyVol"])
+            sell_vol = float(r["sellVol"])
+            total = buy_vol + sell_vol
+            if total > 0:
+                out["taker_buy_pct"] = round(buy_vol / total * 100, 1)
+                out["taker_sell_pct"] = round(sell_vol / total * 100, 1)
+                out["taker_buy_sell_ratio"] = round(float(r["buySellRatio"]), 3)
+        except (KeyError, ValueError, TypeError):
+            pass
+    return out or None
+
+
+def _fetch_bybit_long_short(symbol: str) -> dict | None:
+    """Bybit V5 GET /v5/market/account-ratio — buy/sell ratio."""
+    url = "https://api.bybit.com/v5/market/account-ratio"
+    try:
+        resp = requests.get(
+            url,
+            params={"category": "linear", "symbol": symbol, "period": "5min", "limit": 1},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        payload = resp.json()
+        lst = payload.get("result", {}).get("list", [])
+        if not lst:
+            return None
+        r = lst[0]
+        buy = float(r["buyRatio"])
+        sell = float(r["sellRatio"])
+        return {
+            "bybit_long_pct": round(buy * 100, 1),
+            "bybit_short_pct": round(sell * 100, 1),
+            "bybit_ls_ratio": round(buy / sell, 3) if sell > 0 else None,
+        }
+    except (requests.RequestException, KeyError, ValueError, TypeError):
+        return None
+
+
 def build_snapshot() -> dict:
     """Build single snapshot of all 3 symbols. Returns dict ready to write."""
     out = {
@@ -99,6 +181,14 @@ def build_snapshot() -> dict:
                 premium = (funding["mark_price"] / funding["index_price"] - 1) * 100
                 sym_data["premium_pct"] = round(premium, 4)
             sym_data["next_funding_time_ms"] = funding["next_funding_time_ms"]
+
+        # Long/Short market sentiment (TZ-MARKET-LONG-SHORT-RATIO 2026-05-07)
+        binance_ls = _fetch_binance_long_short(sym)
+        if binance_ls:
+            sym_data.update(binance_ls)
+        bybit_ls = _fetch_bybit_long_short(sym)
+        if bybit_ls:
+            sym_data.update(bybit_ls)
 
         if sym_data:
             out[sym] = sym_data

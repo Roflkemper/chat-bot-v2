@@ -196,6 +196,13 @@ def _read_features_last() -> dict:
             # Premium (mark vs index) — новый сигнал, не было в parquet
             if "premium_pct" in btc:
                 out["premium_pct"] = float(btc["premium_pct"])
+            # Long/Short ratio market sentiment (2026-05-07)
+            for k in ("global_long_account_pct", "global_short_account_pct",
+                      "top_trader_long_pct", "top_trader_short_pct",
+                      "taker_buy_pct", "taker_sell_pct",
+                      "bybit_long_pct", "bybit_short_pct"):
+                if k in btc:
+                    out[k] = btc[k]
             out["_deriv_live_ts"] = data.get("last_updated", "")
     except Exception:
         logger.exception("advisor_v2.deriv_live_load_failed")
@@ -288,6 +295,46 @@ def _interpret_oi_funding(f: dict) -> list[str]:
     # Live source marker (для прозрачности, видеть откуда данные)
     if f.get("_funding_source") == "deriv_live":
         out.append("_(funding/OI: live Binance, обновляется каждые 5 мин)_")
+    return out
+
+
+def _interpret_long_short(f: dict) -> list[str]:
+    """Long/Short market sentiment (Binance global + top traders + Bybit + taker)."""
+    out: list[str] = []
+    gl = f.get("global_long_account_pct")
+    gs = f.get("global_short_account_pct")
+    tl = f.get("top_trader_long_pct")
+    ts_pct = f.get("top_trader_short_pct")
+    tb = f.get("taker_buy_pct")
+    tk_s = f.get("taker_sell_pct")
+    bl = f.get("bybit_long_pct")
+    bs = f.get("bybit_short_pct")
+
+    if gl is not None and gs is not None:
+        out.append(f"Binance все аккаунты: {gl}% long / {gs}% short")
+    if tl is not None and ts_pct is not None:
+        out.append(f"Binance топ-трейдеры (по объёму): {tl}% long / {ts_pct}% short")
+    if bl is not None and bs is not None:
+        out.append(f"Bybit: {bl}% long / {bs}% short")
+    if tb is not None and tk_s is not None:
+        out.append(f"Taker volume (последние 5 мин): {tb}% buy / {tk_s}% sell")
+
+    # Trader-actionable insights
+    if gl is not None and gl >= 60:
+        out.append(f"⚠️ Толпа в LONG ({gl}%) — crowded long, риск short squeeze ВНИЗ")
+    elif gs is not None and gs >= 60:
+        out.append(f"⚠️ Толпа в SHORT ({gs}%) — crowded short, риск long squeeze ВВЕРХ")
+
+    if tl is not None and gl is not None and (tl - gl) >= 5:
+        out.append(f"  Топ-трейдеры более bullish ({tl}% vs толпа {gl}%) — смартмани bias UP")
+    elif ts_pct is not None and gs is not None and (ts_pct - gs) >= 5:
+        out.append(f"  Топ-трейдеры более bearish ({ts_pct}% vs толпа {gs}%) — смартмани bias DOWN")
+
+    if tb is not None and tb >= 65:
+        out.append(f"🔵 Taker buy {tb}% — сильное покупательское давление прямо сейчас")
+    elif tk_s is not None and tk_s >= 65:
+        out.append(f"🔴 Taker sell {tk_s}% — сильное продавательское давление прямо сейчас")
+
     return out
 
 
@@ -483,6 +530,14 @@ def build_advisor_v2_text() -> str:
         lines.append("")
         lines.append("OI / FUNDING / КРАУДНОСТЬ")
         for x in oi_funding:
+            lines.append(f"  • {x}")
+
+    # ── Long/Short ratio (рыночная дельта)
+    ls = _interpret_long_short(features)
+    if ls:
+        lines.append("")
+        lines.append("LONG/SHORT РЫНОК")
+        for x in ls:
             lines.append(f"  • {x}")
 
     # ── Session levels

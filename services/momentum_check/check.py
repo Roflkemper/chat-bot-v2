@@ -263,6 +263,15 @@ def _deriv_flow() -> dict:
             "premium_pct": btc.get("premium_pct"),
             "mark_price": btc.get("mark_price"),
             "ts": data.get("last_updated", ""),
+            # Long/Short market sentiment (2026-05-07)
+            "global_long_account_pct": btc.get("global_long_account_pct"),
+            "global_short_account_pct": btc.get("global_short_account_pct"),
+            "top_trader_long_pct": btc.get("top_trader_long_pct"),
+            "top_trader_short_pct": btc.get("top_trader_short_pct"),
+            "taker_buy_pct": btc.get("taker_buy_pct"),
+            "taker_sell_pct": btc.get("taker_sell_pct"),
+            "bybit_long_pct": btc.get("bybit_long_pct"),
+            "bybit_short_pct": btc.get("bybit_short_pct"),
         }
     except (OSError, json.JSONDecodeError):
         return {"available": False}
@@ -429,6 +438,33 @@ def _build_verdict(*, sess: str, move_15m: dict, move_1h: dict,
         if prem is not None and abs(prem) > 0.05:
             notes.append(f"Premium {prem:+.3f}% (mark vs index)")
 
+        # Long/Short extreme — contrarian setup
+        gl = deriv.get("global_long_account_pct")
+        gs = deriv.get("global_short_account_pct")
+        tl = deriv.get("top_trader_long_pct")
+        ts_pct = deriv.get("top_trader_short_pct")
+        tb = deriv.get("taker_buy_pct")
+        tk_s = deriv.get("taker_sell_pct")
+
+        # Скос > 60% в одну сторону — толпа crowded, обычно контра
+        if gl is not None and gl >= 60:
+            notes.append(f"⚠️ Толпа в LONG ({gl}%) — обычно контра, риск short squeeze ВНИЗ")
+        elif gs is not None and gs >= 60:
+            notes.append(f"⚠️ Толпа в SHORT ({gs}%) — обычно контра, риск long squeeze ВВЕРХ")
+
+        # Top traders ≠ retail — это смартмани сигнал
+        if tl is not None and gl is not None and abs(tl - gl) >= 5:
+            if tl > gl:
+                notes.append(f"Топ-трейдеры в LONG ({tl}%) больше чем толпа ({gl}%) — bullish бис от смартмани")
+            else:
+                notes.append(f"Топ-трейдеры в SHORT ({ts_pct}%) больше чем толпа ({gs}%) — bearish бис от смартмани")
+
+        # Taker экстремум — сильное направленное давление прямо сейчас
+        if tb is not None and tb >= 65:
+            notes.append(f"Taker buy {tb}% — сильное покупательское давление сейчас")
+        elif tk_s is not None and tk_s >= 65:
+            notes.append(f"Taker sell {tk_s}% — сильное продавательское давление сейчас")
+
     # Session context
     if sess in ("LONDON", "NY_AM"):
         notes.append(f"Сессия {sess} — высокая ликвидность")
@@ -504,6 +540,28 @@ def format_momentum_check(snap: MomentumSnapshot) -> str:
             deriv_parts.append(f"premium {prem:+.3f}%")
         if deriv_parts:
             lines.append(f"Deriv: {' | '.join(deriv_parts)}")
+            lines.append("")
+
+    # Market Long/Short ratio (рыночная дельта позиций)
+    if snap.deriv.get("available"):
+        gl = snap.deriv.get("global_long_account_pct")
+        gs = snap.deriv.get("global_short_account_pct")
+        tl = snap.deriv.get("top_trader_long_pct")
+        ts = snap.deriv.get("top_trader_short_pct")
+        tb = snap.deriv.get("taker_buy_pct")
+        tk_s = snap.deriv.get("taker_sell_pct")
+        bl = snap.deriv.get("bybit_long_pct")
+        bs = snap.deriv.get("bybit_short_pct")
+        if gl is not None or tl is not None or tb is not None:
+            lines.append("Long/Short рынок (BTC):")
+            if gl is not None and gs is not None:
+                lines.append(f"  Binance все: {gl}% long / {gs}% short")
+            if tl is not None and ts is not None:
+                lines.append(f"  Binance топ-трейдеры: {tl}% long / {ts}% short")
+            if tb is not None and tk_s is not None:
+                lines.append(f"  Taker (5m volume): {tb}% buy / {tk_s}% sell")
+            if bl is not None and bs is not None:
+                lines.append(f"  Bybit: {bl}% long / {bs}% short")
             lines.append("")
 
     # Notes
