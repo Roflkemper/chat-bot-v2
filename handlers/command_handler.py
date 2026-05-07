@@ -164,6 +164,8 @@ class CommandHandler:
         # /margin <coefficient> <available_margin_usd> <distance_to_liq_pct>
         # — operator-supplied margin data for Decision Layer M-* family
         # (TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-06).
+        # Без аргументов показывает usage + текущее сохранённое значение.
+        registry.register('/margin', '_cmd_margin', capabilities=CommandCapabilities(renderer='grid'))
         registry.register_prefix(
             '/margin <coefficient> <available_margin_usd> <distance_to_liq_pct>',
             lambda t: t.upper().startswith('/MARGIN '),

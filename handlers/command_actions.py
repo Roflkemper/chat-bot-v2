@@ -806,17 +806,58 @@ class CommandActions:
     def margin(self) -> BotResponsePayload:
         """Operator-supplied margin data for Decision Layer M-* family.
 
+        Без аргументов: показывает usage + текущее сохранённое значение.
+        С 3 аргументами: записывает override.
+
         Usage: /margin <coefficient> <available_margin_usd> <distance_to_liq_pct>
         Example: /margin 0.97 20434 18.0
 
-        Validates ranges, appends to state/manual_overrides/margin_overrides.jsonl,
-        replies with confirmation. See TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-06.
+        Записывает в state/manual_overrides/margin_overrides.jsonl.
+        Видно в /advise → блок 💰 MARGIN. См. TZ-MARGIN-COEFFICIENT-INPUT-WIRE.
         """
         from services.margin import (
             MarginCommandError,
             append_override,
             parse_override_command,
+            read_latest_margin,
         )
+
+        # Без аргументов — show current + usage
+        text = (self.ctx.command or "").strip()
+        parts = text.split()
+        if len(parts) <= 1:
+            current = read_latest_margin()
+            lines = ["💰 /margin — operator-supplied margin data", ""]
+            if current is not None:
+                from datetime import datetime, timezone
+                try:
+                    dt = datetime.fromisoformat(current.ts.replace("Z", "+00:00"))
+                    age_h = (datetime.now(timezone.utc) - dt).total_seconds() / 3600
+                except Exception:
+                    age_h = None
+                lines.append("Текущие данные:")
+                lines.append(f"  coefficient: {current.coefficient:.4f}")
+                lines.append(f"  available: ${current.available_margin_usd:,.0f}")
+                lines.append(f"  distance to liq: {current.distance_to_liquidation_pct:.1f}%")
+                lines.append(f"  записано: {current.ts}")
+                if age_h is not None:
+                    if age_h > 6:
+                        lines.append(f"  ⚠️ возраст {age_h:.1f}h — пора обновить")
+                    else:
+                        lines.append(f"  возраст {age_h:.1f}h")
+                lines.append("")
+            else:
+                lines.append("Данных пока нет.")
+                lines.append("")
+            lines.append("Чтобы обновить:")
+            lines.append("  /margin <coef> <available_usd> <dist_liq_pct>")
+            lines.append("Пример: /margin 0.97 20434 18.0")
+            lines.append("")
+            lines.append("Где взять:")
+            lines.append("  • coefficient — Margin coef из BitMEX UI (правый блок)")
+            lines.append("  • available — Available margin в USD")
+            lines.append("  • distance_to_liq — % дистанции до liq до самой ближней позиции")
+            return self.ctx.plain("\n".join(lines))
 
         try:
             record = parse_override_command(self.ctx.command)
@@ -833,7 +874,8 @@ class CommandActions:
             f"available_margin: {record.available_margin_usd:,.0f} USD\n"
             f"distance_to_liq: {record.distance_to_liquidation_pct:.1f}%\n"
             f"ts: {record.ts}\n"
-            f"source: {record.source}"
+            f"source: {record.source}\n\n"
+            "Видно в /advise → блок 💰 MARGIN."
         )
 
     def blackout(self) -> BotResponsePayload:
