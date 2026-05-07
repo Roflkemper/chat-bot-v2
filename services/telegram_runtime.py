@@ -1269,6 +1269,22 @@ class TelegramBotApp:
             parts = str(message.text or '').strip().split()
             subcmd = parts[1].lower() if len(parts) > 1 else ''
 
+            # Default `/advise` (без подкоманд) → advisor v2: рынок + сетапы +
+            # paper trades, без legacy "ADVISOR v2 — multi-asset / cold start".
+            # См. требование оператора 2026-05-07: давать выводы и сетапы.
+            if not subcmd:
+                try:
+                    from services.advisor import build_advisor_v2_text
+                    text = build_advisor_v2_text()
+                except Exception as exc:
+                    logger.exception('handle_advise.v2_failed')
+                    self.bot.send_message(chat_id, f'❌ /advise failed: {exc}')
+                    return
+                self.bot.send_message(chat_id, text)
+                return
+
+            # Подкоманды (setups / setup_stats / stats / log) сохраняются для
+            # backward compatibility с legacy advisor v0.1.
             try:
                 from src.advisor.v2.portfolio import read_portfolio_state
                 from src.advisor.v2.size_mode import pick_size_mode
@@ -1277,7 +1293,7 @@ class TelegramBotApp:
                 from src.advisor.v2 import telemetry as advisor_telemetry
                 from core.pipeline import build_full_snapshot
             except Exception as exc:
-                self.bot.send_message(chat_id, f'❌ Advisor недоступен: {exc}')
+                self.bot.send_message(chat_id, f'❌ Advisor (legacy subcmd) недоступен: {exc}')
                 return
 
             if subcmd == 'setups':
