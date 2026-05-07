@@ -556,6 +556,72 @@ class SignalAlertWorker(threading.Thread):
         detail_s = "  ".join(f"{k}={v}" for k, v in details.items())
         return f"{prefix}  [{ts_short}]  {detail_s}"
 
+    def _batch_level_breaks(self, rows: list[dict]) -> list[dict]:
+        """Объединяет множественные LEVEL_BREAK с одной direction в один синтетический row.
+
+        Сценарий: один тик пробивает 3 уровня сразу (например 80676/80638/80601 down)
+        → раньше шло 3 отдельных алерта. Теперь — один: "LEVEL_BREAK down levels=80676,80638,80601 price=80546".
+
+        Не-LEVEL_BREAK сигналы возвращаются без изменений. LEVEL_BREAK группируются
+        по direction в пределах текущей пачки rows. Внутри группы dedup-ключи всех
+        уровней регистрируются (через _should_send) чтобы повторный пробой того же
+        уровня в следующем окне не прошёл.
+        """
+        non_lb: list[dict] = []
+        groups: dict[str, list[dict]] = {}  # direction -> list of rows
+        for row in rows:
+            if row.get("signal_type") != "LEVEL_BREAK":
+                non_lb.append(row)
+                continue
+            try:
+                d = json.loads(row.get("details_json", "{}") or "{}")
+            except Exception:
+                non_lb.append(row)
+                continue
+            direction = str(d.get("direction", "?"))
+            groups.setdefault(direction, []).append(row)
+
+        result = list(non_lb)
+        for direction, group_rows in groups.items():
+            if len(group_rows) == 1:
+                result.append(group_rows[0])
+                continue
+            # Aggregate: сортируем уровни, берём ts/price у последнего (новейшего)
+            levels = []
+            prices = []
+            ts_max = ""
+            for r in group_rows:
+                try:
+                    dd = json.loads(r.get("details_json", "{}") or "{}")
+                    lvl = float(dd.get("level", 0))
+                    levels.append(lvl)
+                    p = dd.get("price")
+                    if p is not None:
+                        prices.append(float(p))
+                except Exception:
+                    pass
+                ts = r.get("ts_utc", "")
+                if ts > ts_max:
+                    ts_max = ts
+            if not levels:
+                result.extend(group_rows)
+                continue
+            levels_sorted = sorted(set(int(round(x)) for x in levels), reverse=(direction == "down"))
+            price = round(prices[-1], 2) if prices else 0
+            agg_details = {
+                "direction": direction,
+                "levels": levels_sorted,
+                "count": len(levels_sorted),
+                "price": price,
+            }
+            result.append({
+                "ts_utc": ts_max,
+                "signal_type": "LEVEL_BREAK",
+                "details_json": json.dumps(agg_details, ensure_ascii=False),
+                "_aggregated_levels": levels_sorted,  # для регистрации dedup-ключей
+            })
+        return result
+
     def run(self) -> None:
         # Initialize last_ts so we don't replay already-existing signals on startup
         existing = self._read_new_signals()
@@ -567,10 +633,22 @@ class SignalAlertWorker(threading.Thread):
                 new_signals = self._read_new_signals()
                 if new_signals:
                     self._last_ts = max(s.get("ts_utc", "") for s in new_signals)
+                    # Batch LEVEL_BREAK ребят в один алерт когда пробито несколько уровней
+                    # одним тиком (см. _batch_level_breaks).
+                    new_signals = self._batch_level_breaks(new_signals)
                     from services.telegram.send_dedup import should_send as _ss, mark_sent as _ms
                     for row in new_signals:
                         if not self._should_send(row):
                             continue
+                        # Если это агрегированный LEVEL_BREAK — регистрируем
+                        # dedup-ключи всех уровней, чтобы повторный пробой того же
+                        # уровня в окне cooldown был отдедуплен.
+                        agg_levels = row.pop("_aggregated_levels", None)
+                        if agg_levels:
+                            now_t = time.time()
+                            for lvl in agg_levels:
+                                self._last_sent[f"LEVEL_BREAK|{int(lvl)}"] = now_t
+                            self._save_last_sent()
                         text = self._format_signal(row)
                         for chat_id in self.chat_ids:
                             # Belt-and-suspenders: persistent file-based dedup
