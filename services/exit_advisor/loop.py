@@ -49,15 +49,42 @@ async def exit_advisor_loop(
     session_fn: Any = None,      # optional: () -> str
 ) -> None:
     """Main exit advisor loop."""
+    import json as _json
+    from pathlib import Path as _Path
+
     ranker = StrategyRanker()
     margin_calc = MarginCalculator()
     tracker = OutcomeTracker()
 
     dedup_cache: dict[str, datetime] = {}      # scenario_class.value → last_sent
     last_severity: int = 0
-    dd_onset_cache: dict[str, datetime] = {}   # per-bot DD onset tracking
 
-    logger.info("exit_advisor_loop.started interval=%ds", interval_sec)
+    # 2026-05-07: persist dd_onset_cache между рестартами app_runner.
+    # Без этого после каждого рестарта duration сбрасывается до 0 и CYCLE_DEATH
+    # alert (требует max_dur_h >= 4h) никогда не срабатывает.
+    _DD_CACHE_PATH = _Path("data/exit_advisor/dd_onset_cache.json")
+    dd_onset_cache: dict[str, datetime] = {}
+    try:
+        if _DD_CACHE_PATH.exists():
+            raw = _json.loads(_DD_CACHE_PATH.read_text(encoding="utf-8"))
+            for bot_id, ts_str in raw.items():
+                try:
+                    dd_onset_cache[bot_id] = datetime.fromisoformat(ts_str)
+                except Exception:
+                    continue
+            logger.info("exit_advisor.dd_onset_cache.loaded n=%d", len(dd_onset_cache))
+    except Exception:
+        logger.exception("exit_advisor.dd_onset_cache.load_failed")
+
+    def _save_dd_cache() -> None:
+        try:
+            _DD_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            payload = {bot_id: ts.isoformat() for bot_id, ts in dd_onset_cache.items()}
+            _DD_CACHE_PATH.write_text(_json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            logger.exception("exit_advisor.dd_onset_cache.save_failed")
+
+    logger.info("exit_advisor_loop.started interval=%ds send_fn=%s", interval_sec, "wired" if send_fn else "missing")
 
     while not stop_event.is_set():
         try:
@@ -73,6 +100,8 @@ async def exit_advisor_loop(
                 session_fn=session_fn,
             )
             last_severity = _tick.last_severity if hasattr(_tick, "last_severity") else last_severity
+            # Persist DD onset cache между рестартами
+            _save_dd_cache()
         except Exception:
             logger.exception("exit_advisor_loop.tick_failed")
 

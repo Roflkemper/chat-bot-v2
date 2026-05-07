@@ -181,10 +181,30 @@ async def _run_setup_tracker(stop_event: asyncio.Event) -> None:
     await setup_tracker_loop(stop_event=stop_event)
 
 
-async def _run_exit_advisor(stop_event: asyncio.Event) -> None:
+async def _run_exit_advisor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Exit advisory for live SHORT/LONG positions.
+
+    2026-05-07 fix: было запущено без send_fn, поэтому за 5 дней data/exit_advisor/
+    оставалась пуста — alerts строились но не отправлялись (silent skip в loop.py:157).
+    Теперь wire'имся к shared Telegram bot, как paper_trader/stale_monitor.
+    """
     from services.exit_advisor.loop import exit_advisor_loop
 
-    await exit_advisor_loop(stop_event=stop_event)
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(text: str) -> None:
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, text)
+                except Exception:
+                    logger.exception("exit_advisor.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    await exit_advisor_loop(stop_event=stop_event, send_fn=send_fn)
 
 
 async def _run_market_intelligence(stop_event: asyncio.Event) -> None:
@@ -197,6 +217,13 @@ async def _run_market_forward_analysis(stop_event: asyncio.Event) -> None:
     from services.market_forward_analysis.loop import market_forward_analysis_loop
 
     await market_forward_analysis_loop(stop_event=stop_event)
+
+
+async def _run_deriv_live(stop_event: asyncio.Event) -> None:
+    """Live OI/funding poll every 5 min — fixes P0 #3 (deriv data was stale 4+ days)."""
+    from services.deriv_live import deriv_live_loop
+
+    await deriv_live_loop(stop_event=stop_event)
 
 
 async def _shutdown_task(task: asyncio.Task, *, timeout: float) -> None:
@@ -246,9 +273,10 @@ async def main(
     paper_trader_task = asyncio.create_task(_run_paper_trader(stop_event, telegram_app=app), name="paper_trader")
     stale_monitor_task = asyncio.create_task(_run_stale_monitor(stop_event, telegram_app=app), name="stale_monitor")
     setup_tracker_task = asyncio.create_task(_run_setup_tracker(stop_event), name="setup_tracker")
-    exit_advisor_task = asyncio.create_task(_run_exit_advisor(stop_event), name="exit_advisor")
+    exit_advisor_task = asyncio.create_task(_run_exit_advisor(stop_event, telegram_app=app), name="exit_advisor")
     market_intelligence_task = asyncio.create_task(_run_market_intelligence(stop_event), name="market_intelligence")
     market_forward_task = asyncio.create_task(_run_market_forward_analysis(stop_event), name="market_forward_analysis")
+    deriv_live_task = asyncio.create_task(_run_deriv_live(stop_event), name="deriv_live")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     # Critical tasks: their failure forces full shutdown.
@@ -259,7 +287,7 @@ async def main(
         boundary_expand_task, adaptive_grid_task, paper_journal_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
