@@ -174,6 +174,21 @@ async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interva
                         send_fn(text)
                     except Exception:
                         logger.exception("cascade_alert.send_failed")
+
+                # Auto paper trade (B2): открываем виртуальную позицию для
+                # forward-validation edge'а. Через 1-2 месяца проверим точность.
+                try:
+                    from services.paper_trader.cascade_trade import open_cascade_trade
+                    trade = open_cascade_trade(side, threshold, qty, last_price or 0)
+                    if trade and send_fn:
+                        send_fn(
+                            f"📋 Paper trade открыт автоматически\n"
+                            f"trade_id: {trade['trade_id']}\n"
+                            f"{trade['side'].upper()} @ ${trade['entry']:,.0f} | TP ${trade['tp1']:,.0f} | SL ${trade['sl']:,.0f}"
+                        )
+                except Exception:
+                    logger.exception("cascade_alert.paper_trade_failed")
+
                 dedup[key] = now.isoformat(timespec="seconds")
                 _save_dedup(dedup)
         except Exception:

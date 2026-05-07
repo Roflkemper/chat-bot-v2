@@ -371,6 +371,155 @@ def _interpret_session_levels(f: dict) -> list[str]:
     return out
 
 
+def _compute_risk_score(regime: dict, f: dict) -> dict:
+    """Aggregate risk score 0-10 для трейдера.
+
+    Считаем баллы:
+    - SHORT_RISK (риск падения): bull regime divergent с micro down, taker sell ext,
+      crowded long, premium negative, OI declining
+    - LONG_RISK (риск squeeze вверх): crowded short, taker buy extreme, OI rising,
+      funding negative deep
+
+    Возвращает: {short_risk: 0-10, long_risk: 0-10, dominant: 'short'|'long'|'neutral', reasons: [...]}
+    """
+    short_risk = 0
+    long_risk = 0
+    short_reasons: list[str] = []
+    long_reasons: list[str] = []
+
+    # Regime
+    primary_4h = (regime.get("4h") or (None, {}))[0]
+    primary_15m = (regime.get("15m") or (None, {}))[0]
+    is_macro_up = primary_4h in ("STRONG_UP", "SLOW_UP", "DRIFT_UP", "CASCADE_UP")
+    is_macro_down = primary_4h in ("STRONG_DOWN", "SLOW_DOWN", "DRIFT_DOWN", "CASCADE_DOWN")
+    is_micro_up = primary_15m in ("STRONG_UP", "SLOW_UP", "DRIFT_UP", "CASCADE_UP")
+    is_micro_down = primary_15m in ("STRONG_DOWN", "SLOW_DOWN", "DRIFT_DOWN", "CASCADE_DOWN")
+
+    if is_macro_up and is_micro_up:
+        long_risk += 1
+        long_reasons.append("4h+15m тренд вверх")
+    if is_macro_down and is_micro_down:
+        short_risk += 1
+        short_reasons.append("4h+15m тренд вниз")
+
+    # L/S extreme — contrarian
+    gl = f.get("global_long_account_pct")
+    gs = f.get("global_short_account_pct")
+    if gl is not None and gl >= 60:
+        short_risk += 2
+        short_reasons.append(f"толпа в LONG {gl}% (crowded — squeeze ВНИЗ)")
+    elif gs is not None and gs >= 60:
+        long_risk += 2
+        long_reasons.append(f"толпа в SHORT {gs}% (crowded — squeeze ВВЕРХ)")
+    elif gs is not None and gs >= 55:
+        long_risk += 1
+        long_reasons.append(f"толпа в SHORT {gs}% (близко к crowded)")
+
+    # Top trader bias
+    tl = f.get("top_trader_long_pct")
+    ts_pct = f.get("top_trader_short_pct")
+    if tl is not None and gl is not None and (tl - gl) >= 5:
+        long_risk += 1
+        long_reasons.append("топ-трейдеры более bullish чем толпа")
+    elif ts_pct is not None and gs is not None and (ts_pct - gs) >= 5:
+        short_risk += 1
+        short_reasons.append("топ-трейдеры более bearish чем толпа")
+
+    # Taker pressure now
+    tb = f.get("taker_buy_pct")
+    tk_s = f.get("taker_sell_pct")
+    if tb is not None and tb >= 65:
+        long_risk += 2
+        long_reasons.append(f"taker buy {tb}% — давление вверх СЕЙЧАС")
+    elif tk_s is not None and tk_s >= 65:
+        short_risk += 2
+        short_reasons.append(f"taker sell {tk_s}% — давление вниз СЕЙЧАС")
+
+    # Funding
+    funding = f.get("funding_rate")
+    if funding is not None:
+        f_pct = funding * 100
+        if f_pct < -0.01:
+            long_risk += 1
+            long_reasons.append(f"funding {f_pct:+.4f}% (shorts платят — squeeze potential)")
+        elif f_pct > 0.01:
+            short_risk += 1
+            short_reasons.append(f"funding {f_pct:+.4f}% (longs платят — overcrowded)")
+
+    # Premium (mark vs index)
+    premium = f.get("premium_pct")
+    if premium is not None:
+        if premium < -0.05:
+            short_risk += 1
+            short_reasons.append(f"premium {premium:+.3f}% (perp ниже spot — sell pressure)")
+        elif premium > 0.05:
+            long_risk += 1
+            long_reasons.append(f"premium {premium:+.3f}% (perp выше spot — buy pressure)")
+
+    # OI direction
+    oi = f.get("oi_delta_1h")
+    if oi is not None and abs(oi) > 1.0:
+        # OI растёт сильно + либо tracking тренд, либо contrarian risk
+        if oi > 1.0 and is_macro_up:
+            long_risk += 1
+            long_reasons.append(f"OI 1h {oi:+.2f}% — тренд усиливается")
+        elif oi < -1.0:
+            # OI быстро падает = массовое закрытие, может быть конец движения
+            pass  # neutral, не считаем
+
+    # Cap at 10
+    short_risk = min(short_risk, 10)
+    long_risk = min(long_risk, 10)
+
+    if short_risk > long_risk and short_risk >= 3:
+        dominant = "short_risk"  # риск падения цены
+    elif long_risk > short_risk and long_risk >= 3:
+        dominant = "long_risk"  # риск squeeze вверх
+    else:
+        dominant = "neutral"
+
+    return {
+        "short_risk": short_risk,
+        "long_risk": long_risk,
+        "dominant": dominant,
+        "short_reasons": short_reasons,
+        "long_reasons": long_reasons,
+    }
+
+
+def _format_risk_block(rs: dict) -> list[str]:
+    """Render risk score block."""
+    out: list[str] = []
+    sr = rs["short_risk"]
+    lr = rs["long_risk"]
+    dom = rs["dominant"]
+
+    if dom == "short_risk":
+        emoji = "🔴"
+        headline = f"Риск ВНИЗ выше ({sr}/10) чем риск ВВЕРХ ({lr}/10)"
+        action = "Не агрессивно докидывать LONG. Защитные настройки шортовых ботов оправданы."
+    elif dom == "long_risk":
+        emoji = "🟢"
+        headline = f"Риск ВВЕРХ выше ({lr}/10) чем риск ВНИЗ ({sr}/10)"
+        action = "Не агрессивно докидывать SHORT. Возможен squeeze rally."
+    else:
+        emoji = "⚪"
+        headline = f"Риски сбалансированы (вверх {lr}/10, вниз {sr}/10)"
+        action = "Без явного направления. Range-режим, никаких aggressive moves."
+
+    out.append(f"{emoji} {headline}")
+    out.append(f"   Действие: {action}")
+    if rs["long_reasons"]:
+        out.append(f"   Факторы за рост ({lr}/10):")
+        for r in rs["long_reasons"][:4]:
+            out.append(f"     + {r}")
+    if rs["short_reasons"]:
+        out.append(f"   Факторы за падение ({sr}/10):")
+        for r in rs["short_reasons"][:4]:
+            out.append(f"     - {r}")
+    return out
+
+
 def _summary_verdict(regime: dict, f: dict, setups: list[dict]) -> tuple[str, list[str]]:
     """Compute one-line verdict + supporting reasoning."""
     reasons = []
@@ -474,6 +623,13 @@ def build_advisor_v2_text() -> str:
     for r in reasoning:
         lines.append(f"   • {r}")
     lines.append(f"━━━━━━━━━━━━━━━━━━━━")
+
+    # ── Risk Score (D1, 2026-05-07): сводная оценка рисков по всем сигналам
+    risk = _compute_risk_score(regime, features)
+    lines.append("")
+    lines.append("🎯 RISK SCORE")
+    for x in _format_risk_block(risk):
+        lines.append(f"  {x}")
 
     # ── Margin status (TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-07)
     # Operator sets via /margin <coef> <available> <dist>. Stale > 6h = warn.
