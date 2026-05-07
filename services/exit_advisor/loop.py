@@ -56,33 +56,50 @@ async def exit_advisor_loop(
     margin_calc = MarginCalculator()
     tracker = OutcomeTracker()
 
-    dedup_cache: dict[str, datetime] = {}      # scenario_class.value → last_sent
     last_severity: int = 0
 
-    # 2026-05-07: persist dd_onset_cache между рестартами app_runner.
-    # Без этого после каждого рестарта duration сбрасывается до 0 и CYCLE_DEATH
-    # alert (требует max_dur_h >= 4h) никогда не срабатывает.
+    # 2026-05-07: persist dedup_cache + dd_onset_cache между рестартами app_runner.
+    # Без этого: каждый рестарт обнуляет dedup → шлёт alert повторно. Сегодня
+    # был spam ~3 раза за 7 минут потому что app_runner рестартал каждые 5 мин
+    # (баг в supervisor cmdline_must_contain — пофиксен отдельно).
     _DD_CACHE_PATH = _Path("data/exit_advisor/dd_onset_cache.json")
-    dd_onset_cache: dict[str, datetime] = {}
-    try:
-        if _DD_CACHE_PATH.exists():
-            raw = _json.loads(_DD_CACHE_PATH.read_text(encoding="utf-8"))
-            for bot_id, ts_str in raw.items():
-                try:
-                    dd_onset_cache[bot_id] = datetime.fromisoformat(ts_str)
-                except Exception:
-                    continue
-            logger.info("exit_advisor.dd_onset_cache.loaded n=%d", len(dd_onset_cache))
-    except Exception:
-        logger.exception("exit_advisor.dd_onset_cache.load_failed")
+    _DEDUP_CACHE_PATH = _Path("data/exit_advisor/dedup_cache.json")
+
+    def _load_ts_dict(path: _Path) -> dict:
+        try:
+            if path.exists():
+                raw = _json.loads(path.read_text(encoding="utf-8"))
+                out = {}
+                for k, v in raw.items():
+                    try:
+                        out[k] = datetime.fromisoformat(v)
+                    except Exception:
+                        continue
+                return out
+        except Exception:
+            logger.exception("exit_advisor.cache_load_failed path=%s", path)
+        return {}
+
+    def _save_ts_dict(path: _Path, d: dict) -> None:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {k: v.isoformat() for k, v in d.items()}
+            path.write_text(_json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            logger.exception("exit_advisor.cache_save_failed path=%s", path)
+
+    dd_onset_cache: dict[str, datetime] = _load_ts_dict(_DD_CACHE_PATH)
+    dedup_cache: dict[str, datetime] = _load_ts_dict(_DEDUP_CACHE_PATH)
+    if dd_onset_cache:
+        logger.info("exit_advisor.dd_onset_cache.loaded n=%d", len(dd_onset_cache))
+    if dedup_cache:
+        logger.info("exit_advisor.dedup_cache.loaded n=%d", len(dedup_cache))
 
     def _save_dd_cache() -> None:
-        try:
-            _DD_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            payload = {bot_id: ts.isoformat() for bot_id, ts in dd_onset_cache.items()}
-            _DD_CACHE_PATH.write_text(_json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
-            logger.exception("exit_advisor.dd_onset_cache.save_failed")
+        _save_ts_dict(_DD_CACHE_PATH, dd_onset_cache)
+
+    def _save_dedup_cache() -> None:
+        _save_ts_dict(_DEDUP_CACHE_PATH, dedup_cache)
 
     logger.info("exit_advisor_loop.started interval=%ds send_fn=%s", interval_sec, "wired" if send_fn else "missing")
 
@@ -100,8 +117,9 @@ async def exit_advisor_loop(
                 session_fn=session_fn,
             )
             last_severity = _tick.last_severity if hasattr(_tick, "last_severity") else last_severity
-            # Persist DD onset cache между рестартами
+            # Persist DD onset + dedup cache между рестартами
             _save_dd_cache()
+            _save_dedup_cache()
         except Exception:
             logger.exception("exit_advisor_loop.tick_failed")
 
@@ -199,13 +217,39 @@ def _tick(
 
 
 def _get_current_price() -> float:
-    """Get current BTC price from market state file."""
+    """Get current BTC price.
+
+    Priority: state/deriv_live.json (mark_price, обновляется каждые 5 мин)
+    → market_live/market_1m.csv last bar close → 0.
+    Раньше читалось storage/market_state.json но там нет поля price (бага в alert).
+    """
+    import json
+    # 1) deriv_live (freshest, includes mark_price from Binance perp)
     try:
-        import json
-        state_path = _ROOT / "storage" / "market_state.json"
-        if state_path.exists():
-            data = json.loads(state_path.read_text(encoding="utf-8"))
-            return float(data.get("price", 0.0) or 0.0)
+        p = _ROOT / "state" / "deriv_live.json"
+        if p.exists():
+            data = json.loads(p.read_text(encoding="utf-8"))
+            btc = data.get("BTCUSDT", {}) or {}
+            mp = float(btc.get("mark_price", 0) or 0)
+            if mp > 0:
+                return mp
+    except Exception:
+        pass
+    # 2) market_1m last close
+    try:
+        import csv
+        p = _ROOT / "market_live" / "market_1m.csv"
+        if p.exists():
+            last_close = 0.0
+            with p.open(newline="", encoding="utf-8") as fh:
+                reader = csv.DictReader(fh)
+                for row in reader:
+                    try:
+                        last_close = float(row.get("close") or 0)
+                    except (KeyError, ValueError):
+                        pass
+            if last_close > 0:
+                return last_close
     except Exception:
         pass
     return 0.0

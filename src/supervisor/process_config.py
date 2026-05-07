@@ -9,11 +9,19 @@ RUN_DIR  = ROOT / "run"
 LOGS_DIR = ROOT / "logs" / "current"
 
 # component_name → config dict
+#
+# 2026-05-07: добавлен cmdline_must_contain для всех компонентов. Без него
+# is_running() в daemon.py не может детектить живой процесс через psutil
+# fallback когда Windows venv shim exits. Это вызывало бесконечный цикл
+# false-DEAD restart'ов каждые 5 минут — все 3 процесса одновременно.
+# fragment = unique substring в command line, по которому psutil находит
+# процесс среди всех python.exe.
 COMPONENTS: dict[str, dict] = {
     "app_runner": {
         "cmd":               [sys.executable, "app_runner.py"],
         "cwd":               ROOT,
         "log":               "app_runner.log",
+        "cmdline_must_contain": "app_runner.py",
         "health_stale_min":  5,    # log must be updated within N min
         "restart_max":       3,    # max restarts before alarm
         "restart_window_min": 10,  # ...within this window
@@ -22,6 +30,7 @@ COMPONENTS: dict[str, dict] = {
         "cmd":               [sys.executable, "ginarea_tracker/tracker.py"],
         "cwd":               ROOT,
         "log":               "tracker.log",
+        "cmdline_must_contain": "ginarea_tracker",
         "health_stale_min":  15,
         "restart_max":       3,
         "restart_window_min": 10,
@@ -32,6 +41,7 @@ COMPONENTS: dict[str, dict] = {
         "cmd":               [sys.executable, "-m", "market_collector.collector"],
         "cwd":               ROOT,
         "log":               "collectors.log",
+        "cmdline_must_contain": "market_collector.collector",
         "health_stale_min":  5,
         "restart_max":       3,
         "restart_window_min": 10,
@@ -44,6 +54,7 @@ COMPONENTS: dict[str, dict] = {
         "cmd":               [sys.executable, "scripts/state_snapshot_loop.py", "--interval-sec", "300"],
         "cwd":               ROOT,
         "log":               "state_snapshot.log",
+        "cmdline_must_contain": "state_snapshot_loop.py",
         "health_stale_min":  10,
         "restart_max":       3,
         "restart_window_min": 10,
