@@ -71,6 +71,22 @@ def main() -> int:
             finally:
                 sys.argv = old_argv
 
+            # Также обновляем regime_v2 persist (TZ-REGIME-V2-PERSIST 2026-05-07).
+            # state_snapshot пишет regime v1 (3-state). v2 (10-state per-TF) был
+            # эфемерен — теперь персистится на каждом тике.
+            try:
+                from services.regime_classifier_v2.multi_timeframe import build_and_persist_view
+                v = build_and_persist_view(symbol="BTCUSDT")
+                logger.info(
+                    "regime_v2.persisted 4h=%s 1h=%s 15m=%s diverge=%s",
+                    v.bar_4h.state_v2 if v.bar_4h else None,
+                    v.bar_1h.state_v2 if v.bar_1h else None,
+                    v.bar_15m.state_v2 if v.bar_15m else None,
+                    v.macro_micro_diverge,
+                )
+            except Exception:
+                logger.exception("regime_v2.persist_failed")
+
             elapsed = time.time() - t0
             logger.info("iteration_done iter=%d elapsed=%.1fs", iteration, elapsed)
         except Exception:

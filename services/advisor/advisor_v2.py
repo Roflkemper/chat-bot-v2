@@ -120,10 +120,10 @@ def _load_open_paper_trades() -> list[dict]:
 
 
 def _classify_v2_live() -> dict:
-    """Use regime_classifier_v2 multi-timeframe view."""
+    """Use regime_classifier_v2 multi-timeframe view + persist to regime_v2_state.json."""
     try:
-        from services.regime_classifier_v2 import build_multi_timeframe_view
-        v = build_multi_timeframe_view()
+        from services.regime_classifier_v2.multi_timeframe import build_and_persist_view
+        v = build_and_persist_view(symbol="BTCUSDT")
         return {
             "4h": (v.bar_4h.state_v2 if v.bar_4h else None,
                    v.bar_4h.indicators if v.bar_4h else {}),
