@@ -22,18 +22,18 @@
 **Последствие**: нельзя видеть когда state_v2 переключился (DRIFT_UP → CASCADE_UP среди ночи), нет hysteresis на v2, /advise каждый раз пересчитывает с нуля.
 **Фикс**: ✅ DONE 2026-05-07 (commit 1ffe9fb). Создан `state/regime_v2_state.json` с per-TF state + since-timestamp + transition history (last 50). Пишется каждые 5 мин из state_snapshot_loop + при каждом /advise. Симулирована и проверена запись transition.
 
-### 3. Live OI / Funding — нет ingest pipeline
+### 3. Live OI / Funding — нет ingest pipeline — ✅ CLOSED 2026-05-07
 
 **Симптом**: `services/derivatives_ingest/` — это **historical batch** (1y backfill). Нет live poll.
 **Последствие**: advisor v2 имеет код для `oi_price_div_1h_z` / `funding_rate_z`, но **читает свежие значения из 1y parquet** который не обновляется live. То есть momentum-флаг "OI/funding extreme" сегодня смотрит на цифры 04.05.
-**Фикс**: live REST poll (Binance `/futures/data/openInterestHist` каждые 5 мин, `/fapi/v1/premiumIndex` для funding). 3-5 часов.
+**Фикс**: ✅ DONE 2026-05-07. Создан `services/deriv_live/` async loop. Каждые 5 мин полит Binance REST: `/fapi/v1/openInterest`, `/fapi/v1/premiumIndex`, `/futures/data/openInterestHist`. Output в `state/deriv_live.json` (current) + `state/deriv_live_history.jsonl` (trend). Подтверждено: BTC OI 105,695 / funding -0.0028% / premium -0.034%. ostalsya wire в advisor v2 momentum/flow sections (отдельная задача).
 
-### 4. `data/exit_advisor/` — пустая папка
+### 4. `data/exit_advisor/` — пустая папка — ✅ CLOSED 2026-05-07
 
 **Симптом**: exit_advisor запускается каждые 120 сек, но `data/exit_advisor/` пустая (нет outcome файлов).
-**Причина**: либо exit_advisor работает но не пишет outcome'ы, либо логика срабатывания не выполняется ни разу за 5 дней.
-**Последствие**: тестируется ли он вообще — не известно. У тебя SHORT -1.371 BTC, exit_advisor должен анализировать сценарии — но молчит.
-**Фикс**: проверить триггер-логику. ~1 час диагностики.
+**Причина** (подтверждена subagent диагнозом): `app_runner._run_exit_advisor()` вызывался **БЕЗ** `telegram_app=app`, send_fn=None → loop.py:157 silently skip отправки alert'ов. Кроме того dd_onset_cache был in-memory only — duration сбрасывался на каждый рестарт, CYCLE_DEATH (требует max_dur_h>=4h) никогда не срабатывал.
+**Последствие**: за 5 дней — ноль advisory cards в Telegram, хотя у тебя SHORT -1.371 BTC.
+**Фикс**: ✅ DONE 2026-05-07. (1) wired telegram_app=app в `app_runner._run_exit_advisor`. (2) persist dd_onset_cache в `data/exit_advisor/dd_onset_cache.json`. (3) startup log показывает `send_fn=wired`. Подтверждено: dd_onset_cache.json создан, Bot 6399265299 booster SHORT -0.711 BTC DD onset зарегистрирован 12:44 UTC. Через 4h (~16:44 UTC) если DD сохранится — придёт CYCLE_DEATH alert в Telegram.
 
 ### 5. `state/paper_trades.jsonl` — не существует
 
