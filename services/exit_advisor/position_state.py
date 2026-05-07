@@ -104,19 +104,48 @@ def _safe_float(v: str, default: float = 0.0) -> float:
         return default
 
 
+def _normalize_bot_id(bid: str) -> str:
+    """Strip legacy '.0' suffix from bot_id (TZ-Y dedup, 2026-05-07).
+
+    snapshots.csv содержит ОДНОГО бота под двумя ключами:
+      '5196832375'    (новый, актуальный)
+      '5196832375.0'  (legacy, устаревшие данные)
+
+    Без normalize они попадали в latest{} как разные ботa → SHORT total
+    дублировался / показывал старые цены. Исправлено в dashboard
+    (commit 5e9864f), теперь и здесь.
+    """
+    bid = (bid or "").strip()
+    if bid.endswith(".0"):
+        bid = bid[:-2]
+    return bid
+
+
 def _read_latest_snapshot(csv_path: Path) -> list[dict]:
-    """Read last row per bot_id from snapshots CSV (tail-based, efficient)."""
+    """Read last row per bot_id from snapshots CSV.
+
+    Uses normalized bot_id so '5196832375' and '5196832375.0' merge into one
+    bot. Within duplicates the row with **latest ts_utc** wins.
+    """
     if not csv_path.exists():
         return []
     try:
-        rows: list[dict] = []
         with csv_path.open(encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
             latest: dict[str, dict] = {}
             for row in reader:
-                bid = row.get("bot_id", "")
-                if bid:
+                bid = _normalize_bot_id(row.get("bot_id", ""))
+                if not bid:
+                    continue
+                # Сохраняем normalized bid в самой записи для downstream
+                row["bot_id"] = bid
+                # Берём более свежий по ts_utc
+                prev = latest.get(bid)
+                if prev is None:
                     latest[bid] = row
+                else:
+                    if (row.get("ts_utc") or "") > (prev.get("ts_utc") or ""):
+                        latest[bid] = row
         return list(latest.values())
     except Exception:
         logger.exception("exit_advisor.position_state: failed to read snapshots")
