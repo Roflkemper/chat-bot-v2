@@ -184,18 +184,18 @@ async def _run_setup_tracker(stop_event: asyncio.Event) -> None:
 async def _run_exit_advisor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Exit advisory for live SHORT/LONG positions.
 
-    2026-05-07: ОПАСНЫЙ модуль (operator complaint 14:56). Шлёт 'EMERGENCY: Close ALL SHORT'
-    с EV +$2 одинаковым для всех вариантов — scoring сломан, советы несоответствуют
-    realistic backtest (closing in DD = worst-case per OPPORTUNITY_MAP_v2 HARD BAN).
+    2026-05-07 morning: ОПАСНЫЙ модуль (operator complaint 14:56). Шлёт 'EMERGENCY:
+    Close ALL SHORT' с EV +$2 одинаковым для всех вариантов — scoring сломан.
 
-    По умолчанию send_fn=None (loop работает, copies в jsonl, но в Telegram молчит).
-    Чтобы включить: EXIT_ADVISOR_SEND_TELEGRAM=1 в env (после починки EV scoring).
+    2026-05-07 evening: переписан honest_renderer без fake EV. Только факты +
+    playbook context + HARD BAN list. Включён по умолчанию.
+    Чтобы выключить (если что-то опять не так): EXIT_ADVISOR_SEND_TELEGRAM=0
     """
     import os as _os
     from services.exit_advisor.loop import exit_advisor_loop
 
     send_fn = None
-    enable_telegram = _os.environ.get("EXIT_ADVISOR_SEND_TELEGRAM", "0") == "1"
+    enable_telegram = _os.environ.get("EXIT_ADVISOR_SEND_TELEGRAM", "1") == "1"
     if enable_telegram and telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
         chat_ids = list(telegram_app.allowed_chat_ids)
         bot = telegram_app.bot

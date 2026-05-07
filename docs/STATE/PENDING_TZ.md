@@ -1,6 +1,6 @@
 # PENDING TZ
 # Update when TZs open or close.
-# Last update: 2026-05-06 — session close sync
+# Last update: 2026-05-07 — A/C backlog from inverted verdict findings
 
 ---
 
@@ -21,6 +21,13 @@
 | TZ-POSITION-CLEANUP-SUPPORT | Analytics/support for operator-led cleanup of live SHORT exposure before regulation activation | OPEN | operator-driven |
 | TZ-MARGIN-COEFFICIENT-INPUT-WIRE | Add margin_coefficient computation to upstream state_latest.json producer. Без этого M-* family dormant в production. | OPEN | operator подтверждает источник данных биржи |
 | TZ-DECISION-LAYER-DESIGN-v1.1 | Resolution для DESIGN-OPERATOR-GAP-1 (M-4 emergency vs cap) и возможно GAP-3 (dedup architecture). Formal amendment §2.7 дизайна. | OPEN | operator-defined scope |
+
+## Edge Discovery (added 2026-05-07 after inverted verdict provals NEGATIVE)
+
+| ID | Description | Status | Blocker |
+|---|---|---|---|
+| TZ-MULTI-SIGNAL-CONFLUENCE-BACKTEST | regime + OI flip + funding extreme + structural break combined → does confluence give 60%+ edge? Single signals don't. See INVERTED_VERDICT_TEST_2026-05-07.md. | OPEN | requires deriv_live history accumulation (~7 days for sufficient n) OR backfill from historical_setups parquet |
+| TZ-MULTI-HORIZON-BACKTEST | Run backtest on 1h / 24h / 48h horizons. Currently only tested 4h/24h. Maybe direction-edge exists at other horizon. ~30 min. | OPEN | none, can run anytime |
 
 ## Foundation Extensions
 

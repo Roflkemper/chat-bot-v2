@@ -21,6 +21,7 @@ from .outcome_tracker import OutcomeTracker
 from .position_state import ScenarioClass, build_position_state
 from .strategy_ranker import StrategyRanker
 from .telegram_renderer import format_advisory_alert
+from .honest_renderer import format_honest_advisory
 
 logger = logging.getLogger(__name__)
 
@@ -199,15 +200,19 @@ def _tick(
         short_position_btc=short_btc,
     )
 
-    # 6. Format and send
-    card = format_advisory_alert(state, strategies, margin_reqs)
+    # 6. Format and send.
+    # 2026-05-07: переключено с format_advisory_alert (fake EV, опасные советы)
+    # на format_honest_advisory (факты + playbook). Старый renderer оставлен
+    # в коде для совместимости с outcome_tracker, но не используется live.
+    # См. docs/ANALYSIS/EXIT_ADVISOR_AUDIT_2026-05-07.md.
+    card = format_honest_advisory(state)
     if card and send_fn is not None:
         try:
             if callable(send_fn):
                 send_fn(card)
             dedup_cache[sc_key] = now
             logger.info(
-                "exit_advisor.alert_sent scenario=%s severity=%d",
+                "exit_advisor.alert_sent scenario=%s severity=%d (honest renderer)",
                 sc_key, current_severity,
             )
         except Exception:

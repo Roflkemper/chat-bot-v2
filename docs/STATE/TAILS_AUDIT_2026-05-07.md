@@ -5,6 +5,8 @@
 
 **Update 2026-05-07 14:00**: P0 #1 + #5 closed (commit 51a484f). См. ниже.
 
+**Update 2026-05-07 15:13** (нового в P1): position_state.py не различает units для LONG (linear, USDT-номинирован) vs SHORT (inverse, BTC-номинирован). Tracker даёт `position` как сырое число — для LONG это USD ($21,600), для SHORT это BTC (-0.717). Render показывает 'LONG total: +18800.000 BTC' что неправильно. Не блокирует honest_renderer, но искажает aggregation. Fix ~30 мин: разделить per-bot type → правильно агрегировать.
+
 ---
 
 ## P0 — BROKEN, СЕЙЧАС МЕШАЕТ ТОРГОВАТЬ
