@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 CHECK_INTERVAL_SEC = 300  # 5 min
 ALERT_REPEAT_INTERVAL_SEC = 3600  # 1 hour between repeat alerts for same source
+GRACE_PERIOD_AFTER_START_SEC = 900  # 15 min — не алертим первые 15 мин после старта монитора (post-restart warmup)
 
 CRITICAL_SOURCES = {
     "market_1m": {
@@ -90,12 +91,22 @@ def _save_state(state: dict) -> None:
         pass
 
 
-def check_once(send_fn: Optional[Callable[[str], None]] = None) -> dict:
-    """One check pass. Returns state dict. Sends alert via send_fn if available."""
+def check_once(send_fn: Optional[Callable[[str], None]] = None, monitor_started_ts: Optional[float] = None) -> dict:
+    """One check pass. Returns state dict. Sends alert via send_fn if available.
+
+    monitor_started_ts: epoch when monitor loop started. Если задано и
+    прошло меньше GRACE_PERIOD_AFTER_START_SEC — alerts не отправляются
+    (используется чтобы не спамить после рестарта app_runner — sources
+    могут быть stale пока сами не перезапустились).
+    """
     state = _load_state()
     now_ts = datetime.now(timezone.utc).timestamp()
     alerts = []
     recoveries = []
+    in_grace = (
+        monitor_started_ts is not None
+        and (now_ts - monitor_started_ts) < GRACE_PERIOD_AFTER_START_SEC
+    )
 
     for source_id, cfg in CRITICAL_SOURCES.items():
         path = Path(cfg["path"])
@@ -121,13 +132,16 @@ def check_once(send_fn: Optional[Callable[[str], None]] = None) -> dict:
                 recoveries.append((cfg["label"], age_min))
                 state[source_id] = {"stale": False, "last_alert_ts": 0}
 
-    if alerts and send_fn:
+    if alerts and send_fn and not in_grace:
         for label, age, threshold in alerts:
             age_str = f"{age:.0f}min" if age is not None else "MISSING"
             try:
                 send_fn(f"⚠️ STALE DATA: {label} | age {age_str} (threshold {threshold}min)")
             except Exception:
                 logger.exception("stale_monitor.send_alert_failed")
+    elif alerts and in_grace:
+        labels = ", ".join(a[0] for a in alerts)
+        logger.info("stale_monitor.in_grace alerts_suppressed=%d sources=%s", len(alerts), labels)
     if recoveries and send_fn:
         for label, age in recoveries:
             try:
@@ -145,11 +159,18 @@ async def stale_monitor_loop(
     send_fn: Optional[Callable[[str], None]] = None,
     interval_sec: int = CHECK_INTERVAL_SEC,
 ) -> None:
-    """Async loop. Run every interval_sec until stop_event."""
-    logger.info("stale_monitor.loop.start interval=%ds", interval_sec)
+    """Async loop. Run every interval_sec until stop_event.
+
+    Grace period: первые GRACE_PERIOD_AFTER_START_SEC секунд после старта
+    цикла — alerts не отправляются (suppressed). Это защита от спама
+    'STALE DATA' после рестарта app_runner — источники данных могут
+    быть оффлайн пока их собственные сервисы не запустились.
+    """
+    monitor_started_ts = datetime.now(timezone.utc).timestamp()
+    logger.info("stale_monitor.loop.start interval=%ds grace=%ds", interval_sec, GRACE_PERIOD_AFTER_START_SEC)
     while not stop_event.is_set():
         try:
-            check_once(send_fn=send_fn)
+            check_once(send_fn=send_fn, monitor_started_ts=monitor_started_ts)
         except Exception:
             logger.exception("stale_monitor.check_failed")
         try:
