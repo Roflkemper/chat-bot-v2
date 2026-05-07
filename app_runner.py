@@ -233,6 +233,21 @@ async def _run_deriv_live(stop_event: asyncio.Event) -> None:
     await deriv_live_loop(stop_event=stop_event)
 
 
+async def _run_bitmex_account(stop_event: asyncio.Event) -> None:
+    """BitMEX read-only account poll: auto-update margin (TZ-BITMEX-AUTO-MARGIN 2026-05-07).
+
+    Заменяет ручной /margin command. Каждые 60 секунд polling БитМЕКС API
+    (margin balance, available, positions, liquidation prices) → запись в
+    state/margin_automated.jsonl. read_latest_margin() сам выберет более
+    свежий между manual override и auto.
+
+    Если ключ не настроен в .env.local — loop тихо завершается.
+    """
+    from services.bitmex_account import bitmex_poll_loop
+
+    await bitmex_poll_loop(stop_event=stop_event)
+
+
 async def _shutdown_task(task: asyncio.Task, *, timeout: float) -> None:
     try:
         await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
@@ -284,6 +299,7 @@ async def main(
     market_intelligence_task = asyncio.create_task(_run_market_intelligence(stop_event), name="market_intelligence")
     market_forward_task = asyncio.create_task(_run_market_forward_analysis(stop_event), name="market_forward_analysis")
     deriv_live_task = asyncio.create_task(_run_deriv_live(stop_event), name="deriv_live")
+    bitmex_account_task = asyncio.create_task(_run_bitmex_account(stop_event), name="bitmex_account")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     # Critical tasks: their failure forces full shutdown.
@@ -294,7 +310,7 @@ async def main(
         boundary_expand_task, adaptive_grid_task, paper_journal_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0

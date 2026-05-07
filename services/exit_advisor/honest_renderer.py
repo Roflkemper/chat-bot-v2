@@ -310,9 +310,5 @@ def format_honest_advisory(state: PositionStateSnapshot) -> str:
         _format_playbook_block(state),
         "",
         _format_balance_block(state),
-        "",
-        "─" * 30,
-        "Это observation, не команда к действию.",
-        "Решение остаётся за оператором. /advise для рыночного контекста.",
     ])
     return "\n".join(parts)
