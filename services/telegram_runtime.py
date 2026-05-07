@@ -1336,6 +1336,25 @@ class TelegramBotApp:
             except Exception as exc:
                 self.bot.send_message(chat_id, f'Ошибка: {exc}')
 
+        # ── /momentum_check (TZ-MOMENTUM-CHECK 2026-05-07) ───────────────────
+        # Intraday-tool: character движения, истощение, дивергенции, сессия,
+        # liquidations, OI/funding flow. Дополняет /advise (общая картина).
+        @self.bot.message_handler(commands=['momentum_check', 'momentum'])
+        def handle_momentum_check(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.momentum_check import build_momentum_check, format_momentum_check
+                snap = build_momentum_check()
+                text = format_momentum_check(snap)
+            except Exception as exc:
+                logger.exception("handle_momentum_check.failed")
+                self.bot.send_message(chat_id, f'❌ momentum_check failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         # ── TZ-D-ADVISOR-V1: /advise ──────────────────────────────────────────
 
         @self.bot.message_handler(commands=['advise'])
