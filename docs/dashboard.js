@@ -1,6 +1,8 @@
 'use strict';
 
-const STATE_URL = './STATE/dashboard_state.json';
+// app_runner.dashboard_http serves /state.json directly. Was './STATE/dashboard_state.json'
+// которое 404 на http://127.0.0.1:8765/ — фикс 2026-05-07.
+const STATE_URL = '/state.json';
 const RELOAD_INTERVAL_MS = 60000;
 
 let _lastSuccessTs = null;
@@ -422,7 +424,7 @@ async function fetchState() {
         ? ` Последние данные: ${ageStr(_lastSuccessTs)}.`
         : '';
       banner.innerHTML = `⚠ Dashboard offline — не удалось загрузить данные.${lastStr}<br>
-        Запустите <code>python -m http.server 8000</code> в папке <code>C:\\bot7\\docs\\</code>`;
+        Проверьте что app_runner запущен (supervisor) и dashboard_http_task живой.`;
       banner.style.display = 'block';
     }
   }
