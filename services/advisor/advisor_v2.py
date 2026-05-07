@@ -139,38 +139,68 @@ def _classify_v2_live() -> dict:
 
 
 def _read_features_last() -> dict:
-    """Last bar of full_features_1y for momentum/flow/OI."""
+    """Last bar of full_features_1y for momentum/flow/OI/funding.
+
+    2026-05-07 fix: parquet `full_features_1y.parquet` обновляется НЕ live (последнее
+    обновление обычно >24h назад). Поэтому OI/funding signal в advisor показывал
+    устаревшие данные. Live override: `state/deriv_live.json` (обновляется каждые
+    5 мин из services/deriv_live/) переписывает funding_rate, oi_delta_1h, premium_pct.
+    """
+    out = {}
+    # 1) Read parquet (исторические features — RSI, taker_imbalance, session levels, etc.)
     try:
         import pandas as pd
         df = pd.read_parquet("data/forecast_features/full_features_1y.parquet")
-        if df.empty:
-            return {}
-        last = df.iloc[-1]
-        out = {}
-        for col in (
-            "rsi_14", "rsi_zone_int", "rsi_divergence_5h",
-            "cci_overbought", "cci_oversold",
-            "oi_delta_1h", "oi_price_div_1h_z",
-            "taker_imbalance_1h", "taker_imbalance_15m", "taker_imbalance_5m",
-            "ls_long_extreme", "ls_short_extreme",
-            "asia_high_broken", "asia_low_broken",
-            "london_high_broken", "london_low_broken",
-            "ny_am_high_broken", "ny_am_low_broken",
-            "bars_since_london_high_break", "bars_since_ny_am_high_break",
-            "bars_since_london_low_break", "bars_since_ny_am_low_break",
-            "volume_acceleration", "rvol_20", "realized_vol_pctile_24h",
-            "dist_to_pdh_pct", "dist_to_pdl_pct",
-            "vol_profile_poc_dist_pct", "vol_profile_position",
-            "funding_rate", "funding_z",
-        ):
-            if col in df.columns:
-                v = last.get(col)
-                if pd.notna(v):
-                    out[col] = float(v)
-        return out
+        if not df.empty:
+            last = df.iloc[-1]
+            for col in (
+                "rsi_14", "rsi_zone_int", "rsi_divergence_5h",
+                "cci_overbought", "cci_oversold",
+                "oi_delta_1h", "oi_price_div_1h_z",
+                "taker_imbalance_1h", "taker_imbalance_15m", "taker_imbalance_5m",
+                "ls_long_extreme", "ls_short_extreme",
+                "asia_high_broken", "asia_low_broken",
+                "london_high_broken", "london_low_broken",
+                "ny_am_high_broken", "ny_am_low_broken",
+                "bars_since_london_high_break", "bars_since_ny_am_high_break",
+                "bars_since_london_low_break", "bars_since_ny_am_low_break",
+                "volume_acceleration", "rvol_20", "realized_vol_pctile_24h",
+                "dist_to_pdh_pct", "dist_to_pdl_pct",
+                "vol_profile_poc_dist_pct", "vol_profile_position",
+                "funding_rate", "funding_z",
+            ):
+                if col in df.columns:
+                    v = last.get(col)
+                    if pd.notna(v):
+                        out[col] = float(v)
     except Exception:
         logger.exception("advisor_v2.features_load_failed")
-        return {}
+
+    # 2) LIVE override from state/deriv_live.json (Binance REST poll, 5min cadence).
+    # Заменяет stale parquet значения на свежие для OI / funding.
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        live_path = _Path("state/deriv_live.json")
+        if live_path.exists():
+            data = _json.loads(live_path.read_text(encoding="utf-8"))
+            btc = data.get("BTCUSDT", {}) or {}
+            # funding_rate (8h period) — live override
+            if "funding_rate_8h" in btc:
+                out["funding_rate"] = float(btc["funding_rate_8h"])
+                out["_funding_source"] = "deriv_live"
+            # OI 1h delta — live override
+            if "oi_change_1h_pct" in btc:
+                out["oi_delta_1h"] = float(btc["oi_change_1h_pct"])
+                out["_oi_source"] = "deriv_live"
+            # Premium (mark vs index) — новый сигнал, не было в parquet
+            if "premium_pct" in btc:
+                out["premium_pct"] = float(btc["premium_pct"])
+            out["_deriv_live_ts"] = data.get("last_updated", "")
+    except Exception:
+        logger.exception("advisor_v2.deriv_live_load_failed")
+
+    return out
 
 
 def _interpret_momentum(f: dict) -> list[str]:
@@ -246,6 +276,18 @@ def _interpret_oi_funding(f: dict) -> list[str]:
         out.append("⚠️ LS ratio: long extreme — толпа в long, contrarian short setup")
     if f.get("ls_short_extreme"):
         out.append("⚠️ LS ratio: short extreme — толпа в short, contrarian long setup")
+    # Premium (mark vs index) — новый сигнал из live deriv poll (2026-05-07)
+    premium = f.get("premium_pct")
+    if premium is not None:
+        if abs(premium) < 0.02:
+            pass  # neutral, не спамим
+        elif premium > 0.05:
+            out.append(f"Premium {premium:+.3f}% — perp выше spot (long bias)")
+        elif premium < -0.05:
+            out.append(f"Premium {premium:+.3f}% — perp ниже spot (short bias)")
+    # Live source marker (для прозрачности, видеть откуда данные)
+    if f.get("_funding_source") == "deriv_live":
+        out.append("_(funding/OI: live Binance, обновляется каждые 5 мин)_")
     return out
 
 
