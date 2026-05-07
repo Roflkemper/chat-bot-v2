@@ -3,16 +3,18 @@
 **Date**: 2026-05-07
 **Method**: disk-check (per К28) — mtime файлов, content state, code traces. Не доверяя inventory-документам.
 
+**Update 2026-05-07 14:00**: P0 #1 + #5 closed (commit 51a484f). См. ниже.
+
 ---
 
 ## P0 — BROKEN, СЕЙЧАС МЕШАЕТ ТОРГОВАТЬ
 
-### 1. `state/state_latest.json` (Snapshot не пишется)
+### 1. `state/state_latest.json` (Snapshot не пишется) — ✅ CLOSED 2026-05-07
 
 **Симптом**: `paper_journal: state_latest.json age=4900s > 600s` каждые 5 мин в логе.
 **Причина**: писатель — `scripts/state_snapshot.py`, был привязан к scheduled task `bot7-state-snapshot`. Таска была отключена 2026-05-07 для cleanup orphans. Никто не включил обратно.
 **Последствие**: `paper_journal`, `decision_log`, `decision_layer` — все ослеплены. /advise audit пишется, но без state-context'а neполный.
-**Фикс**: либо включить task обратно, либо встроить state_snapshot loop в supervisor (надёжнее). Оценка 30 мин.
+**Фикс**: ✅ DONE 2026-05-07 14:00 (commit 51a484f). Создан `scripts/state_snapshot_loop.py` (300s wrapper). Зарегистрирован в supervisor как 5-й managed process. Heartbeat `managed=4` подтверждён в 12:00:16Z. iter=2 в 14:00:47 — каждые 5 минут стабильный refresh state_latest.json. Больше не зависит от scheduled task admin permissions.
 
 ### 2. `state/regime_state.json` — все TF = None
 
@@ -45,12 +47,12 @@
 
 ## P1 — FUNCTIONAL BUT CHEATING / INCOMPLETE
 
-### 6. setup_detector.build_context_failed pair=BTCUSDT (24+ часа сломан)
+### 6. setup_detector.build_context_failed pair=BTCUSDT (24+ часа сломан) — ✅ CLOSED 2026-05-07
 
 **Симптом**: логи показывают `build_context_failed` каждые 60 сек 24+ часа подряд (06.05 23:13 → 07.05 13:21).
 **Причина**: ICT levels parquet не загружался — путь сломан или файла не было. Заработал в 13:34 после рестарта.
 **Последствие**: 24 часа НИ ОДНОГО setup'а не было обнаружено. `setups.jsonl` остановился на 06.05 13:39.
-**Фикс**: уже работает. Но нужен **stale_monitor** на `setups.jsonl` чтобы не молчать ещё 24 часа в следующий раз. 30 мин.
+**Фикс**: ✅ DONE 2026-05-07 (commit 51a484f). stale_monitor расширен: `setups.jsonl` 1h threshold + `state_latest.json` 15min threshold. Если setup_detector замолчит снова на час — Telegram alert.
 
 ### 7. Live derivatives data — collected но не подаётся в advisor
 
