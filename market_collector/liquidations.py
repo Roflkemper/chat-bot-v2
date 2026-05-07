@@ -86,14 +86,21 @@ def _run_bybit_ws(stop_event: threading.Event) -> None:
                         for liq in liq_data:
                             if not isinstance(liq, dict):
                                 continue
-                            # Bybit: side="Sell" значит liquidated long position
-                            side = "long" if str(liq.get("side", "")).lower() == "sell" else "short"
+                            # Bybit V5 allLiquidation использует короткие имена:
+                            #   s = symbol, S = side ('Buy'/'Sell'), v = size, p = price, T = ts
+                            # Старые длинные имена (side/size/price) — fallback
+                            # на случай legacy формата.
+                            raw_side = liq.get("S") or liq.get("side", "")
+                            # 'Sell' = liquidated LONG position
+                            side = "long" if str(raw_side).lower() == "sell" else "short"
+                            qty = liq.get("v") or liq.get("size", "")
+                            price = liq.get("p") or liq.get("price", "")
                             _write_liq({
                                 "ts_utc": _ts_utc_now(),
                                 "exchange": "bybit",
                                 "side": side,
-                                "qty": liq.get("size", ""),
-                                "price": liq.get("price", ""),
+                                "qty": qty,
+                                "price": price,
                             })
                 except Exception:
                     logger.warning("bybit_ws.parse_error", exc_info=True)
