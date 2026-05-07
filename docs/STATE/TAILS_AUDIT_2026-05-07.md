@@ -16,12 +16,11 @@
 **Последствие**: `paper_journal`, `decision_log`, `decision_layer` — все ослеплены. /advise audit пишется, но без state-context'а neполный.
 **Фикс**: ✅ DONE 2026-05-07 14:00 (commit 51a484f). Создан `scripts/state_snapshot_loop.py` (300s wrapper). Зарегистрирован в supervisor как 5-й managed process. Heartbeat `managed=4` подтверждён в 12:00:16Z. iter=2 в 14:00:47 — каждые 5 минут стабильный refresh state_latest.json. Больше не зависит от scheduled task admin permissions.
 
-### 2. `state/regime_state.json` — все TF = None
+### 2. classifier v2 — нет persist (history transitions, hysteresis) — ✅ CLOSED 2026-05-07
 
-**Симптом**: `python -m json.tool state/regime_state.json` показывает `regime: None` для 15m/1h/4h.
-**Причина**: classifier v1 (`core/orchestrator/regime_classifier.py`) пишет туда — но он, видимо, не запущен. Все live tasks используют classifier v2 (`services/regime_classifier_v2/`) который НЕ персистит — каждый вызов `build_multi_timeframe_view()` пересчитывает с нуля.
-**Последствие**: dashboard состояние `regime` пустое. Decision Layer R-rules **слепые** на live regime.
-**Фикс**: добавить persist в `services/regime_classifier_v2/multi_timeframe.py` ИЛИ запустить classifier v1 параллельно. 1-2 часа.
+**Симптом** (мой неправильный изначально): "regime_state.json все TF = None". На самом деле я смотрел не там — classifier **v1** живёт и пишет `state/regime_state.json` (3-state). Реальная проблема: classifier **v2** (10-state per-TF DRIFT_UP/SLOW_DOWN/CASCADE_UP/etc) был **эфемерен** — пересчитывался на каждый вызов без persist'а.
+**Последствие**: нельзя видеть когда state_v2 переключился (DRIFT_UP → CASCADE_UP среди ночи), нет hysteresis на v2, /advise каждый раз пересчитывает с нуля.
+**Фикс**: ✅ DONE 2026-05-07 (commit 1ffe9fb). Создан `state/regime_v2_state.json` с per-TF state + since-timestamp + transition history (last 50). Пишется каждые 5 мин из state_snapshot_loop + при каждом /advise. Симулирована и проверена запись transition.
 
 ### 3. Live OI / Funding — нет ingest pipeline
 
