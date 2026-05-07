@@ -103,6 +103,20 @@ class CommandHandler:
         registry.register('СТЕЙТ', '_cmd_state', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('/advise', '_cmd_advise', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('СОВЕТ', '_cmd_advise', capabilities=CommandCapabilities(renderer='grid'))
+        # /advisor — v0.1 advisor: live state + reconciled foundation synthesis
+        # (TZ-LIVE-ADVISOR-V0_1, 2026-05-06)
+        registry.register('/advisor', '_cmd_advisor', capabilities=CommandCapabilities(renderer='grid'))
+        registry.register('АДВАЙЗЕР', '_cmd_advisor', capabilities=CommandCapabilities(renderer='grid'))
+        # /log_decision — log operator's exit_advisor decision for outcome tracking
+        # (TZ-EXIT-ADVISOR-SCORING-INFRA, 2026-05-07). Накопление данных для honest EV.
+        registry.register('/log_decision', '_cmd_log_decision', capabilities=CommandCapabilities(renderer='plain'))
+        registry.register('/decision_log', '_cmd_log_decision', capabilities=CommandCapabilities(renderer='plain'))
+        # /regime_v2 — multi-timeframe regime view (TZ-REGIME-V2-EXTENDED, 2026-05-06)
+        registry.register('/regime_v2', '_cmd_regime_v2', capabilities=CommandCapabilities(renderer='grid'))
+        registry.register('РЕЖИМ_V2', '_cmd_regime_v2', capabilities=CommandCapabilities(renderer='grid'))
+        # /papertrader — show paper trading journal stats (TZ-PAPER-TRADER 2026-05-07)
+        registry.register('/papertrader', '_cmd_papertrader', capabilities=CommandCapabilities(renderer='grid'))
+        registry.register('БУМАЖНЫЙ', '_cmd_papertrader', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('/regime', '_cmd_regime', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('РЕЖИМ', '_cmd_regime', capabilities=CommandCapabilities(renderer='grid'))
         registry.register_prefix(
@@ -145,6 +159,15 @@ class CommandHandler:
             '/blackout <hours>',
             lambda t: t.startswith('/BLACKOUT '),
             '_cmd_blackout',
+            capabilities=CommandCapabilities(renderer='grid'),
+        )
+        # /margin <coefficient> <available_margin_usd> <distance_to_liq_pct>
+        # — operator-supplied margin data for Decision Layer M-* family
+        # (TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-06).
+        registry.register_prefix(
+            '/margin <coefficient> <available_margin_usd> <distance_to_liq_pct>',
+            lambda t: t.upper().startswith('/MARGIN '),
+            '_cmd_margin',
             capabilities=CommandCapabilities(renderer='grid'),
         )
         registry.register('/killswitch', '_cmd_killswitch', capabilities=CommandCapabilities(renderer='grid'))

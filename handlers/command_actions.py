@@ -716,6 +716,77 @@ class CommandActions:
         self._log_manual_command(action="REGIME_V2")
         return self.ctx.plain("\n".join(lines))
 
+    def decision(self) -> BotResponsePayload:
+        """/decision <action> — log operator's exit_advisor decision.
+
+        Usage:
+          /decision raise_boundary_0.5
+          /decision tighten_grid
+          /decision close_25pct
+          /decision close_50pct
+          /decision monitor (= 'я ничего не делаю, наблюдаю')
+          /decision add_long (= усилил LONG-движок)
+          /decision booster_on (= включил booster bot 6399265299)
+
+        Записывает в state/exit_advisor_decisions.jsonl с текущим snapshot
+        для последующего outcome tracking. Нужно для накопления данных
+        для honest EV scoring (см. EXIT_ADVISOR_AUDIT_2026-05-07.md).
+        """
+        from services.exit_advisor.decisions_log import log_decision
+        from services.exit_advisor.position_state import build_position_state
+
+        parts = (self.ctx.command or "").strip().split(maxsplit=1)
+        action = parts[1].strip() if len(parts) > 1 else ""
+
+        if not action:
+            return self.ctx.plain(
+                "❌ /decision <action>\n\n"
+                "Примеры:\n"
+                "  /decision raise_boundary_0.5\n"
+                "  /decision tighten_grid\n"
+                "  /decision close_25pct\n"
+                "  /decision monitor\n"
+                "  /decision add_long\n"
+                "  /decision booster_on\n\n"
+                "Записывается в state/exit_advisor_decisions.jsonl для\n"
+                "будущего outcome tracking (накопление данных для EV scoring)."
+            )
+
+        try:
+            state = build_position_state(current_price=0)  # current_price подтянется из deriv_live
+            snapshot = {
+                "btc_price": state.current_price,
+                "scenario_class": state.scenario_class.value,
+                "worst_dd_pct": state.worst_bot.unrealized_pct_deposit if state.worst_bot else None,
+                "min_liq_dist_pct": state.worst_bot.distance_to_liq_pct if state.worst_bot else None,
+                "duration_in_dd_h": state.worst_bot.duration_in_dd_h if state.worst_bot else None,
+                "short_btc_total": state.short_side.total_position_btc,
+                "long_usd_total": state.long_side.total_position_btc,
+                "free_margin_pct": state.free_margin_pct,
+                "total_balance_usd": state.total_balance_usd,
+                "total_unrealized_usd": state.total_unrealized_usd,
+            }
+            decision_id = log_decision(
+                scenario_class=state.scenario_class.value,
+                action_taken=action,
+                snapshot=snapshot,
+            )
+        except Exception as exc:
+            logger.exception("decision.log_failed")
+            return self.ctx.plain(f"❌ Не удалось записать decision: {exc}")
+
+        self._log_manual_command(action="DECISION_LOG")
+        return self.ctx.plain(
+            f"✅ Decision записан\n"
+            f"id: {decision_id[:8]}\n"
+            f"action: {action}\n"
+            f"scenario: {snapshot['scenario_class']}\n"
+            f"BTC: ${snapshot['btc_price']:,.0f}\n\n"
+            f"Outcome (PnL change, BTC move) дозаполнится через 1h/4h/24h\n"
+            f"скриптом scripts/exit_advisor_outcome_filler.py.\n"
+            f"Когда накопится 30+ decisions — построим honest EV scoring."
+        )
+
     def advisor(self) -> BotResponsePayload:
         """Advisor v0.2 — рыночный анализ с выводами и торговыми сетапами.
 
@@ -1420,6 +1491,7 @@ def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotRes
         '_cmd_blackout': actions.blackout,
         '_cmd_margin': actions.margin,
         '_cmd_advisor': actions.advisor,
+        '_cmd_log_decision': actions.decision,
         '_cmd_regime_v2': actions.regime_v2,
         '_cmd_papertrader': actions.papertrader,
         '_cmd_apply': actions.apply,
