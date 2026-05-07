@@ -26,7 +26,7 @@ Status mapping: snapshot `status=2` = running, `status=12` = paused, `status=0` 
 
 | Bot ID | Name | Alias | Status | Position | Profit | Notes |
 |--------|------|-------|--------|----------|--------|-------|
-| 6399265299 | `🐉GPT🐉% SHORT 1.1%` | `SHORT_1.1%` | running | 2 | −0.606 | **Live SHORT** — losing today |
+| 6399265299 | `🐉GPT🐉% SHORT 1.1%` | `SHORT_1.1%` | running | 2 | −0.606 | **Live SHORT** — losing today. **P-16 Post-impulse SHORT booster** (manual activation): включается когда impulse рост остановился и цена в зоне ликвидаций. Активация: 1) detect impulse exhaustion (operator judgement) 2) check price у resistance/liq cluster 3) set hard `border.top` чуть выше recent high 4) включить. Связан с Q-4 (booster bot triggers) в OPERATOR_QUESTIONS.md. Источник: ex-CANON/CUSTOM_BOTS_REGISTRY. |
 | 5436680540 | `🐉🐉% SHORT 1%` | `SHORT_1%` | paused | 12 | 0.0 | status=12 — recently paused |
 | 4539437207 | `🐉GPT🐉% SHORT выходной` | `SHORT_ВЫХ` | paused | 12 | 0.0 | Weekend-only variant |
 | 4516992123 | `STOP✨5M_BTC_SHORT_BTC_5m` | `SHORT_5M` | paused | 12 | 0.0 | 5m timeframe SHORT |

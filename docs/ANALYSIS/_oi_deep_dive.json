@@ -1,0 +1,120 @@
+{
+  "generated_at": "2026-05-06T11:53:52.682657+00:00",
+  "source": {
+    "features_parquet": "data\\forecast_features\\full_features_1y.parquet",
+    "analog_json": "docs\\ANALYSIS\\_uptrend_analog_search.json",
+    "coverage_start_1h": "2025-05-01T00:00:00+00:00",
+    "coverage_end_1h": "2026-05-01T00:00:00+00:00",
+    "bar_count_1h": 8761,
+    "note": "Current OI classification uses latest available historical bar in full_features_1y.parquet, not live 2026-05-06 OI."
+  },
+  "analog_count": 406,
+  "oi_distributions": [
+    {
+      "label": "OI растёт > 5%",
+      "n": 208,
+      "down_to_anchor_count": 53,
+      "down_to_anchor_pct": 25.5,
+      "up_extension_count": 56,
+      "up_extension_pct": 26.9,
+      "pullback_continuation_count": 67,
+      "pullback_continuation_pct": 32.2,
+      "sideways_count": 32,
+      "sideways_pct": 15.4
+    },
+    {
+      "label": "OI стабильный ±5%",
+      "n": 156,
+      "down_to_anchor_count": 5,
+      "down_to_anchor_pct": 3.2,
+      "up_extension_count": 45,
+      "up_extension_pct": 28.8,
+      "pullback_continuation_count": 56,
+      "pullback_continuation_pct": 35.9,
+      "sideways_count": 50,
+      "sideways_pct": 32.1
+    },
+    {
+      "label": "OI падает > 5%",
+      "n": 42,
+      "down_to_anchor_count": 0,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_count": 0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_count": 42,
+      "pullback_continuation_pct": 100.0,
+      "sideways_count": 0,
+      "sideways_pct": 0.0
+    },
+    {
+      "label": "OI divergence (price↑, OI↓)",
+      "n": 96,
+      "down_to_anchor_count": 5,
+      "down_to_anchor_pct": 5.2,
+      "up_extension_count": 5,
+      "up_extension_pct": 5.2,
+      "pullback_continuation_count": 81,
+      "pullback_continuation_pct": 84.4,
+      "sideways_count": 5,
+      "sideways_pct": 5.2
+    }
+  ],
+  "oi_cross_classifications": [
+    {
+      "label": "OI растёт + fund_neg + compressing",
+      "n": 32,
+      "down_to_anchor_count": 0,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_count": 24,
+      "up_extension_pct": 75.0,
+      "pullback_continuation_count": 8,
+      "pullback_continuation_pct": 25.0,
+      "sideways_count": 0,
+      "sideways_pct": 0.0
+    },
+    {
+      "label": "OI падает + fund_neg + compressing",
+      "n": 12,
+      "down_to_anchor_count": 0,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_count": 0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_count": 12,
+      "pullback_continuation_pct": 100.0,
+      "sideways_count": 0,
+      "sideways_pct": 0.0
+    },
+    {
+      "label": "OI flat + fund_neg + compressing",
+      "n": 8,
+      "down_to_anchor_count": 0,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_count": 0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_count": 8,
+      "pullback_continuation_pct": 100.0,
+      "sideways_count": 0,
+      "sideways_pct": 0.0
+    }
+  ],
+  "current_oi_status": {
+    "latest_bar_ts": "2026-05-01T00:00:00+00:00",
+    "sum_open_interest": 95322.905,
+    "oi_ratio_30d": 0.999,
+    "oi_delta_setup_pct": -0.94,
+    "oi_bucket": "oi_flat_pm_5pct",
+    "oi_divergence": true,
+    "nearest_distribution": {
+      "label": "OI стабильный ±5%",
+      "n": 156,
+      "down_to_anchor_count": 5,
+      "down_to_anchor_pct": 3.2,
+      "up_extension_count": 45,
+      "up_extension_pct": 28.8,
+      "pullback_continuation_count": 56,
+      "pullback_continuation_pct": 35.9,
+      "sideways_count": 50,
+      "sideways_pct": 32.1
+    }
+  }
+}

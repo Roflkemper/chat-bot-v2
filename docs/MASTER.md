@@ -36,6 +36,7 @@
 - К24: Не делать новые алерты без дедупликации by default. LEVEL_BREAK 27.04 — пример как не надо.
 - К25: "X тестов зелёных" в отчёте ≠ работает в проде (повтор К14). Обязательная проверка через продовый лог через 24h после деплоя.
 - К26: `git clean -fdx` УНИЧТОЖАЕТ untracked файлы включая критические docs. До выполнения — обязателен `git stash --include-untracked`. Критические docs ДОЛЖНЫ быть tracked (не `??`). TZ-055 incident: PLAYBOOK.md, GINAREA_MECHANICS.md, HANDOFF, NEXT_CHAT_PROMPT — потеряны и восстановлены из stash@{2}^3.
+- К27 (GRID/TRADER VIEW separation, ex-PROJECT_MANIFEST): GRID VIEW и TRADER VIEW держать раздельно. В GRID VIEW не тянуть trigger/entry/manual trader поля. Для GRID VIEW priority считать от layers/impulse/structure, не просто от bias. Structure flags считать отдельным модулем и передавать в engine через snapshot.
 
 ---
 
@@ -708,6 +709,76 @@ BTC trend up + XRP не следует → BTC откатится? XRP impulse s
 **Phase 3:** predictive models на Phase 1+2 data. Вероятность что оператор сделает X в ситуации Y → стартовая точка automation на 1 боте.
 
 **Phase 4-7:** progressive automation per ROADMAP.
+
+---
+
+### §16.8 Метрики и quantitative target (merged from STRATEGY_CANON 2026-04-30)
+
+**Метрики которые нужны** (никогда не считать только USD-PnL):
+- Realized PnL (native): USD для LONG, BTC для SHORT
+- Realized PnL (USD-norm at exit price): USD для обеих сторон
+- Trading volume (USD): обе стороны
+- Trades count: per-side и total
+- Net BTC exposure: `+size_long_USD/price − size_short_BTC`
+- Currency hedge ratio: `f(size_long_USD, size_short_BTC, price)`
+- PnL/volume velocity (efficiency)
+- PnL per day (rate)
+
+**Volume target оператора (30 дней)** — фиксация на 2026-04-30:
+- $10.5M volume (расширение от §1 «$8-10M бонус»)
+- Темп на 30.04: ~$200K/день → проекция $6M на 30 дней
+- Gap: $4.5M (~$214K/день дополнительно)
+
+**Прежний результат конкурса**: $618k volume → 1-е место. На 2026-04-30 — снова #1 PnL ($1,429.38 за 9 дней, volume $1.8M).
+
+**PnL/Volume ratio observed**: 0.0794% (12.5× выше чем H10 sim предсказывал — sim ratio 0.0064%). После real fee 0.035% по H10 — все 10 конфигураций убыточны (pending re-validation после engine fix).
+
+**Ребейт оценка GinArea**:
+- Fee: 0.035% market order (через UI только market)
+- Rebate: до $10M → ~$500, $10M+ → $1500-$2500
+- Net: выгодно держать выше $10M ребейт-tier
+
+---
+
+### §16.9 Цикл-смерти на затяжном тренде (formalization, 2026-04-30)
+
+Сценарий когда позиция уползает к ликвидации без явной точки exit'а в playbook'е:
+
+1. Цена растёт, SHORT-grid набирает позицию по уползающему avg
+2. Realized у LONG капает копейки (быстрые TPs)
+3. Unrealized у SHORT уползает: −$200 → −$500 → −$1000
+4. P-12 adaptive tighten увеличивает обороты но **не решает направление**
+5. P-4 PAUSED останавливает новые entries (если оператор успел нажать)
+6. P-1 raise boundary расширяет диапазон (если тренд подтверждён)
+7. Без HARD BAN'а P-8/P-5/P-10 — формального exit'а в минус **НЕТ**
+8. Точка ликвидации или вынужденного force-close = **ВНЕ playbook'а**
+
+Усугубляющие gaps:
+- G-2: точные пороги P-4 не зафиксированы
+- G-7: P-9 параметры — диапазоны, не числа
+- G-4: N для D-LIQ-CASCADE не задано
+
+Это и есть Боль #4 (drift к катастрофе) в действии. Решается circuit breaker'ом (TZ-CIRCUIT-BREAKER-V1) после backtest validation thresholds.
+
+---
+
+### §16.10 Gaps backlog (extended, ex-STRATEGY_CANON §10)
+
+| # | Gap | Источник |
+|---|---|---|
+| G-1 | Volume targeting (конкурсный режим) — нет правил | MASTER §1 |
+| G-2 | Точные пороги PAUSED не зафиксированы | PLAYBOOK P-4 |
+| G-3 | Liquidation cluster reentry rules не определены | PLAYBOOK P-3 |
+| G-4 | Порог N для D-LIQ-CASCADE не задан | MASTER §4 |
+| G-5 | Калибровка размеров после пополнения — нет формулы | OPPORTUNITY_MAP §5 |
+| G-6 | Multi-horizon правила для defensive plays | OPPORTUNITY_MAP §6 |
+| G-7 | P-9 точные параметры — диапазоны, не числа | PLAYBOOK P-9 |
+| G-8 | ICT killzone context для P-4 не операционализирован | PLAYBOOK P-4 |
+| G-9 | P-2 stack-bot size — OPEN | PLAYBOOK P-2 |
+| G-10 | Статус P-5 (HARD BAN, но используется) | PLAYBOOK P-5 |
+| G-11 | Engine bugs (3 anomalies) | CALIBRATION_VS_GINAREA |
+| G-12 | Custom bot 6399265299 — не в формальной документации | session 30.04 |
+| G-13 | Workflow auto-rebalance qty при regime flip | session 30.04 |
 
 ---
 

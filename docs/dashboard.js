@@ -113,53 +113,52 @@ function bandClass(band) {
   return 'muted';
 }
 
-function renderForecast(F) {
-  if (!F || !F.horizons) {
-    set('forecast-card', '<span class="muted">Нет данных прогноза.</span>');
+// Forecast renderer retired (TZ-FORECAST-DECOMMISSION). Replaced with a
+// neutral notice card. See FORECAST_CALIBRATION_DIAGNOSTIC_v1.md for the
+// verdict (FUNDAMENTALLY WEAK; resolution = 0.0001; calibrated Brier
+// recovers no-skill 0.2500 baseline only).
+function renderForecastRetiredNotice() {
+  set('forecast-card', `
+    <div class="muted" style="font-size:12px">
+      Прогнозный блок выведен из эксплуатации (TZ-FORECAST-DECOMMISSION).<br>
+      <span style="font-size:11px">Основание:
+        <a href="RESEARCH/FORECAST_CALIBRATION_DIAGNOSTIC_v1.md">FORECAST_CALIBRATION_DIAGNOSTIC v1</a>
+        — модель не имеет resolution-skill (Brier ≈ 0.2500 после калибровки = 50/50 baseline).
+      </span><br>
+      <span style="font-size:11px">Регламент v0.1.1+ опирается только на регим-классификатор;
+        решения по активации ботов см. карточку «Регламент» выше.</span>
+    </div>
+  `);
+}
+
+function renderRegulationCard(R) {
+  // P1: render the operator-facing regulation action card.
+  if (!R) {
+    set('regulation-card', '<span class="muted">Нет данных регламента.</span>');
     return;
   }
-  const sourceLabel = F.source === 'live'
-    ? 'live прогноз'
-    : (F.source === 'cv_matrix' ? 'CV-валидированная матрица (default)' : F.source || '—');
-  const barTime = F.bar_time ? ageStr(F.bar_time) : '';
-  const rows = ['1h', '4h', '1d'].map(hz => {
-    const e = F.horizons[hz] || {};
-    const cls = bandClass(e.band);
-    const brierStr = e.brier != null ? Number(e.brier).toFixed(4) : '—';
-    let valueStr;
-    if (e.mode === 'numeric' && typeof e.value === 'number') {
-      const probUp = e.value;
-      const arrow = probUp >= 0.55 ? '▲' : (probUp <= 0.45 ? '▼' : '•');
-      const dir = probUp >= 0.55 ? 'вверх' : (probUp <= 0.45 ? 'вниз' : 'нейтрально');
-      const pct = (probUp >= 0.5 ? probUp : 1 - probUp) * 100;
-      valueStr = `${arrow} ${pct.toFixed(0)}% ${dir} (prob_up=${probUp.toFixed(2)})`;
-    } else if (e.mode === 'gated') {
-      valueStr = `<span class="yellow">gated</span> — нумер. при regime_stability > 0.70`;
-    } else {
-      valueStr = `<span class="muted">качественный</span> ${e.value ? '— ' + e.value : ''}`;
-    }
-    const caveat = e.caveat ? `<div class="muted" style="font-size:11px;margin-top:2px">${e.caveat}</div>` : '';
-    return `
-      <tr>
-        <td><strong>${hz}</strong></td>
-        <td><span class="${cls}">●</span> ${e.mode}</td>
-        <td>${valueStr}</td>
-        <td class="${cls}">${brierStr}</td>
-      </tr>
-      ${caveat ? `<tr><td colspan="4" style="padding-top:0">${caveat}</td></tr>` : ''}
-    `;
-  }).join('');
-  set('forecast-card', `
-    <table>
-      <thead>
-        <tr><th>Гориз.</th><th>Режим вывода</th><th>Значение</th><th>Brier (CV)</th></tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="muted" style="font-size:11px;margin-top:8px">
-      Источник: ${sourceLabel}${barTime ? ` • bar ${barTime}` : ''}
-      ${F.regime_at_forecast ? ` • regime ${F.regime_at_forecast}` : ''}
+  if (R.note && (!R.on || R.on.length === 0) && (!R.conditional || R.conditional.length === 0)) {
+    set('regulation-card', `<span class="muted">${R.note}</span>`);
+    return;
+  }
+  const renderSection = (title, rows, cls) => {
+    if (!rows || rows.length === 0) return '';
+    const items = rows.map(r =>
+      `<li><span class="${cls}" style="font-weight:bold">${r.cfg_id}</span><br>
+        <span class="muted" style="font-size:11px">${r.reason}</span></li>`
+    ).join('');
+    return `<div style="margin-top:8px"><div class="stat-label">${title}</div><ul style="margin:4px 0 0 16px;padding:0;list-style:disc">${items}</ul></div>`;
+  };
+  const noRule = R.no_rule || [];
+  set('regulation-card', `
+    <div class="muted" style="font-size:11px;margin-bottom:6px">
+      Регламент ${R.regulation_version || '—'} • режим <strong>${R.regime_label || '—'}</strong>
+      ${R.note ? `<br>${R.note}` : ''}
     </div>
+    ${renderSection('ON (разрешено)', R.on, 'green')}
+    ${renderSection('CONDITIONAL (с мониторингом)', R.conditional, 'yellow')}
+    ${renderSection('OFF (запрещено)', R.off, 'red')}
+    ${renderSection('NO RULE (вне регламента)', noRule, 'muted')}
   `);
 }
 
@@ -392,7 +391,8 @@ function renderAll(S) {
   renderHeader(S);
   renderFreshness(S.freshness);
   renderRegime(S.regime);
-  renderForecast(S.forecast);
+  renderRegulationCard(S.regulation_action_card);
+  renderForecastRetiredNotice();
   renderVirtualTrader(S.virtual_trader);
   renderPositions(S.positions);
   renderCompetition(S.competition);

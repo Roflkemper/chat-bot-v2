@@ -98,7 +98,7 @@ Related TZ: TZ-059
 **Fix:** TZ-PROJECT-MEMORY-DEFENSE:
 - L1: Skill `project_inventory_first` — mandatory 4-check inventory before any implementation TZ
 - L1: Skill `session_handoff_protocol` — mandatory handoff document at session close covering discoveries, decisions, anti-patterns
-- L2: `scripts/state_snapshot.py` extended with `_build_project_map()` → `docs/STATE/PROJECT_MAP.md` + `docs/STATE/project_map.json`
+- L2: `scripts/state_snapshot.py` extended with `_build_project_map()` → `docs/PROJECT_MAP.md` + `docs/STATE/project_map.json`
 - L3: `PROJECT_RULES.md` "TZ Template — Inventory Check" section + new skills rows in triggers table
 
 **Prevention rules:**

@@ -168,3 +168,20 @@ P6 (infra debt) ────────────→ Phase 0 closure (paralle
 2. Cross-track dependencies must be stated explicitly. Don't add a track that silently blocks another.
 3. Status update happens **every Friday EOD** or whenever a track's gate is reached.
 4. New TZ in a track must declare which P1-P6 it serves.
+# 2026-05-06 Session Close Status Update
+
+## Current Track State
+
+| Track | Status | Note |
+|---|---|---|
+| Track-A (Foundation) | COMPLETE | complete for the current BTC bullish-year scope |
+| Track-B (Execution preparation) | COMPLETE | design, research, and dispatch order are ready |
+| Track-C (Implementation) | READY TO START | Decision Layer MVP implementation is next |
+| Track-D (Future) | OPEN | deferred items live in `docs/BACKLOG_TRIGGERS.md` |
+
+## Current Interpretation Rule
+
+- Treat Track-A as closed unless a new dataset or asset intentionally reopens foundation work.
+- Treat Track-B as closed at the preparation layer; do not reopen it for extra synthesis.
+- Treat Track-C as the active session lane for the next dispatch cycle.
+- Treat Track-D as trigger-based only, not part of the immediate implementation chain.

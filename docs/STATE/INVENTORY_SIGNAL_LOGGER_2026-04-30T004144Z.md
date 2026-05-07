@@ -4,7 +4,7 @@
 - `git status`: dirty worktree confirmed; no code changes made in this audit.
 - `.claude/PROJECT_RULES.md` read.
 - Skills read: `state_first_protocol`, `project_inventory_first`, `encoding_safety`, `regression_baseline_keeper`, `operator_role_boundary`.
-- [PROJECT_MAP](/C:/bot7/docs/STATE/PROJECT_MAP.md) read.
+- [PROJECT_MAP](/C:/bot7/docs/PROJECT_MAP.md) read.
 - Latest restored audit available as JSON, not Markdown: [RESTORED_FEATURES_AUDIT_2026-04-29T200504Z.json](/C:/bot7/docs/STATE/RESTORED_FEATURES_AUDIT_2026-04-29T200504Z.json).
 
 ## 0. Sources
@@ -14,7 +14,7 @@
 - [_recovery/restored/tests/advisor/v2/test_035_multi_asset.py](/C:/bot7/_recovery/restored/tests/advisor/v2/test_035_multi_asset.py)
 - [scripts/ohlcv_ingest.py](/C:/bot7/scripts/ohlcv_ingest.py)
 - [services/telegram_runtime.py](/C:/bot7/services/telegram_runtime.py:698)
-- [docs/STATE/PROJECT_MAP.md](/C:/bot7/docs/STATE/PROJECT_MAP.md)
+- [docs/PROJECT_MAP.md](/C:/bot7/docs/PROJECT_MAP.md)
 - [docs/STATE/RESTORED_FEATURES_AUDIT_2026-04-29T200504Z.json](/C:/bot7/docs/STATE/RESTORED_FEATURES_AUDIT_2026-04-29T200504Z.json)
 - [.gitignore](/C:/bot7/.gitignore)
 
@@ -97,7 +97,7 @@
   - No tests for `SignalEnvelope` validation, lazy streaming iterators, null-signal logs, or pattern-level aggregation over active advise_v2 schema.
 
 ### Project map / audit signals
-- [PROJECT_MAP](/C:/bot7/docs/STATE/PROJECT_MAP.md) lists active `services/advise_v2/` modules and restored `_recovery/restored/src/advisor/v2/telemetry.py`.
+- [PROJECT_MAP](/C:/bot7/docs/PROJECT_MAP.md) lists the expected project-map anchor for active modules and restored `_recovery/restored/src/advisor/v2/telemetry.py`.
 - Latest restored audit marks [_recovery/restored/src/advisor/v2/cascade.py](/C:/bot7/_recovery/restored/src/advisor/v2/cascade.py) as `leave_as_restored` because it conflicts conceptually with active `services/advise_v2/`.
 - `telemetry.py` depends on that restored advisor v2 recommendation model, so it inherits the same architectural boundary.
 

@@ -1,3 +1,5 @@
+> ⚠️ Q2 REFRAME (2026-05-05): `TRANSITION_MODE` policy choice as originally framed is meaningless. `TRANSITION` is about `7%` of the year after `H=1` calibration, and the policy result is sign-conditional by pack rather than a single global pause rule. The real coordinator question is a regime-conditional activation matrix, not a global `TRANSITION` policy choice. See `docs/REGULATION_v0_1_1.md` §3-§4 for the current operational rules. Q2 is closed by reframing, not by policy selection.
+
 # P8 Dual-Mode Coordinator — v0.1 design
 
 **Status:** GREENFIELD DESIGN (TZ-K, Block 12 of week 2)

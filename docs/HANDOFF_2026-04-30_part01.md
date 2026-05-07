@@ -10,7 +10,7 @@ State snapshot: run at 2026-04-30T02:04 (CURRENT_STATE_2026-04-30_0204.md)
 1. Прочитать через Code этот файл целиком
 2. Прочитать `docs/STATE/ROADMAP.md`
 3. Прочитать `docs/STATE/state_latest.json`
-4. Прочитать `docs/STATE/PROJECT_MAP.md`
+4. Прочитать `docs/PROJECT_MAP.md`
 5. Apply skills: `state_first_protocol`, `project_inventory_first`,
    `architect_inventory_first`, `session_handoff_protocol`,
    `operator_role_boundary`
@@ -26,7 +26,7 @@ State snapshot: run at 2026-04-30T02:04 (CURRENT_STATE_2026-04-30_0204.md)
 |---|---|---|
 | Текущий стейт | [CURRENT_STATE_2026-04-30_0204.md](STATE/CURRENT_STATE_2026-04-30_0204.md) | 2026-04-30T02:04 |
 | state_latest.json | [docs/STATE/state_latest.json](STATE/state_latest.json) | 2026-04-30T02:04 |
-| PROJECT_MAP.md | [docs/STATE/PROJECT_MAP.md](STATE/PROJECT_MAP.md) | 2026-04-30T02:04 |
+| PROJECT_MAP.md | [docs/PROJECT_MAP.md](PROJECT_MAP.md) | 2026-04-30T02:04 |
 | ROADMAP.md | [docs/STATE/ROADMAP.md](STATE/ROADMAP.md) | current Phase 1 in_progress |
 | state_inline.js | `docs/state_inline.js` | 2026-04-30T02:04 |
 

@@ -6,7 +6,7 @@
 - [x] .claude/skills/ — 15 skills confirmed
 - [x] PROJECT_RULES.md — read
 - [x] docs/STATE/ROADMAP.md — Phase 0 in_progress, Phase 1 = TZ-PAPER-JOURNAL-LIVE planned
-- [x] docs/STATE/PROJECT_MAP.md — 95 active modules, 1 real conflict
+- [x] docs/PROJECT_MAP.md — 95 active modules, 1 real conflict
 - [x] docs/STATE/RESTORED_FEATURES_AUDIT_2026-04-29T200504Z.json — read (relevant entries below)
 - [x] advise_signals.jsonl, advise_null_signals.jsonl, advise_action_match.jsonl,
       advise_followup.jsonl — all protected in .gitignore, not tracked

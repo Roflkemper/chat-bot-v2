@@ -1,0 +1,143 @@
+{
+  "generated_at": "2026-05-06T21:51:20.457869+00:00",
+  "source": "data\\forecast_features\\full_features_1y.parquet",
+  "n_bars_1h": 8761,
+  "period": [
+    "2025-05-01T00:00:00+00:00",
+    "2026-05-01T00:00:00+00:00"
+  ],
+  "distribution_v2_10_state": {
+    "RANGE": {
+      "count": 3482,
+      "pct": 39.74
+    },
+    "SLOW_DOWN": {
+      "count": 2130,
+      "pct": 24.31
+    },
+    "SLOW_UP": {
+      "count": 1921,
+      "pct": 21.93
+    },
+    "COMPRESSION": {
+      "count": 706,
+      "pct": 8.06
+    },
+    "DRIFT_DOWN": {
+      "count": 201,
+      "pct": 2.29
+    },
+    "DRIFT_UP": {
+      "count": 144,
+      "pct": 1.64
+    },
+    "STRONG_UP": {
+      "count": 117,
+      "pct": 1.34
+    },
+    "STRONG_DOWN": {
+      "count": 60,
+      "pct": 0.68
+    }
+  },
+  "distribution_v2_3_state_projection": {
+    "RANGE": {
+      "count": 4188,
+      "pct": 47.8
+    },
+    "MARKDOWN": {
+      "count": 2391,
+      "pct": 27.29
+    },
+    "MARKUP": {
+      "count": 2182,
+      "pct": 24.91
+    }
+  },
+  "confusion_old_vs_v2_projected": {
+    "MARKDOWN": {
+      "MARKDOWN": 1038,
+      "MARKUP": 22,
+      "RANGE": 249
+    },
+    "MARKUP": {
+      "MARKDOWN": 44,
+      "MARKUP": 771,
+      "RANGE": 320
+    },
+    "RANGE": {
+      "MARKDOWN": 1309,
+      "MARKUP": 1389,
+      "RANGE": 3619
+    }
+  },
+  "episode_statistics": {
+    "COMPRESSION": {
+      "n_episodes": 87,
+      "median_h": 3.0,
+      "p75_h": 10.5,
+      "p90_h": 22.200000000000017,
+      "max_h": 41
+    },
+    "DRIFT_DOWN": {
+      "n_episodes": 64,
+      "median_h": 2.0,
+      "p75_h": 5.0,
+      "p90_h": 7.700000000000003,
+      "max_h": 10
+    },
+    "DRIFT_UP": {
+      "n_episodes": 55,
+      "median_h": 1.0,
+      "p75_h": 2.5,
+      "p90_h": 6.0,
+      "max_h": 24
+    },
+    "RANGE": {
+      "n_episodes": 351,
+      "median_h": 6.0,
+      "p75_h": 15.0,
+      "p90_h": 24.0,
+      "max_h": 53
+    },
+    "SLOW_DOWN": {
+      "n_episodes": 123,
+      "median_h": 5.0,
+      "p75_h": 21.5,
+      "p90_h": 48.0,
+      "max_h": 160
+    },
+    "SLOW_UP": {
+      "n_episodes": 137,
+      "median_h": 5.0,
+      "p75_h": 18.0,
+      "p90_h": 37.400000000000006,
+      "max_h": 87
+    },
+    "STRONG_DOWN": {
+      "n_episodes": 13,
+      "median_h": 2.0,
+      "p75_h": 4.0,
+      "p90_h": 11.000000000000004,
+      "max_h": 20
+    },
+    "STRONG_UP": {
+      "n_episodes": 25,
+      "median_h": 3.0,
+      "p75_h": 7.0,
+      "p90_h": 13.0,
+      "max_h": 16
+    }
+  },
+  "recent_week_distribution_pct": {
+    "RANGE": 43.5,
+    "SLOW_UP": 22.6,
+    "COMPRESSION": 19.6,
+    "STRONG_DOWN": 11.9,
+    "DRIFT_DOWN": 2.4
+  },
+  "operator_window_30apr_6may_distribution_pct": {
+    "STRONG_DOWN": 80.0,
+    "RANGE": 20.0
+  }
+}

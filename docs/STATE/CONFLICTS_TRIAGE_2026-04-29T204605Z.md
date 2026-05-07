@@ -4,7 +4,7 @@
 - git status: 9d7e5c2 HEAD (TZ-PROJECT-MEMORY-DEFENSE), clean staged area
 - Skills read: project_inventory_first, session_handoff_protocol, regression_baseline_keeper, operator_role_boundary, encoding_safety
 - PROJECT_RULES.md read: TZ Template — Inventory Check present
-- docs/STATE/PROJECT_MAP.md read: 93 active modules, 57 conflict pairs
+- docs/PROJECT_MAP.md read: 93 active modules, 57 conflict pairs
 - docs/STATE/project_map.json read: 57 pairs fully enumerated
 
 ## 0. Sources

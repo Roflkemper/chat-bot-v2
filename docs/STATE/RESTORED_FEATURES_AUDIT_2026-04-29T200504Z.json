@@ -1,0 +1,280 @@
+{
+  "ts": "2026-04-29T200504Z",
+  "summary": {
+    "total_py_files_in_restored": 110,
+    "py_files_missing_from_active": 34,
+    "identical_to_active": 2,
+    "features_out_parquets": 1098,
+    "features_out_date_range": {"start": "2025-04-25", "end": "2026-04-28"},
+    "features_out_symbols": ["BTCUSDT", "ETHUSDT", "XRPUSDT"],
+    "features_out_columns_per_file": 183,
+    "broken_test_files": 2
+  },
+  "modules": [
+    {
+      "path": "_recovery/restored/src/features/calendar.py",
+      "lines": 71,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "ICT session calendar: kz_active, kz_session_id, dow_ny. 5 sessions in NY time with DST.",
+      "exposed_api": ["compute(df)"],
+      "produces_columns": ["kz_active", "kz_session_id", "dow_ny"],
+      "recommendation": "reactivate_as_is",
+      "priority": 1,
+      "reason": "Required by active pipeline (manifest.py, pipeline.py imports it). Unblocks 2 broken test files."
+    },
+    {
+      "path": "_recovery/restored/src/features/weekend_gap.py",
+      "lines": 94,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Weekend gap unfill detection and Friday close reference.",
+      "exposed_api": ["is_weekend_window(ts)", "compute(df)"],
+      "produces_columns": ["weekend_gap_unfilled_below", "weekend_gap_low_price", "weekend_gap_size_pct", "weekend_friday_close_price"],
+      "recommendation": "reactivate_as_is",
+      "priority": 1,
+      "reason": "Required by active pipeline."
+    },
+    {
+      "path": "_recovery/restored/src/detectors/params.py",
+      "lines": 306,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Default params, grids, and metadata for all detector predicates.",
+      "exposed_api": ["DEFAULT_PARAMS", "SESSION_CODES", "SESSION_PREFIXES"],
+      "recommendation": "reactivate_as_is",
+      "priority": 2,
+      "reason": "No conflicts. Required by predicates, registry, and playbook."
+    },
+    {
+      "path": "_recovery/restored/src/detectors/predicates.py",
+      "lines": 628,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "50+ pure stateless detector predicates over feature rows.",
+      "detector_categories": ["session_active", "kz_proximity", "dwm_levels", "candle_patterns", "move_strength", "rsi_momentum", "derivatives_oi_funding_ls", "cross_asset", "episode_patterns"],
+      "recommendation": "reactivate_as_is",
+      "priority": 2,
+      "reason": "No conflicts. Pure stateless functions. Enable session-aware modifiers in advise_v2."
+    },
+    {
+      "path": "_recovery/restored/src/detectors/registry.py",
+      "lines": 151,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "DETECTOR_REGISTRY: dict mapping string names to predicates. Used by playbook resolver.",
+      "exposed_api": ["DETECTOR_REGISTRY", "LEGACY_ALIASES", "get_detector(name)"],
+      "recommendation": "reactivate_as_is",
+      "priority": 2,
+      "reason": "No conflicts."
+    },
+    {
+      "path": "_recovery/restored/src/episodes/extractor.py",
+      "lines": 694,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Episode extraction from feature partitions. 9 episode types including KZ sessions and consolidation patterns.",
+      "exposed_api": ["EpisodeSpec", "build_episode_specs()", "extract_episodes(...)", "main(argv)"],
+      "recommendation": "reactivate_as_is",
+      "priority": 2,
+      "reason": "High-value: 1098 pre-computed feature parquets available. Enables episode-based backtesting."
+    },
+    {
+      "path": "_recovery/restored/src/advisor/v2/cascade.py",
+      "lines": 253,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "conflict": "POTENTIAL CONFLICT with services/advise_v2/setup_matcher.py — both implement P-1..P-12 play evaluation",
+      "description": "Ordered trigger cascade: features_out dict + portfolio -> Recommendation for plays P-1..P-12.",
+      "exposed_api": ["Recommendation", "evaluate(features, portfolio)"],
+      "recommendation": "leave_as_restored",
+      "priority": 4,
+      "reason": "Parallel implementation to active services/advise_v2/. Older architecture using raw feature dicts vs active Pydantic MarketContext model. Do NOT reactivate to avoid conflict."
+    },
+    {
+      "path": "_recovery/restored/src/advisor/v2/portfolio.py",
+      "lines": 178,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Portfolio state reader from ginarea_live/snapshots_v2.csv with TTL cache.",
+      "exposed_api": ["BotState", "PortfolioState", "read_portfolio_state()"],
+      "recommendation": "reactivate_plus_integrate",
+      "priority": 3,
+      "reason": "Useful standalone; no conflict with advise_v2 schemas."
+    },
+    {
+      "path": "_recovery/restored/src/advisor/v2/feature_writer.py",
+      "lines": 216,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Live feature writer: computes lightweight feature row from 1h candles every 60s → features_out/.",
+      "exposed_api": ["compute_live_features(symbol)", "write_features_row(...)", "run_once(symbol)", "read_latest_features(...)"],
+      "recommendation": "leave_as_restored",
+      "priority": 4,
+      "reason": "Depends on cascade.py architecture. Evaluate separately after deciding cascade status."
+    },
+    {
+      "path": "_recovery/restored/src/playbook/",
+      "lines_total": 870,
+      "files": ["parser.py", "resolver.py", "validator.py", "composite.py", "loader.py", "expected_columns.py", "ast_nodes.py", "cli.py"],
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Playbook DSL: tokenize/parse trigger expressions, resolve against feature rows via detector registry, validate YAML playbooks.",
+      "exposed_api": ["parse_expression(expr) -> ASTNode", "Resolver.evaluate(row) -> bool", "validate_playbook(path) -> ValidationSummary"],
+      "recommendation": "reactivate_as_is",
+      "priority": 3,
+      "reason": "No conflicts with active code. Enables PLAYBOOK-driven signal evaluation. Depends on detectors package."
+    },
+    {
+      "path": "_recovery/restored/src/whatif/h_cascade_direction.py",
+      "lines": 504,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "P-6 vs P-7 comparative study on BTC episodes.",
+      "recommendation": "reactivate_plus_verify_imports",
+      "priority": 3,
+      "reason": "Imports src.whatif.grid_search.Episode — check compatibility with active grid_search."
+    },
+    {
+      "path": "_recovery/restored/src/whatif/h_wait_vs_chase.py",
+      "lines": 488,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "P-1 vs P-2 comparative study.",
+      "recommendation": "reactivate_plus_verify_imports",
+      "priority": 3,
+      "reason": "Same as h_cascade_direction."
+    },
+    {
+      "path": "_recovery/restored/src/whatif/liquidity_harvester.py",
+      "lines": 320,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "P-13 liquidity harvester horizon simulation.",
+      "recommendation": "reactivate_plus_verify_imports",
+      "priority": 3
+    },
+    {
+      "path": "_recovery/restored/src/whatif/profit_lock_restart.py",
+      "lines": 171,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "P-14 delayed restart grid horizon simulation.",
+      "recommendation": "reactivate_plus_verify_imports",
+      "priority": 3
+    },
+    {
+      "path": "_recovery/restored/src/whatif/aggregator.py",
+      "lines": 135,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Multi-play result aggregation -> summary markdown.",
+      "recommendation": "reactivate_as_is",
+      "priority": 3
+    },
+    {
+      "path": "_recovery/restored/src/whatif/run_config.py",
+      "lines": 181,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "build_run_config() -> RunConfig for all plays.",
+      "recommendation": "reactivate_as_is",
+      "priority": 3
+    },
+    {
+      "path": "_recovery/restored/services/adaptive_grid_manager.py",
+      "lines": 588,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Auto-tightening short bot params on drawdown ≥4h. Reads snapshots.csv, PUT /params via GinArea API.",
+      "recommendation": "leave_as_restored",
+      "priority": 4,
+      "reason": "Pending operator decision on live auto-parameter-tuning."
+    },
+    {
+      "path": "_recovery/restored/services/boundary_expand_manager.py",
+      "lines": 471,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "Auto-expand border_top when price breaches for dwell_min minutes.",
+      "recommendation": "leave_as_restored",
+      "priority": 4
+    },
+    {
+      "path": "_recovery/restored/services/counter_long_manager.py",
+      "lines": 407,
+      "active_counterpart": null,
+      "status": "restored_only",
+      "description": "DRY-RUN counter-long cascade detector on liquidation events.",
+      "recommendation": "leave_as_restored",
+      "priority": 4
+    },
+    {
+      "path": "_recovery/restored/scripts/watchdog.py",
+      "lines": 169,
+      "active_counterpart": "scripts/watchdog.py",
+      "status": "same",
+      "diff_lines": 0,
+      "recommendation": "delete_restored_copy",
+      "reason": "Identical to active. Redundant copy."
+    },
+    {
+      "path": "_recovery/restored/scripts/smoke_collectors.py",
+      "lines": 64,
+      "active_counterpart": "scripts/smoke_collectors.py",
+      "status": "same",
+      "diff_lines": 0,
+      "recommendation": "delete_restored_copy",
+      "reason": "Identical to active. Redundant copy."
+    },
+    {
+      "path": "_recovery/restored/collectors/",
+      "status": "different",
+      "description": "Pre-TZ-048 collector snapshot. Active collectors/ has rotation fix and newer architecture.",
+      "recommendation": "delete_restored_copy",
+      "reason": "Active is strictly newer. Restored is obsolete."
+    }
+  ],
+  "broken_tests": [
+    {
+      "file": "src/features/tests/test_killzones.py",
+      "error": "ModuleNotFoundError: No module named 'src.features.calendar'",
+      "fix": "copy _recovery/restored/src/features/calendar.py -> src/features/calendar.py"
+    },
+    {
+      "file": "src/features/tests/test_pipeline.py",
+      "error": "IndirectError: src.features.pipeline imports calendar (missing)",
+      "fix": "same calendar fix"
+    }
+  ],
+  "integration_mapping": {
+    "target": "services/advise_v2/MarketContext.regime_modifiers",
+    "current_modifiers": ["upper_band_test", "volume_decline", "volume_spike_5m", "liq_cluster_breached_below", "pullback_to_ema", "liq_cluster_breached_above", "session_history_required"],
+    "proposed_session_modifiers": [
+      {"feature": "kz_active == 'NY_AM'", "modifier": "ny_am_active", "plays": ["P-2", "P-6"]},
+      {"feature": "kz_active == 'LONDON'", "modifier": "london_active", "plays": ["context"]},
+      {"feature": "dist_active_kz_high_pct < 0.15", "modifier": "at_kz_high", "plays": ["P-4"]},
+      {"feature": "dist_active_kz_low_pct < 0.15", "modifier": "at_kz_low", "plays": ["P-2"]},
+      {"feature": "last_nyam_high_mitigated == False and dist_last_nyam_high_pct < 0.2", "modifier": "at_nyam_high_unmitigated", "plays": ["P-6"]},
+      {"feature": "nyam_high_sweep == True", "modifier": "nyam_high_swept", "plays": ["reversal"]},
+      {"feature": "pdh_hit == True", "modifier": "at_pdh", "plays": ["P-4"]},
+      {"feature": "pdl_hit == True", "modifier": "at_pdl", "plays": ["P-2"]},
+      {"feature": "funding_extreme_long == True", "modifier": "funding_extreme_long", "plays": ["P-2", "P-6"]},
+      {"feature": "oi_delta_pct_1h > threshold", "modifier": "oi_expanding", "plays": ["trend_confirmation"]},
+      {"feature": "ls_top_zscore > 2.0", "modifier": "ls_extreme_long", "plays": ["mean_reversion"]}
+    ],
+    "integration_path": "No schema change needed. Populate regime_modifiers list in signal_generator from feature row columns after calendar+detectors reactivated."
+  },
+  "features_out": {
+    "path": "_recovery/restored/features_out/",
+    "symbols": ["BTCUSDT", "ETHUSDT", "XRPUSDT"],
+    "files_per_symbol": 366,
+    "date_range": "2025-04-25 to 2026-04-28",
+    "rows_per_file": 1440,
+    "frequency": "1m",
+    "columns": 183,
+    "index": "UTC tz-aware DatetimeIndex",
+    "status": "READY_TO_USE",
+    "note": "Pre-computed feature parquets. Full 1-year history per symbol. Blocker: episodes extractor not yet in active code."
+  }
+}

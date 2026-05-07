@@ -1,0 +1,202 @@
+{
+  "generated_at_utc": "2026-05-05T12:03:31.384141+00:00",
+  "compute_seconds": 2.075561,
+  "window": {
+    "start": "2025-05-01 00:00:00+00:00",
+    "end": "2026-05-01 00:00:00+00:00",
+    "total_hours": 8761
+  },
+  "transition_definition": "rolling window [h - hysteresis_bars, h] (size hysteresis_bars+1) contains >=2 distinct regime_int values",
+  "sanity_range": {
+    "low_pct": 5.0,
+    "high_pct": 15.0
+  },
+  "sweep": [
+    {
+      "hysteresis_bars": 3,
+      "transition_hours": 1568,
+      "transition_pct": 17.898,
+      "n_transition_segments": 364,
+      "mean_transition_segment_hours": 4.31,
+      "stable_hours_total": 7193,
+      "stable_regime_breakdown": {
+        "MARKUP": {
+          "hours": 799,
+          "pct_of_stable": 11.11
+        },
+        "MARKDOWN": {
+          "hours": 904,
+          "pct_of_stable": 12.57
+        },
+        "RANGE": {
+          "hours": 5490,
+          "pct_of_stable": 76.32
+        }
+      },
+      "in_sanity_5_15": false
+    },
+    {
+      "hysteresis_bars": 6,
+      "transition_hours": 2574,
+      "transition_pct": 29.38,
+      "n_transition_segments": 285,
+      "mean_transition_segment_hours": 9.03,
+      "stable_hours_total": 6187,
+      "stable_regime_breakdown": {
+        "MARKUP": {
+          "hours": 615,
+          "pct_of_stable": 9.94
+        },
+        "MARKDOWN": {
+          "hours": 674,
+          "pct_of_stable": 10.89
+        },
+        "RANGE": {
+          "hours": 4898,
+          "pct_of_stable": 79.17
+        }
+      },
+      "in_sanity_5_15": false
+    },
+    {
+      "hysteresis_bars": 9,
+      "transition_hours": 3380,
+      "transition_pct": 38.58,
+      "n_transition_segments": 243,
+      "mean_transition_segment_hours": 13.91,
+      "stable_hours_total": 5381,
+      "stable_regime_breakdown": {
+        "MARKUP": {
+          "hours": 470,
+          "pct_of_stable": 8.73
+        },
+        "MARKDOWN": {
+          "hours": 505,
+          "pct_of_stable": 9.38
+        },
+        "RANGE": {
+          "hours": 4406,
+          "pct_of_stable": 81.88
+        }
+      },
+      "in_sanity_5_15": false
+    },
+    {
+      "hysteresis_bars": 12,
+      "transition_hours": 4072,
+      "transition_pct": 46.479,
+      "n_transition_segments": 211,
+      "mean_transition_segment_hours": 19.3,
+      "stable_hours_total": 4689,
+      "stable_regime_breakdown": {
+        "MARKUP": {
+          "hours": 348,
+          "pct_of_stable": 7.42
+        },
+        "MARKDOWN": {
+          "hours": 375,
+          "pct_of_stable": 8.0
+        },
+        "RANGE": {
+          "hours": 3966,
+          "pct_of_stable": 84.58
+        }
+      },
+      "in_sanity_5_15": false
+    },
+    {
+      "hysteresis_bars": 15,
+      "transition_hours": 4661,
+      "transition_pct": 53.202,
+      "n_transition_segments": 173,
+      "mean_transition_segment_hours": 26.94,
+      "stable_hours_total": 4100,
+      "stable_regime_breakdown": {
+        "MARKUP": {
+          "hours": 242,
+          "pct_of_stable": 5.9
+        },
+        "MARKDOWN": {
+          "hours": 273,
+          "pct_of_stable": 6.66
+        },
+        "RANGE": {
+          "hours": 3585,
+          "pct_of_stable": 87.44
+        }
+      },
+      "in_sanity_5_15": false
+    },
+    {
+      "hysteresis_bars": 18,
+      "transition_hours": 5152,
+      "transition_pct": 58.806,
+      "n_transition_segments": 143,
+      "mean_transition_segment_hours": 36.03,
+      "stable_hours_total": 3609,
+      "stable_regime_breakdown": {
+        "MARKUP": {
+          "hours": 159,
+          "pct_of_stable": 4.41
+        },
+        "MARKDOWN": {
+          "hours": 188,
+          "pct_of_stable": 5.21
+        },
+        "RANGE": {
+          "hours": 3262,
+          "pct_of_stable": 90.39
+        }
+      },
+      "in_sanity_5_15": false
+    },
+    {
+      "hysteresis_bars": 24,
+      "transition_hours": 5906,
+      "transition_pct": 67.412,
+      "n_transition_segments": 93,
+      "mean_transition_segment_hours": 63.51,
+      "stable_hours_total": 2855,
+      "stable_regime_breakdown": {
+        "MARKUP": {
+          "hours": 46,
+          "pct_of_stable": 1.61
+        },
+        "MARKDOWN": {
+          "hours": 63,
+          "pct_of_stable": 2.21
+        },
+        "RANGE": {
+          "hours": 2746,
+          "pct_of_stable": 96.18
+        }
+      },
+      "in_sanity_5_15": false
+    }
+  ],
+  "sweep_extra_diagnostic": [
+    {
+      "hysteresis_bars": 1,
+      "transition_hours": 644,
+      "transition_pct": 7.351,
+      "n_transition_segments": 505,
+      "mean_transition_segment_hours": 1.28,
+      "in_sanity_5_15": true
+    },
+    {
+      "hysteresis_bars": 2,
+      "transition_hours": 1149,
+      "transition_pct": 13.115,
+      "n_transition_segments": 419,
+      "mean_transition_segment_hours": 2.74,
+      "in_sanity_5_15": true
+    }
+  ],
+  "recommendation": {
+    "hysteresis_bars": 1,
+    "transition_pct": 7.351,
+    "transition_hours": 644,
+    "reason": "hysteresis_bars=1 lands in [5, 15] sanity range with TRANSITION = 7.351% (644 h / 8761 h), closest to 10% midpoint among in-range values [1, 2].",
+    "in_sanity_range": true
+  }
+}

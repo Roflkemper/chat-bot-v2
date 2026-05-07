@@ -1,0 +1,861 @@
+{
+  "generated_at": "2026-05-06T12:04:27.223765+00:00",
+  "n_analogs_used": 406,
+  "single_axis_distributions": {
+    "by_oi_trend": {
+      "OI_up_>5%": {
+        "n": 208,
+        "down_to_anchor_pct": 25.5,
+        "up_extension_pct": 26.9,
+        "pullback_continuation_pct": 32.2,
+        "sideways_pct": 15.4
+      },
+      "OI_flat_±5%": {
+        "n": 156,
+        "down_to_anchor_pct": 3.2,
+        "up_extension_pct": 28.8,
+        "pullback_continuation_pct": 35.9,
+        "sideways_pct": 32.1
+      },
+      "OI_down_>5%": {
+        "n": 42,
+        "down_to_anchor_pct": 0.0,
+        "up_extension_pct": 0.0,
+        "pullback_continuation_pct": 100.0,
+        "sideways_pct": 0.0
+      }
+    },
+    "by_oi_divergence": {
+      "True": {
+        "n": 96,
+        "down_to_anchor_pct": 5.2,
+        "up_extension_pct": 5.2,
+        "pullback_continuation_pct": 84.4,
+        "sideways_pct": 5.2
+      },
+      "False": {
+        "n": 310,
+        "down_to_anchor_pct": 17.1,
+        "up_extension_pct": 31.0,
+        "pullback_continuation_pct": 27.1,
+        "sideways_pct": 24.8
+      }
+    },
+    "by_oi_ratio_30d": {
+      "OI_ratio_>1.05": {
+        "n": 105,
+        "down_to_anchor_pct": 16.2,
+        "up_extension_pct": 0.0,
+        "pullback_continuation_pct": 72.4,
+        "sideways_pct": 11.4
+      },
+      "OI_ratio_~1.0": {
+        "n": 285,
+        "down_to_anchor_pct": 14.0,
+        "up_extension_pct": 35.4,
+        "pullback_continuation_pct": 27.0,
+        "sideways_pct": 23.5
+      },
+      "OI_ratio_<0.95": {
+        "n": 16,
+        "down_to_anchor_pct": 6.2,
+        "up_extension_pct": 0.0,
+        "pullback_continuation_pct": 75.0,
+        "sideways_pct": 18.8
+      }
+    }
+  },
+  "cross_tab_oi_fund": {
+    "OI_up_>5% + funding_negative": {
+      "n": 40,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 57.5,
+      "pullback_continuation_pct": 42.5,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_near_zero": {
+      "n": 21,
+      "down_to_anchor_pct": 23.8,
+      "up_extension_pct": 38.1,
+      "pullback_continuation_pct": 38.1,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_positive": {
+      "n": 147,
+      "down_to_anchor_pct": 32.7,
+      "up_extension_pct": 17.0,
+      "pullback_continuation_pct": 28.6,
+      "sideways_pct": 21.8
+    },
+    "OI_flat_±5% + funding_negative": {
+      "n": 2,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 100.0,
+      "pullback_continuation_pct": 0.0,
+      "sideways_pct": 0.0
+    },
+    "OI_flat_±5% + funding_near_zero": {
+      "n": 80,
+      "down_to_anchor_pct": 5.0,
+      "up_extension_pct": 32.5,
+      "pullback_continuation_pct": 47.5,
+      "sideways_pct": 15.0
+    },
+    "OI_flat_±5% + funding_positive": {
+      "n": 74,
+      "down_to_anchor_pct": 1.4,
+      "up_extension_pct": 23.0,
+      "pullback_continuation_pct": 24.3,
+      "sideways_pct": 51.4
+    },
+    "OI_down_>5% + funding_negative": {
+      "n": 0
+    },
+    "OI_down_>5% + funding_near_zero": {
+      "n": 34,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 100.0,
+      "sideways_pct": 0.0
+    },
+    "OI_down_>5% + funding_positive": {
+      "n": 8,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 100.0,
+      "sideways_pct": 0.0
+    }
+  },
+  "cross_tab_oi_fund_vola": {
+    "OI_up_>5% + funding_negative + compressing": {
+      "n": 31,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 74.2,
+      "pullback_continuation_pct": 25.8,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_negative + stable": {
+      "n": 9,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 100.0,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_near_zero + compressing": {
+      "n": 6,
+      "down_to_anchor_pct": 83.3,
+      "up_extension_pct": 16.7,
+      "pullback_continuation_pct": 0.0,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_near_zero + stable": {
+      "n": 9,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 11.1,
+      "pullback_continuation_pct": 88.9,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_near_zero + expanding": {
+      "n": 6,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 100.0,
+      "pullback_continuation_pct": 0.0,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_positive + compressing": {
+      "n": 15,
+      "down_to_anchor_pct": 46.7,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 40.0,
+      "sideways_pct": 13.3
+    },
+    "OI_up_>5% + funding_positive + stable": {
+      "n": 46,
+      "down_to_anchor_pct": 89.1,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 10.9,
+      "sideways_pct": 0.0
+    },
+    "OI_up_>5% + funding_positive + expanding": {
+      "n": 86,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 29.1,
+      "pullback_continuation_pct": 36.0,
+      "sideways_pct": 34.9
+    },
+    "OI_flat_±5% + funding_near_zero + compressing": {
+      "n": 43,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 2.3,
+      "pullback_continuation_pct": 72.1,
+      "sideways_pct": 25.6
+    },
+    "OI_flat_±5% + funding_near_zero + stable": {
+      "n": 15,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 46.7,
+      "pullback_continuation_pct": 46.7,
+      "sideways_pct": 6.7
+    },
+    "OI_flat_±5% + funding_near_zero + expanding": {
+      "n": 22,
+      "down_to_anchor_pct": 18.2,
+      "up_extension_pct": 81.8,
+      "pullback_continuation_pct": 0.0,
+      "sideways_pct": 0.0
+    },
+    "OI_flat_±5% + funding_positive + compressing": {
+      "n": 46,
+      "down_to_anchor_pct": 2.2,
+      "up_extension_pct": 8.7,
+      "pullback_continuation_pct": 26.1,
+      "sideways_pct": 63.0
+    },
+    "OI_flat_±5% + funding_positive + stable": {
+      "n": 17,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 17.6,
+      "pullback_continuation_pct": 35.3,
+      "sideways_pct": 47.1
+    },
+    "OI_flat_±5% + funding_positive + expanding": {
+      "n": 11,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 90.9,
+      "pullback_continuation_pct": 0.0,
+      "sideways_pct": 9.1
+    },
+    "OI_down_>5% + funding_near_zero + compressing": {
+      "n": 15,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 100.0,
+      "sideways_pct": 0.0
+    },
+    "OI_down_>5% + funding_near_zero + stable": {
+      "n": 19,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 100.0,
+      "sideways_pct": 0.0
+    },
+    "OI_down_>5% + funding_positive + stable": {
+      "n": 8,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 0.0,
+      "pullback_continuation_pct": 100.0,
+      "sideways_pct": 0.0
+    }
+  },
+  "current_setup_oi": {
+    "as_of_bar": "2026-05-01T00:00:00+00:00",
+    "oi_setup": 95322.9,
+    "oi_ratio_30d": 1.014,
+    "oi_change_pct_window": -0.94,
+    "oi_trend": "OI_flat_±5%",
+    "oi_divergence": false,
+    "note": "computed from latest bar in full_features_1y.parquet (2026-04-30 23:00 UTC); not live"
+  },
+  "all_records": [
+    {
+      "ts": "2025-05-10T13:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 80258.26,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": -3.25,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-10T14:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 80371.88,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": -3.13,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-10T15:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 80147.7,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": -3.34,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-10T16:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79995.83,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": -3.4,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.735583333333334e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-10T17:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 79952.1,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": -3.41,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.257e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-10T18:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79725.32,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": -3.65,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.257e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-10T19:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79714.19,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": -3.7,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.257e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-10T20:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79735.92,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -3.33,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.257e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-10T21:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79574.5,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -3.7,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.257e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-10T22:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79620.13,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -2.65,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.257e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-11T02:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 78439.62,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -3.68,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-11T05:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 78669.64,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -4.29,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-11T06:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 78475.49,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -3.76,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-11T07:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79323.18,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -2.72,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-11T08:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 79168.77,
+      "oi_ratio_30d": 0.981,
+      "oi_change_pct": -2.79,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": true,
+      "vola_trend": "stable",
+      "fund_now": 4.6375e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-11T22:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 81551.17,
+      "oi_ratio_30d": 0.982,
+      "oi_change_pct": 1.45,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-12T02:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 81727.17,
+      "oi_ratio_30d": 0.983,
+      "oi_change_pct": 1.92,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 4.454e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-05-12T11:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 83285.46,
+      "oi_ratio_30d": 0.985,
+      "oi_change_pct": 2.92,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-12T12:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 83725.15,
+      "oi_ratio_30d": 0.985,
+      "oi_change_pct": 3.03,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-12T13:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 82957.52,
+      "oi_ratio_30d": 0.985,
+      "oi_change_pct": 1.99,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-13T17:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 83288.3,
+      "oi_ratio_30d": 0.986,
+      "oi_change_pct": 3.07,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "stable",
+      "fund_now": 7.256e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-13T18:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 83141.83,
+      "oi_ratio_30d": 0.987,
+      "oi_change_pct": 3.16,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "stable",
+      "fund_now": 7.256e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-13T19:00:00+00:00",
+      "outcome": "up_extension",
+      "oi_setup": 83148.75,
+      "oi_ratio_30d": 0.987,
+      "oi_change_pct": 2.84,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "stable",
+      "fund_now": 7.256e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-23T06:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 87837.78,
+      "oi_ratio_30d": 1.013,
+      "oi_change_pct": 11.55,
+      "oi_trend": "OI_up_>5%",
+      "oi_divergence": false,
+      "vola_trend": "expanding",
+      "fund_now": 9.321e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-23T07:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 88325.54,
+      "oi_ratio_30d": 1.014,
+      "oi_change_pct": 12.36,
+      "oi_trend": "OI_up_>5%",
+      "oi_divergence": false,
+      "vola_trend": "expanding",
+      "fund_now": 9.321e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-23T08:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 88543.63,
+      "oi_ratio_30d": 1.015,
+      "oi_change_pct": 11.04,
+      "oi_trend": "OI_up_>5%",
+      "oi_divergence": false,
+      "vola_trend": "expanding",
+      "fund_now": 7.261e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-23T09:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 88680.47,
+      "oi_ratio_30d": 1.015,
+      "oi_change_pct": 11.35,
+      "oi_trend": "OI_up_>5%",
+      "oi_divergence": false,
+      "vola_trend": "expanding",
+      "fund_now": 7.261e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-05-23T10:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 88769.84,
+      "oi_ratio_30d": 1.016,
+      "oi_change_pct": 11.48,
+      "oi_trend": "OI_up_>5%",
+      "oi_divergence": false,
+      "vola_trend": "expanding",
+      "fund_now": 7.261e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-09T20:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 85818.5,
+      "oi_ratio_30d": 0.992,
+      "oi_change_pct": 3.52,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 3.057e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-06-09T21:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 84600.03,
+      "oi_ratio_30d": 0.992,
+      "oi_change_pct": 2.14,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 3.057e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-06-09T22:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 84977.99,
+      "oi_ratio_30d": 0.992,
+      "oi_change_pct": 3.05,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 3.057e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-06-09T23:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 86375.88,
+      "oi_ratio_30d": 0.993,
+      "oi_change_pct": 4.98,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 3.057e-05,
+      "funding_bucket": "funding_near_zero"
+    },
+    {
+      "ts": "2025-06-10T00:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 86238.12,
+      "oi_ratio_30d": 0.993,
+      "oi_change_pct": 5.19,
+      "oi_trend": "OI_up_>5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T01:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85863.82,
+      "oi_ratio_30d": 0.993,
+      "oi_change_pct": 4.76,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T02:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85867.62,
+      "oi_ratio_30d": 0.993,
+      "oi_change_pct": 4.52,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T03:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85733.16,
+      "oi_ratio_30d": 0.993,
+      "oi_change_pct": 4.15,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T04:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85818.09,
+      "oi_ratio_30d": 0.994,
+      "oi_change_pct": 4.3,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T05:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 86049.09,
+      "oi_ratio_30d": 0.994,
+      "oi_change_pct": 4.57,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T06:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85994.0,
+      "oi_ratio_30d": 0.994,
+      "oi_change_pct": 4.57,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T07:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 86062.24,
+      "oi_ratio_30d": 0.994,
+      "oi_change_pct": 4.57,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 6.374e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T08:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 86205.94,
+      "oi_ratio_30d": 0.994,
+      "oi_change_pct": 4.35,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 9.697833333333334e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T09:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 86492.11,
+      "oi_ratio_30d": 0.995,
+      "oi_change_pct": 4.07,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T10:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 86536.9,
+      "oi_ratio_30d": 0.995,
+      "oi_change_pct": 5.1,
+      "oi_trend": "OI_up_>5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T11:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85805.34,
+      "oi_ratio_30d": 0.995,
+      "oi_change_pct": 4.67,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T12:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85528.58,
+      "oi_ratio_30d": 0.995,
+      "oi_change_pct": 4.17,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T13:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 85653.93,
+      "oi_ratio_30d": 0.995,
+      "oi_change_pct": 4.06,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T15:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 84842.23,
+      "oi_ratio_30d": 0.996,
+      "oi_change_pct": 4.71,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 0.0001,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T16:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 84573.23,
+      "oi_ratio_30d": 0.996,
+      "oi_change_pct": 4.43,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 8.317916666666668e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T17:00:00+00:00",
+      "outcome": "pullback_continuation",
+      "oi_setup": 84490.65,
+      "oi_ratio_30d": 0.996,
+      "oi_change_pct": 4.2,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 8.165e-05,
+      "funding_bucket": "funding_positive"
+    },
+    {
+      "ts": "2025-06-10T18:00:00+00:00",
+      "outcome": "sideways",
+      "oi_setup": 84215.95,
+      "oi_ratio_30d": 0.997,
+      "oi_change_pct": 4.01,
+      "oi_trend": "OI_flat_±5%",
+      "oi_divergence": false,
+      "vola_trend": "compressing",
+      "fund_now": 8.165e-05,
+      "funding_bucket": "funding_positive"
+    }
+  ]
+}

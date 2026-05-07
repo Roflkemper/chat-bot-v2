@@ -32,6 +32,37 @@
 
 ---
 
+## META-PATTERN-002
+
+**Title:** MAIN must update foundation overlay BEFORE synthesis builds on it
+
+**Session:** 2026-05-05
+
+**Description**
+
+In session 2026-05-05, MAIN issued the regime overlay synthesis on an intermediate
+state that still carried a placeholder for the Pack E no-stop evidence. New GinArea
+runs then arrived, but the overlay was not updated from `REGIME_OVERLAY_v2` to
+`REGIME_OVERLAY_v2.1` before the regulation synthesis step. The next synthesis
+artifact therefore inherited stale foundation state, and regulation `v0.1` missed
+the finalized F-G finding that `instop` direction is asymmetric across LONG and
+SHORT.
+
+**Resolution**
+
+The correction path was:
+
+1. Reissue the overlay as `REGIME_OVERLAY_v2.1`.
+2. Reissue the regulation as `REGULATION_v0_1.1`.
+
+**Rule**
+
+After any new GinArea runs that affect the foundation evidence base, update the
+overlay file first and treat it as the single source of truth for later synthesis.
+Do not draft or refresh regulation before the overlay is current.
+
+---
+
 ## DRIFT-002 — INERT-BOTS confusion
 
 **Date:** 2026-04-28 → 2026-04-30
@@ -474,6 +505,97 @@
 
 **Prevention rule:**
 > Routing rule: "if the deliverable is a JSON/CSV table that downstream tooling consumes" → Codex tier OK. "If the deliverable is a markdown doc with a verdict section that humans read for decision-making" → Claude tier. Foundational documents (audit reports, design docs, cross-check verdicts) always Claude-tier even when they include numerical computation.
+
+---
+
+## META-PATTERN-003
+
+**Title:** Model decommission requires reliability + resolution diagnostic, not just Brier headline
+
+**Session:** 2026-05-05
+
+**Description**
+
+In session 2026-05-05, the forecast block on the dashboard had been carrying a cached Brier score of 0.247 across multiple sessions. This number was repeatedly framed as "marginally useful" / "near actionable threshold" because 0.247 < 0.25 (the random-baseline Brier for a 50/50 binary forecast), and discussions about whether to invest in restoring the broken upstream pipeline (`TZ-FORECAST-FEED-RESTORE-FROZEN` vs `TZ-FORECAST-LIVE-WORKER`) treated the model as something worth keeping.
+
+`TZ-FORECAST-CALIBRATION-DIAGNOSTIC` replayed the forecast across the full year of feature parquet (105 117 bars × 3 horizons) and produced four findings the cached Brier headline had hidden:
+
+1. **The cached 0.247 was a most-favorable RANGE-only slice.** Replayed full-year overall Brier was 0.2569 — *worse* than the 0.25 random baseline.
+2. **Murphy decomposition: resolution = 0.0001** at all three horizons. The "Brier headline" can sit just under 0.25 even when the model has zero resolution; the no-skill baseline of 0.25 is achieved by always predicting the base rate, and any movement of `prob_up` away from the base rate without correlated movement of the outcome adds reliability error without subtracting resolution gain.
+3. **Calibration (Platt + isotonic) on a chronological 80/20 split brought test Brier to exactly 0.2499-0.2502** — the no-skill baseline. Calibration cannot manufacture missing resolution.
+4. **MARKUP and MARKDOWN regimes are sign-inverted.** Predicted prob_up moves *opposite* to realized direction. Tail bins (predicted 0.18 / 0.72) show observed frequencies of 0.563 / 0.434 respectively. This is anti-skill, not just no-skill.
+
+The cached Brier headline ("marginally useful at 0.247") was decision-irrelevant — what mattered was the resolution component (≈0), which was never displayed and never asked for.
+
+**Resolution**
+
+Forecast block decommissioned in `TZ-FORECAST-DECOMMISSION` per the diagnostic verdict. Forecast field removed from `dashboard_state.json`; render replaced with neutral retirement notice; tests for forecast staleness/usability bands removed; STATE_CURRENT and REGULATION updated to mark forecast not part of the regulation.
+
+**Rule**
+
+When a model's continued investment is being debated, **do not rely on the headline Brier (or accuracy, AUC, etc.) alone**. Run the full diagnostic before architectural commitment:
+
+1. Reliability diagram (10-bin) on the actual deployed-window data, not on the training window.
+2. Brier decomposition into reliability + resolution + uncertainty (Murphy 1973).
+3. Calibration attempt (Platt + isotonic on chronological 80/20).
+4. Per-regime / per-segment breakdown (sign-inversion in tails / minority classes is invisible at the aggregate).
+
+If `resolution → 0` and `calibrated_brier ≥ uncertainty`, the model is at the no-skill ceiling and *cannot* be rescued by infrastructure work. Decommission, don't restore.
+
+The cost of running the diagnostic is ~30 seconds of compute. The cost of misdirecting an architectural rebuild around a no-resolution model is multi-week. Always run it first.
+
+---
+
+## META-PATTERN-004
+
+**Title:** Verify scale before threshold operator Q&A
+
+**Session:** 2026-05-05
+
+**Description**
+
+In session 2026-05-05, threshold questions for `phase_classifier.py` were asked
+in normalized `0-1` terms before the live output distribution had been checked.
+The operator answered `0.65 / 0.80`, but later histogram analysis showed the
+score mass lived mostly in the `0.30-0.65` range and effectively never reached
+`0.80`. The question was reasonable in form but under-specified in scale.
+
+**Resolution**
+
+`TZ-MTF-CALIBRATION-HISTOGRAM` ran the distribution check first and closed the
+choice as `R2` persistence-only, without layering a confidence gate on a scale
+that had not earned one.
+
+**Rule**
+
+Before asking the operator for thresholds or confidence cutoffs, verify the real
+score distribution first. Histogram first, operator Q&A second.
+
+---
+
+## META-PATTERN-005
+
+**Title:** WORKER tag is final authority
+
+**Session:** 2026-05-05
+
+**Description**
+
+In session 2026-05-05, some TZ bodies were paste-ready enough that another
+worker could plausibly treat them as generic work, even when the header assigned
+them elsewhere. That is a dispatch ambiguity problem, not a worker discretion
+problem.
+
+**Resolution**
+
+Worker-side handling was corrected by skipping mismatched tasks and flagging the
+header mismatch instead of inferring authority from the body text.
+
+**Rule**
+
+The `WORKER:` tag in the TZ header is final authority. If the body appears
+relevant but the header assigns the TZ to another worker, skip and flag the
+mismatch. Do not proceed on assumption.
 
 ---
 

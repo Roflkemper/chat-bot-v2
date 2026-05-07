@@ -1,0 +1,298 @@
+{
+  "window": {
+    "start": "2025-05-01T00:00:00+00:00",
+    "end": "2026-04-30T23:59:59+00:00",
+    "n_bars": 31536000
+  },
+  "results": {
+    "TEST_1": {
+      "config": {
+        "side": "SHORT",
+        "order_size": 0.001,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.25,
+        "max_orders": 200,
+        "instop_pct": 0.0,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 0.3,
+        "use_out_stop_group": true,
+        "max_stop_pct": 0.015,
+        "min_stop_pct": 0.006,
+        "boundaries": [
+          68000,
+          78600
+        ],
+        "contract": "linear BTCUSDT",
+        "once_check": true,
+        "source": "docs/GINAREA_MECHANICS.md ?6; ginarea_live/params.csv"
+      },
+      "sim_realized": 47.77030974195851,
+      "sim_trading_volume_usd": 259059.31954974207,
+      "sim_num_fills": 1212,
+      "sim_unrealized": 0.0,
+      "sim_last_price": 76346.57,
+      "ga_anchor": {
+        "kind": "exact-target annual GT point",
+        "gt_id": "4714585329",
+        "target_pct": 0.25,
+        "ga_realized": 38909.93,
+        "units": "USD"
+      },
+      "K": 814.521199677797,
+      "consumed": {
+        "side": "SHORT",
+        "order_size": 0.001,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.25,
+        "max_orders": 200,
+        "instop_pct": 0.0,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 0.3,
+        "use_out_stop_group": true,
+        "max_stop_pct": 0.015,
+        "min_stop_pct": 0.006,
+        "mode": "raw"
+      },
+      "ignored_or_unmodeled": {
+        "boundaries": [
+          68000,
+          78600
+        ],
+        "once_check": true,
+        "contract_label": "linear BTCUSDT",
+        "dsblin": false,
+        "dsblin_outside_boundaries": false
+      },
+      "elapsed_secs": 115.68
+    },
+    "TEST_2": {
+      "config": {
+        "side": "SHORT",
+        "order_size": 0.001,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.25,
+        "max_orders": 200,
+        "instop_pct": 0.018,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 0.3,
+        "use_out_stop_group": true,
+        "max_stop_pct": 0.025,
+        "min_stop_pct": 0.008,
+        "boundaries": [
+          68000,
+          78600
+        ],
+        "contract": "linear BTCUSDT",
+        "once_check": true,
+        "source": "docs/GINAREA_MECHANICS.md ?6; ginarea_live/params.csv"
+      },
+      "sim_realized": 173.77922167849852,
+      "sim_trading_volume_usd": 366693.84258167876,
+      "sim_num_fills": 627,
+      "sim_unrealized": 0.0,
+      "sim_last_price": 76346.57,
+      "ga_anchor": {
+        "kind": "exact-target annual GT point",
+        "gt_id": "4714585329",
+        "target_pct": 0.25,
+        "ga_realized": 38909.93,
+        "units": "USD"
+      },
+      "K": 223.90438640579018,
+      "consumed": {
+        "side": "SHORT",
+        "order_size": 0.001,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.25,
+        "max_orders": 200,
+        "instop_pct": 0.018,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 0.3,
+        "use_out_stop_group": true,
+        "max_stop_pct": 0.025,
+        "min_stop_pct": 0.008,
+        "mode": "raw"
+      },
+      "ignored_or_unmodeled": {
+        "boundaries": [
+          68000,
+          78600
+        ],
+        "once_check": true,
+        "contract_label": "linear BTCUSDT",
+        "dsblin": false,
+        "dsblin_outside_boundaries": false
+      },
+      "elapsed_secs": 219.0
+    },
+    "TEST_3": {
+      "config": {
+        "side": "SHORT",
+        "order_size": 0.001,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.25,
+        "max_orders": 200,
+        "instop_pct": 0.03,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 0.3,
+        "use_out_stop_group": true,
+        "max_stop_pct": 0.04,
+        "min_stop_pct": 0.01,
+        "boundaries": [
+          68000,
+          78600
+        ],
+        "contract": "linear BTCUSDT",
+        "once_check": true,
+        "source": "docs/GINAREA_MECHANICS.md ?6; ginarea_live/params.csv"
+      },
+      "sim_realized": 185.6386260084217,
+      "sim_trading_volume_usd": 367326.8993860086,
+      "sim_num_fills": 548,
+      "sim_unrealized": 0.0,
+      "sim_last_price": 76346.57,
+      "ga_anchor": {
+        "kind": "exact-target annual GT point",
+        "gt_id": "4714585329",
+        "target_pct": 0.25,
+        "ga_realized": 38909.93,
+        "units": "USD"
+      },
+      "K": 209.6003985627151,
+      "consumed": {
+        "side": "SHORT",
+        "order_size": 0.001,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.25,
+        "max_orders": 200,
+        "instop_pct": 0.03,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 0.3,
+        "use_out_stop_group": true,
+        "max_stop_pct": 0.04,
+        "min_stop_pct": 0.01,
+        "mode": "raw"
+      },
+      "ignored_or_unmodeled": {
+        "boundaries": [
+          68000,
+          78600
+        ],
+        "once_check": true,
+        "contract_label": "linear BTCUSDT",
+        "dsblin": false,
+        "dsblin_outside_boundaries": false
+      },
+      "elapsed_secs": 199.81
+    },
+    "BTC-LONG-C": {
+      "config": {
+        "side": "LONG",
+        "order_size": 100.0,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.29,
+        "max_orders": 220,
+        "instop_pct": 0.025,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 1.2,
+        "use_out_stop_group": false,
+        "max_stop_pct": 0.035,
+        "min_stop_pct": 0.01,
+        "boundaries": [
+          75000,
+          80000
+        ],
+        "contract": "inverse XBTUSD",
+        "once_check": true,
+        "dsblin": false,
+        "dsblin_outside_boundaries": false,
+        "source": "ginarea_live/params.csv rows for 5312167170; docs/GINAREA_MECHANICS.md ?6 partial"
+      },
+      "sim_realized": 0.008274466700479863,
+      "sim_trading_volume_usd": 520000.0,
+      "sim_num_fills": 119,
+      "sim_unrealized": 0.0,
+      "sim_last_price": 76346.57,
+      "ga_anchor": {
+        "kind": "interpolated annual GT proxy",
+        "from_gt_ids": [
+          "4373073010",
+          "5342519228"
+        ],
+        "from_targets": [
+          0.25,
+          0.3
+        ],
+        "weights": [
+          0.2,
+          0.8
+        ],
+        "ga_realized_proxy": 0.131292272,
+        "units": "BTC"
+      },
+      "K": 15.867158181008321,
+      "consumed": {
+        "side": "LONG",
+        "order_size": 100.0,
+        "grid_step_pct": 0.03,
+        "target_pct": 0.29,
+        "max_orders": 220,
+        "instop_pct": 0.025,
+        "indicator_period": 30,
+        "indicator_threshold_pct": 1.2,
+        "use_out_stop_group": false,
+        "max_stop_pct": 0.035,
+        "min_stop_pct": 0.01,
+        "mode": "raw"
+      },
+      "ignored_or_unmodeled": {
+        "boundaries": [
+          75000,
+          80000
+        ],
+        "once_check": true,
+        "contract_label": "inverse XBTUSD",
+        "dsblin": false,
+        "dsblin_outside_boundaries": false
+      },
+      "elapsed_secs": 27.1
+    }
+  },
+  "aggregates": {
+    "short_family_proxy": {
+      "n": 3,
+      "median": 223.90438640579018,
+      "mean": 416.0086615487674,
+      "cv_pct": 67.75133421775456,
+      "min": 209.6003985627151,
+      "max": 814.521199677797
+    },
+    "long_proxy": {
+      "n": 1,
+      "median": 15.867158181008321,
+      "mean": 15.867158181008321,
+      "cv_pct": 0.0,
+      "min": 15.867158181008321,
+      "max": 15.867158181008321
+    }
+  },
+  "baseline": {
+    "research_short_k": 8.87,
+    "research_short_cv_pct": 31.8,
+    "research_long_k": 4.13,
+    "research_long_cv_pct": 43.1
+  },
+  "comparison_pct_vs_research": {
+    "TEST_1": 9082.877110234465,
+    "TEST_2": 2424.2884600427305,
+    "TEST_3": 2263.0259138975775,
+    "BTC-LONG-C": 284.1926920340998
+  },
+  "dp001_status": "still confirmed",
+  "elapsed_secs": 667.7,
+  "notes": [
+    "SHORT K uses exact annual GT target=0.25 realized PnL from ginarea_ground_truth_v1.json, but GT actual remains research-config GinArea output rather than TEST_1/2/3 annual live-bot output.",
+    "LONG_C K uses interpolated annual GT proxy between annual LONG target=0.25 and 0.30 GT points because no exact annual live-config LONG_C GinArea actual is present locally.",
+    "Sim consumed instop/indicator/out-stop-group in this tree; boundaries and dsblin are not modeled in services.calibration.sim."
+  ]
+}

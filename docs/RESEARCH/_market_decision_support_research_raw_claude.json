@@ -1,0 +1,475 @@
+{
+  "tz": "TZ-MARKET-DECISION-SUPPORT-RESEARCH",
+  "worker_id": "claude",
+  "generated_at_utc": "2026-05-05T18:30:00Z",
+  "investigation_duration_minutes": 25,
+  "approaches": [
+    {
+      "id": "Q1-A",
+      "question": "Q1",
+      "name": "Murphy cost-loss decision framework",
+      "summary": "Translate prob_up=p into action via cost/loss ratio threshold p≥C/L; threshold set by operator economics, not forecast.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Cost-loss_model",
+        "https://journals.ametsoc.org/mwr/article/104/8/1058/61465/Decision-Making-Models-in-the-Cost-Loss-Ratio",
+        "https://www.ecmwf.int/sites/default/files/elibrary/2003/11922-predictability-and-economic-value.pdf",
+        "https://www.salientpredictions.com/blog/the-cost-loss-model-101-turning-s2s-forecasts-into-foresight"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "partial",
+      "operator_decision_supporting": true,
+      "impl_effort": "low",
+      "live_data_req": false,
+      "compute_cost": "trivial"
+    },
+    {
+      "id": "Q1-B",
+      "question": "Q1",
+      "name": "Platt scaling / isotonic regression calibration",
+      "summary": "Post-hoc calibration of model probabilities. Isotonic regression preferred when ≥1000 calibration points; Platt for sigmoid + small data.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Platt_scaling",
+        "https://www.cs.cornell.edu/~alexn/papers/calibration.icml05.crc.rev3.pdf",
+        "https://scikit-learn.org/stable/modules/calibration.html",
+        "https://www.blog.trainindata.com/probability-calibration-in-machine-learning/"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "partial",
+      "operator_decision_supporting": "indirect",
+      "impl_effort": "low-medium",
+      "live_data_req": "calibration set",
+      "compute_cost": "low"
+    },
+    {
+      "id": "Q1-C",
+      "question": "Q1",
+      "name": "Reliability diagram + Murphy decomposition",
+      "summary": "Decompose Brier into reliability + resolution + uncertainty; reliability diagram plots empirical event-frequency vs predicted probability.",
+      "sources": [
+        "https://www.pnas.org/doi/10.1073/pnas.2016191118",
+        "https://arxiv.org/pdf/1902.06977",
+        "https://arxiv.org/pdf/2311.18258",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7923594/"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "yes",
+      "operator_decision_supporting": "indirect",
+      "impl_effort": "low",
+      "live_data_req": false,
+      "compute_cost": "low"
+    },
+    {
+      "id": "Q1-D",
+      "question": "Q1",
+      "name": "Categorical thresholding (ACTIONABLE/WEAK/NEUTRAL)",
+      "summary": "Drop continuous probability output; expose only banded labels with explicit qualification rules.",
+      "sources": [
+        "https://forecastingresearch.substack.com/p/introducing-the-brier-index"
+      ],
+      "evidence_basis": "community-anecdotal + locally-validated",
+      "applicability": "already-done",
+      "operator_decision_supporting": true,
+      "impl_effort": "done",
+      "live_data_req": false,
+      "compute_cost": "trivial"
+    },
+    {
+      "id": "Q1-anchor",
+      "question": "Q1",
+      "name": "Brier 0.25 = no-skill baseline (anchor finding)",
+      "summary": "A Brier score of 0.25 is exactly the score of an uninformative 50/50 forecast for binary events. Our 0.247 ≈ 0.250 is at the no-skill baseline.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Brier_score",
+        "https://library.virginia.edu/data/articles/a-brief-on-brier-scores",
+        "https://www.cultivatelabs.com/crowdsourced-forecasting-guide/what-is-a-brier-score-and-how-is-it-calculated",
+        "https://arxiv.org/html/2504.04906v4"
+      ],
+      "evidence_basis": "academic-peer-reviewed (textbook)",
+      "applicability": "diagnostic finding",
+      "note": "Brief framing of '0.247 = marginally useful' is not supported by standard proper-scoring-rule semantics. Operator's pain ('не приносит пользы') is consistent with the standard."
+    },
+    {
+      "id": "Q2-A",
+      "question": "Q2",
+      "name": "FreqTrade informative_pairs + @informative decorator",
+      "summary": "Strategy declares additional (pair, timeframe) tuples; @informative('1h') auto-merges higher-TF indicators with proper time-shifting to avoid look-ahead bias.",
+      "sources": [
+        "https://www.freqtrade.io/en/stable/strategy-customization/",
+        "https://github.com/freqtrade/freqtrade",
+        "https://dev.to/henry_lin_3ac6363747f45b4/lesson-27-freqtrade-multi-timeframe-strategies-n03",
+        "https://github.com/freqtrade/freqtrade-strategies/wiki/Informative-Pairs-annotated"
+      ],
+      "evidence_basis": "production-deployed",
+      "applicability": "yes (pattern)",
+      "operator_decision_supporting": true,
+      "impl_effort": "medium",
+      "live_data_req": "OHLCV multi-TF",
+      "compute_cost": "low"
+    },
+    {
+      "id": "Q2-B",
+      "question": "Q2",
+      "name": "Jesse multi-timeframe (look-ahead-safe)",
+      "summary": "Higher-TF data delivered with closed-bar lag. Strict look-ahead prevention by design.",
+      "sources": [
+        "https://jesse.trade/blog/tutorials/how-to-use-multiple-timeframes-in-your-algotrading-strategy",
+        "https://github.com/jesse-ai/jesse",
+        "https://www.bitget.com/academy/crypto-trading-bots-10"
+      ],
+      "evidence_basis": "production-deployed",
+      "applicability": "yes (pattern)",
+      "impl_effort": "medium",
+      "compute_cost": "low"
+    },
+    {
+      "id": "Q2-C",
+      "question": "Q2",
+      "name": "ICT killzones + multi-timeframe",
+      "summary": "Predefined intraday windows where institutional activity peaks; combined with daily/4h/1h structure.",
+      "sources": [
+        "https://tradingrage.com/learn/ict-killzone-explained",
+        "https://innercircletrader.net/tutorials/master-ict-kill-zones/",
+        "https://www.luxalgo.com/library/indicator/ict-killzones-toolkit/"
+      ],
+      "evidence_basis": "community-anecdotal",
+      "applicability": "partial",
+      "note": "No peer-reviewed empirical backtest located"
+    },
+    {
+      "id": "Q2-D",
+      "question": "Q2",
+      "name": "Confluence MTF (major-trend, minor-entry)",
+      "summary": "Major TF for trend, minor TF for entry; disagreement → no signal. Standard retail wisdom.",
+      "sources": [
+        "https://www.forexfactory.com/thread/1167481-timeframe-for-automated-trading",
+        "https://medium.com/@alexzap922/how-to-filter-out-market-noise-in-algo-trading-strategies-jpm-use-case-143721acb16c",
+        "https://www.preprints.org/manuscript/202502.1717"
+      ],
+      "evidence_basis": "community-anecdotal",
+      "applicability": "yes",
+      "impl_effort": "low-medium",
+      "compute_cost": "low"
+    },
+    {
+      "id": "Q3-A",
+      "question": "Q3",
+      "name": "Hidden Markov Models for regime classification",
+      "summary": "Classic two/three-state HMM (bull/bear/transition). Filtered probability for live operation. Periodic retraining required.",
+      "sources": [
+        "https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/",
+        "https://www.quantconnect.com/docs/v2/research-environment/applying-research/hidden-markov-models",
+        "https://blog.quantinsti.com/regime-adaptive-trading-python/",
+        "https://pyquantlab.medium.com/regime-aware-trading-with-hidden-markov-models-hmms-and-macro-features-c75f6d357880",
+        "https://questdb.com/glossary/market-regime-detection-using-hidden-markov-models/"
+      ],
+      "evidence_basis": "production-deployed (retail tooling)",
+      "applicability": "already-equivalent (we have regime classifier)",
+      "note": "No high-confidence peer-reviewed evidence of HMM consistently beating naive baselines on out-of-sample crypto"
+    },
+    {
+      "id": "Q3-B",
+      "question": "Q3",
+      "name": "Volatility-regime activation rule (ATR-based)",
+      "summary": "Composite regime label {trend × ATR%}; strategies enabled only in compatible cells. QuantMonitor reports Up_LowVol activates 95% of period; Down_* cells disable trading.",
+      "sources": [
+        "https://quantmonitor.net/how-to-identify-market-regimes-and-filter-strategies-by-trend-and-volatility/",
+        "https://marketlab-academy.org/en/library/atr-and-atr-percent/",
+        "https://www.quantvps.com/blog/trading-bot-strategies",
+        "https://3commas.io/blog/ai-trading-bot-risk-management-guide-2025"
+      ],
+      "evidence_basis": "community-deployed + retail-platform",
+      "applicability": "direct extension",
+      "impl_effort": "low",
+      "compute_cost": "trivial"
+    },
+    {
+      "id": "Q3-C",
+      "question": "Q3",
+      "name": "Indicator-gated entry as opportunity filter",
+      "summary": "Indicator gate (e.g. PRICE % < -0.3%) flips bot sign. Activate at opportunity moment, not continuously.",
+      "sources": [
+        "internal: REGIME_OVERLAY_v2_1 Finding A",
+        "https://www.quantvps.com/blog/trading-bot-strategies",
+        "https://www.tradingview.com/script/6qZpzElZ-AUTOMATIC-GRID-BOT-STRATEGY-ilovealgotrading/"
+      ],
+      "evidence_basis": "locally-validated + community-deployed",
+      "applicability": "already implemented in regulation"
+    },
+    {
+      "id": "Q4-A",
+      "question": "Q4",
+      "name": "Human-in-the-Loop AI for trading decision support",
+      "summary": "Recommendations + anomaly surfacing + human approval gate. Anchored by 2010 Flash Crash and 2012 Knight Capital lessons.",
+      "sources": [
+        "https://ai.hubb.com/does-ai-trading-need-a-human-in-the-loop/",
+        "https://www.tredence.com/blog/hitl-human-in-the-loop",
+        "https://zapier.com/blog/human-in-the-loop/",
+        "https://www.mdpi.com/2079-9292/15/6/1155",
+        "https://www.sciencedirect.com/science/article/pii/S2950550X25000378",
+        "https://www.henricodolfing.com/2019/06/project-failure-case-study-knight-capital.html"
+      ],
+      "evidence_basis": "academic-peer-reviewed + production-deployed",
+      "applicability": "direct match (PLAYBOOK_MANUAL_LAUNCH_v1)"
+    },
+    {
+      "id": "Q4-B",
+      "question": "Q4",
+      "name": "Cognitive-load-aware dashboard design",
+      "summary": "Sweller CLT applied to trading UI: group similar info, consistent navigation, minimize working-memory load.",
+      "sources": [
+        "https://www.aufaitux.com/blog/cognitive-load-theory-ui-design/",
+        "https://www.fegno.com/designing-enterprise-dashboards-with-cognitive-load-theory/",
+        "https://umi.digital/ux-design-trader-decision/",
+        "https://www.fdcapital.co.uk/designing-financial-dashboards-clients-actually-understand-a-user-centric-ux-approach/"
+      ],
+      "evidence_basis": "academic-peer-reviewed (CLT) + practitioner",
+      "applicability": "partial (design rule)"
+    },
+    {
+      "id": "Q4-C",
+      "question": "Q4",
+      "name": "RAG-grounded decision rules",
+      "summary": "LLM consults a knowledge base (regulation doc) before answering; rule-based explanations link sources to outputs.",
+      "sources": [
+        "https://arxiv.org/abs/2510.22689",
+        "https://arxiv.org/html/2406.12430v1",
+        "https://arxiv.org/pdf/2504.06279"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "promising-unverified",
+      "note": "Hallucination cost in trading is high; needs careful eval"
+    },
+    {
+      "id": "Q4-D",
+      "question": "Q4",
+      "name": "TradingAgents multi-agent LLM framework",
+      "summary": "Seven LLM-powered agents (fundamentals, sentiment, news, technical, researcher, trader, risk-manager) collaborate via LangGraph.",
+      "sources": [
+        "https://arxiv.org/abs/2412.20138",
+        "https://github.com/TauricResearch/TradingAgents",
+        "https://tradingagents-ai.github.io/"
+      ],
+      "evidence_basis": "academic-peer-reviewed (single paper Dec 2024)",
+      "applicability": "partial (pattern only)",
+      "note": "Heavy infrastructure; independent validation thin"
+    },
+    {
+      "id": "Q5-A",
+      "question": "Q5",
+      "name": "Range-bound activation + breakout deactivation",
+      "summary": "Grid bots thrive in sideways markets; breakout above/below boundary = deactivate. ATR for volatility-aware spacing.",
+      "sources": [
+        "https://www.ainvest.com/news/tradingview-grid-bots-fail-range-breaks-hard-stop-loss-saves-accounts-2603/",
+        "https://phemex.com/academy/grid-trading-guide-phemex",
+        "https://fomoed.com/en/blog/grid-trading-explained/",
+        "https://medium.com/coinmonks/grid-bots-how-they-really-work-how-to-make-money-with-them-948b4439fa5f"
+      ],
+      "evidence_basis": "community-deployed",
+      "applicability": "already exhibited in regulation"
+    },
+    {
+      "id": "Q5-B",
+      "question": "Q5",
+      "name": "Hanlon FSC / Stevens grid trading study + arXiv SL/TP optimization",
+      "summary": "Stevens project optimized BTC grid bots on Bybit. >900-trade arXiv study favors tighter loss limits, earlier profit capture, closer trailing.",
+      "sources": [
+        "https://fsc.stevens.edu/cryptocurrency-market-making-improving-grid-trading-strategies-in-bitcoin/",
+        "https://arxiv.org/html/2604.27150"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "direct match"
+    },
+    {
+      "id": "Q5-C",
+      "question": "Q5",
+      "name": "AI-optimized grid parameter framework (LSTM)",
+      "summary": "LSTM consumes indicator features and outputs grid parameters.",
+      "sources": [
+        "https://medium.com/@gwrx2005/optimizing-grid-trading-parameters-with-technical-indicators-and-ai-a-framework-for-explainable-f7bcc50d754d"
+      ],
+      "evidence_basis": "single-blog",
+      "applicability": "anti-recommend",
+      "note": "No peer review; opaque output replaces evidence-driven configs"
+    },
+    {
+      "id": "Q5-D",
+      "question": "Q5",
+      "name": "Infinity grid bot",
+      "summary": "Removes upper boundary; bot continues buying/selling as price rises. For long-bullish markets.",
+      "sources": [
+        "https://wundertrading.com/en/grid-bot",
+        "https://www.altrady.com/features/grid-bot",
+        "https://3commas.io/grid-bot"
+      ],
+      "evidence_basis": "retail-platform-deployed",
+      "applicability": "partial / context-dependent"
+    },
+    {
+      "id": "Q6-A",
+      "question": "Q6",
+      "name": "Tiered alert classification (severity-based)",
+      "summary": "Three-tier (severe/moderate/minor) with interruptive vs passive delivery. Healthcare CDS standard.",
+      "sources": [
+        "https://premierinc.com/newsroom/blog/reducing-alert-fatigue-in-healthcare",
+        "https://pubmed.ncbi.nlm.nih.gov/27350464/",
+        "https://psnet.ahrq.gov/primer/alert-fatigue",
+        "https://journals.sagepub.com/doi/full/10.1177/14604582211007536"
+      ],
+      "evidence_basis": "academic-peer-reviewed (healthcare)",
+      "applicability": "direct match (P0/P1/P2 extension of PRIMARY/VERBOSE)"
+    },
+    {
+      "id": "Q6-B",
+      "question": "Q6",
+      "name": "AI-tiered Early Warning (AI-TEW) two-stage ML thresholds",
+      "summary": "Two-stage ML model: severity classification + context-aware threshold optimization.",
+      "sources": [
+        "https://www.nature.com/articles/s41746-026-02522-8",
+        "https://medinform.jmir.org/2020/11/e19489/",
+        "https://www.sciencedirect.com/science/article/pii/S138912862400375X"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "future-direction (need labels)"
+    },
+    {
+      "id": "Q6-C",
+      "question": "Q6",
+      "name": "Information-theoretic alert filtering (KL/entropy)",
+      "summary": "Score interestingness via KL divergence between current and baseline distributions.",
+      "sources": [
+        "https://arxiv.org/html/2511.16339v1",
+        "https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence",
+        "https://medium.com/@_prinsh_u/understanding-shannon-entropy-and-kl-divergence-through-information-theory-e201b8279e62",
+        "https://www.daytrading.com/filtering-theory"
+      ],
+      "evidence_basis": "academic + textbook",
+      "applicability": "promising-experiment",
+      "impl_effort": "medium"
+    },
+    {
+      "id": "Q6-D",
+      "question": "Q6",
+      "name": "State-change-only alerting",
+      "summary": "Only emit alerts when condition's state has changed since last emit. Cooldown is secondary.",
+      "sources": [
+        "https://www.sierrachart.com/index.php?page=doc/StudiesReference.php&ID=418&Name=Trading_System_Based_On_Alert_Condition",
+        "internal: services/telegram/dedup_layer.py"
+      ],
+      "evidence_basis": "community-deployed",
+      "applicability": "already implemented"
+    },
+    {
+      "id": "Q7-A",
+      "question": "Q7",
+      "name": "VISTA Vision-Language for stock forecasting (positive)",
+      "summary": "Training-free framework prompting VLM with both numeric series text and line chart. Reports up to 89.83% improvement over text-only baselines.",
+      "sources": [
+        "https://arxiv.org/html/2505.18570v3",
+        "https://arxiv.org/abs/2505.18570"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "partial (multi-day stock; doesn't transfer cleanly to intraday crypto)"
+    },
+    {
+      "id": "Q7-B",
+      "question": "Q7",
+      "name": "Antonov vision-LLM candlestick audit (decisive negative)",
+      "summary": "4 frontier VLMs from Anthropic + Google, 215 chart calls. 51% direction accuracy (chance), 1/215 patterns recognized correctly, 100% long-bias on Gemini.",
+      "sources": [
+        "https://gist.github.com/roman-rr/c1cd675f7c35b68ae5ac281c30080166"
+      ],
+      "evidence_basis": "community-anecdotal (reproducible methodology)",
+      "applicability": "decisive against",
+      "anti_recommend": true
+    },
+    {
+      "id": "Q7-C",
+      "question": "Q7",
+      "name": "Multi-scale benchmark for VLM candlestick comprehension",
+      "summary": "VLMs perform well only under persistent uptrend/downtrend; weak in range markets. Strong prediction biases. Limited horizon sensitivity.",
+      "sources": [
+        "https://arxiv.org/abs/2604.12659",
+        "https://arxiv.org/html/2604.12659"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "strongly cautionary",
+      "anti_recommend": true,
+      "note": "Crypto is RANGE-dominated 72% — exactly where VLMs fail"
+    },
+    {
+      "id": "Q7-D",
+      "question": "Q7",
+      "name": "VLM visual arithmetic limitations",
+      "summary": "Pre-trained vision encoders fail on length comparison, angle estimation, area comparison — primitives needed to read candlesticks.",
+      "sources": [
+        "https://arxiv.org/html/2502.11492",
+        "https://www.capellasolutions.com/blog/why-your-charts-confuse-ai-and-how-thats-changing",
+        "https://deepcharts.substack.com/p/why-ai-vision-models-struggle-with"
+      ],
+      "evidence_basis": "academic-peer-reviewed",
+      "applicability": "decisive against",
+      "anti_recommend": true
+    }
+  ],
+  "top_3_recommendations": [
+    {
+      "rank": 1,
+      "name": "Reliability-diagram diagnostic + post-hoc calibration",
+      "primary_sources": ["Q1-C", "Q1-B"],
+      "what_it_does": "Decisively determines whether forecast Brier=0.247 reflects no-skill (decommission justified) or miscalibration (rescue path).",
+      "implementation_path": [
+        "TZ-FORECAST-CALIBRATION-DIAGNOSTIC — pull historical (prob_up, observed_outcome) pairs; reliability diagram; Brier decomposition.",
+        "If reliability dominates: try Platt/isotonic on out-of-sample window.",
+        "Operator + MAIN read findings; choose A/B/C path for forecast pipeline."
+      ],
+      "follow_up": "None to start. Diagnostic itself is cheap."
+    },
+    {
+      "rank": 2,
+      "name": "ATR%-based volatility regime as second axis to activation matrix",
+      "primary_sources": ["Q3-B"],
+      "what_it_does": "Extends regulation §3 from 3-regime to 6-regime (trend × volatility); each existing CONDITIONAL cell gains a volatility precondition.",
+      "implementation_path": [
+        "TZ-VOLATILITY-REGIME-OVERLAY — extract atr_14 + realized_vol_pctile_24h; classify hourly into LowVol/HighVol.",
+        "Re-overlay 21 backtests onto 9-cell (trend × volatility) matrix.",
+        "Update REGULATION_v0_1_1 §3 with conditional rules tied to second axis."
+      ],
+      "follow_up": "Sample-size check per cell (likely sufficient)."
+    },
+    {
+      "rank": 3,
+      "name": "Information-theoretic (KL-divergence) alert filtering layer",
+      "primary_sources": ["Q6-C"],
+      "what_it_does": "Adds KL(window_now || baseline) score per alert; scores alert 'interestingness' beyond rule-based dedup.",
+      "implementation_path": [
+        "TZ-ALERT-KL-SCORING-DIAGNOSTIC — implement rolling KL on selected features; replay 30d alerts; report distribution.",
+        "Operator + MAIN review suppression-by-KL profile.",
+        "If approved: TZ-ALERT-KL-SCORING-INTEGRATION — wire as DecisionLogAlertWorker enrichment."
+      ],
+      "follow_up": "Threshold selection from diagnostic data."
+    }
+  ],
+  "anti_recommendations": [
+    {"name": "Vision LLMs to read candlestick charts", "evidence_against": ["Q7-B", "Q7-C", "Q7-D"]},
+    {"name": "LSTM-driven grid-parameter optimization", "evidence_against": ["Q5-C"]},
+    {"name": "Full TradingAgents framework as-is", "evidence_against": ["Q4-D"]},
+    {"name": "AI-TEW ML alert thresholds before labels", "evidence_against": ["Q6-B"]},
+    {"name": "ICT killzone narrative without local backtest", "evidence_against": ["Q2-C"]}
+  ],
+  "open_questions": [
+    "Public live-results dataset for FreqTrade-vs-Hummingbot-vs-Jesse with regime filters",
+    "Modern (post-2020) crypto-specific HMM vs naive baselines",
+    "Median Brier score for live retail forecast feeds in crypto",
+    "Practical KL-divergence threshold selection for trading alerts (Rec #3 diagnostic addresses)",
+    "Empirical solo-operator cognitive-load surveys for trading",
+    "Intraday-crypto adaptation of VISTA-style vision-augmented forecasting",
+    "Platform-internal regime-rule docs (3Commas/Pionex/Bitsgap — marketing only)"
+  ],
+  "stats": {
+    "approaches_total": 28,
+    "questions_answered": 7,
+    "source_links_count_unique_approx": 60,
+    "anti_recommendations_count": 5,
+    "investigation_minutes": 25
+  }
+}

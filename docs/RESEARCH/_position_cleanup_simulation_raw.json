@@ -1,0 +1,1364 @@
+{
+  "formula_check": {
+    "model_upnl": -3562.656,
+    "diff": 109.34400000000005,
+    "diff_pct": 0.029777777777777792
+  },
+  "S1": {
+    "L1 conservative": [
+      {
+        "depth": 1,
+        "tp_hit": 80500,
+        "realized_pnl_usd": -370.75,
+        "remaining_btc": 1.166,
+        "remaining_upnl_at_current_usd": -2933.656,
+        "effective_breakeven_price": 78699.03259005146,
+        "margin_coeff": 0.9447214303825766
+      },
+      {
+        "depth": 2,
+        "tp_hit": 80000,
+        "realized_pnl_usd": -616.5,
+        "remaining_btc": 0.9159999999999999,
+        "remaining_upnl_at_current_usd": -2304.656,
+        "effective_breakeven_price": 78343.96506550218,
+        "margin_coeff": 0.9437011830284917
+      },
+      {
+        "depth": 3,
+        "tp_hit": 79500,
+        "realized_pnl_usd": -737.25,
+        "remaining_btc": 0.6659999999999999,
+        "remaining_upnl_at_current_usd": -1675.6559999999997,
+        "effective_breakeven_price": 77910.01801801802,
+        "margin_coeff": 0.9423481739803152
+      },
+      {
+        "depth": 4,
+        "tp_hit": 79000,
+        "realized_pnl_usd": -732.15,
+        "remaining_btc": 0.3659999999999999,
+        "remaining_upnl_at_current_usd": -920.8559999999997,
+        "effective_breakeven_price": 77016.59016393442,
+        "margin_coeff": 0.9403252490895934
+      },
+      {
+        "depth": 5,
+        "tp_hit": 78500,
+        "realized_pnl_usd": -542.928,
+        "remaining_btc": 0.0,
+        "remaining_upnl_at_current_usd": -0.0,
+        "effective_breakeven_price": null,
+        "margin_coeff": 0.9373701176027627
+      }
+    ],
+    "L2 balanced": [
+      {
+        "depth": 1,
+        "tp_hit": 80000,
+        "realized_pnl_usd": -245.75,
+        "remaining_btc": 1.166,
+        "remaining_upnl_at_current_usd": -2933.656,
+        "effective_breakeven_price": 78806.23670668954,
+        "margin_coeff": 0.944388668688485
+      },
+      {
+        "depth": 2,
+        "tp_hit": 79500,
+        "realized_pnl_usd": -366.5,
+        "remaining_btc": 0.9159999999999999,
+        "remaining_upnl_at_current_usd": -2304.656,
+        "effective_breakeven_price": 78616.89082969433,
+        "margin_coeff": 0.9430356596403084
+      },
+      {
+        "depth": 3,
+        "tp_hit": 78500,
+        "realized_pnl_usd": -237.25,
+        "remaining_btc": 0.6659999999999999,
+        "remaining_upnl_at_current_usd": -1675.6559999999997,
+        "effective_breakeven_price": 78660.76876876877,
+        "margin_coeff": 0.9410171272039487
+      },
+      {
+        "depth": 4,
+        "tp_hit": 78000,
+        "realized_pnl_usd": 67.84999999999997,
+        "remaining_btc": 0.3659999999999999,
+        "remaining_upnl_at_current_usd": -920.8559999999997,
+        "effective_breakeven_price": 79202.3825136612,
+        "margin_coeff": 0.9381955742474071
+      },
+      {
+        "depth": 5,
+        "tp_hit": 77500,
+        "realized_pnl_usd": 623.0719999999999,
+        "remaining_btc": 0.0,
+        "remaining_upnl_at_current_usd": -0.0,
+        "effective_breakeven_price": null,
+        "margin_coeff": 0.934266116520276
+      }
+    ],
+    "L3 operator-view": [
+      {
+        "depth": 1,
+        "tp_hit": 80000,
+        "realized_pnl_usd": -245.75,
+        "remaining_btc": 1.166,
+        "remaining_upnl_at_current_usd": -2933.656,
+        "effective_breakeven_price": 78806.23670668954,
+        "margin_coeff": 0.944388668688485
+      },
+      {
+        "depth": 2,
+        "tp_hit": 79000,
+        "realized_pnl_usd": -241.5,
+        "remaining_btc": 0.9159999999999999,
+        "remaining_upnl_at_current_usd": -2304.656,
+        "effective_breakeven_price": 78753.35371179039,
+        "margin_coeff": 0.9427028979462169
+      },
+      {
+        "depth": 3,
+        "tp_hit": 78500,
+        "realized_pnl_usd": -112.25,
+        "remaining_btc": 0.6659999999999999,
+        "remaining_upnl_at_current_usd": -1675.6559999999997,
+        "effective_breakeven_price": 78848.45645645645,
+        "margin_coeff": 0.9406843655098571
+      },
+      {
+        "depth": 4,
+        "tp_hit": 78000,
+        "realized_pnl_usd": 192.84999999999997,
+        "remaining_btc": 0.3659999999999999,
+        "remaining_upnl_at_current_usd": -920.8559999999997,
+        "effective_breakeven_price": 79543.91256830601,
+        "margin_coeff": 0.9378628125533154
+      },
+      {
+        "depth": 5,
+        "tp_hit": 77500,
+        "realized_pnl_usd": 748.0719999999999,
+        "remaining_btc": 0.0,
+        "remaining_upnl_at_current_usd": -0.0,
+        "effective_breakeven_price": null,
+        "margin_coeff": 0.9339333548261843
+      }
+    ],
+    "L4 aggressive": [
+      {
+        "depth": 1,
+        "tp_hit": 79500,
+        "realized_pnl_usd": -120.75,
+        "remaining_btc": 1.166,
+        "remaining_upnl_at_current_usd": -2933.656,
+        "effective_breakeven_price": 78913.44082332762,
+        "margin_coeff": 0.9440559069943935
+      },
+      {
+        "depth": 2,
+        "tp_hit": 78500,
+        "realized_pnl_usd": 8.5,
+        "remaining_btc": 0.9159999999999999,
+        "remaining_upnl_at_current_usd": -2304.656,
+        "effective_breakeven_price": 79026.27947598253,
+        "margin_coeff": 0.9420373745580336
+      },
+      {
+        "depth": 3,
+        "tp_hit": 78000,
+        "realized_pnl_usd": 262.75,
+        "remaining_btc": 0.6659999999999999,
+        "remaining_upnl_at_current_usd": -1675.6559999999997,
+        "effective_breakeven_price": 79411.51951951953,
+        "margin_coeff": 0.9396860804275822
+      },
+      {
+        "depth": 4,
+        "tp_hit": 77500,
+        "realized_pnl_usd": 717.8499999999999,
+        "remaining_btc": 0.3659999999999999,
+        "remaining_upnl_at_current_usd": -920.8559999999997,
+        "effective_breakeven_price": 80978.33879781421,
+        "margin_coeff": 0.9364652134381306
+      },
+      {
+        "depth": 5,
+        "tp_hit": 77000,
+        "realized_pnl_usd": 1456.072,
+        "remaining_btc": 0.0,
+        "remaining_upnl_at_current_usd": -0.0,
+        "effective_breakeven_price": null,
+        "margin_coeff": 0.9320485925908495
+      }
+    ],
+    "L5 deep-target": [
+      {
+        "depth": 1,
+        "tp_hit": 79000,
+        "realized_pnl_usd": 4.25,
+        "remaining_btc": 1.166,
+        "remaining_upnl_at_current_usd": -2933.656,
+        "effective_breakeven_price": 79020.6449399657,
+        "margin_coeff": 0.9437231453003018
+      },
+      {
+        "depth": 2,
+        "tp_hit": 78000,
+        "realized_pnl_usd": 258.5,
+        "remaining_btc": 0.9159999999999999,
+        "remaining_upnl_at_current_usd": -2304.656,
+        "effective_breakeven_price": 79299.20524017468,
+        "margin_coeff": 0.9413718511698503
+      },
+      {
+        "depth": 3,
+        "tp_hit": 77500,
+        "realized_pnl_usd": 637.75,
+        "remaining_btc": 0.6659999999999999,
+        "remaining_upnl_at_current_usd": -1675.6559999999997,
+        "effective_breakeven_price": 79974.58258258259,
+        "margin_coeff": 0.9386877953453073
+      },
+      {
+        "depth": 4,
+        "tp_hit": 77000,
+        "realized_pnl_usd": 1242.85,
+        "remaining_btc": 0.3659999999999999,
+        "remaining_upnl_at_current_usd": -920.8559999999997,
+        "effective_breakeven_price": 82412.7650273224,
+        "margin_coeff": 0.9350676143229457
+      },
+      {
+        "depth": 5,
+        "tp_hit": 76500,
+        "realized_pnl_usd": 2164.072,
+        "remaining_btc": 0.0,
+        "remaining_upnl_at_current_usd": -0.0,
+        "effective_breakeven_price": null,
+        "margin_coeff": 0.9301638303555145
+      }
+    ]
+  },
+  "S2": [
+    {
+      "price": 76000,
+      "unrealized_pnl_usd": 4272.072,
+      "margin_coeff": 0.9245521371463533,
+      "distance_to_liq_pct": 26.23421052631579,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 77000,
+      "unrealized_pnl_usd": 2856.0719999999997,
+      "margin_coeff": 0.9283216616170232,
+      "distance_to_liq_pct": 24.594805194805193,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 78000,
+      "unrealized_pnl_usd": 1440.072,
+      "margin_coeff": 0.9320911860876931,
+      "distance_to_liq_pct": 22.997435897435896,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 78500,
+      "unrealized_pnl_usd": 732.072,
+      "margin_coeff": 0.9339759483230281,
+      "distance_to_liq_pct": 22.2140127388535,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 78779,
+      "unrealized_pnl_usd": 337.008,
+      "margin_coeff": 0.935027645650345,
+      "distance_to_liq_pct": 21.78118534127115,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 79000,
+      "unrealized_pnl_usd": 24.072,
+      "margin_coeff": 0.9358607105583631,
+      "distance_to_liq_pct": 21.440506329113923,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 80000,
+      "unrealized_pnl_usd": -1391.9279999999999,
+      "margin_coeff": 0.939630235029033,
+      "distance_to_liq_pct": 19.922500000000003,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 81000,
+      "unrealized_pnl_usd": -2807.928,
+      "margin_coeff": 0.9433997594997029,
+      "distance_to_liq_pct": 18.441975308641975,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 81533,
+      "unrealized_pnl_usd": -3562.656,
+      "margin_coeff": 0.9454089160425699,
+      "distance_to_liq_pct": 17.667692836029584,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 82000,
+      "unrealized_pnl_usd": -4223.928,
+      "margin_coeff": 0.9471692839703728,
+      "distance_to_liq_pct": 16.99756097560976,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 83000,
+      "unrealized_pnl_usd": -5639.928,
+      "margin_coeff": 0.9509388084410427,
+      "distance_to_liq_pct": 15.587951807228917,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 85000,
+      "unrealized_pnl_usd": -8471.928,
+      "margin_coeff": 0.9584778573823826,
+      "distance_to_liq_pct": 12.868235294117646,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 90000,
+      "unrealized_pnl_usd": -15551.928,
+      "margin_coeff": 0.977325479735732,
+      "distance_to_liq_pct": 6.597777777777777,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    },
+    {
+      "price": 95000,
+      "unrealized_pnl_usd": -22631.928,
+      "margin_coeff": 0.9961731020890816,
+      "distance_to_liq_pct": 0.9873684210526316,
+      "funding_7d_usd": 196.0,
+      "effective_breakeven_7d": 79155.41807909604,
+      "funding_30d_usd": 840.0,
+      "effective_breakeven_30d": 79610.22033898305,
+      "funding_60d_usd": 1680.0,
+      "effective_breakeven_60d": 80203.44067796611,
+      "funding_90d_usd": 2520.0,
+      "effective_breakeven_90d": 80796.66101694915
+    }
+  ],
+  "S3": {
+    "Path-A": {
+      "unlimited": {
+        "realized_usd": 268.5313727999912,
+        "closed_cycles": 1,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 268.5313727999912,
+        "pnl_delta_from_now_usd": 3940.531372799991,
+        "margin_coeff": 0.935209936838127
+      },
+      "capped_1_416": {
+        "realized_usd": 268.5313727999912,
+        "closed_cycles": 1,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 268.5313727999912,
+        "pnl_delta_from_now_usd": 3940.531372799991,
+        "margin_coeff": 0.935209936838127
+      },
+      "duration_days": {
+        "days": 1.0
+      },
+      "terminal_price": {
+        "price": 78000.0
+      }
+    },
+    "Path-B": {
+      "unlimited": {
+        "realized_usd": 268.5313727999912,
+        "closed_cycles": 1,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 268.5313727999912,
+        "pnl_delta_from_now_usd": 3940.531372799991,
+        "margin_coeff": 0.935209936838127
+      },
+      "capped_1_416": {
+        "realized_usd": 268.5313727999912,
+        "closed_cycles": 1,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 268.5313727999912,
+        "pnl_delta_from_now_usd": 3940.531372799991,
+        "margin_coeff": 0.935209936838127
+      },
+      "duration_days": {
+        "days": 7.0
+      },
+      "terminal_price": {
+        "price": 78000.0
+      }
+    },
+    "Path-C": {
+      "unlimited": {
+        "realized_usd": 322.2697599150275,
+        "closed_cycles": 94,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 322.2697599150275,
+        "pnl_delta_from_now_usd": 3994.2697599150274,
+        "margin_coeff": 0.9350668802242539
+      },
+      "capped_1_416": {
+        "realized_usd": 268.5313727999912,
+        "closed_cycles": 1,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 268.5313727999912,
+        "pnl_delta_from_now_usd": 3940.531372799991,
+        "margin_coeff": 0.935209936838127
+      },
+      "duration_days": {
+        "days": 5.0
+      },
+      "terminal_price": {
+        "price": 78000.0
+      }
+    },
+    "Path-D": {
+      "unlimited": {
+        "realized_usd": 0.0,
+        "closed_cycles": 0,
+        "final_position_btc": 1.493999999999997,
+        "final_upnl_usd": -4823.497552828153,
+        "final_combined_pnl_usd": -4823.497552828153,
+        "pnl_delta_from_now_usd": -1151.497552828153,
+        "margin_coeff": 0.9487653942113716
+      },
+      "capped_1_416": {
+        "realized_usd": 0.0,
+        "closed_cycles": 0,
+        "final_position_btc": 1.416,
+        "final_upnl_usd": -4790.3279999999995,
+        "final_combined_pnl_usd": -4790.3279999999995,
+        "pnl_delta_from_now_usd": -1118.3279999999995,
+        "margin_coeff": 0.9486770937586407
+      },
+      "duration_days": {
+        "days": 1.0
+      },
+      "terminal_price": {
+        "price": 82400.0
+      }
+    },
+    "Path-E": {
+      "unlimited": {
+        "realized_usd": 283.87704587320343,
+        "closed_cycles": 27,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 283.87704587320343,
+        "pnl_delta_from_now_usd": 3955.8770458732033,
+        "margin_coeff": 0.9351690852207766
+      },
+      "capped_1_416": {
+        "realized_usd": 268.5313727999912,
+        "closed_cycles": 1,
+        "final_position_btc": 0,
+        "final_upnl_usd": 0,
+        "final_combined_pnl_usd": 268.5313727999912,
+        "pnl_delta_from_now_usd": 3940.531372799991,
+        "margin_coeff": 0.935209936838127
+      },
+      "duration_days": {
+        "days": 2.0
+      },
+      "terminal_price": {
+        "price": 78000.0
+      }
+    }
+  },
+  "S4": {
+    "7d": {
+      "unlimited": {
+        "path": "Path-B",
+        "ladder_depth": 4,
+        "realized_plus_funding_usd": 461.38137279999114,
+        "remaining_btc": 0,
+        "final_combined_pnl_usd": 461.38137279999114,
+        "margin_coeff": 0.9346965520964825
+      },
+      "capped_1_416": {
+        "path": "Path-B",
+        "ladder_depth": 4,
+        "realized_plus_funding_usd": 461.38137279999114,
+        "remaining_btc": 0,
+        "final_combined_pnl_usd": 461.38137279999114,
+        "margin_coeff": 0.9346965520964825
+      }
+    },
+    "30d": {
+      "unlimited": {
+        "path": "Path-C",
+        "ladder_depth": 4,
+        "realized_plus_funding_usd": 515.1197599150275,
+        "remaining_btc": 0,
+        "final_combined_pnl_usd": 515.1197599150275,
+        "margin_coeff": 0.9345534954826094
+      },
+      "capped_1_416": {
+        "path": "Path-C",
+        "ladder_depth": 4,
+        "realized_plus_funding_usd": 461.38137279999114,
+        "remaining_btc": 0,
+        "final_combined_pnl_usd": 461.38137279999114,
+        "margin_coeff": 0.9346965520964825
+      }
+    },
+    "60d": {
+      "unlimited": {
+        "path": "Path-E",
+        "ladder_depth": 4,
+        "realized_plus_funding_usd": 476.7270458732034,
+        "remaining_btc": 0,
+        "final_combined_pnl_usd": 476.7270458732034,
+        "margin_coeff": 0.9346557004791319
+      },
+      "capped_1_416": {
+        "path": "Path-E",
+        "ladder_depth": 4,
+        "realized_plus_funding_usd": 461.38137279999114,
+        "remaining_btc": 0,
+        "final_combined_pnl_usd": 461.38137279999114,
+        "margin_coeff": 0.9346965520964825
+      }
+    }
+  },
+  "S5": {
+    "manual_close_loss_5000_price": 82548.07344632769,
+    "S1": {
+      "worst_realized_loss_usd": 0.0,
+      "note": "All requested TP ladders are below avg entry and therefore realize gains, not losses."
+    },
+    "S2": {
+      "worst_price": 95000,
+      "worst_unrealized_pnl_usd": -22631.928,
+      "worst_margin_coeff": 0.9961731020890816,
+      "liq_path_flag": false
+    },
+    "S3": {
+      "worst_path": "Path-D",
+      "worst_mode": "unlimited",
+      "worst_final_combined_pnl_usd": -4823.497552828153,
+      "worst_margin_coeff": 0.9487653942113716
+    },
+    "S4": {
+      "worst_horizon": "7d",
+      "worst_mode": "unlimited",
+      "worst_final_combined_pnl_usd": 461.38137279999114,
+      "worst_margin_coeff": 0.9346965520964825
+    }
+  },
+  "S6A": {
+    "A1 now_trigger_81533_to_80000": {
+      "10% deposit": {
+        "entry_price": 81533.0,
+        "exit_price": 80962.269,
+        "hedge_realized_usd": -14.000000000000012,
+        "combined_short_state_pnl_usd": -2768.500904,
+        "reason": "stop",
+        "locked_margin_est_usd": 2000.0
+      },
+      "20% deposit": {
+        "entry_price": 81533.0,
+        "exit_price": 80962.269,
+        "hedge_realized_usd": -28.000000000000025,
+        "combined_short_state_pnl_usd": -2782.500904,
+        "reason": "stop",
+        "locked_margin_est_usd": 4000.0
+      }
+    },
+    "A2 decline_trigger_80500_to_79700": {
+      "10% deposit": {
+        "entry_price": 80500.0,
+        "exit_price": 79936.5,
+        "hedge_realized_usd": -14.000000000000012,
+        "combined_short_state_pnl_usd": -1316.012,
+        "reason": "stop",
+        "locked_margin_est_usd": 2000.0
+      },
+      "20% deposit": {
+        "entry_price": 80500.0,
+        "exit_price": 79936.5,
+        "hedge_realized_usd": -28.000000000000025,
+        "combined_short_state_pnl_usd": -1330.012,
+        "reason": "stop",
+        "locked_margin_est_usd": 4000.0
+      }
+    },
+    "A3 no_cascade": {
+      "10% deposit": {
+        "entry_price": null,
+        "exit_price": null,
+        "hedge_realized_usd": 0.0,
+        "combined_short_state_pnl_usd": -3672.0,
+        "reason": "no trigger"
+      },
+      "20% deposit": {
+        "entry_price": null,
+        "exit_price": null,
+        "hedge_realized_usd": 0.0,
+        "combined_short_state_pnl_usd": -3672.0,
+        "reason": "no trigger"
+      }
+    }
+  },
+  "S6B": {
+    "V1 full_neutral": {
+      "Path-A": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1440.072,
+        "combined_margin_coeff": 1.217549419694656,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 115450.72799999999,
+        "net_funding_effect_usd": 0.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-B": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1440.072,
+        "combined_margin_coeff": 1.217549419694656,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 115450.72799999999,
+        "net_funding_effect_usd": 0.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-C": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1440.072,
+        "combined_margin_coeff": 1.217549419694656,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 115450.72799999999,
+        "net_funding_effect_usd": 0.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-D": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": -4790.3279999999995,
+        "combined_margin_coeff": 1.2341353273656035,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 115450.72799999999,
+        "net_funding_effect_usd": 0.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-E": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1440.072,
+        "combined_margin_coeff": 1.217549419694656,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 115450.72799999999,
+        "net_funding_effect_usd": 0.0,
+        "infeasible_vs_cfg_cap": true
+      }
+    },
+    "V2 partial_50": {
+      "Path-A": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1454.072,
+        "combined_margin_coeff": 1.0747830335814363,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 57725.363999999994,
+        "net_funding_effect_usd": 14.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-B": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1538.072,
+        "combined_margin_coeff": 1.0745594177230067,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 57725.363999999994,
+        "net_funding_effect_usd": 98.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-C": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1510.072,
+        "combined_margin_coeff": 1.0746339563424832,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 57725.363999999994,
+        "net_funding_effect_usd": 70.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-D": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": -4776.3279999999995,
+        "combined_margin_coeff": 1.091368941252384,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 57725.363999999994,
+        "net_funding_effect_usd": 14.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-E": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1468.072,
+        "combined_margin_coeff": 1.074745764271698,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 57725.363999999994,
+        "net_funding_effect_usd": 28.0,
+        "infeasible_vs_cfg_cap": true
+      }
+    },
+    "V3 partial_25": {
+      "Path-A": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1461.072,
+        "combined_margin_coeff": 1.0033998405248263,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 28862.681999999997,
+        "net_funding_effect_usd": 21.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-B": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1587.072,
+        "combined_margin_coeff": 1.003064416737182,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 28862.681999999997,
+        "net_funding_effect_usd": 147.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-C": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1545.072,
+        "combined_margin_coeff": 1.0031762246663969,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 28862.681999999997,
+        "net_funding_effect_usd": 105.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-D": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": -4769.3279999999995,
+        "combined_margin_coeff": 1.019985748195774,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 28862.681999999997,
+        "net_funding_effect_usd": 21.0,
+        "infeasible_vs_cfg_cap": true
+      },
+      "Path-E": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1482.072,
+        "combined_margin_coeff": 1.003343936560219,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 28862.681999999997,
+        "net_funding_effect_usd": 42.0,
+        "infeasible_vs_cfg_cap": true
+      }
+    },
+    "V4 minimal_15": {
+      "Path-A": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1463.8799096045198,
+        "combined_margin_coeff": 0.9747659043269774,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 17284.996,
+        "net_funding_effect_usd": 23.80790960451977,
+        "infeasible_vs_cfg_cap": false
+      },
+      "Path-B": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1606.7273672316383,
+        "combined_margin_coeff": 0.974385631031004,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 17284.996,
+        "net_funding_effect_usd": 166.65536723163842,
+        "infeasible_vs_cfg_cap": false
+      },
+      "Path-C": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1559.1115480225988,
+        "combined_margin_coeff": 0.9745123887963284,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 17284.996,
+        "net_funding_effect_usd": 119.03954802259886,
+        "infeasible_vs_cfg_cap": false
+      },
+      "Path-D": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": -4766.52009039548,
+        "combined_margin_coeff": 0.991351811997925,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 17284.996,
+        "net_funding_effect_usd": 23.80790960451977,
+        "infeasible_vs_cfg_cap": false
+      },
+      "Path-E": {
+        "long_realized_usd": 0.0,
+        "long_final_position_btc": 0.0,
+        "long_final_upnl_usd": 0,
+        "combined_net_pnl_usd": 1487.6878192090394,
+        "combined_margin_coeff": 0.9747025254443151,
+        "net_btc_delta": 1.416,
+        "locked_margin_est_usd": 17284.996,
+        "net_funding_effect_usd": 47.61581920903954,
+        "infeasible_vs_cfg_cap": false
+      }
+    }
+  },
+  "S6C": {
+    "V1 full_neutral": {
+      "btc_equiv": 1.416,
+      "notional_usd": 115450.72799999999,
+      "locked_margin_est_usd": 115450.72799999999,
+      "share_of_available_balance_pct": 570.9164672139254,
+      "net_funding_effect_per_day_usd": 0.0,
+      "within_frozen_cfg_cap": false
+    },
+    "V2 partial_50": {
+      "btc_equiv": 0.708,
+      "notional_usd": 57725.363999999994,
+      "locked_margin_est_usd": 57725.363999999994,
+      "share_of_available_balance_pct": 285.4582336069627,
+      "net_funding_effect_per_day_usd": 14.0,
+      "within_frozen_cfg_cap": false
+    },
+    "V3 partial_25": {
+      "btc_equiv": 0.354,
+      "notional_usd": 28862.681999999997,
+      "locked_margin_est_usd": 28862.681999999997,
+      "share_of_available_balance_pct": 142.72911680348136,
+      "net_funding_effect_per_day_usd": 21.0,
+      "within_frozen_cfg_cap": false
+    },
+    "V4 minimal_15": {
+      "btc_equiv": 0.212,
+      "notional_usd": 17284.996,
+      "locked_margin_est_usd": 17284.996,
+      "share_of_available_balance_pct": 85.47619424389279,
+      "net_funding_effect_per_day_usd": 23.80790960451977,
+      "within_frozen_cfg_cap": true
+    }
+  },
+  "S7": {
+    "options": {
+      "O1 Pure hold": {
+        "per_path": {
+          "Path-A": {
+            "final_pnl_usd": 1468.072,
+            "realized_component_usd": 28.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9320166474682167,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 1
+          },
+          "Path-B": {
+            "final_pnl_usd": 1636.072,
+            "realized_component_usd": 196.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9315694157513575,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 1
+          },
+          "Path-C": {
+            "final_pnl_usd": 1580.072,
+            "realized_component_usd": 140.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9317184929903105,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 1
+          },
+          "Path-D": {
+            "final_pnl_usd": -4762.3279999999995,
+            "realized_component_usd": 28.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9486025551391642,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 1
+          },
+          "Path-E": {
+            "final_pnl_usd": 1496.072,
+            "realized_component_usd": 56.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9319421088487401,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 1
+          }
+        },
+        "summary": {
+          "best_case_final_pnl_usd": 1636.072,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.14313099041533545,
+          "operational_complexity": 1,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9351698440395578
+        }
+      },
+      "O2 L3 ladder only": {
+        "per_path": {
+          "Path-A": {
+            "final_pnl_usd": 572.3092881355931,
+            "realized_component_usd": 200.08728813559318,
+            "remaining_btc": 0.3659999999999999,
+            "margin_coeff": 0.9344012516082495,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-B": {
+            "final_pnl_usd": 615.7330169491524,
+            "realized_component_usd": 243.5110169491525,
+            "remaining_btc": 0.3659999999999999,
+            "margin_coeff": 0.9342856535797393,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-C": {
+            "final_pnl_usd": 601.258440677966,
+            "realized_component_usd": 229.03644067796606,
+            "remaining_btc": 0.3659999999999999,
+            "margin_coeff": 0.9343241862559094,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-D": {
+            "final_pnl_usd": -4762.3279999999995,
+            "realized_component_usd": 28.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9486025551391642,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-E": {
+            "final_pnl_usd": 579.5465762711863,
+            "realized_component_usd": 207.3245762711864,
+            "remaining_btc": 0.3659999999999999,
+            "margin_coeff": 0.9343819852701645,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          }
+        },
+        "summary": {
+          "best_case_final_pnl_usd": 615.7330169491524,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.29008285049006327,
+          "operational_complexity": 2,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9371991263706454
+        }
+      },
+      "O3 L3 + capped bot": {
+        "per_path": {
+          "Path-A": {
+            "final_pnl_usd": 461.38137279999114,
+            "realized_component_usd": 461.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9346965520964825,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 3
+          },
+          "Path-B": {
+            "final_pnl_usd": 461.38137279999114,
+            "realized_component_usd": 461.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9346965520964825,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 3
+          },
+          "Path-C": {
+            "final_pnl_usd": 461.38137279999114,
+            "realized_component_usd": 461.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9346965520964825,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 3
+          },
+          "Path-D": {
+            "final_pnl_usd": -4762.3279999999995,
+            "realized_component_usd": 28.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9486025551391642,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 3
+          },
+          "Path-E": {
+            "final_pnl_usd": 461.38137279999114,
+            "realized_component_usd": 461.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9346965520964825,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 3
+          }
+        },
+        "summary": {
+          "best_case_final_pnl_usd": 461.38137279999114,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.5985704444728321,
+          "operational_complexity": 3,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9374777527050189
+        }
+      },
+      "O4 O3 + parallel LONG V3": {
+        "per_path": {
+          "Path-A": {
+            "final_pnl_usd": 454.38137279999114,
+            "realized_component_usd": 454.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 1.0060797451530923,
+            "capital_locked_est_usd": 28862.681999999997,
+            "complexity": 4
+          },
+          "Path-B": {
+            "final_pnl_usd": 412.38137279999114,
+            "realized_component_usd": 412.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 1.0061915530823071,
+            "capital_locked_est_usd": 28862.681999999997,
+            "complexity": 4
+          },
+          "Path-C": {
+            "final_pnl_usd": 426.38137279999114,
+            "realized_component_usd": 426.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 1.0061542837725688,
+            "capital_locked_est_usd": 28862.681999999997,
+            "complexity": 4
+          },
+          "Path-D": {
+            "final_pnl_usd": -4769.3279999999995,
+            "realized_component_usd": 21.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 1.019985748195774,
+            "capital_locked_est_usd": 28862.681999999997,
+            "complexity": 4
+          },
+          "Path-E": {
+            "final_pnl_usd": 447.38137279999114,
+            "realized_component_usd": 447.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 1.0060983798079615,
+            "capital_locked_est_usd": 28862.681999999997,
+            "complexity": 4
+          }
+        },
+        "summary": {
+          "best_case_final_pnl_usd": 454.38137279999114,
+          "worst_case_final_pnl_usd": -4769.3279999999995,
+          "capital_efficiency": 0.012206249517629475,
+          "operational_complexity": 4,
+          "robustness_score": -4769.3279999999995,
+          "avg_margin_coeff": 1.0089019420023406
+        }
+      },
+      "O5 Wait cascade, P-3 only": {
+        "per_path": {
+          "Path-A": {
+            "final_pnl_usd": 1454.072,
+            "realized_component_usd": 13.999999999999988,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9320539167779549,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-B": {
+            "final_pnl_usd": 1636.072,
+            "realized_component_usd": 196.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9315694157513575,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-C": {
+            "final_pnl_usd": 1566.072,
+            "realized_component_usd": 125.99999999999999,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9317557623000489,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-D": {
+            "final_pnl_usd": -4762.3279999999995,
+            "realized_component_usd": 28.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9486025551391642,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          },
+          "Path-E": {
+            "final_pnl_usd": 1482.072,
+            "realized_component_usd": 41.999999999999986,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9319793781584784,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 2
+          }
+        },
+        "summary": {
+          "best_case_final_pnl_usd": 1636.072,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.12971246006389775,
+          "operational_complexity": 2,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9351922056254008
+        }
+      },
+      "O6 O3 + opportunistic P-3": {
+        "per_path": {
+          "Path-A": {
+            "final_pnl_usd": 447.38137279999114,
+            "realized_component_usd": 447.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9347338214062207,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 4
+          },
+          "Path-B": {
+            "final_pnl_usd": 461.38137279999114,
+            "realized_component_usd": 461.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9346965520964825,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 4
+          },
+          "Path-C": {
+            "final_pnl_usd": 447.38137279999114,
+            "realized_component_usd": 447.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9347338214062207,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 4
+          },
+          "Path-D": {
+            "final_pnl_usd": -4762.3279999999995,
+            "realized_component_usd": 28.0,
+            "remaining_btc": 1.416,
+            "margin_coeff": 0.9486025551391642,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 4
+          },
+          "Path-E": {
+            "final_pnl_usd": 447.38137279999114,
+            "realized_component_usd": 447.38137279999114,
+            "remaining_btc": 0,
+            "margin_coeff": 0.9347338214062207,
+            "capital_locked_est_usd": 0.0,
+            "complexity": 4
+          }
+        },
+        "summary": {
+          "best_case_final_pnl_usd": 461.38137279999114,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.5851519141213944,
+          "operational_complexity": 4,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9375001142908618
+        }
+      }
+    },
+    "ranking": [
+      [
+        "O1 Pure hold",
+        -1838.5540697663778,
+        {
+          "best_case_final_pnl_usd": 1636.072,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.14313099041533545,
+          "operational_complexity": 1,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9351698440395578
+        }
+      ],
+      [
+        "O5 Wait cascade, P-3 only",
+        -1889.9003951186903,
+        {
+          "best_case_final_pnl_usd": 1636.072,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.12971246006389775,
+          "operational_complexity": 2,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9351922056254008
+        }
+      ],
+      [
+        "O2 L3 ladder only",
+        -2078.332536835292,
+        {
+          "best_case_final_pnl_usd": 615.7330169491524,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.29008285049006327,
+          "operational_complexity": 2,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9371991263706454
+        }
+      ],
+      [
+        "O3 L3 + capped bot",
+        -2128.409831533722,
+        {
+          "best_case_final_pnl_usd": 461.38137279999114,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.5985704444728321,
+          "operational_complexity": 3,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9374777527050189
+        }
+      ],
+      [
+        "O6 O3 + opportunistic P-3",
+        -2179.756156886034,
+        {
+          "best_case_final_pnl_usd": 461.38137279999114,
+          "worst_case_final_pnl_usd": -4762.3279999999995,
+          "capital_efficiency": 0.5851519141213944,
+          "operational_complexity": 4,
+          "robustness_score": -4762.3279999999995,
+          "avg_margin_coeff": 0.9375001142908618
+        }
+      ],
+      [
+        "O4 O3 + parallel LONG V3",
+        -2255.8810888887065,
+        {
+          "best_case_final_pnl_usd": 454.38137279999114,
+          "worst_case_final_pnl_usd": -4769.3279999999995,
+          "capital_efficiency": 0.012206249517629475,
+          "operational_complexity": 4,
+          "robustness_score": -4769.3279999999995,
+          "avg_margin_coeff": 1.0089019420023406
+        }
+      ]
+    ]
+  },
+  "compute_time_seconds": 0.19019789999583736
+}
