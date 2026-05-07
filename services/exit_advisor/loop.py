@@ -25,7 +25,7 @@ from .telegram_renderer import format_advisory_alert
 logger = logging.getLogger(__name__)
 
 _LOOP_INTERVAL_SEC = 120          # 2-min default tick
-_DEDUP_WINDOW_SEC = 1800          # 30-min dedup per scenario_class
+_DEDUP_WINDOW_SEC = 7200          # 2h dedup per scenario_class — reduced spam after operator complaint 2026-05-07
 _ROOT = Path(__file__).resolve().parents[2]
 
 # Severity ordering for escalation detection
