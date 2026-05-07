@@ -298,6 +298,67 @@ def _interpret_oi_funding(f: dict) -> list[str]:
     return out
 
 
+def _interpret_global_market(f: dict) -> list[str]:
+    """BTC.D + total mcap context (C3)."""
+    out: list[str] = []
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        p = _Path("state/deriv_live.json")
+        if not p.exists():
+            return out
+        data = _json.loads(p.read_text(encoding="utf-8"))
+        g = data.get("global", {}) or {}
+        btc_d = g.get("btc_dominance_pct")
+        eth_d = g.get("eth_dominance_pct")
+        mcap_chg = g.get("mcap_change_24h_pct")
+        total = g.get("total_mcap_usd")
+        if btc_d is not None:
+            out.append(f"BTC.D {btc_d}%, ETH.D {eth_d}% — деньги {'в BTC' if btc_d > 55 else 'в альтах' if btc_d < 50 else 'распределены'}")
+        if mcap_chg is not None:
+            arrow = "↑" if mcap_chg > 0 else "↓"
+            out.append(f"Total mcap 24h {arrow} {mcap_chg:+.2f}% (${total/1e12:.2f}T)" if total else f"Total mcap 24h {arrow} {mcap_chg:+.2f}%")
+    except Exception:
+        logger.debug("global_market failed", exc_info=True)
+    return out
+
+
+def _interpret_flip_history(f: dict) -> list[str]:
+    """Funding/premium flip history + OI spike (A1+A2+A4)."""
+    out: list[str] = []
+    try:
+        from services.deriv_live.flip_tracker import detect_flips, detect_oi_spike
+
+        flips = detect_flips()
+        if flips.get("funding"):
+            ff = flips["funding"]
+            cur = ff.get("current") or 0
+            cur_pct = cur * 100
+            streak = ff.get("current_streak_hours")
+            sign_word = "положительный" if ff["current_sign"] == "+" else "отрицательный"
+            if streak is not None:
+                last_val = ff["last_flip"]["value"] * 100
+                out.append(
+                    f"Funding {cur_pct:+.4f}% ({sign_word}) — держится {streak:.1f}ч "
+                    f"(до этого был {last_val:+.4f}%)"
+                )
+        if flips.get("premium"):
+            pp = flips["premium"]
+            cur = pp.get("current") or 0
+            streak = pp.get("current_streak_hours")
+            sign_word = "положительный (perp выше spot)" if pp["current_sign"] == "+" else "отрицательный (perp ниже spot)"
+            if streak is not None:
+                out.append(f"Premium {cur:+.3f}% — {sign_word}, держится {streak:.1f}ч")
+
+        spike = detect_oi_spike()
+        if spike:
+            arrow = "↑" if spike["direction"] == "up" else "↓"
+            out.append(f"OI 15min {arrow} {spike['oi_change_15min_pct']:+.2f}% — крупные позиции {'открываются' if spike['direction'] == 'up' else 'закрываются'}")
+    except Exception:
+        logger.exception("advisor_v2.flip_history_failed")
+    return out
+
+
 def _interpret_long_short(f: dict) -> list[str]:
     """Long/Short market sentiment (Binance global + top traders + Bybit + taker)."""
     out: list[str] = []
@@ -686,6 +747,22 @@ def build_advisor_v2_text() -> str:
         lines.append("")
         lines.append("OI / FUNDING / КРАУДНОСТЬ")
         for x in oi_funding:
+            lines.append(f"  • {x}")
+
+    # ── Global market (C3): BTC dominance + total mcap
+    glob = _interpret_global_market(features)
+    if glob:
+        lines.append("")
+        lines.append("РЫНОК ГЛОБАЛЬНО")
+        for x in glob:
+            lines.append(f"  • {x}")
+
+    # ── Flip history (A1+A2+A4): funding/premium streak + OI spike
+    flip = _interpret_flip_history(features)
+    if flip:
+        lines.append("")
+        lines.append("ИСТОРИЯ FLIP / SPIKE")
+        for x in flip:
             lines.append(f"  • {x}")
 
     # ── Long/Short ratio (рыночная дельта)

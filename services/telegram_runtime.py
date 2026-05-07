@@ -1336,6 +1336,47 @@ class TelegramBotApp:
             except Exception as exc:
                 self.bot.send_message(chat_id, f'Ошибка: {exc}')
 
+        # ── /watch (D2 watchlist 2026-05-07) ──────────────────────────────────
+        # Operator-defined alerts когда условие срабатывает.
+        # Examples: /watch add funding > 0.01 ; /watch del 4f3a8b1 ; /watch
+        @self.bot.message_handler(commands=['watch', 'watchlist'])
+        def handle_watch(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.watchlist import (
+                load_rules, format_rule_summary, add_rule as _add,
+                remove_rule as _remove, toggle_rule as _toggle,
+            )
+            text = (message.text or "").strip()
+            parts = text.split(maxsplit=2)
+            if len(parts) <= 1:
+                self.bot.send_message(chat_id, format_rule_summary(load_rules()))
+                return
+            sub = parts[1].lower()
+            arg = parts[2] if len(parts) > 2 else ""
+            if sub == "add":
+                rule = _add(arg)
+                if rule is None:
+                    self.bot.send_message(chat_id, f"❌ Не разобрал правило '{arg}'. Формат: /watch add <field> <op> <value>")
+                else:
+                    self.bot.send_message(chat_id, f"✅ Добавлено [{rule.id}]: {rule.field} {rule.op} {rule.threshold}")
+            elif sub in ("del", "delete", "remove", "rm"):
+                if _remove(arg):
+                    self.bot.send_message(chat_id, f"✅ Удалено [{arg}]")
+                else:
+                    self.bot.send_message(chat_id, f"❌ Не найдено [{arg}]")
+            elif sub in ("toggle", "on", "off"):
+                rule = _toggle(arg)
+                if rule:
+                    flag = "ВКЛ" if rule.enabled else "ВЫКЛ"
+                    self.bot.send_message(chat_id, f"✅ [{rule.id}] {flag}")
+                else:
+                    self.bot.send_message(chat_id, f"❌ Не найдено [{arg}]")
+            else:
+                self.bot.send_message(chat_id, "Команды: /watch | /watch add <rule> | /watch del <id> | /watch toggle <id>")
+
         # ── /momentum_check (TZ-MOMENTUM-CHECK 2026-05-07) ───────────────────
         # Intraday-tool: character движения, истощение, дивергенции, сессия,
         # liquidations, OI/funding flow. Дополняет /advise (общая картина).

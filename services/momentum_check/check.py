@@ -250,6 +250,103 @@ def _liquidation_pressure(now_utc: datetime, windows: tuple[int, ...] = (5, 15, 
 
 # ── Deriv flow ────────────────────────────────────────────────────────
 
+def _volume_profile_zones() -> dict:
+    """Compute simple 24h volume profile: POC + 70% value area.
+
+    Uses last 24h of 1m bars from market_live/market_1m.csv.
+    POC = price level with highest traded volume.
+    Value area = 70% of volume around POC.
+    """
+    out: dict = {}
+    try:
+        import pandas as pd
+        rows = _load_csv_tail(_MARKET_1M, 1440)  # 24h × 60min
+        if len(rows) < 100:
+            return out
+        df = pd.DataFrame(rows)
+        for col in ("close", "volume", "high", "low"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        df = df.dropna(subset=["close", "volume"])
+        if df.empty:
+            return out
+        # Bin prices into N buckets, sum volume
+        n_bins = 50
+        price_min = float(df["low"].min()) if "low" in df.columns else float(df["close"].min())
+        price_max = float(df["high"].max()) if "high" in df.columns else float(df["close"].max())
+        if price_max <= price_min:
+            return out
+        bin_size = (price_max - price_min) / n_bins
+        bins: list[float] = [0.0] * n_bins
+        for _, row in df.iterrows():
+            close = float(row["close"])
+            vol = float(row["volume"])
+            idx = min(int((close - price_min) / bin_size), n_bins - 1)
+            if idx >= 0:
+                bins[idx] += vol
+        if max(bins) <= 0:
+            return out
+        poc_idx = bins.index(max(bins))
+        poc_price = price_min + (poc_idx + 0.5) * bin_size
+
+        # Value area 70%: extend symmetrically from POC until 70% volume captured
+        total_vol = sum(bins)
+        target = 0.7 * total_vol
+        vol_in_va = bins[poc_idx]
+        lo, hi = poc_idx, poc_idx
+        while vol_in_va < target and (lo > 0 or hi < n_bins - 1):
+            if lo > 0 and (hi >= n_bins - 1 or bins[lo - 1] >= bins[hi + 1]):
+                lo -= 1
+                vol_in_va += bins[lo]
+            elif hi < n_bins - 1:
+                hi += 1
+                vol_in_va += bins[hi]
+            else:
+                break
+        va_low = price_min + lo * bin_size
+        va_high = price_min + (hi + 1) * bin_size
+        last_close = float(df["close"].iloc[-1])
+
+        out["poc_price"] = round(poc_price, 1)
+        out["va_low"] = round(va_low, 1)
+        out["va_high"] = round(va_high, 1)
+        out["last_close"] = round(last_close, 1)
+        out["dist_to_poc_pct"] = round((last_close / poc_price - 1) * 100, 2) if poc_price > 0 else None
+        # Position vs VA
+        if last_close > va_high:
+            out["position_vs_va"] = "above"
+        elif last_close < va_low:
+            out["position_vs_va"] = "below"
+        else:
+            out["position_vs_va"] = "inside"
+    except Exception:
+        logger.debug("_volume_profile_zones failed", exc_info=True)
+    return out
+
+
+def _structural_levels() -> dict:
+    """Read PDH/PDL/session levels from forecast features parquet (если свежий)."""
+    out: dict = {}
+    try:
+        import pandas as pd
+        df = pd.read_parquet(_ROOT / "data" / "forecast_features" / "full_features_1y.parquet")
+        if df.empty:
+            return out
+        last = df.iloc[-1]
+        for col in ("dist_to_pdh_pct", "dist_to_pdl_pct",
+                    "asia_high_broken", "asia_low_broken",
+                    "london_high_broken", "london_low_broken",
+                    "ny_am_high_broken", "ny_am_low_broken",
+                    "bars_since_london_high_break", "bars_since_ny_am_high_break"):
+            if col in df.columns:
+                v = last.get(col)
+                if pd.notna(v):
+                    out[col] = float(v) if not isinstance(v, bool) else bool(v)
+    except Exception:
+        logger.debug("_structural_levels failed", exc_info=True)
+    return out
+
+
 def _deriv_flow() -> dict:
     if not _DERIV_LIVE.exists():
         return {"available": False}
@@ -322,6 +419,8 @@ class MomentumSnapshot:
     deriv: dict
     verdict: str
     notes: list[str]
+    structural: dict = None  # type: ignore
+    volume_profile: dict = None  # type: ignore
 
 
 def build_momentum_check(now_utc: Optional[datetime] = None) -> MomentumSnapshot:
@@ -351,6 +450,9 @@ def build_momentum_check(now_utc: Optional[datetime] = None) -> MomentumSnapshot
         divergence=divergence, liquidations=liquidations, deriv=deriv,
     )
 
+    structural = _structural_levels()
+    volume_profile = _volume_profile_zones()
+
     return MomentumSnapshot(
         generated_at=now.isoformat(timespec="seconds"),
         session=sess,
@@ -363,6 +465,8 @@ def build_momentum_check(now_utc: Optional[datetime] = None) -> MomentumSnapshot
         deriv=deriv,
         verdict=verdict,
         notes=notes,
+        structural=structural,
+        volume_profile=volume_profile,
     )
 
 
@@ -540,6 +644,50 @@ def format_momentum_check(snap: MomentumSnapshot) -> str:
             deriv_parts.append(f"premium {prem:+.3f}%")
         if deriv_parts:
             lines.append(f"Deriv: {' | '.join(deriv_parts)}")
+            lines.append("")
+
+    # Volume profile zones (C2, 2026-05-07): POC + value area
+    if snap.volume_profile and snap.volume_profile.get("poc_price"):
+        vp = snap.volume_profile
+        position = vp.get("position_vs_va")
+        pos_text = {"above": "ВЫШЕ value area", "below": "НИЖЕ value area", "inside": "внутри value area"}.get(position, position)
+        lines.append("Volume Profile (24h):")
+        lines.append(f"  POC: ${vp['poc_price']:,.0f} (дистанция {vp.get('dist_to_poc_pct', 0):+.2f}%)")
+        lines.append(f"  Value area: ${vp['va_low']:,.0f} — ${vp['va_high']:,.0f}")
+        lines.append(f"  Цена сейчас: {pos_text}")
+        lines.append("")
+
+    # Structural levels (C1, 2026-05-07): PDH/PDL + sessions
+    if snap.structural:
+        st = snap.structural
+        struct_parts = []
+        pdh = st.get("dist_to_pdh_pct")
+        pdl = st.get("dist_to_pdl_pct")
+        if pdh is not None:
+            if abs(pdh) < 0.2:
+                struct_parts.append(f"⚠️ Близко к PDH ({pdh:+.2f}%) — пробой/откат")
+            elif pdh < 0:
+                struct_parts.append(f"PDH выше на {abs(pdh):.2f}%")
+        if pdl is not None:
+            if abs(pdl) < 0.2:
+                struct_parts.append(f"⚠️ Близко к PDL ({pdl:+.2f}%) — пробой/откат")
+            elif pdl > 0:
+                struct_parts.append(f"PDL ниже на {abs(pdl):.2f}%")
+        breaks = []
+        if st.get("london_high_broken"):
+            breaks.append("London high")
+        if st.get("london_low_broken"):
+            breaks.append("London low")
+        if st.get("ny_am_high_broken"):
+            breaks.append("NY-AM high")
+        if st.get("ny_am_low_broken"):
+            breaks.append("NY-AM low")
+        if breaks:
+            struct_parts.append(f"Пробиты: {', '.join(breaks)}")
+        if struct_parts:
+            lines.append("Структура (PDH/PDL + сессии):")
+            for x in struct_parts:
+                lines.append(f"  • {x}")
             lines.append("")
 
     # Market Long/Short ratio (рыночная дельта позиций)

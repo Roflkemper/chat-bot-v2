@@ -130,6 +130,52 @@ def _fetch_binance_long_short(symbol: str) -> dict | None:
     return out or None
 
 
+def _fetch_market_cap_global() -> dict | None:
+    """CoinGecko /global — total market cap + BTC dominance (free, no auth).
+
+    Rate limit: 30 calls/min. Cached в state снимке (poll каждые 5 мин = OK).
+    """
+    try:
+        resp = requests.get("https://api.coingecko.com/api/v3/global", timeout=10)
+        if resp.status_code != 200:
+            return None
+        data = resp.json().get("data", {})
+        out: dict = {}
+        # Total market cap USD
+        mcap = data.get("total_market_cap", {})
+        if isinstance(mcap, dict):
+            out["total_mcap_usd"] = mcap.get("usd")
+        # BTC dominance %
+        dom = data.get("market_cap_percentage", {})
+        if isinstance(dom, dict):
+            out["btc_dominance_pct"] = round(float(dom.get("btc", 0)), 2)
+            out["eth_dominance_pct"] = round(float(dom.get("eth", 0)), 2)
+        # 24h change
+        if "market_cap_change_percentage_24h_usd" in data:
+            out["mcap_change_24h_pct"] = round(float(data["market_cap_change_percentage_24h_usd"]), 2)
+        return out or None
+    except (requests.RequestException, KeyError, ValueError, TypeError):
+        return None
+
+
+def _fetch_bybit_oi(symbol: str) -> float | None:
+    """Bybit V5 GET /v5/market/open-interest — current OI for linear."""
+    try:
+        resp = requests.get(
+            "https://api.bybit.com/v5/market/open-interest",
+            params={"category": "linear", "symbol": symbol, "intervalTime": "5min", "limit": 1},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        lst = resp.json().get("result", {}).get("list", [])
+        if not lst:
+            return None
+        return float(lst[0].get("openInterest", 0))
+    except (requests.RequestException, KeyError, ValueError, TypeError):
+        return None
+
+
 def _fetch_bybit_long_short(symbol: str) -> dict | None:
     """Bybit V5 GET /v5/market/account-ratio — buy/sell ratio."""
     url = "https://api.bybit.com/v5/market/account-ratio"
@@ -162,6 +208,10 @@ def build_snapshot() -> dict:
     out = {
         "last_updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
+    # Global market context (BTC.D, total mcap, eth.D) — fetched once per snapshot
+    global_ctx = _fetch_market_cap_global()
+    if global_ctx:
+        out["global"] = global_ctx
     for sym in SYMBOLS:
         oi = _fetch_oi(sym)
         funding = _fetch_funding(sym)
@@ -189,6 +239,13 @@ def build_snapshot() -> dict:
         bybit_ls = _fetch_bybit_long_short(sym)
         if bybit_ls:
             sym_data.update(bybit_ls)
+        # Multi-exchange OI (A3, 2026-05-07): только для BTCUSDT (другие — низкий OI на Bybit)
+        if sym == "BTCUSDT":
+            bybit_oi = _fetch_bybit_oi(sym)
+            if bybit_oi:
+                sym_data["bybit_oi_native"] = bybit_oi
+                if oi:
+                    sym_data["total_oi_native"] = oi["oi_native"] + bybit_oi
 
         if sym_data:
             out[sym] = sym_data
