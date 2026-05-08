@@ -795,6 +795,126 @@ def _summary_verdict(regime: dict, f: dict, setups: list[dict]) -> tuple[str, li
     return verdict, reasons
 
 
+# ── Grid-bot pause advisor (TZ-PAUSE-ADVISOR 2026-05-08) ─────────────────
+#
+# Backtest 2026-05-08 (Codex run_pause_compare on 2y BTCUSDT canonical bots):
+# always-on grid lost 98.4% (final $285 of $15k, liquidated 2024-12-05). Of
+# 32 active pause configs, only 4 survived — all with movement>=2.0% over
+# 60min and pullback_bars=2. Sweet spot: m=2.0% w=60min p=2 / pb=1.0% sm=20
+# → final $13,473, no liquidation. m=2.5%+ or p>=3 still got liquidated.
+#
+# We re-evaluate the same triggers LIVE here so /advise can warn the operator
+# when grid-bot pause is recommended right now.
+
+PAUSE_MOVEMENT_PCT = 2.0
+PAUSE_WINDOW_MIN = 60
+PAUSE_NO_PULLBACK_BARS = 2
+
+
+def _compute_pause_signal() -> dict:
+    """Live evaluation of grid-bot pause triggers for SHORT and LONG sides.
+
+    Returns a dict with keys:
+      short_pause: True if SHORT bots should pause (BTC rallying against them)
+      long_pause:  True if LONG bots should pause (BTC dumping against them)
+      change_60m_pct, last_close, peak_60m, trough_60m, trend_bars_up, trend_bars_down
+
+    Uses last 5m bars for the 60min window + last 4 hourly bars for trend-bars
+    counting (mirrors engine_v2.state_machine algorithm).
+    """
+    out = {
+        "short_pause": False,
+        "long_pause": False,
+        "change_60m_pct": None,
+        "last_close": None,
+        "trend_bars_up": 0,
+        "trend_bars_down": 0,
+    }
+    try:
+        from core.data_loader import load_klines
+        import pandas as pd
+
+        # 5m bars for the 60-minute window check (12 bars = exactly 60 min).
+        df_5m = load_klines(symbol="BTCUSDT", timeframe="5m", limit=12)
+        if df_5m is None or df_5m.empty:
+            return out
+        last_close = float(df_5m["close"].iloc[-1])
+        oldest = float(df_5m["close"].iloc[0])
+        change_pct = (last_close - oldest) / oldest * 100.0
+        out["last_close"] = last_close
+        out["change_60m_pct"] = change_pct
+        out["peak_60m"] = float(df_5m["high"].max())
+        out["trough_60m"] = float(df_5m["low"].min())
+
+        # Hourly bars for trend-bar counter (count consecutive completed
+        # hourly bars by direction, last to first).
+        df_1h = load_klines(symbol="BTCUSDT", timeframe="1h", limit=8)
+        if df_1h is not None and not df_1h.empty:
+            # Use last 4 closed bars (skip the still-forming current one).
+            closed = df_1h.iloc[-5:-1] if len(df_1h) >= 5 else df_1h.iloc[:-1]
+            up_bars = 0
+            down_bars = 0
+            for _, bar in closed.iloc[::-1].iterrows():
+                if bar["close"] > bar["open"]:
+                    if down_bars == 0:
+                        up_bars += 1
+                    else:
+                        break
+                elif bar["close"] < bar["open"]:
+                    if up_bars == 0:
+                        down_bars += 1
+                    else:
+                        break
+                else:
+                    break
+            out["trend_bars_up"] = up_bars
+            out["trend_bars_down"] = down_bars
+
+        # SHORT pause: rally against shorts.
+        if change_pct >= PAUSE_MOVEMENT_PCT and out["trend_bars_up"] >= PAUSE_NO_PULLBACK_BARS:
+            out["short_pause"] = True
+        # LONG pause: dump against longs.
+        if change_pct <= -PAUSE_MOVEMENT_PCT and out["trend_bars_down"] >= PAUSE_NO_PULLBACK_BARS:
+            out["long_pause"] = True
+    except Exception:
+        logger.exception("advisor_v2.pause_signal_failed")
+    return out
+
+
+def _format_pause_block(sig: dict) -> list[str]:
+    """Render the pause-advisor block lines. Returns [] when nothing to show."""
+    if sig.get("change_60m_pct") is None:
+        return []
+
+    change = sig["change_60m_pct"]
+    last_close = sig["last_close"]
+    up_bars = sig["trend_bars_up"]
+    down_bars = sig["trend_bars_down"]
+    short_pause = sig.get("short_pause", False)
+    long_pause = sig.get("long_pause", False)
+
+    lines: list[str] = []
+
+    if short_pause or long_pause:
+        if short_pause:
+            lines.append("🚨 ПАУЗА GRID — SHORT")
+            lines.append(f"  BTC за час: {change:+.2f}% ({up_bars} бычьих свечей подряд)")
+            lines.append(f"  Триггер: ≥+{PAUSE_MOVEMENT_PCT}% за 60min И ≥{PAUSE_NO_PULLBACK_BARS} bull-свечи")
+            lines.append("  Рекомендация: остановить SHORT-ботов до отката ≥0.7-1.0% от пика")
+            lines.append("  Backtest 2y: без паузы → ликвидация Dec-2024 ($285 из $15k)")
+        if long_pause:
+            lines.append("🚨 ПАУЗА GRID — LONG")
+            lines.append(f"  BTC за час: {change:+.2f}% ({down_bars} медвежьих свечей подряд)")
+            lines.append(f"  Триггер: ≥-{PAUSE_MOVEMENT_PCT}% за 60min И ≥{PAUSE_NO_PULLBACK_BARS} bear-свечи")
+            lines.append("  Рекомендация: остановить LONG-ботов до отскока ≥0.7-1.0% от дна")
+    else:
+        # Quiet status — show how close we are to a trigger so operator has context.
+        lines.append("✅ GRID PAUSE: триггеров нет")
+        lines.append(f"  BTC за час: {change:+.2f}% (порог ±{PAUSE_MOVEMENT_PCT}%)  •  bull-свечей подряд: {up_bars} / bear-свечей: {down_bars} (порог {PAUSE_NO_PULLBACK_BARS})")
+
+    return lines
+
+
 def _read_margin_block() -> dict | None:
     """Read margin block from state_latest.json (set by state_snapshot_loop).
 
@@ -872,6 +992,16 @@ def build_advisor_v2_text() -> str:
             lines.append(f"  ⚠️ Margin data {age_min/60:.1f}h old — auto-poll или /margin")
         elif age_min > 60:
             lines.append(f"  Margin data {age_min:.0f}min old")
+
+    # ── Grid-bot pause advisor (TZ-PAUSE-ADVISOR 2026-05-08).
+    # Backtest-validated triggers (m=2.0% w=60min p=2 — only config that
+    # survived the Dec-2024 rally on 2y data).
+    pause_signal = _compute_pause_signal()
+    pause_lines = _format_pause_block(pause_signal)
+    if pause_lines:
+        lines.append("")
+        for x in pause_lines:
+            lines.append(x)
 
     # ── Regime multi-TF
     lines.append("")
