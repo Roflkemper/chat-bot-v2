@@ -96,6 +96,33 @@ state/advise_null_signals.jsonl
 state/advise_action_match.jsonl
 state/advise_followup.jsonl
 
+# Runtime live-state files (machine-generated, change every few seconds — never commit)
+state/deriv_live.json
+state/deriv_live_history.jsonl
+state/regime_v2_state.json
+state/decision_state.json
+state/setups.jsonl
+state/setups_active.json
+state/setup_outcomes.jsonl
+state/paper_trades.jsonl
+state/paper_trader_dedup.json
+state/cascade_alert_dedup.json
+state/telegram_sent_dedup.json
+state/stale_monitor_state.json
+state/signal_alert_last_sent.json
+state/advise_audit.jsonl
+state/advise_backtest_*.jsonl
+state/advise_backtest_*.summary.json
+state/margin_automated.jsonl
+state/manual_overrides/
+state/decision_log/
+state/_archive/
+storage/market_state.json
+data/exit_advisor/dd_onset_cache.json
+data/forecast_features/latest_forecast.json
+data/regime/switcher_state.json
+docs/STATE/ohlcv_ingest_log.jsonl
+
 # Local Claude Code settings (operator-specific permissions)
 .claude/settings.json
 .claude/scheduled_tasks.lock

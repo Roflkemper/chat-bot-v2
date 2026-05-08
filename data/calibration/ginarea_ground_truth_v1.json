@@ -1,0 +1,180 @@
+{
+  "version": "v1",
+  "captured_at": "2026-05-02",
+  "captured_by": "operator screenshots Screenshot_2026-04-30_*",
+  "period": {"start": "2025-05-01", "end": "2026-04-30"},
+  "notes": "8 GinArea native backtest runs. 6 SHORT (target_pct sweep 0.19-0.45, all others constant) + 2 LONG COIN-M. Ideal for calibration: 6 SHORT points form a clean single-parameter sweep.",
+  "common_short_params": {
+    "symbol": "BTCUSDT",
+    "side": "short",
+    "contract_type": "USDT_FUTURES",
+    "in_stop_pct": 0.03,
+    "min_stop_pct": 0.01,
+    "max_stop_pct": 0.04,
+    "grid_step_pct": 0.03,
+    "order_size_btc": 0.003,
+    "max_trigger_number": 800,
+    "indicator_period": 30,
+    "indicator_threshold_pct": 0.3
+  },
+  "common_long_params": {
+    "symbol": "BTCUSDT",
+    "side": "long",
+    "contract_type": "COIN_FUTURES",
+    "in_stop_pct": 0.018,
+    "min_stop_pct": 0.01,
+    "max_stop_pct": 0.30,
+    "grid_step_pct": 0.03,
+    "order_size_usd": 200,
+    "max_trigger_number": 800,
+    "indicator_period": 30,
+    "indicator_threshold_pct": 0.3
+  },
+  "points": [
+    {
+      "id": "5658350391",
+      "side": "short",
+      "contract_type": "USDT_FUTURES",
+      "target_pct": 0.21,
+      "ginarea_results": {
+        "realized_pnl_usd": 34791.83,
+        "trading_volume_usd": 48937853,
+        "num_triggers": 559,
+        "unrealized_pnl_usd": -13414.06,
+        "notes": "From screenshot. unrealized = open position at snapshot date."
+      }
+    },
+    {
+      "id": "4929609976",
+      "side": "short",
+      "contract_type": "USDT_FUTURES",
+      "target_pct": 0.45,
+      "ginarea_results": {
+        "realized_pnl_usd": 49782.51,
+        "trading_volume_usd": 26676981,
+        "num_triggers": 617,
+        "unrealized_pnl_usd": -15352.82
+      }
+    },
+    {
+      "id": "5380108649",
+      "side": "short",
+      "contract_type": "USDT_FUTURES",
+      "target_pct": 0.35,
+      "ginarea_results": {
+        "realized_pnl_usd": 46166.43,
+        "trading_volume_usd": 33000181,
+        "num_triggers": 614,
+        "unrealized_pnl_usd": -15198.05
+      }
+    },
+    {
+      "id": "5360096295",
+      "side": "short",
+      "contract_type": "USDT_FUTURES",
+      "target_pct": 0.30,
+      "ginarea_results": {
+        "realized_pnl_usd": 42616.75,
+        "trading_volume_usd": 37010264,
+        "num_triggers": 598,
+        "unrealized_pnl_usd": -14384.17
+      }
+    },
+    {
+      "id": "4714585329",
+      "side": "short",
+      "contract_type": "USDT_FUTURES",
+      "target_pct": 0.25,
+      "ginarea_results": {
+        "realized_pnl_usd": 38909.93,
+        "trading_volume_usd": 42780857,
+        "num_triggers": 582,
+        "unrealized_pnl_usd": -14045.53
+      }
+    },
+    {
+      "id": "5181061252",
+      "side": "short",
+      "contract_type": "USDT_FUTURES",
+      "target_pct": 0.19,
+      "ginarea_results": {
+        "realized_pnl_usd": 31746.86,
+        "trading_volume_usd": 52666201,
+        "num_triggers": 589,
+        "unrealized_pnl_usd": -14447.90
+      }
+    },
+    {
+      "id": "5975887092",
+      "side": "long",
+      "contract_type": "COIN_FUTURES",
+      "target_pct": 0.45,
+      "ginarea_results": {
+        "realized_pnl_btc": 0.15423005,
+        "trading_volume_usd": 8344000,
+        "num_triggers": null,
+        "unrealized_pnl_btc": -0.63096202
+      }
+    },
+    {
+      "id": "4373073010",
+      "side": "long",
+      "contract_type": "COIN_FUTURES",
+      "target_pct": 0.25,
+      "ginarea_results": {
+        "realized_pnl_btc": 0.12486136,
+        "trading_volume_usd": 14211200,
+        "num_triggers": null,
+        "unrealized_pnl_btc": -0.62173048
+      }
+    },
+    {
+      "id": "5888109809",
+      "side": "long",
+      "contract_type": "COIN_FUTURES",
+      "target_pct": 0.50,
+      "ginarea_results": {
+        "realized_pnl_btc": 0.1541217,
+        "trading_volume_usd": 7608000,
+        "num_triggers": null,
+        "unrealized_pnl_btc": -0.63409573
+      }
+    },
+    {
+      "id": "5989606209",
+      "side": "long",
+      "contract_type": "COIN_FUTURES",
+      "target_pct": 0.35,
+      "ginarea_results": {
+        "realized_pnl_btc": 0.1428,
+        "trading_volume_usd": 10700000,
+        "num_triggers": null,
+        "unrealized_pnl_btc": -0.6215
+      }
+    },
+    {
+      "id": "5342519228",
+      "side": "long",
+      "contract_type": "COIN_FUTURES",
+      "target_pct": 0.30,
+      "ginarea_results": {
+        "realized_pnl_btc": 0.1329,
+        "trading_volume_usd": 12200000,
+        "num_triggers": null,
+        "unrealized_pnl_btc": -0.6219
+      }
+    },
+    {
+      "id": "5303833401",
+      "side": "long",
+      "contract_type": "COIN_FUTURES",
+      "target_pct": 0.21,
+      "ginarea_results": {
+        "realized_pnl_btc": 0.1164,
+        "trading_volume_usd": 17000000,
+        "num_triggers": null,
+        "unrealized_pnl_btc": -0.6228
+      }
+    }
+  ]
+}
