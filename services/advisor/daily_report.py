@@ -96,14 +96,32 @@ def _paper_summary(events: list[dict]) -> dict:
 
     def _agg(evs: list[dict]) -> dict:
         if not evs:
-            return {"n": 0, "wins": 0, "wr_pct": 0.0, "net_pnl_usd": 0.0}
+            return {"n": 0, "wins": 0, "wr_pct": 0.0, "net_pnl_usd": 0.0,
+                    "sharpe": 0.0, "sortino": 0.0}
         w = sum(1 for e in evs if (e.get("realized_pnl_usd") or 0) > 0)
         n = sum(e.get("realized_pnl_usd") or 0 for e in evs)
+        # Sharpe / Sortino per-trade (no annualization — weekly view)
+        pnls = [e.get("realized_pnl_usd") or 0 for e in evs]
+        sharpe = 0.0
+        sortino = 0.0
+        if len(pnls) >= 2:
+            import statistics
+            mean = statistics.mean(pnls)
+            std = statistics.stdev(pnls)
+            if std > 0:
+                sharpe = round(mean / std, 2)
+            losses = [p for p in pnls if p < 0]
+            if len(losses) >= 2:
+                downside = statistics.stdev(losses)
+                if downside > 0:
+                    sortino = round(mean / downside, 2)
         return {
             "n": len(evs),
             "wins": w,
             "wr_pct": round(100 * w / max(1, len(evs)), 1),
             "net_pnl_usd": round(n, 2),
+            "sharpe": sharpe,
+            "sortino": sortino,
         }
 
     return {
@@ -311,17 +329,18 @@ def build_weekly_report(now: Optional[datetime] = None) -> str:
         if (cp.get("n") or 0) + (ap.get("n") or 0) > 0:
             lines.append("")
             lines.append("⚖️ CONFIRMED vs AUTO (closed trades, week)")
-            lines.append("  source       | N  | WR%  |   net$  | avg$/trade")
-            lines.append("  -------------|----|------|---------|-----------")
+            lines.append("  source       | N  | WR%  |   net$  | avg$  | Sharpe | Sortino")
+            lines.append("  -------------|----|------|---------|-------|--------|--------")
             for label, src in (("operator", cp), ("auto-open", ap)):
                 n = src.get("n", 0)
                 if n == 0:
-                    lines.append(f"  {label:<12} |  0 |   -  |       0 |        -")
+                    lines.append(f"  {label:<12} |  0 |   -  |       0 |     - |      - |      -")
                     continue
                 avg = src["net_pnl_usd"] / max(1, n)
                 lines.append(
                     f"  {label:<12} | {n:>2} | {src['wr_pct']:>4.1f} | "
-                    f"{src['net_pnl_usd']:>+7,.0f} | {avg:>+8.1f}"
+                    f"{src['net_pnl_usd']:>+7,.0f} | {avg:>+5.1f} | "
+                    f"{src.get('sharpe', 0):>6.2f} | {src.get('sortino', 0):>6.2f}"
                 )
             # Edge verdict
             if (cp.get("n") or 0) >= 5 and (ap.get("n") or 0) >= 5:

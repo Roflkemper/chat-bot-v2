@@ -109,6 +109,22 @@ def _start_bot7() -> None:
         _log(f"ERROR starting bot7: {e}")
 
 
+def _read_supervisor_tail() -> str:
+    """Read last 3 lines of supervisor.log for crash diagnosis."""
+    sup_log = ROOT / "logs" / "current" / "supervisor.log"
+    if not sup_log.exists():
+        return "(no supervisor.log)"
+    try:
+        size = sup_log.stat().st_size
+        with sup_log.open("rb") as fh:
+            fh.seek(max(0, size - 2000))
+            text = fh.read().decode("utf-8", errors="replace")
+        last = text.splitlines()[-3:]
+        return " || ".join(last).replace("\n", " ")[:400]
+    except OSError:
+        return "(read failed)"
+
+
 def main() -> int:
     pid = _read_pid()
     if pid is None:
@@ -116,7 +132,8 @@ def main() -> int:
         _start_bot7()
         return 0
     if not _pid_alive(pid):
-        _log(f"supervisor PID={pid} dead — restarting bot7")
+        tail = _read_supervisor_tail()
+        _log(f"supervisor PID={pid} dead — restarting bot7. Last lines: {tail}")
         _start_bot7()
         return 0
     # Alive — heartbeat once an hour to keep log compact

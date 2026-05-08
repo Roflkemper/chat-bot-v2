@@ -278,6 +278,14 @@ def _run_detectors_once(
             except Exception:
                 logger.exception("setup_detector.send_failed type=%s", setup.setup_type.value)
 
+            # P-15 paper-trader integration: auto-execute lifecycle events.
+            if setup.setup_type.value.startswith("p15_"):
+                try:
+                    from services.paper_trader.p15_handler import handle_p15_setup
+                    handle_p15_setup(setup)
+                except Exception:
+                    logger.exception("setup_detector.p15_paper_trader_failed")
+
     _save_semantic_dedup(dedup)
     return new_setups
 

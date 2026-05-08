@@ -1051,6 +1051,35 @@ def build_advisor_v2_text() -> str:
         for x in glob:
             lines.append(f"  • {x}")
 
+    # ── SNP correlation (TZ #11 — task 2026-05-09): macro context.
+    # ES=F (S&P futures) drops > 1% often precede BTC -2% within 1-2h.
+    try:
+        from services.advisor.snp_feed import get_snp_snapshot
+        snp = get_snp_snapshot()
+        if snp.last_close > 0 and not snp.error:
+            lines.append("")
+            lines.append("МАКРО (ES=F SP500 futures)")
+            ch24 = snp.change_24h_pct
+            ch1h = snp.change_1h_pct
+            if ch24 is not None:
+                arrow = "↑" if ch24 > 0 else "↓" if ch24 < 0 else "→"
+                lines.append(f"  • SNP 24ч: {arrow} {ch24:+.2f}% | 1ч: {ch1h:+.2f}%"
+                             if ch1h is not None else f"  • SNP 24ч: {arrow} {ch24:+.2f}%")
+            if snp.correlation_24h is not None:
+                corr = snp.correlation_24h
+                strength = "сильная" if abs(corr) > 0.5 else "средняя" if abs(corr) > 0.3 else "слабая"
+                direction = "положительная" if corr > 0 else "отрицательная"
+                lines.append(f"  • Корреляция BTC↔SNP (24ч): {corr:+.2f} ({strength} {direction})")
+            # Warn signal: SNP -1.5% in 24h often leads BTC down
+            if ch24 is not None and ch24 <= -1.5:
+                lines.append(f"  ⚠️ SNP резкое падение → BTC потенциально под давлением (1-2ч лаг)")
+            if ch1h is not None and ch1h <= -0.8:
+                lines.append(f"  ⚠️ SNP -{abs(ch1h):.2f}% за час → возможно близкое движение BTC")
+            if snp.is_stale:
+                lines.append(f"  (данные устарели, источник недоступен)")
+    except Exception:
+        logger.debug("advisor_v2.snp_feed_failed", exc_info=True)
+
     # ── Flip history (A1+A2+A4): funding/premium streak + OI spike
     flip = _interpret_flip_history(features)
     if flip:

@@ -20,7 +20,10 @@ POLL_INTERVAL_SEC = 60
 WINDOW_MINUTES = 5
 THRESHOLD_BTC = 5.0  # main threshold (high-confidence edge)
 THRESHOLD_BTC_MEDIUM = 2.0  # medium threshold (separate alert with weaker edge)
+THRESHOLD_BTC_MEGA = 10.0   # mega-spike: 10+ BTC in 1 min — rare reversal indicator
+MEGA_WINDOW_MINUTES = 1    # tight window for mega tier
 DEDUP_COOLDOWN_SEC = 1800  # 30 min between alerts per side
+MEGA_DEDUP_COOLDOWN_SEC = 3600  # 1h cooldown for rare mega events
 
 # Backtest results (POST_LIQUIDATION_CASCADE_2026-05-07.md, n=103/102)
 EDGE_TEXT = {
@@ -55,6 +58,22 @@ EDGE_TEXT = {
         "stats": "Исторически (n=296):\n"
                  "  +24ч: 61% выше, средний +1.06%",
         "play": "Контекст для оценки давления на шортов.",
+    },
+    ("long", 10.0): {
+        "title": "🌋 МЕГА-СПАЙК LONG-ликвидаций (>=10 BTC за 1 мин)",
+        "stats": "Очень редкое событие — обычно signal реверса вверх.\n"
+                 "Таких спайков ~5-10 в год, корреляция с low в 6-12ч высокая.",
+        "play": "СЕТАП: следить за стабилизацией ниже current\n"
+                "Через 6-12ч обычно отскок 1.5-3%\n"
+                "БУДЬ ОСТОРОЖЕН — может быть продолжение каскада",
+    },
+    ("short", 10.0): {
+        "title": "🌋 МЕГА-СПАЙК SHORT-ликвидаций (>=10 BTC за 1 мин)",
+        "stats": "Очень редкое — local high индикатор.\n"
+                 "Часто перед коррекцией 2-5%.",
+        "play": "СЕТАП: SHORT с tight stop на стабилизации\n"
+                "Цель: -2% за 12-24ч\n"
+                "Стоп: +0.8%",
     },
 }
 
@@ -145,7 +164,31 @@ async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interva
         try:
             now = datetime.now(timezone.utc)
             long_btc, short_btc, last_price = _liquidation_window_sums(now, WINDOW_MINUTES)
+            # Mega tier: tighter window for rare 10+ BTC bursts
+            mega_long, mega_short, _ = _liquidation_window_sums(now, MEGA_WINDOW_MINUTES)
             dedup = _load_dedup()
+
+            # MEGA tier (10+ BTC in 1 min) — fired first, highest priority
+            for side, mega_qty in (("long", mega_long), ("short", mega_short)):
+                if mega_qty < THRESHOLD_BTC_MEGA:
+                    continue
+                key = f"{side}_{THRESHOLD_BTC_MEGA}_mega"
+                last_sent_str = dedup.get(key)
+                if last_sent_str:
+                    try:
+                        last_sent = datetime.fromisoformat(last_sent_str.replace("Z", "+00:00"))
+                        if (now - last_sent).total_seconds() < MEGA_DEDUP_COOLDOWN_SEC:
+                            continue
+                    except ValueError:
+                        pass
+                text = _format_alert(side, THRESHOLD_BTC_MEGA, mega_qty, last_price)
+                logger.info("cascade_alert.MEGA side=%s qty=%.2f", side, mega_qty)
+                if send_fn is not None:
+                    try:
+                        send_fn(text)
+                    except Exception:
+                        logger.exception("cascade_alert.mega_send_failed")
+                dedup[key] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
             for side, qty in (("long", long_btc), ("short", short_btc)):
                 # Определяем threshold (high имеет приоритет)

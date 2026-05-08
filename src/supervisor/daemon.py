@@ -711,13 +711,29 @@ def _acquire_lock() -> bool:
 
 
 def main(components: list[str] | None = None) -> None:
+    """Supervisor entry point.
+
+    Wraps Supervisor.run() in a top-level exception handler so that any
+    uncaught error is logged with a stack trace before the process exits.
+    Without this, supervisor crashes are silent (just a missing PID file)
+    and keepalive keeps respawning every 2 min without operator visibility.
+    """
     if not _acquire_lock():
+        logger.warning("Failed to acquire supervisor lock — another instance running?")
         sys.exit(1)
     try:
         sv = Supervisor(components)
         sv.run()
+    except KeyboardInterrupt:
+        logger.info("Supervisor interrupted by KeyboardInterrupt")
+    except SystemExit:
+        raise
+    except Exception:
+        logger.exception("Supervisor crashed with uncaught exception")
+        sys.exit(2)
     finally:
         LOCK_PATH.unlink(missing_ok=True)
+        logger.info("Supervisor main() returning, lock released")
 
 
 if __name__ == "__main__":

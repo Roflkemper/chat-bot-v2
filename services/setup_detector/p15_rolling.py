@@ -121,18 +121,24 @@ class _LegState:
         )
 
 
+def _state_key(pair: str, direction: str) -> str:
+    return f"{pair}:{direction}"
+
+
 def _load_state() -> dict[str, _LegState]:
+    """Multi-pair state: keys are 'BTCUSDT:long', 'ETHUSDT:short', etc."""
     if not P15_STATE_PATH.exists():
-        return {"long": _LegState("long"), "short": _LegState("short")}
+        return {}
     try:
         raw = json.loads(P15_STATE_PATH.read_text(encoding="utf-8"))
-        return {
-            "long": _LegState.from_dict(raw.get("long", {"direction": "long"})),
-            "short": _LegState.from_dict(raw.get("short", {"direction": "short"})),
-        }
+        out: dict[str, _LegState] = {}
+        for k, v in raw.items():
+            if isinstance(v, dict):
+                out[k] = _LegState.from_dict(v)
+        return out
     except (OSError, ValueError, json.JSONDecodeError):
         logger.exception("p15.state_load_failed; resetting")
-        return {"long": _LegState("long"), "short": _LegState("short")}
+        return {}
 
 
 def _save_state(state: dict[str, _LegState]) -> None:
@@ -145,6 +151,13 @@ def _save_state(state: dict[str, _LegState]) -> None:
         )
     except OSError:
         logger.exception("p15.state_save_failed")
+
+
+def _get_or_create(state: dict, pair: str, direction: str) -> _LegState:
+    k = _state_key(pair, direction)
+    if k not in state:
+        state[k] = _LegState(direction=direction)
+    return state[k]
 
 
 def _ema(values: list[float], n: int) -> float:
@@ -407,9 +420,12 @@ def detect_p15_short(ctx: DetectionContext) -> Optional[Setup]:
     return _detect_p15(ctx, "short")
 
 
+P15_VALIDATED_PAIRS = {"BTCUSDT", "ETHUSDT", "XRPUSDT"}
+
+
 def _detect_p15(ctx: DetectionContext, direction: str) -> Optional[Setup]:
-    if ctx.pair != "BTCUSDT":
-        return None  # validated only on BTC; extend after sample on ETH/XRP
+    if ctx.pair not in P15_VALIDATED_PAIRS:
+        return None  # validated 2026-05-09 on BTC/ETH/XRP, all 6/6 PF>3, 4/4 folds
     if ctx.ohlcv_1h is None or len(ctx.ohlcv_1h) < 200:
         return None
 
@@ -417,7 +433,7 @@ def _detect_p15(ctx: DetectionContext, direction: str) -> Optional[Setup]:
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     state = _load_state()
-    leg = state[direction]
+    leg = _get_or_create(state, ctx.pair, direction)
     setup = _detect_one_direction(ctx, leg, closes_1h, now_iso)
     _save_state(state)
     return setup

@@ -93,12 +93,37 @@ def main() -> int:
         print(f"  {rid:<10} | {by_rule_24h.get(rid, 0):>5} | "
               f"{by_rule_7d.get(rid, 0):>5} | {by_rule_all.get(rid, 0):>6} | {bd_str}")
 
-    # ── Dead rules
+    # ── Dead rules with classification (cleanup task #6)
+    # Some rules legitimately never fire because their conditions are rare;
+    # others are dead because their input pipeline is broken.
+    LEGITIMATE_DEAD = {
+        "R-4": "candidate_regime field rarely populated by Classifier A — рare event normally",
+        "M-1": "margin coef < 0.60 — operator runs at 0.95+ by design, this band never reached",
+        "M-2": "margin coef in [0.60, 0.85) — operator skips this band entirely",
+        "D-1": "snapshots fresh (live tracker writes every 60s) — normal state",
+    }
+    BROKEN_PIPELINE = {
+        "T-1": "MTF phase_state.json not written — restart bot + check market_forward_analysis loop",
+        "T-2": "MTF phase_state.json not written — restart bot + check market_forward_analysis loop",
+        "T-3": "MTF phase_state.json not written — restart bot + check market_forward_analysis loop",
+    }
     dead = [rid for rid in RULE_IDS if by_rule_7d.get(rid, 0) == 0]
     if dead:
-        print(f"\nDEAD RULES (0 fires last 7d): {', '.join(dead)}")
-        print("  -> either config is correct (rule legitimately not triggered) "
-              "or the rule's input pipeline is broken (check upstream).")
+        legit = [r for r in dead if r in LEGITIMATE_DEAD]
+        broken = [r for r in dead if r in BROKEN_PIPELINE]
+        unknown = [r for r in dead if r not in LEGITIMATE_DEAD and r not in BROKEN_PIPELINE]
+        print(f"\nDEAD RULES (0 fires last 7d): {len(dead)} total")
+        if legit:
+            print(f"  LEGITIMATE (rare conditions, no action needed): {', '.join(legit)}")
+            for r in legit:
+                print(f"    {r}: {LEGITIMATE_DEAD[r]}")
+        if broken:
+            print(f"  BROKEN PIPELINE (input not arriving — needs fix): {', '.join(broken)}")
+            for r in broken:
+                print(f"    {r}: {BROKEN_PIPELINE[r]}")
+        if unknown:
+            print(f"  UNCLASSIFIED: {', '.join(unknown)}")
+            print("    -> review whether config is correct or pipeline broken.")
 
     # ── Spammers
     spam = [(rid, n) for rid, n in by_rule_24h.items() if n >= SPAM_THRESHOLD_24H]
