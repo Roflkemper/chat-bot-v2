@@ -9,12 +9,16 @@ import pytest
 
 from services.setup_detector.models import SetupType
 from services.setup_detector.multi_divergence import (
+    BOS_WINDOW_BARS,
     DIV_WINDOW_BARS,
     MIN_CONFLUENCE,
     PIVOT_LOOKBACK,
+    _build_indicators,
     _find_pivots,
+    _find_recent_lh,
     _is_double_trend_down,
     _nearest_pivot_within,
+    detect_long_div_bos_confirmed,
     detect_long_multi_divergence,
 )
 
@@ -203,3 +207,136 @@ def test_setup_registered_in_registry() -> None:
     setup_detector loop will actually call it."""
     from services.setup_detector.setup_types import DETECTOR_REGISTRY
     assert detect_long_multi_divergence in DETECTOR_REGISTRY
+
+
+# ─── DeltaCum is part of the indicator set ────────────────────────────────
+
+def test_build_indicators_includes_deltacum() -> None:
+    """DeltaCum was added 2026-05-08 as 7th confluence indicator."""
+    df = _build_bullish_divergence_df(n=65)
+    inds = _build_indicators(df)
+    assert "DeltaCum" in inds
+    assert len(inds) == 7
+    # Sanity: cumulative series should be monotonic-ish in length, no all-NaN.
+    assert inds["DeltaCum"].notna().sum() > 0
+
+
+# ─── _find_recent_lh ──────────────────────────────────────────────────────
+
+def test_find_recent_lh_returns_lower_high() -> None:
+    """Two clear strict-max peaks: bar 4 (HH at 110), bar 14 (LH at 105).
+    Looking before bar 29 with lookback=2, we expect the LH at ~bar 14."""
+    closes = [100, 102, 105, 107, 110, 108, 105, 102, 100, 98,    # 0-9: peak 110 at bar 4
+              100, 101, 103, 104, 105, 103, 100, 98, 96, 94,       # 10-19: lower peak 105 at bar 14
+              92, 90, 89, 90, 92, 94, 96, 98, 100, 102]            # 20-29: drift
+    n = len(closes)
+    df = pd.DataFrame({
+        "open":   [c - 1 for c in closes],
+        "high":   [c + 2 for c in closes],
+        "low":    [c - 2 for c in closes],
+        "close":  closes,
+        "volume": [100] * n,
+    })
+    result = _find_recent_lh(df, before_bar=29, lookback=2)
+    assert result is not None
+    lh_idx, lh_price = result
+    # LH should be the second peak around bar 14 (high ~107).
+    assert 12 <= lh_idx <= 16
+    assert lh_price < df["high"].iloc[4]  # lower than the first peak
+
+
+# ─── End-to-end CONFIRMED detector ────────────────────────────────────────
+
+def _build_div_then_bos_df(n: int = 60) -> pd.DataFrame:
+    """Synthetic series with HH at bar 9, LH at bar 24, LL pivots at bars 14
+    and 39 (LL on price, HL on indicators), then BoS at the last bar.
+
+    Layout (n=60):
+      0-9:    rise into prior HH (~80300 at bar 9)
+      10-19:  drop into valley1 ~78500 at bar 14 (LL pivot #1)
+      20-29:  recovery to LH ~79200 at bar 24 (lower than HH 80300)
+      30-39:  mild drop to valley2 ~78300 at bar 39 (LL pivot #2)
+      40-53:  slow recovery, staying BELOW LH 79200
+      54-59:  rising fast; last bar (59) closes ABOVE LH 79200 → BoS
+
+    div_conf at 39+5=44, last_bar=59, gap=15. So we need BOS_WINDOW_BARS>=15
+    OR shorten the recovery. Let's verify in dbg below; current code uses 10.
+    Solution: place last_bar = div_conf + 10 to fit. n = div_conf + 11.
+    div_conf at 44 -> n = 55. Adjust below.
+    """
+    closes = []
+    volumes = []
+    for i in range(n):
+        if i < 10:
+            # Rising into prior HH at bar 9.
+            base = 79500.0 + i * 80.0
+            vol = 100.0
+        elif i < 15:
+            # Drop into valley1.
+            base = 80300.0 - (i - 9) * 360.0
+            vol = 220.0
+        elif i < 25:
+            # Recovery — peak around bar 24 at ~79200 (LH).
+            base = 78500.0 + (i - 14) * 70.0
+            vol = 150.0
+        elif i < 35:
+            # Decline back into valley2.
+            base = 79200.0 - (i - 24) * 90.0
+            vol = 70.0
+        elif i < n - 1:
+            # Slow recovery — stay BELOW LH 79200 until the last bar.
+            # n=49: bars 35..47 sit between 78600 and 79200.
+            base = 78600.0 + (i - 34) * 45.0   # at bar 47: ~79185
+            vol = 180.0
+        else:
+            # Last bar: break above LH (close > 79230).
+            base = 79350.0
+            vol = 350.0
+        closes.append(base)
+        volumes.append(vol)
+    closes = [c + (0.5 if i % 2 == 0 else -0.5) for i, c in enumerate(closes)]
+    df = pd.DataFrame({
+        "open":   [c - 5 for c in closes],
+        "high":   [c + 30 for c in closes],
+        "low":    [c - 30 for c in closes],
+        "close":  closes,
+        "volume": volumes,
+    })
+    return df
+
+
+def test_div_bos_confirmed_fires_on_synthetic_setup() -> None:
+    df = _build_div_then_bos_df(n=50)  # last bar = 54, conf at 44, window = 10
+    last_close = float(df["close"].iloc[-1])
+    ctx = _Ctx(current_price=last_close, ohlcv_1h=df, regime_label="range_wide")
+    setup = detect_long_div_bos_confirmed(ctx)
+    assert setup is not None
+    assert setup.setup_type == SetupType.LONG_DIV_BOS_CONFIRMED
+    assert setup.entry_price == pytest.approx(round(last_close, 1))
+    # Confidence must reflect both confluence and BoS — at least 75%.
+    assert setup.confidence_pct >= 75.0
+    # Strength is 9..10
+    assert setup.strength >= 9
+    # Basis must include the broken LH.
+    bos_basis = next((b for b in setup.basis if b.label == "bos_lh_broken"), None)
+    assert bos_basis is not None
+
+
+def test_div_bos_confirmed_blocked_by_regime_guard() -> None:
+    df = _build_div_then_bos_df(n=50)
+    last_close = float(df["close"].iloc[-1])
+    ctx = _Ctx(current_price=last_close, ohlcv_1h=df, regime_label="trend_down")
+    assert detect_long_div_bos_confirmed(ctx) is None
+
+
+def test_div_bos_confirmed_returns_none_without_bos() -> None:
+    """Same divergence layout but no BoS at the end — must NOT fire."""
+    df = _build_bullish_divergence_df(n=65)  # divergence but no BoS engineered
+    last_close = float(df["close"].iloc[-1])
+    ctx = _Ctx(current_price=last_close, ohlcv_1h=df, regime_label="range_wide")
+    assert detect_long_div_bos_confirmed(ctx) is None
+
+
+def test_div_bos_confirmed_registered_in_registry() -> None:
+    from services.setup_detector.setup_types import DETECTOR_REGISTRY
+    assert detect_long_div_bos_confirmed in DETECTOR_REGISTRY

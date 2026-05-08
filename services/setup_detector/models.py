@@ -19,6 +19,7 @@ class SetupType(Enum):
     LONG_DOUBLE_BOTTOM = "long_double_bottom"
     SHORT_DOUBLE_TOP = "short_double_top"
     LONG_MULTI_DIVERGENCE = "long_multi_divergence"
+    LONG_DIV_BOS_CONFIRMED = "long_div_bos_confirmed"
     GRID_RAISE_BOUNDARY = "grid_raise_boundary"
     GRID_PAUSE_ENTRIES = "grid_pause_entries"
     GRID_BOOSTER_ACTIVATE = "grid_booster"

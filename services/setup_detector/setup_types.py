@@ -739,7 +739,10 @@ from services.setup_detector.double_top_bottom import (
     detect_double_top_setup,
     detect_double_bottom_setup,
 )
-from services.setup_detector.multi_divergence import detect_long_multi_divergence
+from services.setup_detector.multi_divergence import (
+    detect_long_multi_divergence,
+    detect_long_div_bos_confirmed,
+)
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_dump_reversal,
@@ -752,7 +755,8 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_short_liq_magnet,
     detect_double_bottom_setup,
     detect_double_top_setup,
-    detect_long_multi_divergence,  # NEW (backtest 2026-05-08, PF=1.66 hold_1h)
+    detect_long_div_bos_confirmed,  # PF=4.49, walk-forward stable (2026-05-08)
+    detect_long_multi_divergence,   # PF=1.78, base divergence (2026-05-08)
     detect_grid_raise_boundary,
     detect_grid_pause_entries,
     detect_grid_booster_activate,

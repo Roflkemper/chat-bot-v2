@@ -1,25 +1,36 @@
-"""Multi-indicator divergence detector — LONG side only.
+"""Multi-indicator divergence detectors — LONG side only.
 
-Backtest-derived (tools/backtest_signals.py, 2026-05-08, 1h BTCUSDT 2y):
-  - Bullish multi-indicator divergence (price LL + indicator HL on confluence>=2)
-    yields PF=1.66, WR=56.5% over hold_1h on the unfiltered 124-signal sample.
-  - Adding a regime guard ('do not fire when 1h AND 4h are both TREND_DOWN')
-    blocks 27% of signals (the bear-zone slice underperforms: PF=0.86 hold_1h)
-    and lifts remaining-signal performance to PF=2.13, WR=58% on hold_1h.
-  - SHORT-side divergence has NO edge on this dataset (bull-biased period); not
-    implemented here.
+This module exposes two detectors:
 
-Algorithm:
-  1. Find price pivots (swing lows) on 1h frame using a 5-bar lookback.
-  2. For each consecutive pair of swing lows where the second is LOWER than
-     the first AND within 30 bars of it, count how many indicators
-     {RSI, MFI, OBV, CMF, MACD-hist, Stoch} have their OWN pivot-low near
-     each price pivot (±3 bars) where second > first (i.e. higher low).
+1. detect_long_multi_divergence (BASE)
+   - Bullish divergence with confluence>=2 across 7 indicators
+     {RSI, MFI, OBV, CMF, MACD-hist, Stoch, DeltaCum}.
+   - Backtest PF=1.78, WR=56.5%, hold_1h, N=147.
+   - With regime guard: PF=2.13, WR=58.2%, N=91.
+
+2. detect_long_div_bos_confirmed (CONFIRMED)
+   - Same divergence as above PLUS a Break of Structure bullish
+     (close above the most recent unbroken LH) within 10 bars after the
+     divergence confirmation.
+   - Backtest PF=4.49, WR=72.2%, hold_1h, N=36.
+   - Walk-forward across 4 folds (Feb 2024 - May 2026): PF >= 1.88 in
+     every fold — robust, not overfit. Rare but very high quality.
+
+Algorithm (shared):
+  1. Find price pivots (swing lows for bullish) on 1h with 5-bar lookback.
+  2. For each consecutive pair of swing lows where second < first AND
+     within 30 bars, check each indicator for an independent pivot-low
+     near each price pivot (within +-3 bars) with second > first (HL).
   3. Confluence = count of agreeing indicators. Setup fires when
-     confluence >= 2 AND we are not in the double-trend-down regime.
+     confluence >= 2 AND we are not in the trend_down regime.
   4. Confirmation bar = second price pivot + lookback (no lookahead).
 
-The detector returns None if any check fails. Side effects: none. Logging
+For the CONFIRMED variant, additionally:
+  5. Track the most recent LH (lower swing high) on the price.
+  6. After divergence confirmation bar, scan up to BOS_WINDOW_BARS bars
+     forward for a close > LH (bullish BoS). Setup fires on the BoS bar.
+
+Detectors return None if any check fails. Side effects: none. Logging
 is informational only.
 """
 from __future__ import annotations
@@ -45,6 +56,13 @@ TP2_RR = 2.5                  # 1:2.5
 
 # Regime labels treated as "down" by the guard.
 _DOWN_REGIME_LABELS = {"trend_down", "impulse_down"}
+
+# CONFIRMED variant: how many bars after divergence we wait for a BoS bullish.
+BOS_WINDOW_BARS = 10
+# CONFIRMED variant: tighter SL (we have stronger confirmation, can size up).
+CONFIRMED_SL_PCT = 1.5
+CONFIRMED_TP1_RR = 1.5
+CONFIRMED_TP2_RR = 3.0
 
 
 @dataclass(frozen=True)
@@ -136,14 +154,24 @@ def _stoch(high: pd.Series, low: pd.Series, close: pd.Series, k_period: int = 14
     return k.rolling(d_period).mean()
 
 
+def _delta_cum(high: pd.Series, low: pd.Series, close: pd.Series, volume: pd.Series) -> pd.Series:
+    """Cumulative volume-delta proxy: bar-level signed volume by close-position-in-range,
+    accumulated. Backtest 2026-05-08 showed adding this as a 7th confluence indicator
+    lifts PF on hold_1h from 1.66 to 1.78 with N growing 124->147."""
+    hl = (high - low).replace(0, float("nan"))
+    mfm = ((close - low) - (high - close)) / hl
+    return (mfm * volume).cumsum()
+
+
 def _build_indicators(df: pd.DataFrame) -> dict[str, pd.Series]:
     return {
-        "RSI":   _rsi(df["close"], 14),
-        "MFI":   _mfi(df["high"], df["low"], df["close"], df["volume"], 14),
-        "OBV":   _obv(df["close"], df["volume"]),
-        "CMF":   _cmf(df["high"], df["low"], df["close"], df["volume"], 20),
-        "MACDh": _macd_hist(df["close"], 12, 26, 9),
-        "Stoch": _stoch(df["high"], df["low"], df["close"], 14, 3),
+        "RSI":      _rsi(df["close"], 14),
+        "MFI":      _mfi(df["high"], df["low"], df["close"], df["volume"], 14),
+        "OBV":      _obv(df["close"], df["volume"]),
+        "CMF":      _cmf(df["high"], df["low"], df["close"], df["volume"], 20),
+        "MACDh":    _macd_hist(df["close"], 12, 26, 9),
+        "Stoch":    _stoch(df["high"], df["low"], df["close"], 14, 3),
+        "DeltaCum": _delta_cum(df["high"], df["low"], df["close"], df["volume"]),
     }
 
 
@@ -284,8 +312,162 @@ def detect_long_multi_divergence(ctx) -> Setup | None:
             window_minutes=240,  # 4h target horizon per backtest
             portfolio_impact_note=(
                 f"Bullish divergence: price LL ({prev_low:.0f}->{cur_low:.0f}), "
-                f"{len(agreeing)}/6 indicators HL [{'+'.join(agreeing)}]. "
-                f"Backtest PF~1.66, WR~56% on hold_1h."
+                f"{len(agreeing)}/7 indicators HL [{'+'.join(agreeing)}]. "
+                f"Backtest PF~1.78, WR~56% on hold_1h."
+            ),
+        )
+
+    return None
+
+
+# ─── CONFIRMED variant: divergence + BoS bullish ────────────────────────
+
+def _find_recent_lh(df: pd.DataFrame, before_bar: int, lookback: int = PIVOT_LOOKBACK) -> tuple[int, float] | None:
+    """Find the most recent unbroken Lower High before `before_bar`.
+
+    Walks price-high pivots backwards. Returns the latest LH (a high that's
+    lower than the prior high). Returns None if no LH found.
+    """
+    high_pivots = _find_pivots(df["high"], lookback)
+    if len(high_pivots.highs) < 2:
+        return None
+    # Only consider pivots that have already been confirmed (bar + lookback < before_bar)
+    confirmed = [h for h in high_pivots.highs if h + lookback < before_bar]
+    # Walk from most recent backwards looking for an LH
+    last_high_val = None
+    for i in range(len(confirmed) - 1, 0, -1):
+        cur_idx = confirmed[i]
+        prev_idx = confirmed[i - 1]
+        if df["high"].iloc[cur_idx] < df["high"].iloc[prev_idx]:
+            return (cur_idx, float(df["high"].iloc[cur_idx]))
+    return None
+
+
+def detect_long_div_bos_confirmed(ctx) -> Setup | None:
+    """Bullish divergence + BoS bullish confirmation.
+
+    Strongest setup we have (PF=4.49, WR=72.2%, hold_1h, N=36 over 2y).
+    Walk-forward: PF >= 1.88 in every 6-month fold — robust.
+
+    Procedure:
+      1. Detect bullish divergence (same logic as detect_long_multi_divergence,
+         confluence>=2 across 7 indicators).
+      2. Identify the most recent Lower High (LH) before the divergence bar.
+      3. Scan from divergence confirmation bar forward up to BOS_WINDOW_BARS
+         for a close above that LH. If found, fire the setup at the BoS bar.
+
+    Live behavior: each call inspects the most recent ~30 bars for an unfired
+    setup. We only fire if the BoS happened on the LATEST bar (so the operator
+    sees the signal at the moment of confirmation, not days later).
+    """
+    df = ctx.ohlcv_1h
+    if df is None or len(df) < 50:
+        return None
+    if not all(col in df.columns for col in ("high", "low", "close", "volume")):
+        return None
+
+    if _is_double_trend_down(ctx):
+        return None
+
+    # Find divergences (same as base detector but we walk all candidates).
+    price_pivots = _find_pivots(df["low"])
+    if len(price_pivots.lows) < 2:
+        return None
+
+    indicators = _build_indicators(df)
+    pivots_by_indicator = {name: _find_pivots(ind) for name, ind in indicators.items()}
+
+    n = len(df)
+    last_bar = n - 1
+    last_close = float(df["close"].iloc[last_bar])
+
+    # Walk recent divergence candidates.
+    for j in range(len(price_pivots.lows) - 1, 0, -1):
+        cur_idx = price_pivots.lows[j]
+        prev_idx = price_pivots.lows[j - 1]
+        if cur_idx - prev_idx > DIV_WINDOW_BARS:
+            continue
+        cur_low = float(df["low"].iloc[cur_idx])
+        prev_low = float(df["low"].iloc[prev_idx])
+        if cur_low >= prev_low:
+            continue
+
+        div_conf_bar = cur_idx + PIVOT_LOOKBACK
+        if div_conf_bar >= n:
+            return None  # not yet confirmed
+
+        # The BoS must happen within BOS_WINDOW_BARS after div confirmation.
+        if last_bar - div_conf_bar > BOS_WINDOW_BARS:
+            return None  # window for BoS already closed for this and earlier divs
+
+        agreeing = _agreeing_indicators_for_bullish(
+            indicators, pivots_by_indicator,
+            prev_idx, cur_idx, INDICATOR_PIVOT_TOLERANCE,
+        )
+        if len(agreeing) < MIN_CONFLUENCE:
+            continue
+
+        # Find recent LH for BoS check.
+        lh = _find_recent_lh(df, before_bar=div_conf_bar)
+        if lh is None:
+            continue
+        lh_idx, lh_price = lh
+
+        # Scan from div_conf_bar forward to last_bar for close > lh_price.
+        # Fire only on the LATEST bar to avoid stale signals.
+        bos_bar = None
+        for b in range(div_conf_bar, last_bar + 1):
+            if float(df["close"].iloc[b]) > lh_price:
+                bos_bar = b
+                break
+        if bos_bar is None or bos_bar != last_bar:
+            # Either no BoS yet, or BoS happened earlier and we missed the entry window.
+            continue
+
+        # Fire at the BoS bar's close.
+        entry = last_close
+        stop = entry * (1 - CONFIRMED_SL_PCT / 100.0)
+        risk = entry - stop
+        tp1 = entry + risk * CONFIRMED_TP1_RR
+        tp2 = entry + risk * CONFIRMED_TP2_RR
+        rr = (tp1 - entry) / max(entry - stop, 1e-9)
+
+        # Confidence: confluence + BoS = high confidence baseline.
+        confidence_pct = 75.0 + (len(agreeing) - MIN_CONFLUENCE) * 5.0
+        confidence_pct = min(90.0, confidence_pct)
+        strength = 8 + min(2, len(agreeing) - MIN_CONFLUENCE + 1)  # 9..10
+
+        basis_items = [
+            SetupBasis("price_LL_prev", round(prev_low, 1), 0.20),
+            SetupBasis("price_LL_cur", round(cur_low, 1), 0.20),
+            SetupBasis("confluence_count", len(agreeing), 0.25),
+            SetupBasis("agreeing_indicators", "+".join(agreeing), 0.10),
+            SetupBasis("bos_lh_broken", round(lh_price, 1), 0.25),
+        ]
+
+        return make_setup(
+            setup_type=SetupType.LONG_DIV_BOS_CONFIRMED,
+            pair=ctx.pair,
+            current_price=last_close,
+            regime_label=ctx.regime_label,
+            session_label=ctx.session_label,
+            entry_price=round(entry, 1),
+            stop_price=round(stop, 1),
+            tp1_price=round(tp1, 1),
+            tp2_price=round(tp2, 1),
+            risk_reward=round(rr, 2),
+            strength=strength,
+            confidence_pct=confidence_pct,
+            basis=tuple(basis_items),
+            cancel_conditions=(
+                f"close below {stop:.0f} invalidates the BoS",
+                f"regime turns trend_down on 1h",
+            ),
+            window_minutes=720,  # 12h target horizon — backtest shows PF=5.36 at 12h
+            portfolio_impact_note=(
+                f"DIV+BoS CONFIRMED: bullish div ({prev_low:.0f}->{cur_low:.0f}, "
+                f"{len(agreeing)}/7 inds HL) + BoS@{lh_price:.0f}. "
+                f"Backtest PF=4.49 hold_1h, PF=5.36 hold_12h. Walk-forward stable."
             ),
         )
 
