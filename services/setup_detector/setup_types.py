@@ -749,6 +749,7 @@ from services.setup_detector.multi_divergence import (
     detect_short_div_bos_15m,
 )
 from services.setup_detector.multi_asset_confluence import detect_long_multi_asset_confluence
+from services.setup_detector.p15_rolling import detect_p15_long, detect_p15_short
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_dump_reversal,
@@ -766,6 +767,8 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_div_bos_15m,        # 15m, PF=5.01 hold_4h, fast reaction (2026-05-08)
     detect_short_div_bos_15m,       # 15m SHORT, PF=3.85 hold_1h, walk-forward stable
     detect_long_multi_divergence,   # 1h base, PF=1.78 (2026-05-08)
+    detect_p15_long,                # P-15 LONG leg, +$65k/2y validated (2026-05-09)
+    detect_p15_short,               # P-15 SHORT leg, +$67k/2y validated (2026-05-09)
     detect_grid_raise_boundary,
     detect_grid_pause_entries,
     detect_grid_booster_activate,

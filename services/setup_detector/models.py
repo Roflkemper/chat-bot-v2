@@ -24,6 +24,16 @@ class SetupType(Enum):
     LONG_DIV_BOS_15M = "long_div_bos_15m"
     SHORT_DIV_BOS_15M = "short_div_bos_15m"
     LONG_MULTI_ASSET_CONFLUENCE = "long_multi_asset_confluence"
+    # P-15 rolling-trend rebalance (validated 2026-05-08, +$67k 2y on 15m).
+    # 5-stage lifecycle: OPEN -> TRACK -> HARVEST -> REENTRY -> CLOSE.
+    P15_LONG_OPEN = "p15_long_open"
+    P15_LONG_HARVEST = "p15_long_harvest"
+    P15_LONG_REENTRY = "p15_long_reentry"
+    P15_LONG_CLOSE = "p15_long_close"
+    P15_SHORT_OPEN = "p15_short_open"
+    P15_SHORT_HARVEST = "p15_short_harvest"
+    P15_SHORT_REENTRY = "p15_short_reentry"
+    P15_SHORT_CLOSE = "p15_short_close"
     GRID_RAISE_BOUNDARY = "grid_raise_boundary"
     GRID_PAUSE_ENTRIES = "grid_pause_entries"
     GRID_BOOSTER_ACTIVATE = "grid_booster"
@@ -161,8 +171,12 @@ def make_setup(
 
 
 def setup_side(setup: Setup) -> str:
-    """Returns 'long', 'short', 'grid', or 'defensive'."""
+    """Returns 'long', 'short', 'grid', 'defensive', or 'p15_long' / 'p15_short'."""
     v = setup.setup_type.value
+    if v.startswith("p15_long_"):
+        return "p15_long"
+    if v.startswith("p15_short_"):
+        return "p15_short"
     if v.startswith("long_"):
         return "long"
     if v.startswith("short_"):

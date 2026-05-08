@@ -10,6 +10,8 @@ _DEF_ICON = "⚠️"
 
 def format_telegram_card(setup: Setup) -> str:
     side = setup_side(setup)
+    if side in ("p15_long", "p15_short"):
+        return _format_p15_card(setup, direction=side.split("_")[1].upper())
     if side == "long":
         return _format_trade_card(setup, direction="LONG", icon=_LONG_ICON)
     if side == "short":
@@ -17,6 +19,141 @@ def format_telegram_card(setup: Setup) -> str:
     if side == "grid":
         return _format_grid_card(setup)
     return _format_defensive_card(setup)
+
+
+# ── P-15 stage cards (TZ: P-15 production wire 2026-05-09) ───────────────────
+
+_P15_STAGE_ICON = {
+    "OPEN":    "🎯",
+    "HARVEST": "💰",
+    "REENTRY": "🔄",
+    "CLOSE":   "🚫",
+}
+
+
+def _basis_get(setup: Setup, label: str, default=None):
+    for b in setup.basis:
+        if b.label == label:
+            return b.value
+    return default
+
+
+def _format_p15_card(setup: Setup, *, direction: str) -> str:
+    """Renders the lifecycle card for a P-15 leg event.
+
+    Stages: OPEN (entry trigger), HARVEST (close 50%), REENTRY (open new
+    layer at K% offset), CLOSE (gate flip / dd_cap exit).
+    """
+    ts = setup.detected_at.strftime("%H:%M UTC")
+    stage = str(_basis_get(setup, "stage", "?"))
+    icon = _P15_STAGE_ICON.get(stage, "🔔")
+
+    avg = float(_basis_get(setup, "avg_entry", 0) or 0)
+    extreme = float(_basis_get(setup, "extreme", 0) or 0)
+    layers = int(_basis_get(setup, "layers", 0) or 0)
+    total_size = float(_basis_get(setup, "total_size_usd", 0) or 0)
+    dd_pct = float(_basis_get(setup, "dd_pct", 0) or 0)
+    unrealized = float(_basis_get(setup, "unrealized_usd", 0) or 0)
+    R_pct = float(_basis_get(setup, "R_pct", 0.3) or 0.3)
+    K_pct = float(_basis_get(setup, "K_pct", 1.0) or 1.0)
+
+    lines = [
+        f"{icon} P-15 {direction} {stage} — {setup.pair} | {ts}",
+        "",
+        f"💲 Текущая цена: ${setup.current_price:,.1f}",
+    ]
+
+    if stage == "OPEN":
+        trigger = _basis_get(setup, "trigger", "")
+        size_usd = _basis_get(setup, "size_usd", 0)
+        lines += [
+            f"📌 Триггер: {trigger}",
+            "",
+            f"🎬 ОТКРЫТЬ {direction} ${size_usd:,.0f}",
+            f"   Entry:    ${setup.current_price:,.1f}",
+            f"   Размер:   ${size_usd:,.0f}",
+            f"   Слой #:   1",
+            "",
+            f"⚙️ ПАРАМЕТРЫ ЦИКЛА:",
+            f"   R = {R_pct}%   (откат для harvest)",
+            f"   K = {K_pct}%   (отступ переоткрытия)",
+            f"   dd_cap = 3.0% (аварийный стоп)",
+            "",
+            f"🎯 ЧТО ЖДЁМ:",
+            f"   - Цена обновляет {'high' if direction == 'LONG' else 'low'} (extreme tracking)",
+            f"   - На откате R% от extreme → HARVEST 50% позиции",
+            f"   - Затем REENTRY на K% {'выше' if direction == 'LONG' else 'ниже'} exit",
+            "",
+            f"⛔ ОТМЕНА:",
+        ] + [f"   - {c}" for c in setup.cancel_conditions[:3]]
+
+    elif stage == "HARVEST":
+        exit_price = float(_basis_get(setup, "exit_price", 0) or 0)
+        harvest_size = float(_basis_get(setup, "harvest_size_usd", 0) or 0)
+        harvest_pnl = float(_basis_get(setup, "harvest_pnl_usd", 0) or 0)
+        next_reentry = float(_basis_get(setup, "next_reentry_price", 0) or 0)
+        lines += [
+            f"📍 Avg entry: ${avg:,.1f}",
+            f"📍 Extreme:   ${extreme:,.1f} (running {'high' if direction == 'LONG' else 'low'})",
+            f"📍 Слой #:    {layers}",
+            "",
+            f"💰 ЗАКРЫТЬ 50% ПОЗИЦИИ",
+            f"   Exit price:   ${exit_price:,.1f}",
+            f"   Размер:       ${harvest_size:,.0f}",
+            f"   PnL партии:   ${harvest_pnl:+,.2f}",
+            "",
+            f"🔄 СЛЕДУЮЩИЙ ШАГ — REENTRY:",
+            f"   Откроется по: ${next_reentry:,.1f}",
+            f"   (отступ K={K_pct}% от exit)",
+            "",
+            f"📊 Состояние позиции:",
+            f"   Total size:   ${total_size:,.0f}",
+            f"   Unrealized:   ${unrealized:+,.2f}",
+            f"   Cum DD:       {dd_pct:.2f}%",
+        ]
+
+    elif stage == "REENTRY":
+        reentry_price = float(_basis_get(setup, "reentry_price", 0) or 0)
+        new_avg = float(_basis_get(setup, "new_avg_entry", 0) or 0)
+        new_layer_size = float(_basis_get(setup, "new_layer_size_usd", 0) or 0)
+        lines += [
+            f"📍 Слой #:    {layers}  (после harvest)",
+            "",
+            f"🔄 ОТКРЫТЬ НОВЫЙ СЛОЙ",
+            f"   Entry:        ${reentry_price:,.1f}",
+            f"   Размер:       ${new_layer_size:,.0f}",
+            f"   Новый avg:    ${new_avg:,.1f}",
+            "",
+            f"📊 Состояние позиции:",
+            f"   Total size:   ${total_size:,.0f}",
+            f"   Unrealized:   ${unrealized:+,.2f}",
+            "",
+            f"🎯 ЧТО ЖДЁМ ДАЛЬШЕ:",
+            f"   - Цена обновляет {'high' if direction == 'LONG' else 'low'}",
+            f"   - На откате R={R_pct}% → следующий HARVEST",
+        ]
+
+    elif stage == "CLOSE":
+        reason = _basis_get(setup, "reason", "")
+        close_price = float(_basis_get(setup, "close_price", 0) or 0)
+        realized_pnl = float(_basis_get(setup, "realized_pnl_usd", 0) or 0)
+        pnl_emoji = "✅" if realized_pnl > 0 else "❌"
+        lines += [
+            f"📍 Avg entry: ${avg:,.1f}",
+            f"📍 Слоёв накоплено: {layers}",
+            f"📍 Total size: ${total_size:,.0f}",
+            "",
+            f"🚫 ЗАКРЫТЬ ВСЮ ПОЗИЦИЮ",
+            f"   Причина:      {reason}",
+            f"   Close price:  ${close_price:,.1f}",
+            f"   {pnl_emoji} Realized PnL: ${realized_pnl:+,.2f}",
+            f"   Cum DD за цикл: {dd_pct:.2f}%",
+            "",
+            f"♻️ Цикл завершён. Бот вернётся в IDLE.",
+            f"   Следующий OPEN — когда тренд-гейт снова сработает.",
+        ]
+
+    return "\n".join(lines)
 
 
 def _format_trade_card(setup: Setup, *, direction: str, icon: str) -> str:
