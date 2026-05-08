@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -84,6 +85,23 @@ class Setup:
     # ICT context at detection time (14 fields from ict_levels parquet).
     # Empty dict when parquet is unavailable or not yet generated.
     ict_context: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def semantic_signature(self) -> str:
+        """Stable hash identifying the same logical setup across detector cycles.
+
+        Used by detector loop to suppress re-emission of the same divergence /
+        pattern every 5 minutes while the underlying basis hasn't changed.
+        Includes setup_type, pair, regime, and basis values rounded to 2dp.
+        """
+        parts = [self.setup_type.value, self.pair, self.regime_label]
+        for b in sorted(self.basis, key=lambda x: x.label):
+            v = b.value
+            if isinstance(v, float):
+                v = f"{v:.2f}"
+            parts.append(f"{b.label}={v}")
+        canonical = "|".join(parts)
+        return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:12]
 
 
 def make_setup(

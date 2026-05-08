@@ -500,12 +500,15 @@ def _rule_M2(inp: DecisionInputs) -> Optional[Event]:
 
 
 def _rule_M3(inp: DecisionInputs) -> Optional[Event]:
-    """M-3 [§2.2]: margin_coefficient >= 0.85 → PRIMARY (critical)."""
+    """M-3 [§2.2]: margin_coefficient >= 0.85 → PRIMARY (critical).
+
+    Bucketed signature (0.05 step) to prevent payload-drift CAP-DIAG spam.
+    """
     if inp.margin_coefficient is None:
         return None
     if inp.margin_coefficient < MARGIN_CRITICAL_MIN:
         return None
-    payload = {"margin_coefficient": round(float(inp.margin_coefficient), 4)}
+    payload = {"margin_coefficient": round(float(inp.margin_coefficient) * 20) / 20}
     return Event(
         rule_id="M-3",
         event_type="margin_critical",
@@ -522,7 +525,13 @@ def _rule_M3(inp: DecisionInputs) -> Optional[Event]:
 
 
 def _rule_M4(inp: DecisionInputs) -> Optional[Event]:
-    """M-4 [§2.2]: margin_coefficient >= 0.95 OR distance_to_liquidation_pct < 5 → PRIMARY emergency."""
+    """M-4 [§2.2]: margin_coefficient >= 0.95 OR distance_to_liquidation_pct < 5 → PRIMARY emergency.
+
+    Payload uses BUCKETED values (not raw floats) to stabilize the signature
+    across cycles. Without buckets, micro-drift in coef (0.9712 → 0.9714)
+    changes the signature every cycle, bypasses cooldown, and spams CAP-DIAG
+    (live audit 2026-05-08: 3081 suppressions/24h, mostly M-4).
+    """
     coef_trigger = inp.margin_coefficient is not None and inp.margin_coefficient >= MARGIN_EMERGENCY_MIN
     dist_trigger = (
         inp.distance_to_liquidation_pct is not None
@@ -530,12 +539,18 @@ def _rule_M4(inp: DecisionInputs) -> Optional[Event]:
     )
     if not (coef_trigger or dist_trigger):
         return None
+    # Bucket coef to 0.05 step (0.95, 1.00, 1.05) and dist to 1% step.
+    coef_bucket = (
+        round(float(inp.margin_coefficient) * 20) / 20
+        if inp.margin_coefficient is not None else None
+    )
+    dist_bucket = (
+        round(float(inp.distance_to_liquidation_pct))
+        if inp.distance_to_liquidation_pct is not None else None
+    )
     payload = {
-        "margin_coefficient": round(float(inp.margin_coefficient), 4) if inp.margin_coefficient is not None else None,
-        "distance_to_liquidation_pct": (
-            round(float(inp.distance_to_liquidation_pct), 2)
-            if inp.distance_to_liquidation_pct is not None else None
-        ),
+        "margin_coefficient": coef_bucket,
+        "distance_to_liquidation_pct": dist_bucket,
         "trigger": "margin" if coef_trigger else "distance_to_liq",
     }
     return Event(

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .combo_filter import filter_setups
@@ -17,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 _LOOP_INTERVAL_SEC = 300  # 5 min
 _MIN_STRENGTH = 6
+
+# Semantic dedup: suppress re-emission of the same logical setup (same
+# divergence pivot, same regime) within this TTL. Without this, a 20h-window
+# divergence fires every 5min cycle = ~240 duplicate setups in TG + paper trades.
+# Bug observed live 2026-05-08 evening: same long_multi_divergence
+# (price_LL 79500->79181) fired 18:54/18:59/19:04/19:09/19:14 etc.
+_SETUP_DEDUP_TTL_MIN = 240  # 4h — covers most setup window_minutes (240min)
+_DEDUP_PATH = Path("state/setup_detector_semantic_dedup.json")
 _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_ICT_PARQUET = _ROOT / "data" / "ict_levels" / "BTCUSDT_ict_levels_1m.parquet"
 
@@ -97,6 +106,35 @@ def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
     except Exception:
         logger.exception("setup_detector.build_context_failed pair=%s", pair)
         return None
+
+
+def _load_semantic_dedup() -> dict[str, str]:
+    """Load {signature: last_emitted_iso}. Survives restart."""
+    if not _DEDUP_PATH.exists():
+        return {}
+    try:
+        return json.loads(_DEDUP_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def _save_semantic_dedup(state: dict[str, str]) -> None:
+    try:
+        _DEDUP_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _DEDUP_PATH.write_text(json.dumps(state), encoding="utf-8")
+    except OSError:
+        logger.exception("setup_detector.semantic_dedup_write_failed")
+
+
+def _is_recently_emitted(setup: Setup, dedup: dict[str, str], now: datetime) -> bool:
+    last_iso = dedup.get(setup.semantic_signature)
+    if not last_iso:
+        return False
+    try:
+        last = datetime.fromisoformat(last_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return (now - last) < timedelta(minutes=_SETUP_DEDUP_TTL_MIN)
 
 
 def _build_portfolio_snapshot(snapshot: dict) -> PortfolioSnapshot:
@@ -182,8 +220,27 @@ def _run_detectors_once(
             s.setup_type.value, s.regime_label, s.pair,
         )
 
+    # ── Semantic dedup: skip setups whose signature was emitted within TTL.
+    now_utc = datetime.now(timezone.utc)
+    dedup = _load_semantic_dedup()
+    # Prune entries older than TTL
+    cutoff = now_utc - timedelta(minutes=_SETUP_DEDUP_TTL_MIN)
+    dedup = {
+        sig: ts for sig, ts in dedup.items()
+        if (lambda t: t is not None and t >= cutoff)(
+            _parse_iso_safe(ts)
+        )
+    }
+
     new_setups: list[Setup] = []
     for setup in allowed:
+        if _is_recently_emitted(setup, dedup, now_utc):
+            logger.info(
+                "setup_detector.semantic_dedup_skip type=%s sig=%s pair=%s",
+                setup.setup_type.value, setup.semantic_signature, setup.pair,
+            )
+            continue
+        dedup[setup.semantic_signature] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
         store.write(setup)
         new_setups.append(setup)
         logger.info(
@@ -221,4 +278,17 @@ def _run_detectors_once(
             except Exception:
                 logger.exception("setup_detector.send_failed type=%s", setup.setup_type.value)
 
+    _save_semantic_dedup(dedup)
     return new_setups
+
+
+def _parse_iso_safe(s: str) -> datetime | None:
+    if not s:
+        return None
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, AttributeError):
+        return None
