@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,24 @@ REGIME_PATH = Path("state/regime_state.json")
 LIVE_1M = Path("market_live/market_1m.csv")
 SETUPS_PATH = Path("state/setups.jsonl")
 PAPER_TRADES_PATH = Path("state/paper_trades.jsonl")
+
+# Active-setup rendering. ENTRY_BUCKET_PCT collapses near-duplicate setups
+# of the same type whose entry prices are within ~0.3% of each other —
+# setup_detector emits the same condition every poll cycle while it's live,
+# so without bucketing the operator sees 5+ identical rows.
+ENTRY_BUCKET_PCT = 0.003
+HIGH_CONF_THRESHOLD = 60
+TOP_CLUSTERS = 5
+
+# Watch-block thresholds (advisor_v2 _build_watch_block).
+FUNDING_DEEP_NEG_PCT = -0.008  # below this → squeeze potential
+FUNDING_OVERHEAT_PCT = 0.015   # above this → longs overheated
+OI_FLAT_ABS_PCT = 0.5          # |Δ| below this → flat, breakout incoming
+OI_DIV_Z_THRESHOLD = 1.5       # |z| above this → divergence worth tracking
+
+# TODO(reuse): the clustering below reimplements DedupLayer.evaluate_cluster
+# (services/telegram/dedup_layer.py:149+). Consider routing through it for
+# consistency with telegram dedup; deferred — different output shape.
 
 
 def _load_json(p: Path) -> dict:
@@ -777,32 +796,35 @@ def build_advisor_v2_text() -> str:
         for s in sess:
             lines.append(f"  • {s}")
 
-    # ── Active setups (dedup by setup_type + entry-bucket of 0.3%).
-    # Setup_detector fires the same condition every poll cycle while it's live,
-    # which produces 5+ near-duplicate rows on close prices. Collapse them to
-    # the most recent snapshot per cluster with an xN counter so the operator
-    # sees one idea per row.
-    high_conf = [s for s in setups if s.get("confidence_pct", 0) >= 60]
+    # ── Active setups. Setup_detector fires the same condition every poll
+    # cycle while it's live, producing 5+ near-duplicate rows. Cluster by
+    # (setup_type, entry-bucket of ENTRY_BUCKET_PCT) and render the most
+    # recent snapshot per cluster with an ×N counter.
+    high_conf = [s for s in setups if s.get("confidence_pct", 0) >= HIGH_CONF_THRESHOLD]
     if high_conf:
         lines.append("")
-        lines.append("🎯 АКТИВНЫЕ СЕТАПЫ (≥60% conf, последние 6h)")
+        lines.append(f"🎯 АКТИВНЫЕ СЕТАПЫ (≥{HIGH_CONF_THRESHOLD}% conf, последние 6h)")
+
+        # Bucket grows with price so ENTRY_BUCKET_PCT stays meaningful across
+        # symbols: log(entry)/log(1+pct) gives the index of a 0.3%-wide bin.
+        log_step = math.log1p(ENTRY_BUCKET_PCT)
 
         clusters: dict[tuple[str, int], list[dict]] = {}
         for s in high_conf:
+            entry = s.get("entry_price")
+            if not entry or entry <= 0:
+                continue
             stype = s.get("setup_type", "?")
-            entry = s.get("entry_price") or 0
-            # Bucket by ~0.3% of entry → clusters within ~240pt at 80k.
-            bucket = int(entry / 250) if entry else 0
+            bucket = int(math.log(entry) / log_step)
             clusters.setdefault((stype, bucket), []).append(s)
 
-        # Sort clusters by latest ts inside each, then pick top 5 most recent.
-        def _last_ts(cl: list[dict]) -> str:
-            return max((x.get("ts") or "") for x in cl)
-        sorted_clusters = sorted(clusters.values(), key=_last_ts, reverse=True)[:5]
+        latest_per_cluster = [
+            (max(cl, key=lambda x: x.get("ts") or ""), len(cl))
+            for cl in clusters.values()
+        ]
+        latest_per_cluster.sort(key=lambda pair: pair[0].get("ts") or "", reverse=True)
 
-        for cluster in sorted_clusters:
-            s = max(cluster, key=lambda x: x.get("ts") or "")  # latest snapshot
-            n = len(cluster)
+        for s, n in latest_per_cluster[:TOP_CLUSTERS]:
             stype = s.get("setup_type", "?")
             entry = s.get("entry_price")
             sl = s.get("stop_price")
@@ -822,7 +844,7 @@ def build_advisor_v2_text() -> str:
             )
     else:
         lines.append("")
-        lines.append("🎯 АКТИВНЫЕ СЕТАПЫ: нет (последние 6h, conf ≥60%)")
+        lines.append(f"🎯 АКТИВНЫЕ СЕТАПЫ: нет (последние 6h, conf ≥{HIGH_CONF_THRESHOLD}%)")
 
     # ── Open paper trades
     if open_papers:
@@ -835,24 +857,23 @@ def build_advisor_v2_text() -> str:
             stype = tr.get("setup_type", "?")
             lines.append(f"  {side} @ {entry:.0f} → TP1 {tp1:.0f} | {stype}")
 
-    # ── What to watch (contextual triggers — only render rules that match
-    # the current state of the world; otherwise skip the block entirely).
+    # ── What to watch — only render triggers that match current state.
     watch: list[str] = []
 
     funding = features.get("funding_rate")
     if funding is not None:
         funding_pct = funding * 100
-        if funding_pct < -0.008:
+        if funding_pct < FUNDING_DEEP_NEG_PCT:
             watch.append(f"Funding flip к ≥0 (сейчас {funding_pct:+.4f}% — глубоко negative, потенциал squeeze)")
-        elif funding_pct > 0.015:
+        elif funding_pct > FUNDING_OVERHEAT_PCT:
             watch.append(f"Funding flip к ≤0 (сейчас {funding_pct:+.4f}% — перегрев longs)")
 
     oi = features.get("oi_delta_1h")
-    if oi is not None and abs(oi) < 0.5:
+    if oi is not None and abs(oi) < OI_FLAT_ABS_PCT:
         watch.append("OI 1h breakout (сейчас flat — пробой ±1% даст направление)")
 
     oi_div_z = features.get("oi_price_div_1h_z")
-    if oi_div_z is not None and abs(oi_div_z) > 1.5:
+    if oi_div_z is not None and abs(oi_div_z) > OI_DIV_Z_THRESHOLD:
         sign = "цена↑ + OI↓ — слабое движение" if oi_div_z < 0 else "цена↓ + OI↑ — поджимают шорты"
         watch.append(f"OI/price divergence z={oi_div_z:+.1f} ({sign}) — ждать resync")
 
