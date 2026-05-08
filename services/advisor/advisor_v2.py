@@ -157,46 +157,182 @@ def _classify_v2_live() -> dict:
         return {}
 
 
-def _read_features_last() -> dict:
-    """Last bar of full_features_1y for momentum/flow/OI/funding.
+def _compute_rsi(close: "pd.Series", period: int = 14) -> "pd.Series":
+    delta = close.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
+    import pandas as pd
+    rs = avg_gain / avg_loss.replace(0, pd.NA)
+    return 100 - (100 / (1 + rs))
 
-    2026-05-07 fix: parquet `full_features_1y.parquet` обновляется НЕ live (последнее
-    обновление обычно >24h назад). Поэтому OI/funding signal в advisor показывал
-    устаревшие данные. Live override: `state/deriv_live.json` (обновляется каждые
-    5 мин из services/deriv_live/) переписывает funding_rate, oi_delta_1h, premium_pct.
+
+def _compute_taker_imbalance(df) -> float | None:
+    """Real taker imbalance from Binance klines: (buy_volume - sell_volume) / total * 100.
+
+    Klines provide `taker_buy_base` per bar (the buy-side market volume). The
+    rest is sell-side. Returns +X% (more buying) or -X% (more selling).
     """
-    out = {}
-    # 1) Read parquet (исторические features — RSI, taker_imbalance, session levels, etc.)
-    try:
-        import pandas as pd
-        df = pd.read_parquet("data/forecast_features/full_features_1y.parquet")
-        if not df.empty:
-            last = df.iloc[-1]
-            for col in (
-                "rsi_14", "rsi_zone_int", "rsi_divergence_5h",
-                "cci_overbought", "cci_oversold",
-                "oi_delta_1h", "oi_price_div_1h_z",
-                "taker_imbalance_1h", "taker_imbalance_15m", "taker_imbalance_5m",
-                "ls_long_extreme", "ls_short_extreme",
-                "asia_high_broken", "asia_low_broken",
-                "london_high_broken", "london_low_broken",
-                "ny_am_high_broken", "ny_am_low_broken",
-                "bars_since_london_high_break", "bars_since_ny_am_high_break",
-                "bars_since_london_low_break", "bars_since_ny_am_low_break",
-                "volume_acceleration", "rvol_20", "realized_vol_pctile_24h",
-                "dist_to_pdh_pct", "dist_to_pdl_pct",
-                "vol_profile_poc_dist_pct", "vol_profile_position",
-                "funding_rate", "funding_z",
-            ):
-                if col in df.columns:
-                    v = last.get(col)
-                    if pd.notna(v):
-                        out[col] = float(v)
-    except Exception:
-        logger.exception("advisor_v2.features_load_failed")
+    import pandas as pd
+    if df is None or df.empty:
+        return None
+    if "taker_buy_base" not in df.columns or "volume" not in df.columns:
+        return None
+    buy = pd.to_numeric(df["taker_buy_base"], errors="coerce").sum()
+    total = pd.to_numeric(df["volume"], errors="coerce").sum()
+    if pd.isna(total) or total <= 0:
+        return None
+    sell = total - buy
+    return float((buy - sell) / total * 100.0)
 
-    # 2) LIVE override from state/deriv_live.json (Binance REST poll, 5min cadence).
-    # Заменяет stale parquet значения на свежие для OI / funding.
+
+def _session_window_utc(now_utc, session: str) -> tuple:
+    """Return (start_dt, end_dt) for today's session window in UTC, per
+    advisor v2 docs (Tokyo 0000-0900, London 0700-1600, NY 1300-2200).
+    """
+    from datetime import datetime, timedelta, timezone
+    today = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    if session == "asia":
+        return today, today + timedelta(hours=9)
+    if session == "london":
+        return today + timedelta(hours=7), today + timedelta(hours=16)
+    if session == "ny_am":
+        return today + timedelta(hours=13), today + timedelta(hours=22)
+    return today, today + timedelta(hours=24)
+
+
+def _read_features_last() -> dict:
+    """Compute all features LIVE from cached OHLCV + state/deriv_live.json.
+
+    Replaces the broken 2026-05-07 implementation that read frozen
+    full_features_1y.parquet (last bar 2026-05-01, all values stale by 7+
+    days). RSI, taker_imbalance, volume_acceleration, session breakouts are
+    now computed from live klines via core.data_loader.load_klines.
+
+    Sources:
+      - 1h, 15m, 5m, 1m OHLCV: load_klines (cached, ~1s freshness)
+      - deriv data (OI / funding / premium / L-S / taker volume): state/deriv_live.json
+    """
+    import pandas as pd
+    from datetime import datetime, timezone
+
+    out: dict = {}
+
+    try:
+        from core.data_loader import load_klines
+
+        # 1h: RSI, volume, OI/price divergence z-score, RSI divergence
+        df_1h = load_klines(symbol="BTCUSDT", timeframe="1h", limit=200)
+        if not df_1h.empty:
+            close_1h = df_1h["close"]
+            rsi_series = _compute_rsi(close_1h, 14)
+            last_rsi = rsi_series.iloc[-1]
+            if pd.notna(last_rsi):
+                out["rsi_14"] = float(last_rsi)
+            # Recent RSI divergence (last 5h vs prior 5h, naive HH-LH check)
+            if len(rsi_series) >= 12:
+                recent_high_idx = close_1h.iloc[-5:].idxmax()
+                prior_high_idx = close_1h.iloc[-10:-5].idxmax()
+                if (close_1h.loc[recent_high_idx] > close_1h.loc[prior_high_idx]
+                        and rsi_series.loc[recent_high_idx] < rsi_series.loc[prior_high_idx]):
+                    out["rsi_divergence_5h"] = True
+
+            # Volume accel: last 5h mean vs prior 5h mean.
+            # Coerce 'volume' to numeric — load_klines may return it as object.
+            vol_num = pd.to_numeric(df_1h["volume"], errors="coerce")
+            if len(vol_num.dropna()) >= 10:
+                recent_vol = vol_num.iloc[-5:].mean()
+                prior_vol = vol_num.iloc[-10:-5].mean()
+                if pd.notna(prior_vol) and prior_vol > 0:
+                    out["volume_acceleration"] = float((recent_vol - prior_vol) / prior_vol * 100.0)
+            # rvol_20 = current bar vol / 20-bar mean
+            if len(vol_num.dropna()) >= 21:
+                vol20 = vol_num.iloc[-21:-1].mean()
+                if pd.notna(vol20) and vol20 > 0:
+                    out["rvol_20"] = float(vol_num.iloc[-1] / vol20)
+
+            # realized_vol_pctile_24h: percentile of current 24h std within last 7 days
+            if len(df_1h) >= 168:
+                returns = df_1h["close"].pct_change()
+                vol_24h = returns.rolling(24).std()
+                cur_vol = vol_24h.iloc[-1]
+                if pd.notna(cur_vol):
+                    window_7d = vol_24h.iloc[-168:].dropna()
+                    if len(window_7d) > 0:
+                        pctile = (window_7d <= cur_vol).mean() * 100.0
+                        out["realized_vol_pctile_24h"] = float(pctile)
+
+        # 15m: taker imbalance over last 4 bars (1h equivalent), 1 bar (15m), 1/3 bar (5m)
+        df_15m = load_klines(symbol="BTCUSDT", timeframe="15m", limit=24)
+        if not df_15m.empty:
+            ti_1h = _compute_taker_imbalance(df_15m.iloc[-4:])
+            if ti_1h is not None:
+                out["taker_imbalance_1h"] = ti_1h
+            ti_15m = _compute_taker_imbalance(df_15m.iloc[-1:])
+            if ti_15m is not None:
+                out["taker_imbalance_15m"] = ti_15m
+
+        # 5m for finer taker
+        df_5m = load_klines(symbol="BTCUSDT", timeframe="5m", limit=12)
+        if not df_5m.empty:
+            ti_5m = _compute_taker_imbalance(df_5m.iloc[-1:])
+            if ti_5m is not None:
+                out["taker_imbalance_5m"] = ti_5m
+
+        # Session breakouts: load 24h of 5m bars, find Asia/London/NY-AM H/L for
+        # today, then check if any bar after the session window broke them.
+        # load_klines returns 'open_time' as datetime64[UTC] — use it directly.
+        df_5m_24h = load_klines(symbol="BTCUSDT", timeframe="5m", limit=288)
+        if not df_5m_24h.empty and "open_time" in df_5m_24h.columns:
+            now_utc = datetime.now(timezone.utc)
+            dt = df_5m_24h["open_time"]
+            last_close = float(df_5m_24h["close"].iloc[-1])
+
+            for session in ("asia", "london", "ny_am"):
+                s_start, s_end = _session_window_utc(now_utc, session)
+                if now_utc < s_start:
+                    continue
+                effective_end = min(s_end, now_utc)
+                in_session = df_5m_24h[(dt >= s_start) & (dt <= effective_end)]
+                if in_session.empty:
+                    continue
+                s_high = float(in_session["high"].max())
+                s_low = float(in_session["low"].min())
+                after_session = df_5m_24h[dt > effective_end]
+                broke_high = False
+                broke_low = False
+                if not after_session.empty:
+                    high_break_mask = after_session["high"] > s_high
+                    if high_break_mask.any():
+                        broke_high = True
+                        break_dt = after_session.loc[high_break_mask, "open_time"].iloc[0]
+                        out[f"bars_since_{session}_high_break"] = float(
+                            (now_utc - break_dt).total_seconds() / 3600.0
+                        )
+                    low_break_mask = after_session["low"] < s_low
+                    if low_break_mask.any():
+                        broke_low = True
+                        break_dt = after_session.loc[low_break_mask, "open_time"].iloc[0]
+                        out[f"bars_since_{session}_low_break"] = float(
+                            (now_utc - break_dt).total_seconds() / 3600.0
+                        )
+                # Session still running — check current close vs session range so far
+                if effective_end >= now_utc - pd.Timedelta(minutes=5):
+                    if last_close > s_high:
+                        broke_high = True
+                    if last_close < s_low:
+                        broke_low = True
+                if broke_high:
+                    out[f"{session}_high_broken"] = True
+                if broke_low:
+                    out[f"{session}_low_broken"] = True
+
+    except Exception:
+        logger.exception("advisor_v2.live_features_failed")
+
+    # LIVE deriv data (OI / funding / premium / L-S / taker volume) from state/deriv_live.json.
+    # This source already worked and stays as-is.
     try:
         import json as _json
         from pathlib import Path as _Path
@@ -204,18 +340,14 @@ def _read_features_last() -> dict:
         if live_path.exists():
             data = _json.loads(live_path.read_text(encoding="utf-8"))
             btc = data.get("BTCUSDT", {}) or {}
-            # funding_rate (8h period) — live override
             if "funding_rate_8h" in btc:
                 out["funding_rate"] = float(btc["funding_rate_8h"])
                 out["_funding_source"] = "deriv_live"
-            # OI 1h delta — live override
             if "oi_change_1h_pct" in btc:
                 out["oi_delta_1h"] = float(btc["oi_change_1h_pct"])
                 out["_oi_source"] = "deriv_live"
-            # Premium (mark vs index) — новый сигнал, не было в parquet
             if "premium_pct" in btc:
                 out["premium_pct"] = float(btc["premium_pct"])
-            # Long/Short ratio market sentiment (2026-05-07)
             for k in ("global_long_account_pct", "global_short_account_pct",
                       "top_trader_long_pct", "top_trader_short_pct",
                       "taker_buy_pct", "taker_sell_pct",
@@ -223,6 +355,13 @@ def _read_features_last() -> dict:
                 if k in btc:
                     out[k] = btc[k]
             out["_deriv_live_ts"] = data.get("last_updated", "")
+            # Long/short extreme flags (>=70% one side = crowded)
+            gl = btc.get("global_long_account_pct")
+            if gl is not None:
+                if gl >= 70:
+                    out["ls_long_extreme"] = True
+                elif gl <= 30:
+                    out["ls_short_extreme"] = True
     except Exception:
         logger.exception("advisor_v2.deriv_live_load_failed")
 
@@ -250,27 +389,29 @@ def _interpret_momentum(f: dict) -> list[str]:
 
 
 def _interpret_flow(f: dict) -> list[str]:
+    """Note: live features (since 2026-05-08 refactor) supply taker_imbalance,
+    volume_acceleration, realized_vol_pctile_24h already in PERCENT (not 0..1).
+    """
     out = []
     ti_1h = f.get("taker_imbalance_1h")
     ti_15m = f.get("taker_imbalance_15m")
-    ti_5m = f.get("taker_imbalance_5m")
     if ti_1h is not None:
         sign = "buy" if ti_1h > 0 else "sell"
-        out.append(f"Taker 1h: {ti_1h*100:+.1f}% ({sign} pressure)")
+        out.append(f"Taker 1h: {ti_1h:+.1f}% ({sign} pressure)")
     if ti_15m is not None and ti_1h is not None and (ti_15m * ti_1h < 0):
         out.append("⚠️ Flow flip — 15m расходится с 1h по направлению")
     vol_accel = f.get("volume_acceleration")
     if vol_accel is not None:
-        if vol_accel < -0.5:
-            out.append(f"Volume падает (accel {vol_accel:+.0%})")
-        elif vol_accel > 0.5:
-            out.append(f"Volume растёт (accel {vol_accel:+.0%})")
+        if vol_accel < -50:
+            out.append(f"Volume падает (accel {vol_accel:+.0f}%)")
+        elif vol_accel > 50:
+            out.append(f"Volume растёт (accel {vol_accel:+.0f}%)")
     rvp = f.get("realized_vol_pctile_24h")
     if rvp is not None:
-        if rvp > 0.8:
-            out.append(f"Vol percentile 24h: {rvp:.0%} — высокая волатильность")
-        elif rvp < 0.2:
-            out.append(f"Vol percentile 24h: {rvp:.0%} — низкая волатильность")
+        if rvp > 80:
+            out.append(f"Vol percentile 24h: {rvp:.0f}% — высокая волатильность")
+        elif rvp < 20:
+            out.append(f"Vol percentile 24h: {rvp:.0f}% — низкая волатильность")
     return out
 
 
@@ -707,12 +848,20 @@ def build_advisor_v2_text() -> str:
     for x in _format_risk_block(risk):
         lines.append(f"  {x}")
 
-    # ── Margin status (TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-07)
-    # Operator sets via /margin <coef> <available> <dist>. Stale > 6h = warn.
+    # ── Margin status (TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-07).
+    # state_snapshot.py picks newer of operator /margin override and BitMEX-API
+    # auto-poll, so we surface whichever source was freshest. Stale > 6h = warn.
     margin_block = _read_margin_block()
     if margin_block:
         lines.append("")
-        lines.append("💰 MARGIN (operator-supplied)")
+        source = str(margin_block.get("source", "unknown"))
+        if source == "telegram_operator":
+            label = "operator /margin"
+        elif source == "bitmex_api":
+            label = "auto-poll BitMEX API"
+        else:
+            label = source or "unknown"
+        lines.append(f"💰 MARGIN ({label})")
         coef = margin_block.get("coefficient")
         avail = margin_block.get("available_margin_usd")
         dist = margin_block.get("distance_to_liquidation_pct")
@@ -720,7 +869,7 @@ def build_advisor_v2_text() -> str:
         if coef is not None:
             lines.append(f"  Margin coef: {coef:.4f} | Available: ${avail:,.0f} | Dist to liq: {dist:.1f}%")
         if age_min > 360:  # > 6h
-            lines.append(f"  ⚠️ Margin data {age_min/60:.1f}h old — обнови через /margin")
+            lines.append(f"  ⚠️ Margin data {age_min/60:.1f}h old — auto-poll или /margin")
         elif age_min > 60:
             lines.append(f"  Margin data {age_min:.0f}min old")
 
