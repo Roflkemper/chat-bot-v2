@@ -746,6 +746,7 @@ from services.setup_detector.multi_divergence import (
     detect_long_multi_divergence,
     detect_long_div_bos_confirmed,
     detect_long_div_bos_15m,
+    detect_short_div_bos_15m,
 )
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
@@ -761,6 +762,7 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_double_top_setup,
     detect_long_div_bos_confirmed,  # 1h, PF=4.49, walk-forward stable (2026-05-08)
     detect_long_div_bos_15m,        # 15m, PF=5.01 hold_4h, fast reaction (2026-05-08)
+    detect_short_div_bos_15m,       # 15m SHORT, PF=3.85 hold_1h, walk-forward stable
     detect_long_multi_divergence,   # 1h base, PF=1.78 (2026-05-08)
     detect_grid_raise_boundary,
     detect_grid_pause_entries,

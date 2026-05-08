@@ -64,13 +64,20 @@ CONFIRMED_SL_PCT = 1.5
 CONFIRMED_TP1_RR = 1.5
 CONFIRMED_TP2_RR = 3.0
 
-# 15m variant: backtest 2026-05-08 found PF=5.01 hold_4h with N=228 (BoS within
-# +20 bars of divergence). Wider window catches more setups; target horizon
-# is 4h (16 15m-bars).
+# 15m variants — backtest 2026-05-08, walk-forward 4 folds all stable.
+# LONG variant: BoS within +20 bars (5h), target horizon 4h.
 BOS_WINDOW_BARS_15M = 20
 SL_PCT_15M = 1.0
 TP1_RR_15M = 2.0
 TP2_RR_15M = 4.0
+
+# SHORT variant: BoS within +10 bars (2.5h), target horizon 1h.
+# Stronger short-term edge: PF=3.85 WR=72% hold_1h, N=137. Walk-forward
+# all 4 folds PF >= 2.13 hold_1h. Edge confirmed.
+BOS_WINDOW_BARS_15M_SHORT = 10
+SL_PCT_15M_SHORT = 1.0
+TP1_RR_15M_SHORT = 1.5
+TP2_RR_15M_SHORT = 3.0
 
 
 @dataclass(frozen=True)
@@ -339,16 +346,58 @@ def _find_recent_lh(df: pd.DataFrame, before_bar: int, lookback: int = PIVOT_LOO
     high_pivots = _find_pivots(df["high"], lookback)
     if len(high_pivots.highs) < 2:
         return None
-    # Only consider pivots that have already been confirmed (bar + lookback < before_bar)
     confirmed = [h for h in high_pivots.highs if h + lookback < before_bar]
-    # Walk from most recent backwards looking for an LH
-    last_high_val = None
     for i in range(len(confirmed) - 1, 0, -1):
         cur_idx = confirmed[i]
         prev_idx = confirmed[i - 1]
         if df["high"].iloc[cur_idx] < df["high"].iloc[prev_idx]:
             return (cur_idx, float(df["high"].iloc[cur_idx]))
     return None
+
+
+def _find_recent_hl(df: pd.DataFrame, before_bar: int, lookback: int = PIVOT_LOOKBACK) -> tuple[int, float] | None:
+    """Find the most recent unbroken Higher Low before `before_bar`.
+
+    Mirror of _find_recent_lh — walks price-low pivots backwards looking for
+    an HL (low that's higher than the prior low). Used for bearish BoS:
+    closing below an HL means uptrend structure broken downward.
+    """
+    low_pivots = _find_pivots(df["low"], lookback)
+    if len(low_pivots.lows) < 2:
+        return None
+    confirmed = [l for l in low_pivots.lows if l + lookback < before_bar]
+    for i in range(len(confirmed) - 1, 0, -1):
+        cur_idx = confirmed[i]
+        prev_idx = confirmed[i - 1]
+        if df["low"].iloc[cur_idx] > df["low"].iloc[prev_idx]:
+            return (cur_idx, float(df["low"].iloc[cur_idx]))
+    return None
+
+
+def _agreeing_indicators_for_bearish(
+    indicators: dict[str, pd.Series],
+    pivots_by_indicator: dict[str, _Pivots],
+    prev_price_idx: int,
+    cur_price_idx: int,
+    tolerance: int,
+) -> tuple[str, ...]:
+    """Mirror of _agreeing_indicators_for_bullish for bearish divergence:
+    price prints HH but indicator pivot-high prints LH (lower high).
+    """
+    out: list[str] = []
+    for name, ind in indicators.items():
+        ind_pivots = pivots_by_indicator[name]
+        prev_pi = _nearest_pivot_within(ind_pivots.highs, prev_price_idx, tolerance)
+        cur_pi = _nearest_pivot_within(ind_pivots.highs, cur_price_idx, tolerance)
+        if prev_pi is None or cur_pi is None:
+            continue
+        prev_val = ind.iloc[prev_pi]
+        cur_val = ind.iloc[cur_pi]
+        if pd.isna(prev_val) or pd.isna(cur_val):
+            continue
+        if cur_val < prev_val:   # LH on indicator → bearish divergence
+            out.append(name)
+    return tuple(out)
 
 
 def detect_long_div_bos_confirmed(ctx) -> Setup | None:
@@ -604,6 +653,136 @@ def detect_long_div_bos_15m(ctx) -> Setup | None:
                 f"15m DIV+BoS: bullish div ({prev_low:.0f}->{cur_low:.0f}, "
                 f"{len(agreeing)}/7 inds HL) + BoS@{lh_price:.0f}. "
                 f"Backtest PF=5.01 hold_4h, WR=74%, N=228."
+            ),
+        )
+
+    return None
+
+
+# ─── SHORT 15m: bearish DIV + BoS confirmation ──────────────────────────
+
+def detect_short_div_bos_15m(ctx) -> Setup | None:
+    """Bearish divergence + bearish BoS on 15-minute timeframe.
+
+    First short-side detector with confirmed edge. Backtest 2026-05-08:
+      - DIV+BoS within +10 bars (2.5h):  PF=3.85, WR=72.3%, N=137 hold_1h
+      - DIV+BoS within +20 bars (5h):    PF=2.20, WR=64.4%, N=236 hold_1h
+      - Walk-forward 4 folds (win=10):  PF >= 2.13 hold_1h on every fold
+    Window=10 chosen for tightest entry quality; target horizon 1h.
+
+    Algorithm mirrors detect_long_div_bos_15m but for bearish side:
+      1. Find consecutive price-high pivots where second > first (HH on price)
+      2. Check indicators for matching pivot-highs where second < first (LH)
+      3. If confluence>=2 AND price subsequently closes below most recent
+         unbroken HL within +10 bars → fire signal at the BoS bar
+      4. Regime guard: skip if regime_label is trend_up/impulse_up
+
+    Note: opposite regime guard from the long detectors — bearish setup
+    avoids fighting an established uptrend.
+    """
+    df = ctx.ohlcv_15m
+    if df is None or len(df) < 50:
+        return None
+    if not all(col in df.columns for col in ("high", "low", "close", "volume")):
+        return None
+
+    # Bearish guard: skip the trade in a fresh uptrend (mirror of bullish guard).
+    UP_REGIME_LABELS = {"trend_up", "impulse_up"}
+    if str(ctx.regime_label or "").lower() in UP_REGIME_LABELS:
+        return None
+
+    df = df.reset_index(drop=True)
+    price_pivots = _find_pivots(df["high"])
+    if len(price_pivots.highs) < 2:
+        return None
+
+    indicators = _build_indicators(df)
+    pivots_by_indicator = {name: _find_pivots(ind) for name, ind in indicators.items()}
+
+    n = len(df)
+    last_bar = n - 1
+    last_close = float(df["close"].iloc[last_bar])
+
+    for j in range(len(price_pivots.highs) - 1, 0, -1):
+        cur_idx = price_pivots.highs[j]
+        prev_idx = price_pivots.highs[j - 1]
+        if cur_idx - prev_idx > DIV_WINDOW_BARS:
+            continue
+        cur_high = float(df["high"].iloc[cur_idx])
+        prev_high = float(df["high"].iloc[prev_idx])
+        if cur_high <= prev_high:
+            continue   # not HH
+
+        div_conf_bar = cur_idx + PIVOT_LOOKBACK
+        if div_conf_bar >= n:
+            return None
+        if last_bar - div_conf_bar > BOS_WINDOW_BARS_15M_SHORT:
+            return None
+
+        agreeing = _agreeing_indicators_for_bearish(
+            indicators, pivots_by_indicator,
+            prev_idx, cur_idx, INDICATOR_PIVOT_TOLERANCE,
+        )
+        if len(agreeing) < MIN_CONFLUENCE:
+            continue
+
+        hl = _find_recent_hl(df, before_bar=div_conf_bar)
+        if hl is None:
+            continue
+        hl_idx, hl_price = hl
+
+        # Scan from div_conf_bar forward for first close BELOW hl_price.
+        # Fire only on the LATEST bar to avoid stale signals.
+        bos_bar = None
+        for b in range(div_conf_bar, last_bar + 1):
+            if float(df["close"].iloc[b]) < hl_price:
+                bos_bar = b
+                break
+        if bos_bar is None or bos_bar != last_bar:
+            continue
+
+        entry = last_close
+        stop = entry * (1 + SL_PCT_15M_SHORT / 100.0)
+        risk = stop - entry
+        tp1 = entry - risk * TP1_RR_15M_SHORT
+        tp2 = entry - risk * TP2_RR_15M_SHORT
+        rr = (entry - tp1) / max(stop - entry, 1e-9)
+
+        confidence_pct = 65.0 + (len(agreeing) - MIN_CONFLUENCE) * 5.0
+        confidence_pct = min(80.0, confidence_pct)
+        strength = 7 + min(2, len(agreeing) - MIN_CONFLUENCE + 1)
+
+        basis_items = [
+            SetupBasis("price_HH_prev_15m", round(prev_high, 1), 0.20),
+            SetupBasis("price_HH_cur_15m", round(cur_high, 1), 0.20),
+            SetupBasis("confluence_count", len(agreeing), 0.25),
+            SetupBasis("agreeing_indicators", "+".join(agreeing), 0.10),
+            SetupBasis("bos_hl_broken_15m", round(hl_price, 1), 0.25),
+        ]
+
+        return make_setup(
+            setup_type=SetupType.SHORT_DIV_BOS_15M,
+            pair=ctx.pair,
+            current_price=last_close,
+            regime_label=ctx.regime_label,
+            session_label=ctx.session_label,
+            entry_price=round(entry, 1),
+            stop_price=round(stop, 1),
+            tp1_price=round(tp1, 1),
+            tp2_price=round(tp2, 1),
+            risk_reward=round(rr, 2),
+            strength=strength,
+            confidence_pct=confidence_pct,
+            basis=tuple(basis_items),
+            cancel_conditions=(
+                f"close above {stop:.0f} invalidates 15m bear BoS",
+                f"regime turns trend_up on 1h",
+            ),
+            window_minutes=120,    # 2h target — peak edge per backtest
+            portfolio_impact_note=(
+                f"15m SHORT DIV+BoS: bearish div ({prev_high:.0f}->{cur_high:.0f}, "
+                f"{len(agreeing)}/7 inds LH) + BoS@{hl_price:.0f}. "
+                f"Backtest PF=3.85 hold_1h, WR=72%, N=137; WF stable."
             ),
         )
 

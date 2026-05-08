@@ -1396,6 +1396,25 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text)
 
+        # ── /setups_15m — 15-minute timeframe view for manual trading.
+        # Shows live LONG_DIV_BOS_15M / SHORT_DIV_BOS_15M setups + paper-trade
+        # performance scoped to those types. Backtest 2026-05-08 walk-forward
+        # showed both directions stable PF>=2 across 4 folds.
+        @self.bot.message_handler(commands=['setups_15m', 'setups15m', '15m'])
+        def handle_setups_15m(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.advisor.setups_15m import build_setups_15m_text
+                text = build_setups_15m_text()
+            except Exception as exc:
+                logger.exception('handle_setups_15m.failed')
+                self.bot.send_message(chat_id, f'❌ /setups_15m failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         # ── /morning_brief — executive summary (TZ-MORNING-BRIEF 2026-05-08).
         # Replaces the operator's morning routine of running 5+ commands
         # (advise, momentum_check, regime, status). Surfaces ACTION first,

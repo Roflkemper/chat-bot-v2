@@ -30,8 +30,8 @@ def build_main_keyboard() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
     # Row 1 — flagship: morning brief (one-glance summary), then deep-dive
     kb.row(_btn("/morning_brief"), _btn("/advise"), _btn("FINAL DECISION"))
-    # Row 2 — momentum / regime / setups
-    kb.row(_btn("/momentum_check"), _btn("/regime_v2"), _btn("BTC 1H"))
+    # Row 2 — momentum / 15m setups / regime
+    kb.row(_btn("/momentum_check"), _btn("/setups_15m"), _btn("/regime_v2"))
     # Row 3 — bots / portfolio summaries
     kb.row(_btn("СТАТУС БОТОВ"), _btn("BTC GINAREA"), _btn("BTC SUMMARY"))
     # Row 4 — paper trader / watchlist / advisor / help
