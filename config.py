@@ -8,6 +8,32 @@ from typing import Optional, Tuple
 BASE_DIR = Path(__file__).resolve().parent
 
 
+def _hydrate_env_from_dotfile(path: Path) -> None:
+    """Populate os.environ from a KEY=VALUE dotfile, without overwriting existing.
+
+    Minimal loader (no python-dotenv dep). Ignores comments, blank lines, and
+    quotes. Existing os.environ values win — operator/CI envs always override
+    file values.
+    """
+    try:
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            os.environ[key] = value.strip().strip('"').strip("'")
+    except Exception:
+        pass
+
+
+for _candidate in (BASE_DIR / ".env.local", BASE_DIR / ".env"):
+    if _candidate.exists() and _candidate.is_file():
+        _hydrate_env_from_dotfile(_candidate)
+
+
 def _env_bool(name: str, default: bool) -> bool:
     value = os.getenv(name)
     if value is None:
@@ -145,3 +171,12 @@ KILLSWITCH_FLASH_WINDOW_SEC = int(os.getenv("KILLSWITCH_FLASH_WINDOW_SEC", "60")
 ORCHESTRATOR_LOOP_INTERVAL_SEC = int(os.getenv("ORCHESTRATOR_LOOP_INTERVAL_SEC", "300"))
 ORCHESTRATOR_DAILY_REPORT_TIME = os.getenv("ORCHESTRATOR_DAILY_REPORT_TIME", "09:00")
 ORCHESTRATOR_ENABLE_AUTO_ALERTS = _env_bool("ORCHESTRATOR_ENABLE_AUTO_ALERTS", True)
+
+# ADVISOR v2 — operator deposit total. Read by:
+#   src/advisor/v2/portfolio.py:166 (depo_total fallback)
+#   services/advise_v2/paper_journal.py:115 (paper journal sizing)
+# Set to 0 to fall back to depo_available (CSV wallet balance + pool profit).
+# Operator should set ADVISOR_DEPO_TOTAL=15145 in .env after each ≥$500 depo change.
+ADVISOR_DEPO_TOTAL = _env_float("ADVISOR_DEPO_TOTAL", 0.0)
+ADVISOR_DD_THRESHOLD_USD = _env_float("ADVISOR_DD_THRESHOLD_USD", 100.0)
+ADVISOR_STALE_MAX_SEC = int(os.getenv("ADVISOR_STALE_MAX_SEC", "180"))
