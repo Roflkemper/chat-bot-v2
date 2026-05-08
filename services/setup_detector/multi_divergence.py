@@ -296,7 +296,9 @@ def detect_long_multi_divergence(ctx) -> Setup | None:
         # Confidence scales with confluence: 2/6 → 60%, 3/6 → 70%, 4+/6 → 80%.
         confidence_pct = 60.0 + (len(agreeing) - MIN_CONFLUENCE) * 10.0
         confidence_pct = min(85.0, confidence_pct)
-        strength = 6 + min(3, len(agreeing) - MIN_CONFLUENCE + 1)  # 7..9
+        # Strength floor 9 so combo_filter MIN_ALLOWED_STRENGTH=9 lets backtest-
+        # validated divergences through. Bumps from 7..9 to 9..10 (cap).
+        strength = 9 + min(1, max(0, len(agreeing) - MIN_CONFLUENCE - 1))
 
         basis_items = [
             SetupBasis("price_LL_prev", round(prev_low, 1), 0.25),
@@ -620,7 +622,8 @@ def detect_long_div_bos_15m(ctx) -> Setup | None:
         # Slightly lower confidence than 1h CONFIRMED (more noise on 15m).
         confidence_pct = 65.0 + (len(agreeing) - MIN_CONFLUENCE) * 5.0
         confidence_pct = min(80.0, confidence_pct)
-        strength = 7 + min(2, len(agreeing) - MIN_CONFLUENCE + 1)  # 8..9
+        # Strength floor 9 to clear combo_filter MIN_ALLOWED_STRENGTH=9.
+        strength = 9 + min(1, max(0, len(agreeing) - MIN_CONFLUENCE - 1))
 
         basis_items = [
             SetupBasis("price_LL_prev_15m", round(prev_low, 1), 0.20),
@@ -750,7 +753,8 @@ def detect_short_div_bos_15m(ctx) -> Setup | None:
 
         confidence_pct = 65.0 + (len(agreeing) - MIN_CONFLUENCE) * 5.0
         confidence_pct = min(80.0, confidence_pct)
-        strength = 7 + min(2, len(agreeing) - MIN_CONFLUENCE + 1)
+        # Strength floor 9 to clear combo_filter MIN_ALLOWED_STRENGTH=9.
+        strength = 9 + min(1, max(0, len(agreeing) - MIN_CONFLUENCE - 1))
 
         basis_items = [
             SetupBasis("price_HH_prev_15m", round(prev_high, 1), 0.20),

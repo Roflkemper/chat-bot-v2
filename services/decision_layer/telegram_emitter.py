@@ -147,6 +147,12 @@ async def decision_layer_telegram_loop(
 
     logger.info("decision_layer.telegram_emitter.start last_seen=%s", last_seen)
 
+    # Margin filter: M-3/M-4 fire on margin_coefficient >= 0.85, but with
+    # large position the operator typically runs at coef ~0.95-1.00 by design,
+    # while distance_to_liquidation stays comfortable (>15%). Pushing every
+    # 5min is spam. Suppress when dist_to_liq is comfortable.
+    SAFE_DIST_TO_LIQ_PCT = 15.0
+
     while not stop_event.is_set():
         try:
             new_events = _read_decisions_since(last_seen)
@@ -158,6 +164,12 @@ async def decision_layer_telegram_loop(
                     continue
                 if rule_id not in ALLOWED_PUSH_RULES:
                     continue
+                # Margin-rule filter: skip if liquidation distance is safe.
+                if rule_id in ("M-3", "M-4"):
+                    payload = e.get("payload", {}) or {}
+                    dist = payload.get("distance_to_liquidation_pct")
+                    if dist is not None and dist >= SAFE_DIST_TO_LIQ_PCT:
+                        continue
                 try:
                     send_fn(_format_decision(e))
                     logger.info(
