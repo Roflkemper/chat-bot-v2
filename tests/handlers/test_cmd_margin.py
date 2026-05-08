@@ -62,7 +62,8 @@ def test_margin_invalid_format_rejects(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_margin_invalid_coefficient_rejects(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    actions = CommandActions(_make_ctx("/margin 1.5 20434 18.0"))
+    # Flex parser (c280b3b) interprets 1<x≤100 as percent; reject path is now >100.
+    actions = CommandActions(_make_ctx("/margin 150 20434 18.0"))
     payload = actions.margin()
     text = _extract_text(payload)
     assert "❌" in text

@@ -52,13 +52,17 @@ def test_parse_wrong_arg_count() -> None:
 
 
 def test_parse_non_numeric() -> None:
-    with pytest.raises(MarginCommandError, match="распарсить"):
+    # Flex parser (c280b3b) extracts 'abc' as zero numbers — only 2 numbers
+    # remain (20434, 18.0), so we get the 'Нужно 3 числа' error.
+    with pytest.raises(MarginCommandError, match="Нужно 3 числа"):
         parse_override_command("/margin abc 20434 18.0")
 
 
 def test_parse_coefficient_above_one() -> None:
+    # Flex parser treats 1.0 < x ≤ 100 as percent (1.5 → 0.015), so 1.5 is
+    # accepted. The reject path is now coefficient > 100 only.
     with pytest.raises(MarginCommandError, match="coefficient"):
-        parse_override_command("/margin 1.5 20434 18.0")
+        parse_override_command("/margin 150 20434 18.0")
 
 
 def test_parse_coefficient_negative() -> None:
