@@ -332,23 +332,19 @@ def _interpret_flip_history(f: dict) -> list[str]:
         flips = detect_flips()
         if flips.get("funding"):
             ff = flips["funding"]
-            cur = ff.get("current") or 0
-            cur_pct = cur * 100
             streak = ff.get("current_streak_hours")
             sign_word = "положительный" if ff["current_sign"] == "+" else "отрицательный"
             if streak is not None:
                 last_val = ff["last_flip"]["value"] * 100
                 out.append(
-                    f"Funding {cur_pct:+.4f}% ({sign_word}) — держится {streak:.1f}ч "
-                    f"(до этого был {last_val:+.4f}%)"
+                    f"Funding-flip: {sign_word} {streak:.1f}ч (был {last_val:+.4f}%)"
                 )
         if flips.get("premium"):
             pp = flips["premium"]
-            cur = pp.get("current") or 0
             streak = pp.get("current_streak_hours")
             sign_word = "положительный (perp выше spot)" if pp["current_sign"] == "+" else "отрицательный (perp ниже spot)"
             if streak is not None:
-                out.append(f"Premium {cur:+.3f}% — {sign_word}, держится {streak:.1f}ч")
+                out.append(f"Premium-flip: {sign_word}, {streak:.1f}ч")
 
         spike = detect_oi_spike()
         if spike:
@@ -781,12 +777,32 @@ def build_advisor_v2_text() -> str:
         for s in sess:
             lines.append(f"  • {s}")
 
-    # ── Active setups
+    # ── Active setups (dedup by setup_type + entry-bucket of 0.3%).
+    # Setup_detector fires the same condition every poll cycle while it's live,
+    # which produces 5+ near-duplicate rows on close prices. Collapse them to
+    # the most recent snapshot per cluster with an xN counter so the operator
+    # sees one idea per row.
     high_conf = [s for s in setups if s.get("confidence_pct", 0) >= 60]
     if high_conf:
         lines.append("")
         lines.append("🎯 АКТИВНЫЕ СЕТАПЫ (≥60% conf, последние 6h)")
-        for s in high_conf[-5:]:
+
+        clusters: dict[tuple[str, int], list[dict]] = {}
+        for s in high_conf:
+            stype = s.get("setup_type", "?")
+            entry = s.get("entry_price") or 0
+            # Bucket by ~0.3% of entry → clusters within ~240pt at 80k.
+            bucket = int(entry / 250) if entry else 0
+            clusters.setdefault((stype, bucket), []).append(s)
+
+        # Sort clusters by latest ts inside each, then pick top 5 most recent.
+        def _last_ts(cl: list[dict]) -> str:
+            return max((x.get("ts") or "") for x in cl)
+        sorted_clusters = sorted(clusters.values(), key=_last_ts, reverse=True)[:5]
+
+        for cluster in sorted_clusters:
+            s = max(cluster, key=lambda x: x.get("ts") or "")  # latest snapshot
+            n = len(cluster)
             stype = s.get("setup_type", "?")
             entry = s.get("entry_price")
             sl = s.get("stop_price")
@@ -799,7 +815,11 @@ def build_advisor_v2_text() -> str:
             tp1_str = f"{tp1:.0f}" if tp1 else "?"
             tp2_str = f"{tp2:.0f}" if tp2 else "?"
             rr_str = f"RR {rr}" if rr else ""
-            lines.append(f"  {stype}: {entry_str} | SL {sl_str} | TP1 {tp1_str} | TP2 {tp2_str} | conf {conf:.0f}% {rr_str}")
+            count_str = f" ×{n}" if n > 1 else ""
+            lines.append(
+                f"  {stype}{count_str}: {entry_str} | SL {sl_str} | "
+                f"TP1 {tp1_str} | TP2 {tp2_str} | conf {conf:.0f}% {rr_str}"
+            )
     else:
         lines.append("")
         lines.append("🎯 АКТИВНЫЕ СЕТАПЫ: нет (последние 6h, conf ≥60%)")
@@ -815,14 +835,35 @@ def build_advisor_v2_text() -> str:
             stype = tr.get("setup_type", "?")
             lines.append(f"  {side} @ {entry:.0f} → TP1 {tp1:.0f} | {stype}")
 
-    # ── What to watch
-    lines.append("")
-    lines.append("👀 ЧТО ОТСЛЕЖИВАТЬ")
-    lines.append("  • Funding flip к ≥0 (исторически после neg-funding в 100% случаев)")
-    lines.append("  • OI delta 1h > +1% или < -1% (сейчас flat — структурный сигнал при движении)")
-    lines.append("  • Новые setups с confidence ≥60% — push в Telegram autoматически")
+    # ── What to watch (contextual triggers — only render rules that match
+    # the current state of the world; otherwise skip the block entirely).
+    watch: list[str] = []
+
+    funding = features.get("funding_rate")
+    if funding is not None:
+        funding_pct = funding * 100
+        if funding_pct < -0.008:
+            watch.append(f"Funding flip к ≥0 (сейчас {funding_pct:+.4f}% — глубоко negative, потенциал squeeze)")
+        elif funding_pct > 0.015:
+            watch.append(f"Funding flip к ≤0 (сейчас {funding_pct:+.4f}% — перегрев longs)")
+
+    oi = features.get("oi_delta_1h")
+    if oi is not None and abs(oi) < 0.5:
+        watch.append("OI 1h breakout (сейчас flat — пробой ±1% даст направление)")
+
+    oi_div_z = features.get("oi_price_div_1h_z")
+    if oi_div_z is not None and abs(oi_div_z) > 1.5:
+        sign = "цена↑ + OI↓ — слабое движение" if oi_div_z < 0 else "цена↓ + OI↑ — поджимают шорты"
+        watch.append(f"OI/price divergence z={oi_div_z:+.1f} ({sign}) — ждать resync")
+
     if regime.get("diverge"):
-        lines.append("  • Macro/micro divergence — ждать ресincrony")
+        watch.append("Macro ≠ Micro — ждать выравнивания TF (см. блок РЕЖИМ)")
+
+    if watch:
+        lines.append("")
+        lines.append("👀 ЧТО ОТСЛЕЖИВАТЬ")
+        for w in watch:
+            lines.append(f"  • {w}")
 
     # ── Persist audit entry (TZ-ADVISE-AUDIT 2026-05-07)
     try:
