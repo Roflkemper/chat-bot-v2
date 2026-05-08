@@ -10,6 +10,7 @@ import pytest
 from services.setup_detector.models import SetupType
 from services.setup_detector.multi_divergence import (
     BOS_WINDOW_BARS,
+    BOS_WINDOW_BARS_15M,
     DIV_WINDOW_BARS,
     MIN_CONFLUENCE,
     PIVOT_LOOKBACK,
@@ -18,6 +19,7 @@ from services.setup_detector.multi_divergence import (
     _find_recent_lh,
     _is_double_trend_down,
     _nearest_pivot_within,
+    detect_long_div_bos_15m,
     detect_long_div_bos_confirmed,
     detect_long_multi_divergence,
 )
@@ -31,6 +33,7 @@ class _Ctx:
     session_label: str = "ny_am"
     ohlcv_1m: pd.DataFrame = field(default_factory=pd.DataFrame)
     ohlcv_1h: pd.DataFrame = field(default_factory=pd.DataFrame)
+    ohlcv_15m: pd.DataFrame = field(default_factory=pd.DataFrame)
     portfolio: object = None
     ict_context: dict = field(default_factory=dict)
 
@@ -340,3 +343,58 @@ def test_div_bos_confirmed_returns_none_without_bos() -> None:
 def test_div_bos_confirmed_registered_in_registry() -> None:
     from services.setup_detector.setup_types import DETECTOR_REGISTRY
     assert detect_long_div_bos_confirmed in DETECTOR_REGISTRY
+
+
+# ─── 15m detector tests ────────────────────────────────────────────────
+
+def test_div_bos_15m_returns_none_with_empty_15m_frame() -> None:
+    """The 15m detector must guard for ctx.ohlcv_15m being empty (loop may fail
+    to load 15m data; production should not crash)."""
+    df = _build_div_then_bos_df(n=50)
+    ctx = _Ctx(current_price=80000.0, ohlcv_1h=df, ohlcv_15m=pd.DataFrame(),
+               regime_label="range_wide")
+    assert detect_long_div_bos_15m(ctx) is None
+
+
+def test_div_bos_15m_returns_none_on_short_15m_frame() -> None:
+    """Less than 50 bars -> not enough for divergence detection."""
+    short_df = _build_div_then_bos_df(n=50).iloc[:30].reset_index(drop=True)
+    ctx = _Ctx(ohlcv_15m=short_df, regime_label="range_wide")
+    assert detect_long_div_bos_15m(ctx) is None
+
+
+def test_div_bos_15m_fires_on_synthetic_setup() -> None:
+    """Reuses the 1h synthetic shape — the 15m detector reads ohlcv_15m, the
+    pattern itself is timeframe-agnostic. With BOS_WINDOW_BARS_15M=20 the
+    same n=50 shape (gap=10 between div_conf and last_bar) easily fits."""
+    df = _build_div_then_bos_df(n=50)
+    last_close = float(df["close"].iloc[-1])
+    ctx = _Ctx(current_price=last_close, ohlcv_15m=df, regime_label="range_wide")
+    setup = detect_long_div_bos_15m(ctx)
+    assert setup is not None
+    assert setup.setup_type == SetupType.LONG_DIV_BOS_15M
+    # Confidence: 65 base + 5 per extra confluence (capped at 80).
+    assert 65.0 <= setup.confidence_pct <= 80.0
+    # Strength 8..9.
+    assert 8 <= setup.strength <= 9
+    # TP1 RR=2.0, so tp1 should be 2x risk above entry.
+    risk = setup.entry_price - setup.stop_price
+    assert setup.tp1_price == pytest.approx(setup.entry_price + risk * 2.0, rel=0.01)
+
+
+def test_div_bos_15m_blocked_by_regime_guard() -> None:
+    df = _build_div_then_bos_df(n=50)
+    last_close = float(df["close"].iloc[-1])
+    ctx = _Ctx(current_price=last_close, ohlcv_15m=df, regime_label="trend_down")
+    assert detect_long_div_bos_15m(ctx) is None
+
+
+def test_div_bos_15m_uses_wider_bos_window() -> None:
+    """BOS_WINDOW_BARS_15M (20) is wider than BOS_WINDOW_BARS (10) — test that
+    a setup with gap=15 (would fail on 1h) still fires on 15m."""
+    assert BOS_WINDOW_BARS_15M > BOS_WINDOW_BARS
+
+
+def test_div_bos_15m_registered_in_registry() -> None:
+    from services.setup_detector.setup_types import DETECTOR_REGISTRY
+    assert detect_long_div_bos_15m in DETECTOR_REGISTRY

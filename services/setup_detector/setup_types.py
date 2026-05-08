@@ -38,6 +38,9 @@ class DetectionContext:
     portfolio: PortfolioSnapshot = field(default_factory=PortfolioSnapshot)
     # ICT level features at this bar (from ict_levels parquet). Empty if unavailable.
     ict_context: dict = field(default_factory=dict)
+    # 15m frame for fast-reaction detectors (e.g. LONG_DIV_BOS_15M).
+    # Empty DataFrame when the loop hasn't loaded it yet — detectors must guard.
+    ohlcv_15m: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 DetectorFn = Callable[[DetectionContext], Setup | None]
@@ -742,6 +745,7 @@ from services.setup_detector.double_top_bottom import (
 from services.setup_detector.multi_divergence import (
     detect_long_multi_divergence,
     detect_long_div_bos_confirmed,
+    detect_long_div_bos_15m,
 )
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
@@ -755,8 +759,9 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_short_liq_magnet,
     detect_double_bottom_setup,
     detect_double_top_setup,
-    detect_long_div_bos_confirmed,  # PF=4.49, walk-forward stable (2026-05-08)
-    detect_long_multi_divergence,   # PF=1.78, base divergence (2026-05-08)
+    detect_long_div_bos_confirmed,  # 1h, PF=4.49, walk-forward stable (2026-05-08)
+    detect_long_div_bos_15m,        # 15m, PF=5.01 hold_4h, fast reaction (2026-05-08)
+    detect_long_multi_divergence,   # 1h base, PF=1.78 (2026-05-08)
     detect_grid_raise_boundary,
     detect_grid_pause_entries,
     detect_grid_booster_activate,

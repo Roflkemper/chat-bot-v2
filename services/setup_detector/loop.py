@@ -70,6 +70,14 @@ def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
 
         df_1m: pd.DataFrame = load_klines(symbol=pair, timeframe="1m", limit=200)
         df_1h: pd.DataFrame = load_klines(symbol=pair, timeframe="1h", limit=50)
+        # 15m frame for fast-reaction detectors. limit=200 = ~50h of history,
+        # enough for divergence detection (needs >=50 bars). Failure here is
+        # non-fatal — detectors that need it guard for empty df_15m.
+        try:
+            df_15m: pd.DataFrame = load_klines(symbol=pair, timeframe="15m", limit=200)
+        except Exception:
+            logger.exception("setup_detector.build_context.15m_load_failed pair=%s", pair)
+            df_15m = pd.DataFrame()
         if df_1m.empty or df_1h.empty:
             return None
 
@@ -84,6 +92,7 @@ def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
             ohlcv_1h=df_1h,
             portfolio=portfolio,
             ict_context={},
+            ohlcv_15m=df_15m,
         )
     except Exception:
         logger.exception("setup_detector.build_context_failed pair=%s", pair)
