@@ -647,19 +647,25 @@ def get_status_rows() -> list[dict[str, object]]:
             "last_log":    _log_last_ts(name) if name != "supervisor" else "-",
         })
 
-    # Watchdog: independent process (not managed by supervisor — by design).
-    # Read-only status row based on its PID file written at watchdog startup.
+    # Watchdog row: legacy process superseded by OS-level keepalive task
+    # (Windows Task Scheduler: 'bot7-keepalive', runs every 2 min from
+    # scripts/keepalive_check.py). The legacy watchdog.py is kept on disk
+    # for backwards compat but no longer launched at startup. Show 'N/A'
+    # instead of 'DEAD' to avoid alarming the operator.
     wd_pid = _read_pid(_WATCHDOG_PID_PATH)
     wd_alive = _pid_alive(wd_pid) if wd_pid else False
     if wd_alive:
         wd_log_age = (time.time() - _WATCHDOG_LOG_PATH.stat().st_mtime) / 60 if _WATCHDOG_LOG_PATH.exists() else 9999
-        wd_health = "STALE" if wd_log_age > 10 else "OK"  # watchdog heartbeats every 5 min
+        wd_health = "STALE" if wd_log_age > 10 else "OK"
+        wd_pid_display = wd_pid
+        wd_last_log = _log_last_ts_path(_WATCHDOG_LOG_PATH)
     else:
-        wd_health = "DEAD"
-    wd_last_log = _log_last_ts_path(_WATCHDOG_LOG_PATH)
+        wd_health = "N/A"     # superseded by OS keepalive task
+        wd_pid_display = "-"
+        wd_last_log = "(keepalive task)"
     rows.append({
         "component": "watchdog",
-        "pid":       wd_pid or "-",
+        "pid":       wd_pid_display,
         "health":    wd_health,
         "last_log":  wd_last_log,
     })

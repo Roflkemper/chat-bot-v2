@@ -127,7 +127,11 @@ COOLDOWN_PRIMARY_SEC: int = 1800
 COOLDOWN_INFO_SEC: int = 3600
 COOLDOWN_M4_SEC: int = 60  # operator chat 2026-05-06 Q4: emergency floor 60s
 
-PRIMARY_HARD_CAP_24H: int = 20
+PRIMARY_HARD_CAP_24H: int = 50  # Raised 2026-05-08 from 20 — that limit was
+                                # generating 5725 CAP-DIAG suppression events
+                                # in 5879 total decisions (97% noise). 50 still
+                                # caps runaway storms but lets meaningful
+                                # PRIMARY events through.
 
 TRACKER_STALE_MIN: float = 10.0
 REGIME_STALE_HOURS: float = 2.0

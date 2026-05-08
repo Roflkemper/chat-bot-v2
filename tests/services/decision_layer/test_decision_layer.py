@@ -410,24 +410,24 @@ def test_M4_cooldown_blocks_within_60s(tmp_path: Path) -> None:
 # ── Hard cap 20/24h ─────────────────────────────────────────────────────────
 
 
-def test_primary_hard_cap_suppresses_21st(tmp_path: Path) -> None:
+def test_primary_hard_cap_suppresses_after_cap(tmp_path: Path) -> None:
+    from services.decision_layer.decision_layer import PRIMARY_HARD_CAP_24H
+
     layer = _layer(tmp_path)
-    # Synthesize 20 PRIMARY emissions across rules with varying signatures + spaced ts
+    # Saturate exactly to the cap with PRIMARY emissions across rules + spaced ts.
     base_time = _now()
-    for i in range(20):
+    for i in range(PRIMARY_HARD_CAP_24H):
         inp = _baseline(margin_coefficient=0.70 + i * 0.001)
         inp.now = base_time + timedelta(minutes=i * 35)
         layer.evaluate(inp)
     state = json.loads((tmp_path / "dedup.json").read_text(encoding="utf-8"))
     primary_used = len(state["primary_emissions"])
-    # Some of these should have been suppressed by cooldown of M-2 if signatures collide.
-    # Just assert cap behavior on the next call: attempt 21st PRIMARY explicitly with fresh M-3
+    # The next PRIMARY attempt must trip the cap.
     later = _baseline(margin_coefficient=0.87)
     later.now = base_time + timedelta(hours=20)
     res = layer.evaluate(later)
-    if primary_used >= 20:
+    if primary_used >= PRIMARY_HARD_CAP_24H:
         assert "M-3" not in [e.rule_id for e in res.events_emitted]
-        # Cap diagnostic appended
         log = (tmp_path / "decisions.jsonl").read_text(encoding="utf-8")
         assert "alert_volume_exceeded" in log
 
@@ -516,17 +516,18 @@ def test_concurrent_D1_and_R2_both_fire_with_stale_flag(tmp_path: Path) -> None:
 
 
 def test_concurrent_M4_suppressed_at_cap(tmp_path: Path) -> None:
-    """#4: M-4 при достижении cap 20/сутки — suppressed как все (DESIGN-OPERATOR-GAP-1)."""
+    """#4: M-4 at the cap is suppressed too (DESIGN-OPERATOR-GAP-1)."""
+    from services.decision_layer.decision_layer import PRIMARY_HARD_CAP_24H
+
     layer = _layer(tmp_path)
     base = _now()
-    # Manually fill primary_emissions with 20 entries within last 24h.
     seed_inp = _baseline(margin_coefficient=0.7)
     layer.evaluate(seed_inp)
     state_path = tmp_path / "dedup.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
     state["primary_emissions"] = [
         (base - timedelta(hours=1) + timedelta(minutes=i)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        for i in range(20)
+        for i in range(PRIMARY_HARD_CAP_24H)
     ]
     state_path.write_text(json.dumps(state), encoding="utf-8")
 
@@ -563,7 +564,8 @@ def test_dashboard_block_shape(tmp_path: Path) -> None:
     assert isinstance(block["events_recent"], list)
     assert isinstance(block["events_24h_count"], int)
     assert isinstance(block["events_24h_by_rule"], dict)
-    assert block["rate_limit_status"]["primary_cap"] == 20
+    from services.decision_layer.decision_layer import PRIMARY_HARD_CAP_24H
+    assert block["rate_limit_status"]["primary_cap"] == PRIMARY_HARD_CAP_24H
 
 
 def test_audit_log_appends(tmp_path: Path) -> None:

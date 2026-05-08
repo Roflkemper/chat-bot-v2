@@ -96,6 +96,15 @@ state/advise_null_signals.jsonl
 state/advise_action_match.jsonl
 state/advise_followup.jsonl
 
+# Runtime state generated 2026-05-08+
+state/proposals.jsonl
+state/watchlist.json
+state/snp_feed_cache.json
+state/decision_log/_telegram_last_seen.json
+
+# Backtest harness outputs (not committed)
+tools/backtest_signals_out*.csv
+
 # Runtime live-state files (machine-generated, change every few seconds — never commit)
 state/deriv_live.json
 state/deriv_live_history.jsonl
