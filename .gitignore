@@ -126,3 +126,19 @@ market_live/
 market_live_dev/
 market_live_profiler/
 features_out/
+
+# Research scripts archive — kept on disk, not in repo
+scripts/research_archive/
+
+# Large data artifacts (parquet/research dirs — fetched/computed, not committed)
+data/countertrend_research/
+data/historical_setups_y1_*.parquet
+data/ict_levels/
+data/live_edge_mining/
+data/operator_journal/
+data/regime/*.parquet
+data/regime_truth/
+data/smoke_strength_filter.parquet
+data/telegram/
+data/whatif_v3/
+data/exit_advisor/dedup_cache.json
