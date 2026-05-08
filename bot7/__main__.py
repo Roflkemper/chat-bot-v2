@@ -28,6 +28,21 @@ from src.supervisor.daemon import DAEMON_PID_PATH, _pid_alive, _read_pid, get_st
 DETACH_FLAGS = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
 
 
+def _hidden_startupinfo() -> "subprocess.STARTUPINFO | None":
+    """Return STARTUPINFO that hides the console window (Windows-only).
+
+    DETACHED_PROCESS + CREATE_NO_WINDOW are mutually exclusive at the Win32
+    layer; combining them is silently ignored. STARTUPINFO with SW_HIDE works
+    reliably alongside DETACHED_PROCESS.
+    """
+    if not hasattr(subprocess, "STARTUPINFO"):
+        return None
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = 0  # SW_HIDE
+    return si
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -77,6 +92,7 @@ def cmd_start(components: list[str] | None) -> None:
         args,
         cwd=str(ROOT),
         creationflags=DETACH_FLAGS,
+        startupinfo=_hidden_startupinfo(),
         close_fds=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
