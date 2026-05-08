@@ -739,6 +739,7 @@ from services.setup_detector.double_top_bottom import (
     detect_double_top_setup,
     detect_double_bottom_setup,
 )
+from services.setup_detector.multi_divergence import detect_long_multi_divergence
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_dump_reversal,
@@ -749,8 +750,9 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_short_pdh_rejection,
     detect_short_overbought_fade,
     detect_short_liq_magnet,
-    detect_double_bottom_setup,   # NEW (TZ-PAPER-TRADER 2026-05-07)
-    detect_double_top_setup,      # NEW
+    detect_double_bottom_setup,
+    detect_double_top_setup,
+    detect_long_multi_divergence,  # NEW (backtest 2026-05-08, PF=1.66 hold_1h)
     detect_grid_raise_boundary,
     detect_grid_pause_entries,
     detect_grid_booster_activate,

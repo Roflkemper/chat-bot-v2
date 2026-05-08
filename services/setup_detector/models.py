@@ -18,6 +18,7 @@ class SetupType(Enum):
     SHORT_LIQ_MAGNET = "short_liq_magnet"
     LONG_DOUBLE_BOTTOM = "long_double_bottom"
     SHORT_DOUBLE_TOP = "short_double_top"
+    LONG_MULTI_DIVERGENCE = "long_multi_divergence"
     GRID_RAISE_BOUNDARY = "grid_raise_boundary"
     GRID_PAUSE_ENTRIES = "grid_pause_entries"
     GRID_BOOSTER_ACTIVATE = "grid_booster"
