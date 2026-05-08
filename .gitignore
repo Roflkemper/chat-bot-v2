@@ -95,3 +95,34 @@ state/advise_signals.jsonl
 state/advise_null_signals.jsonl
 state/advise_action_match.jsonl
 state/advise_followup.jsonl
+
+# Local Claude Code settings (operator-specific permissions)
+.claude/settings.json
+.claude/scheduled_tasks.lock
+
+# Diagnostic / collection dumps (one-off, never commit)
+_baseline_errors*.txt
+_collect_*.txt
+_tz044_*.txt
+
+# Disaster-recovery snapshots (kept on disk, not in repo — see _recovery/incident_report_docs.md)
+_recovery/
+
+# Frozen OHLCV market data (large CSVs — fetched per session, not committed)
+backtests/frozen/*.csv
+backtests/frozen/*.csv.bak*
+backtests/frozen/1y_ingest/
+
+# Regime calibration snapshots (high-frequency diagnostic dumps, ~80/day)
+data/calibration/regime_markdown_*.json
+data/calibration/regime_markup_*.json
+data/calibration/regime_range_*.json
+
+# Runtime collector output (PIDs, logs, CSV streams from live collectors)
+run/
+ginarea_tracker/run/
+market_collector/run/
+market_live/
+market_live_dev/
+market_live_profiler/
+features_out/
