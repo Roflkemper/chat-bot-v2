@@ -100,6 +100,56 @@ def open_paper_trade(setup: Setup) -> Optional[dict]:
     return record
 
 
+def open_paper_trade_from_proposal(proposal) -> Optional[dict]:
+    """Open a paper trade from an operator-confirmed Proposal.
+
+    Mirrors open_paper_trade() but with operator_confirmed=True flag. The
+    confidence threshold is bypassed because the operator has explicitly
+    approved the trade after seeing the proposal card.
+
+    Used by the Telegram /confirm <token> handler.
+    """
+    side = proposal.side
+    if side not in ("long", "short"):
+        return None
+    entry = float(proposal.entry)
+    if entry <= 0 or proposal.sl <= 0:
+        return None
+    size_btc = round(PAPER_NOTIONAL_USD / entry, 6)
+    now = datetime.now(timezone.utc)
+    trade_id = f"pt-{now.strftime('%Y-%m-%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+
+    record = {
+        "ts": now.isoformat(),
+        "trade_id": trade_id,
+        "action": "OPEN",
+        "side": side,
+        "setup_type": proposal.setup_type,
+        "setup_id": proposal.setup_id or trade_id,
+        "entry": entry,
+        "size_usd": PAPER_NOTIONAL_USD,
+        "size_btc": size_btc,
+        "sl": float(proposal.sl),
+        "tp1": float(proposal.tp1) if proposal.tp1 else None,
+        "tp2": float(proposal.tp2) if proposal.tp2 else None,
+        "rr_planned": proposal.rr,
+        "confidence_pct": proposal.confidence,
+        "strength": proposal.strength,
+        "expires_at": (now + timedelta(hours=TIME_STOP_HOURS)).isoformat(),
+        "time_stop_at": (now + timedelta(hours=TIME_STOP_HOURS)).isoformat(),
+        "reason": f"Operator-confirmed proposal token={proposal.token}",
+        "operator_confirmed": True,
+        "proposal_token": proposal.token,
+        "decided_by": proposal.decided_by,
+    }
+    journal.append_event(record)
+    logger.info(
+        "paper_trader.opened_from_proposal trade_id=%s token=%s type=%s entry=%.2f",
+        trade_id, proposal.token, proposal.setup_type, entry,
+    )
+    return record
+
+
 def _compute_exit_pnl(open_record: dict, exit_price: float) -> tuple[float, float]:
     """Return (realized_pnl_usd, rr_realized) for a paper trade close.
 

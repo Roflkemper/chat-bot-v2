@@ -1396,6 +1396,79 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text)
 
+        # ── /confirm <token>, /reject <token>, /proposals (TZ-PROPOSE-CONFIRM 2026-05-08).
+        # Operator decides whether to open a paper trade based on a high-conviction
+        # detector signal. CONFIRMED proposals get tagged operator_confirmed=True
+        # in the paper journal so we can later compare confirmed vs raw detector
+        # win rates.
+        @self.bot.message_handler(commands=['confirm'])
+        def handle_confirm(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            parts = (message.text or "").strip().split()
+            if len(parts) < 2:
+                self.bot.send_message(chat_id, "Использование: /confirm <token>")
+                return
+            token = parts[1].strip()
+            try:
+                from services.setup_detector.proposals import confirm_proposal
+                ok, msg, proposal = confirm_proposal(token, chat_id)
+                self.bot.send_message(chat_id, msg)
+                if ok and proposal is not None:
+                    # Open paper trade with operator_confirmed=True flag.
+                    try:
+                        from services.paper_trader.trader import open_paper_trade_from_proposal
+                        open_paper_trade_from_proposal(proposal)
+                    except Exception:
+                        logger.exception("handle_confirm.open_paper_failed token=%s", token)
+                        self.bot.send_message(chat_id, "⚠️ Paper trade не открылся (см. логи).")
+            except Exception as exc:
+                logger.exception("handle_confirm.failed")
+                self.bot.send_message(chat_id, f"❌ /confirm failed: {exc}")
+
+        @self.bot.message_handler(commands=['reject'])
+        def handle_reject(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            parts = (message.text or "").strip().split()
+            if len(parts) < 2:
+                self.bot.send_message(chat_id, "Использование: /reject <token>")
+                return
+            token = parts[1].strip()
+            try:
+                from services.setup_detector.proposals import reject_proposal
+                ok, msg = reject_proposal(token, chat_id)
+                self.bot.send_message(chat_id, msg)
+            except Exception as exc:
+                logger.exception("handle_reject.failed")
+                self.bot.send_message(chat_id, f"❌ /reject failed: {exc}")
+
+        @self.bot.message_handler(commands=['proposals'])
+        def handle_proposals(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.setup_detector.proposals import list_pending, format_proposal_card, Proposal
+                pending = list_pending()
+                if not pending:
+                    self.bot.send_message(chat_id, "📭 Нет активных proposals.")
+                    return
+                lines = [f"📋 PENDING PROPOSALS ({len(pending)}):", ""]
+                for r in pending:
+                    p = Proposal(**{k: v for k, v in r.items() if k in Proposal.__dataclass_fields__})
+                    lines.append(format_proposal_card(p))
+                    lines.append("─" * 30)
+                self.bot.send_message(chat_id, "\n".join(lines))
+            except Exception as exc:
+                logger.exception("handle_proposals.failed")
+                self.bot.send_message(chat_id, f"❌ /proposals failed: {exc}")
+
         # ── /setups_15m — 15-minute timeframe view for manual trading.
         # Shows live LONG_DIV_BOS_15M / SHORT_DIV_BOS_15M setups + paper-trade
         # performance scoped to those types. Backtest 2026-05-08 walk-forward

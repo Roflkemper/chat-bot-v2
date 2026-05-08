@@ -185,9 +185,28 @@ def _run_detectors_once(
             setup.setup_type.value, setup.pair, setup.strength, setup.confidence_pct,
         )
         if send_fn is not None:
-            card = format_telegram_card(setup)
+            # If setup qualifies for propose-confirm flow, create a proposal
+            # token + send a propose-card; otherwise send the regular setup card.
             try:
-                # Try new (card, setup) signature first; fall back to legacy (card,).
+                from services.setup_detector.proposals import (
+                    create_proposal, format_proposal_card, should_propose,
+                )
+                use_proposal = should_propose(setup)
+            except Exception:
+                logger.exception("setup_detector.propose_check_failed")
+                use_proposal = False
+
+            try:
+                if use_proposal:
+                    proposal = create_proposal(setup)
+                    card = format_proposal_card(proposal)
+                    logger.info(
+                        "setup_detector.proposal_created token=%s type=%s conf=%.0f",
+                        proposal.token, setup.setup_type.value, setup.confidence_pct,
+                    )
+                else:
+                    card = format_telegram_card(setup)
+                # Send via either signature.
                 if callable(send_fn):
                     try:
                         send_fn(card, setup)  # type: ignore[call-arg]
