@@ -215,6 +215,14 @@ class DecisionInputs:
     engine_bugs_fixed: Optional[int] = None
     engine_fix_eta: Optional[str] = None
 
+    # MTF phase state (TZ-DECISION-LAYER-MTF, 2026-05-08).
+    # Source: services/market_forward_analysis/phase_classifier.build_mtf_phase_state,
+    # serialized to state/phase_state.json by market_forward_analysis_loop every 5 min.
+    # Per MTF_FEASIBILITY_v1 §3 we adopt phase_classifier as the per-TF classifier.
+    # Each entry: {"label": "MARKUP|MARKDOWN|RANGE|...", "direction_bias": int, "confidence": 0..100}.
+    mtf_phases: Optional[dict[str, dict[str, Any]]] = None
+    mtf_coherent: Optional[bool] = None
+
     # Stale flag — set if any upstream input is missing/stale
     inputs_stale: bool = False
 
@@ -751,12 +759,154 @@ def _rule_D4(inp: DecisionInputs) -> Optional[Event]:
     )
 
 
+# ── T-* family: MTF disagreement (MTF_DISAGREEMENT_v1 §3) ────────────────────
+#
+# Activated 2026-05-08 in TZ-DECISION-LAYER-MTF. Source classifier:
+# services/market_forward_analysis/phase_classifier.py (Classifier C, per
+# MTF_FEASIBILITY_v1 §3 recommendation). Per-TF labels persisted to
+# state/phase_state.json by market_forward_analysis_loop.
+#
+# Three rules:
+#   T-1 (mtf_coherent)         INFO     — all TFs agree on direction
+#   T-2 (mtf_minor_disagree)   VERBOSE  — LTF lags HTF (e.g. 15m flat in 1d uptrend)
+#   T-3 (mtf_major_disagree)   PRIMARY  — HTF↔LTF opposite direction_bias
+#
+# Confidence floor 0.65 per design §3.1 (= 65 on phase_classifier's 0–100 scale).
+# Cells below the floor are reported as `uncertain` and don't contribute.
+
+T_CONFIDENCE_FLOOR: float = 65.0  # phase_classifier scale 0–100
+T_HTF_PRIORITY: list[str] = ["1d", "4h"]
+T_LTF_PRIORITY: list[str] = ["15m", "1h"]
+
+
+def _eligible_phases(mtf_phases: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Return only phases with confidence >= floor."""
+    return {
+        tf: p for tf, p in mtf_phases.items()
+        if (p.get("confidence") or 0.0) >= T_CONFIDENCE_FLOOR
+    }
+
+
+def _pick_first(eligible: dict[str, dict[str, Any]], priority: list[str]) -> Optional[tuple[str, dict[str, Any]]]:
+    for tf in priority:
+        if tf in eligible:
+            return tf, eligible[tf]
+    return None
+
+
+def _rule_T1(inp: DecisionInputs) -> Optional[Event]:
+    """T-1: all eligible TFs agree on direction_bias (or flat) → INFO."""
+    if not inp.mtf_phases:
+        return None
+    eligible = _eligible_phases(inp.mtf_phases)
+    if len(eligible) < 2:
+        return None
+    biases = {p.get("direction_bias", 0) for p in eligible.values()}
+    nonzero = {b for b in biases if b != 0}
+    if len(nonzero) > 1:  # any opposite bias → not coherent
+        return None
+    if not nonzero:  # all flat — uninformative
+        return None
+    payload = {
+        "direction": "bullish" if next(iter(nonzero)) > 0 else "bearish",
+        "tfs": sorted(eligible.keys()),
+        "labels": {tf: p.get("label") for tf, p in eligible.items()},
+    }
+    return Event(
+        rule_id="T-1",
+        event_type="mtf_coherent",
+        severity=SEVERITY_INFO,
+        payload=payload,
+        recommendation=f"All TFs agree on {payload['direction']} bias; activation gate G3 met.",
+        ts=_isoformat(inp.now),
+        payload_signature=_payload_signature(payload),
+        stale=inp.inputs_stale,
+    )
+
+
+def _rule_T2(inp: DecisionInputs) -> Optional[Event]:
+    """T-2: LTF flat or RANGE while HTF directional → VERBOSE (minor)."""
+    if not inp.mtf_phases:
+        return None
+    eligible = _eligible_phases(inp.mtf_phases)
+    htf = _pick_first(eligible, T_HTF_PRIORITY)
+    ltf = _pick_first(eligible, T_LTF_PRIORITY)
+    if htf is None or ltf is None or htf[0] == ltf[0]:
+        return None
+    htf_tf, htf_p = htf
+    ltf_tf, ltf_p = ltf
+    htf_bias = htf_p.get("direction_bias", 0)
+    ltf_bias = ltf_p.get("direction_bias", 0)
+    # Minor: HTF directional, LTF flat (not opposite — that's T-3).
+    if htf_bias == 0:
+        return None
+    if ltf_bias != 0:
+        return None
+    payload = {
+        "htf": htf_tf, "htf_label": htf_p.get("label"),
+        "ltf": ltf_tf, "ltf_label": ltf_p.get("label"),
+        "htf_bias": htf_bias,
+    }
+    return Event(
+        rule_id="T-2",
+        event_type="mtf_minor_disagreement",
+        severity=SEVERITY_VERBOSE,
+        payload=payload,
+        recommendation=(
+            f"LTF {ltf_tf} flat inside {htf_tf} {htf_p.get('label')} — "
+            "lag, not contradiction. Watch for confirmation."
+        ),
+        ts=_isoformat(inp.now),
+        payload_signature=_payload_signature(payload),
+        stale=inp.inputs_stale,
+    )
+
+
+def _rule_T3(inp: DecisionInputs) -> Optional[Event]:
+    """T-3: HTF and LTF have opposite direction_bias → PRIMARY (major)."""
+    if not inp.mtf_phases:
+        return None
+    eligible = _eligible_phases(inp.mtf_phases)
+    htf = _pick_first(eligible, T_HTF_PRIORITY)
+    ltf = _pick_first(eligible, T_LTF_PRIORITY)
+    if htf is None or ltf is None or htf[0] == ltf[0]:
+        return None
+    htf_tf, htf_p = htf
+    ltf_tf, ltf_p = ltf
+    htf_bias = htf_p.get("direction_bias", 0)
+    ltf_bias = ltf_p.get("direction_bias", 0)
+    if htf_bias == 0 or ltf_bias == 0 or htf_bias == ltf_bias:
+        return None
+    payload = {
+        "htf": htf_tf, "htf_label": htf_p.get("label"),
+        "htf_confidence": round(float(htf_p.get("confidence") or 0.0), 1),
+        "ltf": ltf_tf, "ltf_label": ltf_p.get("label"),
+        "ltf_confidence": round(float(ltf_p.get("confidence") or 0.0), 1),
+        "dim": "trend",
+    }
+    return Event(
+        rule_id="T-3",
+        event_type="mtf_major_disagreement",
+        severity=SEVERITY_PRIMARY,
+        payload=payload,
+        recommendation=(
+            f"MTF disagreement: {htf_tf} {htf_p.get('label')} vs "
+            f"{ltf_tf} {ltf_p.get('label')} (opposite bias). "
+            "Pause new activations until either TF resolves."
+        ),
+        ts=_isoformat(inp.now),
+        payload_signature=_payload_signature(payload),
+        stale=inp.inputs_stale,
+    )
+
+
 # Ordered list of rule_ids the layer runs. Rule callables are dispatched
 # in DecisionLayer.evaluate() because some need extra args (M-5, P-2).
 RULE_IDS: list[str] = [
     "R-1", "R-2", "R-3", "R-4",
     "M-1", "M-2", "M-3", "M-4", "M-5",
     "P-1", "P-2",
+    "T-1", "T-2", "T-3",
     "D-1", "D-2", "D-3", "D-4",
 ]
 
@@ -839,6 +989,7 @@ class DecisionLayer:
             candidate_events.append(m5)
         candidate_events.extend(_rule_P1(inp))
         candidate_events.extend(_rule_P2(inp, memory.prev_price))
+        candidate_events.extend(filter(None, [_rule_T1(inp), _rule_T2(inp), _rule_T3(inp)]))
         candidate_events.extend(filter(None, [_rule_D1(inp), _rule_D2(inp), _rule_D3(inp), _rule_D4(inp)]))
 
         # Dedup + cooldown + cap

@@ -519,6 +519,22 @@ def _build_decision_layer_block(
 
     inputs_stale = freshness.get("level") in ("yellow", "red")
 
+    # MTF phase state (TZ-DECISION-LAYER-MTF, 2026-05-08).
+    # Source: state/phase_state.json written by market_forward_analysis_loop.
+    # Stale (>30 min) → treat as None so T-* rules short-circuit.
+    mtf_phases: dict[str, dict[str, Any]] | None = None
+    mtf_coherent: bool | None = None
+    try:
+        ps_path = Path("state/phase_state.json")
+        if ps_path.exists():
+            ps_age_sec = (datetime.now(timezone.utc).timestamp() - ps_path.stat().st_mtime)
+            if ps_age_sec <= 30 * 60:
+                ps_raw = json.loads(ps_path.read_text(encoding="utf-8"))
+                mtf_phases = ps_raw.get("phases") or None
+                mtf_coherent = ps_raw.get("coherent")
+    except (OSError, ValueError, json.JSONDecodeError):
+        pass
+
     inp = DecisionInputs(
         now=now,
         regime_label=regime_state.get("regime"),
@@ -556,6 +572,8 @@ def _build_decision_layer_block(
             if engine_cfg.get("bugs_fixed") is not None else None
         ),
         engine_fix_eta=engine_cfg.get("fix_eta"),
+        mtf_phases=mtf_phases,
+        mtf_coherent=mtf_coherent,
         inputs_stale=inputs_stale,
     )
     try:

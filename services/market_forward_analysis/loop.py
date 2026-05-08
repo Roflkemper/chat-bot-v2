@@ -11,13 +11,42 @@ Integration in app_runner.py:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from ..market_intelligence.ict_killzones import current_session_from_utc, Session
 from .data_loader import ForwardAnalysisDataLoader
-from .phase_classifier import build_mtf_phase_state, Phase
+from .phase_classifier import build_mtf_phase_state, Phase, MTFPhaseState
+
+_PHASE_STATE_PATH = Path("state/phase_state.json")
+
+
+def _serialize_phase_state(ps: MTFPhaseState, now: datetime) -> None:
+    """Persist phase_state to disk so Decision Layer T-* rules can consume it."""
+    try:
+        out = {
+            "ts": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "macro_label": ps.macro_label.value,
+            "macro_bias": int(ps.macro_bias),
+            "coherent": bool(ps.coherent),
+            "coherence_note": ps.coherence_note,
+            "phases": {
+                tf: {
+                    "label": p.label.value,
+                    "confidence": round(float(p.confidence), 1),
+                    "direction_bias": int(p.direction_bias),
+                    "bars_in_phase": int(p.bars_in_phase),
+                }
+                for tf, p in ps.phases.items()
+            },
+        }
+        _PHASE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _PHASE_STATE_PATH.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        logger.exception("market_forward_analysis.phase_state_serialize_failed")
 from .forward_projection import compute_forward_projection
 from .bot_impact import compute_bot_impact, RiskClass
 from .recommendations import generate_recommendations
@@ -88,6 +117,7 @@ async def market_forward_analysis_loop(
 
             # Build phase state
             phase_state = build_mtf_phase_state(frames, now=None)
+            _serialize_phase_state(phase_state, now)
             projection = compute_forward_projection(phase_state, frames.get("1h"))
             impact = compute_bot_impact(projection, current_price)
             recs = generate_recommendations(impact)

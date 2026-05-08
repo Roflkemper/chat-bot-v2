@@ -42,6 +42,7 @@ ALLOWED_PUSH_RULES = frozenset({
     "M-1", "M-2", "M-3", "M-4", "M-5",
     "R-1", "R-2", "R-3", "R-4",
     "P-1", "P-2",
+    "T-1", "T-2", "T-3",
     "D-1", "D-2", "D-3", "D-4",
 })
 
@@ -67,6 +68,9 @@ PER_RULE_COOLDOWN_SEC: dict[str, int] = {
     "D-2": 1800,
     "D-3": 1800,   # engine bugs: 30min
     "D-4": 1800,   # margin data stale: 30min
+    "T-1": 3600,   # MTF coherent: hourly (informational)
+    "T-2": 1800,   # MTF minor lag: 30min
+    "T-3": 1800,   # MTF major disagreement: 30min (per design §4.4)
 }
 DEFAULT_COOLDOWN_SEC = 600   # fallback for unlisted rules
 
@@ -156,6 +160,7 @@ def _format_decision(e: dict) -> str:
         "M-1": "🟢", "M-2": "🟡", "M-3": "🟠", "M-4": "🔴", "M-5": "⚡",
         "R-1": "📈", "R-2": "🔄", "R-3": "⚠️", "R-4": "📊",
         "P-1": "💰", "P-2": "🎯",
+        "T-1": "🟢", "T-2": "🟡", "T-3": "⚠️",
         "D-1": "📉", "D-2": "🕒", "D-3": "🐛", "D-4": "⏰",
     }.get(rule_id, "🔔")
 

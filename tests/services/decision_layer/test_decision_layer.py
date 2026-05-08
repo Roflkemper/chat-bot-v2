@@ -568,6 +568,63 @@ def test_dashboard_block_shape(tmp_path: Path) -> None:
     assert block["rate_limit_status"]["primary_cap"] == PRIMARY_HARD_CAP_24H
 
 
+# ── T-* family (MTF disagreement, TZ-DECISION-LAYER-MTF) ───────────────────
+
+
+def _mtf(htf_label="MARKUP", htf_bias=1, htf_conf=80,
+         ltf_label="MARKUP", ltf_bias=1, ltf_conf=80):
+    return {
+        "1d": {"label": htf_label, "direction_bias": htf_bias, "confidence": htf_conf},
+        "15m": {"label": ltf_label, "direction_bias": ltf_bias, "confidence": ltf_conf},
+    }
+
+
+def test_T1_emits_when_all_tfs_agree_bullish(tmp_path: Path) -> None:
+    layer = _layer(tmp_path)
+    res = layer.evaluate(_baseline(mtf_phases=_mtf()))
+    rids = [e.rule_id for e in res.events_emitted]
+    assert "T-1" in rids
+    t1 = next(e for e in res.events_emitted if e.rule_id == "T-1")
+    assert t1.payload["direction"] == "bullish"
+
+
+def test_T2_emits_when_ltf_flat_in_directional_htf(tmp_path: Path) -> None:
+    layer = _layer(tmp_path)
+    res = layer.evaluate(_baseline(
+        mtf_phases=_mtf(htf_bias=1, ltf_label="RANGE", ltf_bias=0)
+    ))
+    rids = [e.rule_id for e in res.events_emitted]
+    assert "T-2" in rids
+
+
+def test_T3_emits_when_htf_ltf_opposite(tmp_path: Path) -> None:
+    layer = _layer(tmp_path)
+    res = layer.evaluate(_baseline(
+        mtf_phases=_mtf(htf_label="MARKUP", htf_bias=1,
+                        ltf_label="MARKDOWN", ltf_bias=-1)
+    ))
+    rids = [e.rule_id for e in res.events_emitted]
+    assert "T-3" in rids
+    t3 = next(e for e in res.events_emitted if e.rule_id == "T-3")
+    assert t3.severity == "PRIMARY"
+
+
+def test_T_skips_below_confidence_floor(tmp_path: Path) -> None:
+    layer = _layer(tmp_path)
+    res = layer.evaluate(_baseline(
+        mtf_phases=_mtf(htf_conf=50, ltf_conf=50)
+    ))
+    rids = [e.rule_id for e in res.events_emitted]
+    assert "T-1" not in rids and "T-3" not in rids
+
+
+def test_T_skips_when_no_mtf_data(tmp_path: Path) -> None:
+    layer = _layer(tmp_path)
+    res = layer.evaluate(_baseline(mtf_phases=None))
+    rids = [e.rule_id for e in res.events_emitted]
+    assert "T-1" not in rids and "T-2" not in rids and "T-3" not in rids
+
+
 def test_audit_log_appends(tmp_path: Path) -> None:
     layer = _layer(tmp_path)
     layer.evaluate(_baseline(margin_coefficient=0.97))

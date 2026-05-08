@@ -89,6 +89,23 @@ def _paper_summary(events: list[dict]) -> dict:
 
     operator_confirmed = [e for e in opens if e.get("operator_confirmed") is True]
 
+    # Split confirmed vs auto by trade_id linkage (for weekly comparison).
+    confirmed_ids = {e.get("trade_id") for e in operator_confirmed if e.get("trade_id")}
+    confirmed_closes = [e for e in closes if e.get("trade_id") in confirmed_ids]
+    auto_closes = [e for e in closes if e.get("trade_id") not in confirmed_ids]
+
+    def _agg(evs: list[dict]) -> dict:
+        if not evs:
+            return {"n": 0, "wins": 0, "wr_pct": 0.0, "net_pnl_usd": 0.0}
+        w = sum(1 for e in evs if (e.get("realized_pnl_usd") or 0) > 0)
+        n = sum(e.get("realized_pnl_usd") or 0 for e in evs)
+        return {
+            "n": len(evs),
+            "wins": w,
+            "wr_pct": round(100 * w / max(1, len(evs)), 1),
+            "net_pnl_usd": round(n, 2),
+        }
+
     return {
         "n_opens": len(opens),
         "n_closes": len(closes),
@@ -99,6 +116,9 @@ def _paper_summary(events: list[dict]) -> dict:
         "by_setup_type": by_type,
         "by_pair": dict(by_pair),
         "operator_confirmed_count": len(operator_confirmed),
+        "auto_open_count": len(opens) - len(operator_confirmed),
+        "confirmed_perf": _agg(confirmed_closes),
+        "auto_perf": _agg(auto_closes),
     }
 
 
@@ -285,6 +305,34 @@ def build_weekly_report(now: Optional[datetime] = None) -> str:
         # Average PnL per trade
         avg_pnl = p["net_pnl_usd"] / max(1, p["n_closes"])
         lines.append(f"  Avg PnL per trade: ${avg_pnl:+,.1f}")
+
+        # Confirmed vs auto comparison — answers "is operator picking better?"
+        cp, ap = p.get("confirmed_perf") or {}, p.get("auto_perf") or {}
+        if (cp.get("n") or 0) + (ap.get("n") or 0) > 0:
+            lines.append("")
+            lines.append("⚖️ CONFIRMED vs AUTO (closed trades, week)")
+            lines.append("  source       | N  | WR%  |   net$  | avg$/trade")
+            lines.append("  -------------|----|------|---------|-----------")
+            for label, src in (("operator", cp), ("auto-open", ap)):
+                n = src.get("n", 0)
+                if n == 0:
+                    lines.append(f"  {label:<12} |  0 |   -  |       0 |        -")
+                    continue
+                avg = src["net_pnl_usd"] / max(1, n)
+                lines.append(
+                    f"  {label:<12} | {n:>2} | {src['wr_pct']:>4.1f} | "
+                    f"{src['net_pnl_usd']:>+7,.0f} | {avg:>+8.1f}"
+                )
+            # Edge verdict
+            if (cp.get("n") or 0) >= 5 and (ap.get("n") or 0) >= 5:
+                avg_c = cp["net_pnl_usd"] / cp["n"]
+                avg_a = ap["net_pnl_usd"] / ap["n"]
+                if avg_c > avg_a + 5:
+                    lines.append("  → operator filter adds edge (avg PnL higher).")
+                elif avg_a > avg_c + 5:
+                    lines.append("  → auto-open performs better; review confirm criteria.")
+                else:
+                    lines.append("  → no significant edge between sources this week.")
 
     # Per-type honest leaderboard (sorted by net P&L)
     if p["by_setup_type"]:
