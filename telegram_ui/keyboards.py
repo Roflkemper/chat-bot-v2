@@ -28,9 +28,14 @@ def _safe_bool(value: Any) -> bool:
 
 def build_main_keyboard() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
-    kb.row(_btn("/advise"), _btn("FINAL DECISION"), _btn("BTC 1H"))
+    # Row 1 — main daily decision tools
+    kb.row(_btn("/advise"), _btn("/advisor"), _btn("FINAL DECISION"))
+    # Row 2 — momentum / regime / setups
+    kb.row(_btn("/momentum_check"), _btn("/regime_v2"), _btn("BTC 1H"))
+    # Row 3 — bots / portfolio summaries
     kb.row(_btn("СТАТУС БОТОВ"), _btn("BTC GINAREA"), _btn("BTC SUMMARY"))
-    kb.row(_btn("/status"), _btn("/handoff"), _btn("HELP"))
+    # Row 4 — paper trader / watchlist / help
+    kb.row(_btn("/papertrader"), _btn("/watch"), _btn("HELP"))
     return kb
 
 
