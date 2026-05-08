@@ -22,6 +22,7 @@ class SetupType(Enum):
     LONG_DIV_BOS_CONFIRMED = "long_div_bos_confirmed"
     LONG_DIV_BOS_15M = "long_div_bos_15m"
     SHORT_DIV_BOS_15M = "short_div_bos_15m"
+    LONG_MULTI_ASSET_CONFLUENCE = "long_multi_asset_confluence"
     GRID_RAISE_BOUNDARY = "grid_raise_boundary"
     GRID_PAUSE_ENTRIES = "grid_pause_entries"
     GRID_BOOSTER_ACTIVATE = "grid_booster"

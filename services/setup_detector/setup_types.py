@@ -748,6 +748,7 @@ from services.setup_detector.multi_divergence import (
     detect_long_div_bos_15m,
     detect_short_div_bos_15m,
 )
+from services.setup_detector.multi_asset_confluence import detect_long_multi_asset_confluence
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_dump_reversal,
@@ -760,6 +761,7 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_short_liq_magnet,
     detect_double_bottom_setup,
     detect_double_top_setup,
+    detect_long_multi_asset_confluence,  # 1h, PF=3.88 hold_1h, BTC+ETH (2026-05-08)
     detect_long_div_bos_confirmed,  # 1h, PF=4.49, walk-forward stable (2026-05-08)
     detect_long_div_bos_15m,        # 15m, PF=5.01 hold_4h, fast reaction (2026-05-08)
     detect_short_div_bos_15m,       # 15m SHORT, PF=3.85 hold_1h, walk-forward stable
