@@ -187,7 +187,12 @@ def _run_detectors_once(
         if send_fn is not None:
             card = format_telegram_card(setup)
             try:
-                callable(send_fn) and send_fn(card)  # type: ignore[operator]
+                # Try new (card, setup) signature first; fall back to legacy (card,).
+                if callable(send_fn):
+                    try:
+                        send_fn(card, setup)  # type: ignore[call-arg]
+                    except TypeError:
+                        send_fn(card)  # type: ignore[operator]
             except Exception:
                 logger.exception("setup_detector.send_failed type=%s", setup.setup_type.value)
 

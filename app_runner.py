@@ -123,10 +123,55 @@ async def _run_dashboard_http(stop_event: asyncio.Event) -> None:
     await dashboard_http_server(stop_event=stop_event)
 
 
-async def _run_setup_detector(stop_event: asyncio.Event) -> None:
+async def _run_setup_detector(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Setup detector loop with optional Telegram push on new high-confidence
+    setups. send_fn signature matches stale_monitor / paper_trader convention.
+    Only setups with confidence >= SETUP_PUSH_MIN_CONFIDENCE get pushed —
+    avoids spam from low-strength signals.
+    """
     from services.setup_detector.loop import setup_detector_loop
 
-    await setup_detector_loop(stop_event=stop_event)
+    SETUP_PUSH_MIN_CONFIDENCE = 70.0
+    # Push priority types — push regardless of confidence (still backtest-validated).
+    PRIORITY_TYPES = {
+        "long_div_bos_confirmed",   # PF=4.49 hold_1h, walk-forward stable
+        "long_div_bos_15m",          # PF=5.01 hold_4h
+    }
+
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(card_text: str, setup=None) -> None:
+            """Push a setup card to Telegram. Filters:
+              - priority types (LONG_DIV_BOS_*) → always push
+              - other types → only if confidence_pct >= SETUP_PUSH_MIN_CONFIDENCE
+              - skip GRID_* and DEFENSIVE_* (operator already sees those in /advise)
+            """
+            if setup is None:
+                # Legacy call shape — push without filter.
+                pass
+            else:
+                stype = setup.setup_type.value if hasattr(setup, "setup_type") else ""
+                conf = float(getattr(setup, "confidence_pct", 0))
+                # Skip noisy categories — operator handles these in /advise.
+                if stype.startswith("grid_") or stype.startswith("def_"):
+                    return
+                if stype not in PRIORITY_TYPES and conf < SETUP_PUSH_MIN_CONFIDENCE:
+                    return
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, card_text)
+                except Exception:
+                    logger.exception("setup_detector.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    await setup_detector_loop(
+        stop_event=stop_event,
+        send_fn=send_fn,
+    )
 
 
 async def _run_stale_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
@@ -337,7 +382,7 @@ async def main(
     decision_log_task = asyncio.create_task(_run_decision_log(stop_event), name="decision_log")
     dashboard_task = asyncio.create_task(_run_dashboard(stop_event), name="dashboard")
     dashboard_http_task = asyncio.create_task(_run_dashboard_http(stop_event), name="dashboard_http")
-    setup_detector_task = asyncio.create_task(_run_setup_detector(stop_event), name="setup_detector")
+    setup_detector_task = asyncio.create_task(_run_setup_detector(stop_event, telegram_app=app), name="setup_detector")
     paper_trader_task = asyncio.create_task(_run_paper_trader(stop_event, telegram_app=app), name="paper_trader")
     stale_monitor_task = asyncio.create_task(_run_stale_monitor(stop_event, telegram_app=app), name="stale_monitor")
     setup_tracker_task = asyncio.create_task(_run_setup_tracker(stop_event), name="setup_tracker")
