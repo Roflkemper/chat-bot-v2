@@ -180,6 +180,107 @@ async def _run_setup_detector(stop_event: asyncio.Event, *, telegram_app=None) -
     )
 
 
+async def _run_daily_weekly_reports(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Schedule daily (21:00 UTC) and weekly (Sun 21:00 UTC) report posts.
+
+    Polls every 5 min. State (last sent date/week) lives in
+    state/_reports_last_sent.json so we don't double-post on restart.
+    Cold-start: if started after 21:00 UTC and today's daily wasn't sent,
+    send it now.
+    """
+    import json as _json
+    from datetime import datetime, timezone, timedelta
+    from pathlib import Path as _Path
+    from services.advisor.daily_report import (
+        build_daily_report, build_weekly_report,
+        save_daily_report, save_weekly_report,
+    )
+
+    state_path = _Path("state/_reports_last_sent.json")
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _read_state() -> dict:
+        if not state_path.exists():
+            return {}
+        try:
+            return _json.loads(state_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def _write_state(s: dict) -> None:
+        try:
+            state_path.write_text(_json.dumps(s), encoding="utf-8")
+        except Exception:
+            logger.exception("daily_report.state_write_failed")
+
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(text: str) -> None:
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, text)
+                except Exception:
+                    logger.exception("daily_report.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    REPORT_HOUR_UTC = 21
+    POLL_INTERVAL = 300   # 5 min
+
+    logger.info("daily_report.scheduler.start (daily 21:00 UTC, weekly Sun 21:00 UTC)")
+
+    while not stop_event.is_set():
+        try:
+            now = datetime.now(timezone.utc)
+            today_str = now.strftime("%Y-%m-%d")
+            iso_year, iso_week, weekday_iso = now.isocalendar()
+            this_week_str = f"{iso_year}-W{iso_week:02d}"
+            state = _read_state()
+
+            # Daily report
+            if (
+                now.hour >= REPORT_HOUR_UTC
+                and state.get("last_daily") != today_str
+            ):
+                try:
+                    text = build_daily_report(now)
+                    save_daily_report(text, now)
+                    if send_fn:
+                        send_fn(text)
+                    state["last_daily"] = today_str
+                    _write_state(state)
+                    logger.info("daily_report.sent date=%s", today_str)
+                except Exception:
+                    logger.exception("daily_report.daily_failed")
+
+            # Weekly report — Sunday only (isoweekday 7)
+            if (
+                weekday_iso == 7
+                and now.hour >= REPORT_HOUR_UTC
+                and state.get("last_weekly") != this_week_str
+            ):
+                try:
+                    text = build_weekly_report(now)
+                    save_weekly_report(text, now)
+                    if send_fn:
+                        send_fn(text)
+                    state["last_weekly"] = this_week_str
+                    _write_state(state)
+                    logger.info("weekly_report.sent week=%s", this_week_str)
+                except Exception:
+                    logger.exception("daily_report.weekly_failed")
+        except Exception:
+            logger.exception("daily_report.scheduler.tick_failed")
+
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=POLL_INTERVAL)
+        except asyncio.TimeoutError:
+            pass
+
+
 async def _run_decision_layer_emitter(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Push Decision Layer PRIMARY events from decisions.jsonl to Telegram.
 
@@ -419,6 +520,7 @@ async def main(
     paper_trader_task = asyncio.create_task(_run_paper_trader(stop_event, telegram_app=app), name="paper_trader")
     stale_monitor_task = asyncio.create_task(_run_stale_monitor(stop_event, telegram_app=app), name="stale_monitor")
     decision_layer_emitter_task = asyncio.create_task(_run_decision_layer_emitter(stop_event, telegram_app=app), name="decision_layer_emitter")
+    daily_reports_task = asyncio.create_task(_run_daily_weekly_reports(stop_event, telegram_app=app), name="daily_reports")
     setup_tracker_task = asyncio.create_task(_run_setup_tracker(stop_event), name="setup_tracker")
     exit_advisor_task = asyncio.create_task(_run_exit_advisor(stop_event, telegram_app=app), name="exit_advisor")
     market_intelligence_task = asyncio.create_task(_run_market_intelligence(stop_event), name="market_intelligence")

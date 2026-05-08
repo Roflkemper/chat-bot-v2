@@ -1396,6 +1396,39 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text)
 
+        # ── /report_today, /report_week — manual on-demand reports (TZ-REPORTS 2026-05-08).
+        # Same content as the scheduled 21:00 UTC daily/weekly posts but
+        # generated for the current moment. Useful for mid-day check-in.
+        @self.bot.message_handler(commands=['report_today', 'daily_summary'])
+        def handle_report_today(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.advisor.daily_report import build_daily_report
+                text = build_daily_report()
+            except Exception as exc:
+                logger.exception('handle_report_today.failed')
+                self.bot.send_message(chat_id, f'❌ /report_today failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
+        @self.bot.message_handler(commands=['report_week', 'weekly_summary'])
+        def handle_report_week(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.advisor.daily_report import build_weekly_report
+                text = build_weekly_report()
+            except Exception as exc:
+                logger.exception('handle_report_week.failed')
+                self.bot.send_message(chat_id, f'❌ /report_week failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         # ── /confirm <token>, /reject <token>, /proposals (TZ-PROPOSE-CONFIRM 2026-05-08).
         # Operator decides whether to open a paper trade based on a high-conviction
         # detector signal. CONFIRMED proposals get tagged operator_confirmed=True

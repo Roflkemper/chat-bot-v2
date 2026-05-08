@@ -101,6 +101,10 @@ state/proposals.jsonl
 state/watchlist.json
 state/snp_feed_cache.json
 state/decision_log/_telegram_last_seen.json
+state/_reports_last_sent.json
+
+# Daily/weekly auto-reports — generated, kept locally only
+docs/reports/
 
 # Backtest harness outputs (not committed)
 tools/backtest_signals_out*.csv
