@@ -1,0 +1,22 @@
+adaptive_grid:
+  enabled: true
+  mode: dry_run                    # dry_run | live
+  applicability:
+    side: short
+    preset_filter: range_volume    # only informational, actual filter is gap.tog range
+    target_min: 0.18
+    target_max: 0.30
+  tighten_trigger:
+    unrealized_usd: -200           # unreal < -$200
+    dwell_h: 4                    # AND >= 4 hours in drawdown (below release_trigger.unrealized_usd)
+  release_trigger:
+    unrealized_usd: -50            # unreal > -$50 → release
+  tightened_params:
+    target_factor: 0.60            # gap.tog: 0.25 → 0.15
+    gs_factor: 0.67                # gs: 0.03 → 0.02
+  guard:
+    cooldown_after_release_h: 2    # after release — 2h pause before next tighten
+    max_tightenings_per_24h: 3
+  notify:
+    telegram_chat: ${CHAT_ID}
+  log_file: logs/adaptive_grid_events.jsonl
