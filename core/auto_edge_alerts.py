@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 MASTER_TIMEFRAME = '1h'
 SIGNAL_MEMORY_LIMIT = 12
@@ -25,6 +26,145 @@ except Exception:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 STATE_FILE = Path('state/auto_edge_alert_state.json')
+
+
+# ── TZ-AUTO-EDGE-ALERTS-DEDUP-WIRE-UP ──────────────────────────────────────
+#
+# DedupLayer wrapping replaces the legacy 180s _should_send cooldown with a
+# state-change + cluster-collapse pipeline:
+#   - State-change: only emit when scenario_confidence (0..100) differs from
+#     the last emitted value by ≥ value_delta_min (5.0 pp default).
+#   - Cluster: SETUP_ON bursts within ±0.5% price AND 30 min collapse into one
+#     summary message instead of N pings.
+#
+# Env toggle: DEDUP_LAYER_ENABLED_FOR_AUTO_EDGE_ALERTS=1 (default ON). When
+# disabled (=0), the legacy cooldown gate stays the only check — no behavior
+# change vs pre-wire.
+
+DEDUP_LAYER_ENABLED_FOR_AUTO_EDGE_ALERTS = bool(
+    int(os.environ.get('DEDUP_LAYER_ENABLED_FOR_AUTO_EDGE_ALERTS', '1'))
+)
+
+# Lazy-init singleton. None until first dedup evaluation triggers _get_dedup_layer().
+_AUTO_EDGE_DEDUP_LAYER: Any = None
+_AUTO_EDGE_DEDUP_LOCK = threading.Lock()
+_AUTO_EDGE_EMITTER_NAME = 'auto_edge_alerts'
+
+
+def _get_dedup_layer():
+    """Lazy initializer for the module-level DedupLayer.
+
+    Imports inside function to avoid circular-import risk (dedup_layer is a
+    leaf module but its config_module sibling imports DedupLayer too).
+    """
+    global _AUTO_EDGE_DEDUP_LAYER
+    if not DEDUP_LAYER_ENABLED_FOR_AUTO_EDGE_ALERTS:
+        return None
+    if _AUTO_EDGE_DEDUP_LAYER is not None:
+        return _AUTO_EDGE_DEDUP_LAYER
+    with _AUTO_EDGE_DEDUP_LOCK:
+        if _AUTO_EDGE_DEDUP_LAYER is not None:
+            return _AUTO_EDGE_DEDUP_LAYER
+        try:
+            from services.telegram.dedup_layer import DedupLayer
+            from services.telegram.dedup_configs import AUTO_EDGE_ALERTS_DEDUP_CONFIG
+            _AUTO_EDGE_DEDUP_LAYER = DedupLayer(AUTO_EDGE_ALERTS_DEDUP_CONFIG)
+            logger.info(
+                'auto_edge_alerts.dedup_layer.initialized cooldown=%ds delta=%.1f cluster=%s window=%ds price_delta=%.2f%%',
+                AUTO_EDGE_ALERTS_DEDUP_CONFIG.cooldown_sec,
+                AUTO_EDGE_ALERTS_DEDUP_CONFIG.value_delta_min,
+                AUTO_EDGE_ALERTS_DEDUP_CONFIG.cluster_enabled,
+                AUTO_EDGE_ALERTS_DEDUP_CONFIG.cluster_window_sec,
+                AUTO_EDGE_ALERTS_DEDUP_CONFIG.cluster_price_delta_pct,
+            )
+        except Exception:
+            logger.exception('auto_edge_alerts.dedup_layer.init_failed — falling back to legacy cooldown')
+            _AUTO_EDGE_DEDUP_LAYER = None
+    return _AUTO_EDGE_DEDUP_LAYER
+
+
+def _reset_dedup_layer_for_tests() -> None:
+    """Reset module singleton — tests use this to start with a fresh layer.
+
+    Called by test fixtures to avoid cross-test contamination of the in-memory
+    state. Production code never calls this.
+    """
+    global _AUTO_EDGE_DEDUP_LAYER
+    with _AUTO_EDGE_DEDUP_LOCK:
+        _AUTO_EDGE_DEDUP_LAYER = None
+
+
+def _apply_dedup(
+    slot_key: str,
+    kind: str,
+    value: float,
+    price: Optional[float],
+    now_ts: float,
+) -> tuple[bool, str, Optional[List[float]]]:
+    """Evaluate dedup for an auto_edge alert candidate.
+
+    Returns:
+        (should_send, reason_ru, cluster_levels)
+        - should_send=False if the dedup gate suppresses.
+        - cluster_levels is non-None and len>1 when a cluster has been
+          collapsed into this single emit (caller can include the levels in
+          the message body).
+
+    Mechanics:
+      1. State-change check (cooldown + value_delta_min) on scenario_confidence.
+         If suppressed, return immediately.
+      2. For SETUP_ON kind only, when price is known, run cluster_evaluate to
+         buffer near-priced bursts. SETUP_OFF and other kinds skip clustering
+         (the operator wants every "setup gone" event since they are rare).
+    """
+    layer = _get_dedup_layer()
+    if layer is None:
+        return True, 'dedup layer disabled — пропускаем', None
+
+    # Step 1: state-change gate (cooldown + delta) on scenario confidence.
+    state_decision = layer.evaluate(
+        emitter=_AUTO_EDGE_EMITTER_NAME,
+        key=slot_key,
+        value=float(value),
+        now_ts=now_ts,
+    )
+    if not state_decision.should_emit:
+        return False, state_decision.reason_ru, None
+
+    # Step 2: cluster collapse — only for SETUP_ON, only if we have a price.
+    # SETUP_OFF events skip clustering: setup-disappearance is rare and operator
+    # values each occurrence individually.
+    if kind == 'SETUP_ON' and price is not None and price > 0:
+        cluster_decision = layer.evaluate_cluster(
+            emitter=_AUTO_EDGE_EMITTER_NAME,
+            key=slot_key,
+            price=float(price),
+            now_ts=now_ts,
+        )
+        if not cluster_decision.should_emit:
+            return False, cluster_decision.reason_ru, None
+        # If cluster_levels has >1 entry, the caller can mention the cluster
+        # in the message. For a 1-level "cluster" (just this event), behavior
+        # is identical to no cluster.
+        return True, cluster_decision.reason_ru, cluster_decision.cluster_levels
+
+    return True, state_decision.reason_ru, None
+
+
+def _record_dedup_emit(slot_key: str, value: float, now_ts: float) -> None:
+    """Record a successful emit so the next _apply_dedup() sees it."""
+    layer = _get_dedup_layer()
+    if layer is None:
+        return
+    try:
+        layer.record_emit(
+            emitter=_AUTO_EDGE_EMITTER_NAME,
+            key=slot_key,
+            value=float(value),
+            now_ts=now_ts,
+        )
+    except Exception:
+        logger.exception('auto_edge_alerts.dedup_record_failed slot_key=%s', slot_key)
 
 _ACTIVE_GRID_STATES = {'RUN', 'REDUCE', 'ARM'}
 _PAUSE_ACTIONS = {'PAUSE_MID_RANGE', 'PAUSE MID RANGE', 'ПАУЗА В СЕРЕДИНЕ ДИАПАЗОНА'}
@@ -314,7 +454,7 @@ def _build_alert_text(previous: Dict[str, Any], current: Dict[str, Any], kind: s
         lines.append(f"• авто-риск: {current.get('auto_risk_mode')}")
     if current.get('invalidation_text'):
         lines.append(f"• слом сценария: {current.get('invalidation_text')}")
-    RETURN_SENTINEL
+    return '\n'.join(lines)
 
 
 def _candidate_matches(slot: Dict[str, Any], kind: str, current: Dict[str, Any]) -> bool:
@@ -379,19 +519,53 @@ def build_auto_edge_alert(snapshot: Any, timeframe: str, slot_key: str, cooldown
         candidate = _update_candidate(slot, kind, current, now_ts)
         if _candidate_confirmed(candidate, now_ts):
             if alert_key != last_key and (now_ts - last_ts) >= max(int(cooldown_seconds or 0), 300):
-                impact_note = _action_impact_text(previous, current)
-                text = _build_alert_text(previous, current, kind, note=impact_note, slot=slot)
-                slot['last_alert_key'] = alert_key
-                slot['last_alert_ts'] = now_ts
-                _append_memory(slot, {
-                    'ts': int(now_ts),
-                    'kind': kind,
-                    'summary': impact_note,
-                    'from': _runtime_summary(previous),
-                    'to': _runtime_summary(current),
-                    'delta_confidence': _scenario_delta(previous, current),
-                })
-                slot.pop('candidate', None)
+                # DedupLayer gate (TZ-AUTO-EDGE-ALERTS-DEDUP-WIRE-UP). When the
+                # env toggle is on, this state-change + cluster-collapse pipe
+                # filters bursts that the legacy 300s cooldown alone cannot
+                # catch (e.g. confidence flickering ±2 pp every 30 minutes).
+                scenario_confidence = _safe_int(current.get('scenario_confidence'), 0)
+                price_for_cluster = _safe_float(current.get('price'))
+                should_send, dedup_reason, cluster_levels = _apply_dedup(
+                    slot_key=slot_key,
+                    kind=kind,
+                    value=float(scenario_confidence),
+                    price=price_for_cluster,
+                    now_ts=now_ts,
+                )
+                if not should_send:
+                    logger.info(
+                        'auto_edge_alerts.dedup_layer_suppress slot=%s kind=%s reason=%s',
+                        slot_key, kind, dedup_reason,
+                    )
+                    # Still mark candidate as resolved — we do NOT want to
+                    # re-evaluate the same candidate forever after dedup
+                    # suppression. Record that a confirmed candidate fired
+                    # but was dedup-suppressed via last_alert_key/ts so the
+                    # next 300s cooldown applies normally.
+                    slot['last_alert_key'] = alert_key
+                    slot['last_alert_ts'] = now_ts
+                    slot.pop('candidate', None)
+                else:
+                    impact_note = _action_impact_text(previous, current)
+                    text = _build_alert_text(previous, current, kind, note=impact_note, slot=slot)
+                    # Append cluster footnote if multiple SETUP_ON levels
+                    # collapsed into this single emit.
+                    if cluster_levels and len(cluster_levels) > 1 and text:
+                        levels_str = ', '.join(f"{p:,.0f}".replace(',', ' ') for p in cluster_levels)
+                        text = f"{text}\n• кластер уровней (схлопнут): {levels_str}"
+                    slot['last_alert_key'] = alert_key
+                    slot['last_alert_ts'] = now_ts
+                    _append_memory(slot, {
+                        'ts': int(now_ts),
+                        'kind': kind,
+                        'summary': impact_note,
+                        'from': _runtime_summary(previous),
+                        'to': _runtime_summary(current),
+                        'delta_confidence': _scenario_delta(previous, current),
+                        'dedup_reason': dedup_reason,
+                    })
+                    slot.pop('candidate', None)
+                    _record_dedup_emit(slot_key, float(scenario_confidence), now_ts)
         # else: hold candidate silently until confirmed
     else:
         slot.pop('candidate', None)
