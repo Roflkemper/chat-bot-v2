@@ -174,6 +174,33 @@ async def _run_setup_detector(stop_event: asyncio.Event, *, telegram_app=None) -
     )
 
 
+async def _run_decision_layer_emitter(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Push Decision Layer PRIMARY events from decisions.jsonl to Telegram.
+
+    Closes the gap from DECISION_LAYER_v1 §2 (TZ-DECISION-LAYER-TELEGRAM,
+    step 4 of 7) which never landed. The layer has been emitting PRIMARY
+    events to decisions.jsonl since Apr-May 2026 but operator never saw
+    them. Cold-start safe: skips backlog, only pushes events going forward.
+    """
+    from services.decision_layer.telegram_emitter import decision_layer_telegram_loop
+
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(text: str) -> None:
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, text)
+                except Exception:
+                    logger.exception("decision_layer.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    await decision_layer_telegram_loop(stop_event=stop_event, send_fn=send_fn)
+
+
 async def _run_stale_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Stale data monitor — alerts via Telegram when critical sources go stale."""
     from services.stale_monitor import stale_monitor_loop
@@ -385,6 +412,7 @@ async def main(
     setup_detector_task = asyncio.create_task(_run_setup_detector(stop_event, telegram_app=app), name="setup_detector")
     paper_trader_task = asyncio.create_task(_run_paper_trader(stop_event, telegram_app=app), name="paper_trader")
     stale_monitor_task = asyncio.create_task(_run_stale_monitor(stop_event, telegram_app=app), name="stale_monitor")
+    decision_layer_emitter_task = asyncio.create_task(_run_decision_layer_emitter(stop_event, telegram_app=app), name="decision_layer_emitter")
     setup_tracker_task = asyncio.create_task(_run_setup_tracker(stop_event), name="setup_tracker")
     exit_advisor_task = asyncio.create_task(_run_exit_advisor(stop_event, telegram_app=app), name="exit_advisor")
     market_intelligence_task = asyncio.create_task(_run_market_intelligence(stop_event), name="market_intelligence")

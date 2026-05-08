@@ -1075,6 +1075,45 @@ def build_advisor_v2_text() -> str:
         for s in sess:
             lines.append(f"  • {s}")
 
+    # ── Decision Layer PRIMARY events in last 6h (TZ-DL-ACTIVATION 2026-05-08)
+    try:
+        from datetime import timedelta as _td
+        cutoff_dl = (datetime.now(timezone.utc) - _td(hours=6)).isoformat()
+        dl_path = Path("state/decision_log/decisions.jsonl")
+        recent_dl_primary: list[dict] = []
+        if dl_path.exists():
+            for line in dl_path.read_text(encoding="utf-8").splitlines()[-300:]:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except Exception:
+                    continue
+                if e.get("severity") != "PRIMARY":
+                    continue
+                if e.get("rule_id", "").startswith("CAP-"):
+                    continue
+                if e.get("ts", "") < cutoff_dl:
+                    continue
+                recent_dl_primary.append(e)
+        if recent_dl_primary:
+            # Dedup by rule_id (show most recent per rule)
+            by_rule: dict[str, dict] = {}
+            for e in recent_dl_primary:
+                by_rule[e.get("rule_id", "?")] = e
+            lines.append("")
+            lines.append("🚦 DECISION LAYER (PRIMARY за 6h)")
+            for rule_id, e in sorted(by_rule.items()):
+                etype = e.get("event_type", "?")
+                rec = e.get("recommendation", "") or ""
+                rec_short = rec[:80] + "..." if len(rec) > 80 else rec
+                lines.append(f"  {rule_id}: {etype}")
+                if rec_short:
+                    lines.append(f"    → {rec_short}")
+    except Exception:
+        logger.exception("advisor_v2.decision_layer_block_failed")
+
     # ── Active setups. Setup_detector fires the same condition every poll
     # cycle while it's live, producing 5+ near-duplicate rows. Cluster by
     # (setup_type, entry-bucket of ENTRY_BUCKET_PCT) and render the most
