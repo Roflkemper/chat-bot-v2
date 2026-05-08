@@ -217,3 +217,85 @@ def test_alerts_24h_only_warning_or_critical(tmp_path: Path) -> None:
     assert "warning event" in msgs
     assert "critical event" in msgs
     assert "info event" not in msgs
+
+
+# ── Forecast block decommissioned (TZ-FORECAST-DECOMMISSION) ────────────────
+# Tests for forecast staleness, usability bands, and Brier classification
+# were removed when the forecast block was retired per
+# FORECAST_CALIBRATION_DIAGNOSTIC_v1.md verdict (FUNDAMENTALLY WEAK).
+
+
+def test_forecast_field_not_in_state(tmp_path: Path) -> None:
+    """forecast field is absent from build_state output post-decommission."""
+    paths = _build_paths(tmp_path)
+    state = build_state(now=_now(), **paths)
+    assert "forecast" not in state, "forecast field must be removed in TZ-FORECAST-DECOMMISSION"
+
+
+# ── P1: regulation action card (preserved — independent of forecast) ────────
+
+def _write_classifier_a_state(path: Path, primary: str = "RANGE") -> None:
+    """Write a Classifier A-shape regime_state.json that the adapter consumes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({
+            "version": 1,
+            "manual_blackout_until": None,
+            "symbols": {
+                "BTCUSDT": {
+                    "current_primary": primary,
+                    "primary_since": "2026-04-30T00:00:00Z",
+                    "regime_age_bars": 25,
+                    "pending_primary": None,
+                    "hysteresis_counter": 0,
+                    "active_modifiers": {},
+                    "atr_history_1h": [],
+                    "bb_width_history_1h": [],
+                },
+            },
+        }),
+        encoding="utf-8",
+    )
+
+
+def test_regulation_card_for_RANGE(tmp_path: Path) -> None:
+    paths = _build_paths(tmp_path)
+    regime_state_path = tmp_path / "regime_state.json"
+    _write_classifier_a_state(regime_state_path, primary="RANGE")
+    state = build_state(now=_now(), regime_state_path=regime_state_path, **paths)
+    card = state["regulation_action_card"]
+    assert card["regulation_version"] == "v0.1.1"
+    assert card["regime_label"] == "RANGE"
+    on_cfgs = {row["cfg_id"] for row in card["on"]}
+    assert on_cfgs == {"CFG-L-RANGE", "CFG-L-FAR", "CFG-S-RANGE-DEFAULT"}
+    off_cfgs = {row["cfg_id"] for row in card["off"]}
+    assert off_cfgs == {"CFG-S-INDICATOR", "CFG-L-DEFAULT"}
+    assert card["conditional"] == []
+
+
+def test_regulation_card_for_MARKDOWN_has_conditionals(tmp_path: Path) -> None:
+    paths = _build_paths(tmp_path)
+    regime_state_path = tmp_path / "regime_state.json"
+    _write_classifier_a_state(regime_state_path, primary="TREND_DOWN")
+    state = build_state(now=_now(), regime_state_path=regime_state_path, **paths)
+    card = state["regulation_action_card"]
+    assert card["regime_label"] == "MARKDOWN"
+    cond_cfgs = {row["cfg_id"] for row in card["conditional"]}
+    # CFG-L-RANGE, CFG-L-FAR, CFG-S-RANGE-DEFAULT all CONDITIONAL in MARKDOWN
+    assert "CFG-L-RANGE" in cond_cfgs
+    assert "CFG-L-FAR" in cond_cfgs
+    assert "CFG-S-RANGE-DEFAULT" in cond_cfgs
+
+
+def test_regulation_card_no_regime(tmp_path: Path) -> None:
+    """Missing regime label → card with note explaining why no rules."""
+    paths = _build_paths(tmp_path)
+    state = build_state(
+        now=_now(),
+        regime_state_path=tmp_path / "no_such_regime.json",
+        **paths,
+    )
+    card = state["regulation_action_card"]
+    assert card["regime_label"] is None
+    assert card["note"] is not None
+    assert card["on"] == []

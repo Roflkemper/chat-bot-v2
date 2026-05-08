@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,27 +17,76 @@ LIQ_CLUSTERS_PATH = Path("state/liq_clusters/active.json")
 COMPETITION_PATH = Path("state/competition_state.json")
 ENGINE_STATUS_PATH = Path("state/engine_status.json")
 REGIME_STATE_PATH = Path("data/regime/switcher_state.json")
-LATEST_FORECAST_PATH = Path("data/forecast_features/latest_forecast.json")
+# Live Classifier A output (per CLASSIFIER_AUTHORITY_v1 §1). Read via
+# services/dashboard/regime_adapter.adapt_regime_state(). The legacy
+# REGIME_STATE_PATH above (switcher_state.json) is no longer the source
+# of truth — it was written by the deprecated dashboard_bootstrap_state.py
+# scaffold against frozen forecast-pipeline parquets.
+CLASSIFIER_A_STATE_PATH = Path("state/regime_state.json")
 VIRTUAL_TRADER_LOG_PATH = Path("data/virtual_trader/positions_log.jsonl")
 OUTPUT_PATH = Path("docs/STATE/dashboard_state.json")
 
-# CV-validated mean Brier per regime/horizon (from oos_validation_*.json).
-# Used to assign band (green/yellow/red) when no live forecast is present.
-_CV_BRIER: dict[str, dict[str, float]] = {
-    "MARKUP":   {"1h": 0.2733, "4h": 0.2590, "1d": 0.2346},
-    "MARKDOWN": {"1h": 0.2042, "4h": 0.2278, "1d": 0.2801},
-    "RANGE":    {"1h": 0.2467, "4h": 0.2478, "1d": 0.2502},
-}
-
-# Validated delivery matrix — mirrors regime_switcher._DELIVERY_MATRIX.
-_DELIVERY_MATRIX: dict[str, dict[str, str]] = {
-    "MARKUP":       {"1h": "qualitative", "4h": "numeric",     "1d": "gated"},
-    "MARKDOWN":     {"1h": "numeric",     "4h": "numeric",     "1d": "qualitative"},
-    "RANGE":        {"1h": "numeric",     "4h": "numeric",     "1d": "numeric"},
-    "DISTRIBUTION": {"1h": "qualitative", "4h": "qualitative", "1d": "qualitative"},
-}
+# ── Forecast block decommissioned (TZ-FORECAST-DECOMMISSION, 2026-05-05) ──
+# Per FORECAST_CALIBRATION_DIAGNOSTIC_v1.md verdict: FUNDAMENTALLY WEAK.
+# Replayed full-year Brier = 0.2569 (worse than 0.25 baseline). Murphy
+# decomposition: resolution = 0.0001 across all horizons. Calibration
+# (Platt + isotonic) recovers exactly the 0.2500 no-skill baseline but
+# cannot manufacture missing resolution. MARKUP and MARKDOWN regimes show
+# sign inversion. Forecast is removed from the dashboard, state, and tests.
+#
+# What remains here intentionally:
+#   - regime classifier output (independent, still used by regulation card)
+#   - regulation_action_card (REGULATION v0.1.1 §3 mirror)
+#
+# Historical reference (commented for the future model, if any):
+#   _CV_BRIER = {"MARKUP": {...}, "MARKDOWN": {...}, "RANGE": {...}}
+#   _DELIVERY_MATRIX = {...}
+#   FORECAST_STALE_THRESHOLD_HOURS = 2.0
+#   FORECAST_USABILITY_ACTIONABLE_BRIER = 0.22
+#   FORECAST_USABILITY_ACTIONABLE_PROB_LO = 0.40
+#   FORECAST_USABILITY_ACTIONABLE_PROB_HI = 0.60
+#   FORECAST_USABILITY_WEAK_BRIER = 0.265
+#   FORECAST_USABILITY_WEAK_PROB_LO = 0.45
+#   FORECAST_USABILITY_WEAK_PROB_HI = 0.55
 
 PHASE_1_TOTAL_DAYS = 14
+
+# Regulation v0.1.1 §3 activation matrix (REGULATION_v0_1_1.md §3). Frozen mapping
+# from {regime_label} → {config_id} → {ON / CONDITIONAL / OFF, reason}.
+# This is a rendering-layer mirror of the regulation. If the regulation is
+# revised, update this constant in lockstep with the doc.
+_REGULATION_ACTIVATION_V0_1_1: dict[str, dict[str, dict[str, str]]] = {
+    "RANGE": {
+        "CFG-L-RANGE":         {"status": "ON",          "reason": "REG §3: ON in RANGE (Pack E + E-NoStop both 4/4 profitable)."},
+        "CFG-L-FAR":           {"status": "ON",          "reason": "REG §3: ON in RANGE (Pack BT 4/4 profitable)."},
+        "CFG-S-RANGE-DEFAULT": {"status": "ON",          "reason": "REG §3: ON in RANGE (Pack A 1y +12 181 USD; RANGE dominates year)."},
+        "CFG-S-INDICATOR":     {"status": "OFF",         "reason": "REG §2: SUSPENDED (Pack A2/A4 + Pack D 4/4 losing)."},
+        "CFG-L-DEFAULT":       {"status": "OFF",         "reason": "REG §2: SUSPENDED (Pack C 3/3 losing)."},
+    },
+    "MARKUP": {
+        "CFG-L-RANGE":         {"status": "ON",          "reason": "REG §3: ON in MARKUP (Pack E pack-level positive across mixed regimes)."},
+        "CFG-L-FAR":           {"status": "ON",          "reason": "REG §3: ON in MARKUP (Pack BT pack-level positive across mixed regimes)."},
+        "CFG-S-RANGE-DEFAULT": {"status": "CONDITIONAL", "reason": "REG §3: CONDITIONAL — within-pack regime sensitivity not validated; deploy with bounded loss limits."},
+        "CFG-S-INDICATOR":     {"status": "OFF",         "reason": "REG §2: SUSPENDED."},
+        "CFG-L-DEFAULT":       {"status": "OFF",         "reason": "REG §2: SUSPENDED."},
+    },
+    "MARKDOWN": {
+        "CFG-L-RANGE":         {"status": "CONDITIONAL", "reason": "REG §3: CONDITIONAL — bullish-year dataset over-weights MARKUP-favorable; pause if MARKDOWN-share live PnL deviates negatively."},
+        "CFG-L-FAR":           {"status": "CONDITIONAL", "reason": "REG §3: CONDITIONAL — same as CFG-L-RANGE."},
+        "CFG-S-RANGE-DEFAULT": {"status": "CONDITIONAL", "reason": "REG §3: CONDITIONAL — Pack A trend-regime performance not specifically validated."},
+        "CFG-S-INDICATOR":     {"status": "OFF",         "reason": "REG §2: SUSPENDED. (Monitoring-only hypothesis flag exists but not deployable.)"},
+        "CFG-L-DEFAULT":       {"status": "OFF",         "reason": "REG §2: SUSPENDED."},
+    },
+    "DISTRIBUTION": {
+        # Per REG §1.3 + REGIME_PERIODS_2025_2026 §1: classifier emits 3 labels,
+        # DISTRIBUTION absent. If a fourth-regime ever appears, NO RULE applies.
+        "CFG-L-RANGE":         {"status": "NO_RULE",     "reason": "REG §3.3: classifier does not emit DISTRIBUTION; out of regulation scope."},
+        "CFG-L-FAR":           {"status": "NO_RULE",     "reason": "REG §3.3."},
+        "CFG-S-RANGE-DEFAULT": {"status": "NO_RULE",     "reason": "REG §3.3."},
+        "CFG-S-INDICATOR":     {"status": "OFF",         "reason": "REG §2: SUSPENDED."},
+        "CFG-L-DEFAULT":       {"status": "OFF",         "reason": "REG §2: SUSPENDED."},
+    },
+}
 
 _BOLI_DEFAULT: list[dict[str, Any]] = [
     {"id": 1, "name": "Стресс-мониторинг", "status": "manual"},
@@ -252,15 +302,11 @@ def _build_competition(comp_cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _brier_band(brier: float | None) -> str:
-    """GREEN ≤0.22 / YELLOW 0.22–0.265 / RED >0.265 / 'qualitative' for None."""
-    if brier is None:
-        return "qualitative"
-    if brier <= 0.22:
-        return "green"
-    if brier <= 0.265:
-        return "yellow"
-    return "red"
+# Forecast helpers removed (TZ-FORECAST-DECOMMISSION). Were:
+#   _brier_band(brier) -> green|yellow|red|qualitative
+#   _forecast_usability_band(prob_up, brier, mode) -> (band, reasoning)
+#   _forecast_staleness(bar_time, now) -> staleness dict
+# See FORECAST_CALIBRATION_DIAGNOSTIC_v1.md for the verdict that retired them.
 
 
 def _file_age_minutes(path: Path, now: datetime) -> float | None:
@@ -278,26 +324,25 @@ def _build_freshness(
     *,
     now: datetime,
     snapshots_path: Path,
-    latest_forecast_path: Path,
     regime_state_path: Path,
 ) -> dict[str, Any]:
     """Per-source freshness ages + warning level.
 
     Warning levels:
       "ok"     — all sources < 10 min old
-      "yellow" — at least one source 10-120 min old (positions stale or forecast hours-old)
+      "yellow" — at least one source 10-120 min old (positions stale)
       "red"    — at least one source > 120 min old (likely the live tracker is down)
+
+    Forecast-staleness tracking removed in TZ-FORECAST-DECOMMISSION; the
+    forecast block no longer exists, so its freshness is no longer meaningful.
     """
     ages = {
         "snapshots_min": _file_age_minutes(snapshots_path, now),
-        "latest_forecast_min": _file_age_minutes(latest_forecast_path, now),
         "regime_state_min": _file_age_minutes(regime_state_path, now),
     }
-    # Warning derivation
     level = "ok"
     notes: list[str] = []
     pos_age = ages["snapshots_min"]
-    fc_age = ages["latest_forecast_min"]
     if pos_age is None:
         level = "red"
         notes.append("snapshots.csv missing — tracker not running")
@@ -307,15 +352,6 @@ def _build_freshness(
     elif pos_age > 10:
         level = max(level, "yellow", key=["ok", "yellow", "red"].index)
         notes.append(f"snapshots {pos_age:.0f} min old")
-
-    if fc_age is None:
-        notes.append("no live forecast — using CV-matrix fallback")
-    elif fc_age > 1440:  # >24h
-        level = "red"
-        notes.append(f"forecast {fc_age/60:.0f}h stale — bootstrap may need re-run")
-    elif fc_age > 120:  # >2h
-        level = max(level, "yellow", key=["ok", "yellow", "red"].index)
-        notes.append(f"forecast {fc_age:.0f} min old")
 
     return {
         "level": level,
@@ -350,74 +386,192 @@ def _build_regime(regime_state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _build_forecast(latest_forecast: dict[str, Any], regime: str | None) -> dict[str, Any]:
-    """Render 1h/4h/1d forecast with brier-band colors.
+# _build_forecast removed (TZ-FORECAST-DECOMMISSION).
+# Forecast block was retired per FORECAST_CALIBRATION_DIAGNOSTIC_v1 verdict
+# (FUNDAMENTALLY WEAK; resolution = 0.0001 across horizons; calibrated Brier
+# recovers no-skill 0.2500 baseline only). The dashboard no longer renders
+# numeric forecast probabilities. Regime classifier output remains and feeds
+# the regulation action card below.
 
-    If a live forecast file exists, use it. Otherwise emit static delivery
-    matrix entries (mode + CV-mean brier) so the panel renders meaningfully
-    on first load.
+
+def _build_regulation_card(regime_label: str | None) -> dict[str, Any]:
+    """Render the operator-facing regulation action card.
+
+    P1 of TZ-DASHBOARD-USABILITY-FIX-PHASE-1. For the current regime label,
+    show which configurations from REGULATION_v0_1_1 §3 are ON / CONDITIONAL /
+    OFF, with one-line reasoning per row. The mapping is frozen in
+    _REGULATION_ACTIVATION_V0_1_1 above; the card is a pure render of that
+    table for the current regime.
+
+    Returns shape:
+      {
+        regime_label, regulation_version,
+        on:          [{cfg_id, reason}, ...],
+        conditional: [{cfg_id, reason}, ...],
+        off:         [{cfg_id, reason}, ...],
+        no_rule:     [{cfg_id, reason}, ...],
+        note,
+      }
     """
-    out: dict[str, Any] = {"horizons": {}, "source": None}
-    horizons = ("1h", "4h", "1d")
-
-    if latest_forecast and "horizons" in latest_forecast:
-        out["source"] = "live"
-        out["bar_time"] = latest_forecast.get("bar_time")
-        out["regime_at_forecast"] = latest_forecast.get("regime")
-        for hz in horizons:
-            entry = latest_forecast["horizons"].get(hz, {})
-            mode = entry.get("mode", "qualitative")
-            value = entry.get("value")
-            brier = entry.get("brier")
-            out["horizons"][hz] = {
-                "mode": mode,
-                "value": value,
-                "brier": brier,
-                "band": _brier_band(brier) if mode == "numeric" else "qualitative",
-                "caveat": entry.get("caveat"),
-            }
+    out: dict[str, Any] = {
+        "regulation_version": "v0.1.1",
+        "regime_label": regime_label,
+        "on": [],
+        "conditional": [],
+        "off": [],
+        "no_rule": [],
+        "note": None,
+    }
+    if not regime_label:
+        out["note"] = "no regime label — activation rules cannot be applied"
         return out
-
-    # Fallback: emit CV-validated delivery matrix entries for current regime
-    out["source"] = "cv_matrix"
-    if regime in _CV_BRIER:
-        for hz in horizons:
-            mode_spec = _DELIVERY_MATRIX[regime][hz]
-            cv_brier = _CV_BRIER[regime][hz]
-            if mode_spec == "qualitative":
-                out["horizons"][hz] = {
-                    "mode": "qualitative",
-                    "value": None,
-                    "brier": cv_brier,
-                    "band": "qualitative",
-                    "caveat": "delivered as qualitative per validated matrix",
-                }
-            elif mode_spec == "gated":
-                out["horizons"][hz] = {
-                    "mode": "gated",
-                    "value": None,
-                    "brier": cv_brier,
-                    "band": _brier_band(cv_brier),
-                    "caveat": "numeric only when regime_stability > 0.70",
-                }
-            else:
-                out["horizons"][hz] = {
-                    "mode": "numeric",
-                    "value": None,
-                    "brier": cv_brier,
-                    "band": _brier_band(cv_brier),
-                    "caveat": None,
-                }
-    else:
-        for hz in horizons:
-            out["horizons"][hz] = {
-                "mode": "qualitative",
-                "value": None,
-                "brier": None,
-                "band": "qualitative",
-                "caveat": "no regime",
-            }
+    table = _REGULATION_ACTIVATION_V0_1_1.get(regime_label)
+    if table is None:
+        out["note"] = (
+            f"regime '{regime_label}' not in REGULATION v0.1.1 §3 activation matrix; "
+            "either classifier emitted an unexpected label or regulation needs revision"
+        )
+        return out
+    for cfg_id, entry in table.items():
+        status = entry["status"]
+        row = {"cfg_id": cfg_id, "reason": entry["reason"]}
+        if status == "ON":
+            out["on"].append(row)
+        elif status == "CONDITIONAL":
+            out["conditional"].append(row)
+        elif status == "OFF":
+            out["off"].append(row)
+        elif status == "NO_RULE":
+            out["no_rule"].append(row)
     return out
+
+
+def _build_decision_layer_block(
+    *,
+    now: datetime,
+    draft: dict[str, Any],
+    state_latest: dict[str, Any],
+    regime_state: dict[str, Any],
+    engine_cfg: dict[str, Any],
+    freshness: dict[str, Any],
+) -> dict[str, Any]:
+    """Wire Decision Layer (TZ-DECISION-LAYER-CORE-WIRE).
+
+    Reads draft state + auxiliary inputs, runs the rule engine, returns the
+    augmentation block for dashboard_state.json["decision_layer"].
+
+    Margin block (TZ-MARGIN-COEFFICIENT-INPUT-WIRE 2026-05-06):
+      state_latest.json["margin"] is populated by state_snapshot.py from
+      services.margin.read_latest_margin() — newer of operator-supplied
+      override file (state/manual_overrides/margin_overrides.jsonl) and
+      a future automated feed. When the margin block is absent, M-* rules
+      short-circuit to no-event (M-* dormant; D-4 surfaces this).
+    """
+    from services.decision_layer import DecisionInputs, evaluate as decision_evaluate
+
+    exposure = dict(state_latest.get("exposure") or {})
+    nearest_short = dict(exposure.get("nearest_short_liq") or {})
+    nearest_long = dict(exposure.get("nearest_long_liq") or {})
+    margin_block = state_latest.get("margin") or {}
+
+    # Margin coefficient — operator-supplied (or future automated) via
+    # services.margin source resolution. None when no record exists.
+    raw_coef = margin_block.get("coefficient")
+    margin_coefficient = float(raw_coef) if raw_coef is not None else None
+
+    # Distance to liquidation: prefer margin block (operator UI value, accurate
+    # mark-price-based); fall back to per-bot exposure liq prices (which are
+    # entry-price-based approximations and currently always have distance_pct=None).
+    raw_dist = margin_block.get("distance_to_liquidation_pct")
+    if raw_dist is not None:
+        distance_to_liq_pct: float | None = float(raw_dist)
+    else:
+        dist_short = nearest_short.get("distance_pct")
+        dist_long = nearest_long.get("distance_pct")
+        candidates = [d for d in (dist_short, dist_long) if d is not None]
+        distance_to_liq_pct = float(min(candidates)) if candidates else None
+
+    # Margin data age — feeds D-4 (margin_data_stale).
+    margin_data_age_min = margin_block.get("data_age_minutes") if margin_block else None
+    if margin_data_age_min is not None:
+        try:
+            margin_data_age_min = float(margin_data_age_min)
+        except (TypeError, ValueError):
+            margin_data_age_min = None
+
+    # Position state
+    net_btc_raw = exposure.get("net_btc")
+    position_btc = float(net_btc_raw) if net_btc_raw is not None else None
+
+    # Unrealized PnL: sum bots[].live.unrealized_usd
+    unreal_total: float = 0.0
+    have_any = False
+    for b in state_latest.get("bots", []) or []:
+        live = b.get("live") or {}
+        u = live.get("unrealized_usd")
+        if u is not None:
+            try:
+                unreal_total += float(u)
+                have_any = True
+            except (TypeError, ValueError):
+                pass
+    unrealized = unreal_total if have_any else None
+
+    inputs_stale = freshness.get("level") in ("yellow", "red")
+
+    inp = DecisionInputs(
+        now=now,
+        regime_label=regime_state.get("regime"),
+        regime_confidence=(
+            float(regime_state["regime_confidence"])
+            if regime_state.get("regime_confidence") is not None else None
+        ),
+        regime_stability=(
+            float(regime_state["regime_stability"])
+            if regime_state.get("regime_stability") is not None else None
+        ),
+        bars_in_current_regime=(
+            int(regime_state["bars_in_current_regime"])
+            if regime_state.get("bars_in_current_regime") is not None else None
+        ),
+        candidate_regime=regime_state.get("candidate_regime"),
+        candidate_bars=(
+            int(regime_state["candidate_bars"])
+            if regime_state.get("candidate_bars") is not None else None
+        ),
+        margin_coefficient=margin_coefficient,
+        distance_to_liquidation_pct=distance_to_liq_pct,
+        margin_data_age_min=margin_data_age_min,
+        position_btc=position_btc,
+        unrealized_pnl_usd=unrealized,
+        current_price=draft.get("current_price_btc"),
+        snapshots_age_min=(freshness.get("ages_min") or {}).get("snapshots_min"),
+        regime_state_age_min=(freshness.get("ages_min") or {}).get("regime_state_min"),
+        engine_bugs_detected=(
+            int(engine_cfg["bugs_detected"])
+            if engine_cfg.get("bugs_detected") is not None else None
+        ),
+        engine_bugs_fixed=(
+            int(engine_cfg["bugs_fixed"])
+            if engine_cfg.get("bugs_fixed") is not None else None
+        ),
+        engine_fix_eta=engine_cfg.get("fix_eta"),
+        inputs_stale=inputs_stale,
+    )
+    try:
+        result = decision_evaluate(inp)
+    except (OSError, ValueError) as exc:
+        logging.getLogger(__name__).warning("decision_layer evaluate failed: %s", exc)
+        return {
+            "last_evaluated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "active_severity": "NONE",
+            "events_recent": [],
+            "events_24h_count": 0,
+            "events_24h_by_rule": {},
+            "rate_limit_status": {"primary_used_24h": 0, "primary_cap": 20, "window_oldest_event_at": None},
+            "error": str(exc),
+        }
+    return result.decision_layer_block
 
 
 def _build_virtual_trader(rows: list[dict[str, Any]], now: datetime) -> dict[str, Any]:
@@ -486,10 +640,11 @@ def build_state(
     liq_path: Path = LIQ_CLUSTERS_PATH,
     competition_path: Path = COMPETITION_PATH,
     engine_path: Path = ENGINE_STATUS_PATH,
-    regime_state_path: Path = REGIME_STATE_PATH,
-    latest_forecast_path: Path = LATEST_FORECAST_PATH,
+    regime_state_path: Path = CLASSIFIER_A_STATE_PATH,
     virtual_trader_log_path: Path = VIRTUAL_TRADER_LOG_PATH,
 ) -> dict[str, Any]:
+    from services.dashboard.regime_adapter import adapt_regime_state
+
     now = now or datetime.now(timezone.utc)
     snapshots = _read_csv_latest_by_bot(snapshots_path)
     state_latest = _load_json(state_latest_path)
@@ -499,8 +654,10 @@ def build_state(
     liq_raw = _load_json(liq_path)
     competition_cfg = _load_json(competition_path)
     engine_cfg = _load_json(engine_path)
-    regime_state = _load_json(regime_state_path)
-    latest_forecast = _load_json(latest_forecast_path)
+    # Classifier A live output projected to Decision Layer schema. Adapter
+    # returns None when the file is missing or unprojectable — pass {} to
+    # downstream so _build_regime emits its "no regime state" placeholder.
+    regime_state = adapt_regime_state(path=regime_state_path) or {}
     vt_rows = _read_jsonl(virtual_trader_log_path)
 
     # Current price: last signal → state_latest → None
@@ -523,7 +680,12 @@ def build_state(
     liq_clusters: list[Any] = liq_raw.get("clusters", []) if isinstance(liq_raw, dict) else []
 
     regime_block = _build_regime(regime_state)
-    return {
+    freshness_block = _build_freshness(
+        now=now,
+        snapshots_path=snapshots_path,
+        regime_state_path=regime_state_path,
+    )
+    draft = {
         "last_updated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "current_price_btc": current_price,
         "positions": _build_positions(snapshots, net_btc, free_margin_pct, drawdown_pct),
@@ -535,15 +697,20 @@ def build_state(
         "active_liq_clusters": liq_clusters if isinstance(liq_clusters, list) else [],
         "alerts_24h": _build_alerts_24h(events, now),
         "regime": regime_block,
-        "forecast": _build_forecast(latest_forecast, regime_block.get("label")),
+        # forecast: REMOVED in TZ-FORECAST-DECOMMISSION; retired per FORECAST_CALIBRATION_DIAGNOSTIC_v1
+        "regulation_action_card": _build_regulation_card(regime_block.get("label")),
         "virtual_trader": _build_virtual_trader(vt_rows, now),
-        "freshness": _build_freshness(
-            now=now,
-            snapshots_path=snapshots_path,
-            latest_forecast_path=latest_forecast_path,
-            regime_state_path=regime_state_path,
-        ),
+        "freshness": freshness_block,
     }
+    draft["decision_layer"] = _build_decision_layer_block(
+        now=now,
+        draft=draft,
+        state_latest=state_latest,
+        regime_state=regime_state,
+        engine_cfg=engine_cfg,
+        freshness=freshness_block,
+    )
+    return draft
 
 
 def build_and_save_state(
@@ -558,8 +725,7 @@ def build_and_save_state(
     liq_path: Path = LIQ_CLUSTERS_PATH,
     competition_path: Path = COMPETITION_PATH,
     engine_path: Path = ENGINE_STATUS_PATH,
-    regime_state_path: Path = REGIME_STATE_PATH,
-    latest_forecast_path: Path = LATEST_FORECAST_PATH,
+    regime_state_path: Path = CLASSIFIER_A_STATE_PATH,
     virtual_trader_log_path: Path = VIRTUAL_TRADER_LOG_PATH,
 ) -> dict[str, Any]:
     state = build_state(
@@ -573,7 +739,6 @@ def build_and_save_state(
         competition_path=competition_path,
         engine_path=engine_path,
         regime_state_path=regime_state_path,
-        latest_forecast_path=latest_forecast_path,
         virtual_trader_log_path=virtual_trader_log_path,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)

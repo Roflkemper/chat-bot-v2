@@ -1294,6 +1294,35 @@ def main() -> None:
 
     roadmap_data = _parse_roadmap()
 
+    # Margin block — surfaced from services.margin (TZ-MARGIN-COEFFICIENT-INPUT-WIRE).
+    # Source resolution: newer of state/manual_overrides/margin_overrides.jsonl
+    # (operator /margin command) and state/margin_automated.jsonl (reserved for
+    # future TZ-EXCHANGE-WALLET-FEED). When neither has data, margin = None and
+    # Decision Layer M-* rules stay dormant.
+    try:
+        from services.margin import read_latest_margin
+
+        _margin = read_latest_margin()
+    except Exception as _margin_err:  # never let margin reader crash the snapshot
+        print(f"  margin: reader error — {_margin_err}")
+        _margin = None
+    if _margin is not None:
+        try:
+            _margin_dt = datetime.fromisoformat(_margin.ts.replace("Z", "+00:00"))
+            _age_min = (datetime.now(timezone.utc) - _margin_dt).total_seconds() / 60.0
+        except (ValueError, AttributeError):
+            _age_min = None
+        margin_block = {
+            "coefficient": _margin.coefficient,
+            "available_margin_usd": _margin.available_margin_usd,
+            "distance_to_liquidation_pct": _margin.distance_to_liquidation_pct,
+            "source": _margin.source,
+            "updated_at": _margin.ts,
+            "data_age_minutes": round(_age_min, 1) if _age_min is not None else None,
+        }
+    else:
+        margin_block = None
+
     state_json = {
         "ts": ts.isoformat(),
         "data_health": data_health,
@@ -1301,6 +1330,7 @@ def main() -> None:
         "bots": bots,
         "manual_positions": [],
         "exposure": exposure,
+        "margin": margin_block,
         "agm_24h": agm_24h,
         "dd_recovery_24h": dd_recovery,
         "anomalies": anomalies,

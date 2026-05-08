@@ -1,5 +1,21 @@
 """One-shot bootstrap: produce regime/forecast state files for dashboard.
 
+DEPRECATED 2026-05-06 (TZ-REGIME-ADAPTER-WIRE).
+
+Этот скрипт читал frozen forecast pipeline parquet'ы и писал
+data/regime/switcher_state.json как scaffold для dashboard. После
+forecast pipeline decommission (FORECAST_DECOMMISSION 2026-05-05) и
+появления services/dashboard/regime_adapter.py скрипт больше не нужен.
+
+Replacement: services/dashboard/regime_adapter.adapt_regime_state()
+читает state/regime_state.json напрямую — live output Classifier A
+(core/orchestrator/regime_classifier.py) который app_runner обновляет
+каждые ~5 минут. state_builder.build_state() теперь wire'нут к адаптеру
+через CLASSIFIER_A_STATE_PATH.
+
+Файл и сам switcher_state.json НЕ удалены — оставлены как reference точки.
+Окончательное удаление в отдельном housekeeping TZ.
+
 Picks the most recent bar across all 3 regime parquets (by timestamp),
 runs RegimeForecastSwitcher.forecast(), and writes:
 
