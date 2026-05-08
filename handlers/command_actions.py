@@ -656,11 +656,37 @@ class CommandActions:
         lines.append(
             f"  net=${summary_7d['net_pnl_usd']:+.0f} | win_rate={summary_7d['win_rate_pct']}% | avg_rr={summary_7d['avg_rr']}"
         )
-        if summary_7d.get("by_setup_type"):
+        # 7d performance by setup type — full table sorted by net PnL desc.
+        # Shows operator which setups are *actually* working on fresh data.
+        perf_7d = summary_7d.get("by_setup_type_perf") or {}
+        if perf_7d:
             lines.append("")
-            lines.append("7d by setup type:")
-            for stype, n in sorted(summary_7d["by_setup_type"].items(), key=lambda x: -x[1])[:8]:
-                lines.append(f"  {stype}: {n}")
+            lines.append("📈 7d performance by setup type (closed trades):")
+            lines.append("  setup_type             | N  |  W/L  |  WR%  |   PF  |  net$")
+            lines.append("  -----------------------|----|-------|-------|-------|--------")
+            sorted_types = sorted(
+                perf_7d.items(),
+                key=lambda kv: kv[1].get("net_pnl_usd", 0),
+                reverse=True,
+            )
+            for stype, p in sorted_types:
+                pf_str = f"{p['pf']:.2f}" if p["pf"] != float("inf") else "  inf"
+                wl = f"{p['n_wins']}/{p['n_losses']}"
+                lines.append(
+                    f"  {stype:<22} | {p['n_closes']:>2} | {wl:>5} | "
+                    f"{p['win_rate_pct']:>5.1f} | {pf_str:>5} | {p['net_pnl_usd']:>+7.0f}"
+                )
+
+            # Surface "open trades by type" so operator sees what's still pending.
+            opens_by_type: dict[str, int] = {}
+            for tr in opens:
+                opens_by_type[tr.get("setup_type", "?")] = opens_by_type.get(tr.get("setup_type", "?"), 0) + 1
+            if opens_by_type:
+                lines.append("")
+                lines.append("🔓 Open by setup type:")
+                for stype, n in sorted(opens_by_type.items(), key=lambda x: -x[1]):
+                    lines.append(f"  {stype}: {n}")
+
         self._log_manual_command(action="PAPERTRADER")
         return self.ctx.plain("\n".join(lines))
 

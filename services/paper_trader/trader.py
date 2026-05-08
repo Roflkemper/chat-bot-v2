@@ -220,6 +220,27 @@ def daily_summary(*, days_back: int = 1) -> dict:
 
     by_type = Counter(e["setup_type"] for e in opens)
 
+    # Per-setup-type performance: closes only (where we have realized_pnl).
+    by_type_perf: dict[str, dict] = {}
+    for stype in {e.get("setup_type") for e in closes if e.get("setup_type")}:
+        type_closes = [e for e in closes if e.get("setup_type") == stype]
+        type_wins = [e for e in type_closes if (e.get("realized_pnl_usd") or 0) > 0]
+        type_losses = [e for e in type_closes if (e.get("realized_pnl_usd") or 0) <= 0]
+        type_net = sum(e.get("realized_pnl_usd") or 0 for e in type_closes)
+        type_rrs = [e.get("rr_realized") for e in type_closes if e.get("rr_realized") is not None]
+        gross_win = sum(e.get("realized_pnl_usd") or 0 for e in type_wins)
+        gross_loss = -sum(e.get("realized_pnl_usd") or 0 for e in type_losses)
+        pf = round(gross_win / gross_loss, 2) if gross_loss > 0 else (float("inf") if gross_win > 0 else 0.0)
+        by_type_perf[stype] = {
+            "n_closes": len(type_closes),
+            "n_wins": len(type_wins),
+            "n_losses": len(type_losses),
+            "net_pnl_usd": round(type_net, 2),
+            "win_rate_pct": round(100 * len(type_wins) / max(1, len(type_closes)), 1),
+            "avg_rr": round(sum(type_rrs) / len(type_rrs), 2) if type_rrs else 0.0,
+            "pf": pf,
+        }
+
     return {
         "days_back": days_back,
         "n_opens": len(opens),
@@ -230,4 +251,5 @@ def daily_summary(*, days_back: int = 1) -> dict:
         "avg_rr": avg_rr,
         "win_rate_pct": round(100 * len(wins) / max(1, len(closes)), 1),
         "by_setup_type": dict(by_type),
+        "by_setup_type_perf": by_type_perf,
     }
