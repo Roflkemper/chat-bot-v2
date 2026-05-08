@@ -192,6 +192,98 @@ def _read_regime_summary() -> dict | None:
 
 # ─── action recommendation ────────────────────────────────────────────────
 
+def _setup_climate(
+    pause_signal: dict,
+    regime: dict | None,
+    features: dict,
+    cascades: list[dict],
+) -> list[tuple[str, str, str]]:
+    """Hot/Cold rating for each major setup category.
+
+    Returns list of (category, status, reason) tuples. status is one of:
+      🔥 HOT      — conditions favourable, take signals seriously
+      🟡 NEUTRAL — mixed picture, use normal sizing
+      ❄️ COLD    — conditions unfavourable, skip / reduce size
+
+    Categories:
+      LONG_GRID   — running long-side grid bots
+      SHORT_GRID  — running short-side grid bots
+      LONG_DIV    — taking divergence-based long setups
+      SHORT_NEW   — opening fresh short positions
+      POST_CASCADE — taking cascade-reversal trades
+    """
+    out: list[tuple[str, str, str]] = []
+    regime_str = (regime or {}).get("current") or ""
+    is_trend_up = regime_str in ("TREND_UP", "IMPULSE_UP")
+    is_trend_down = regime_str in ("TREND_DOWN", "IMPULSE_DOWN")
+    rsi_1h = features.get("rsi_14")
+    funding = features.get("funding_rate")
+    short_pause = pause_signal.get("short_pause", False)
+    long_pause = pause_signal.get("long_pause", False)
+
+    now = datetime.now(timezone.utc)
+    fresh_strong_cascade = any(
+        c["qty"] >= CASCADE_BTC_THRESHOLD and (now - c["ts_start"]).total_seconds() < 6 * 3600
+        for c in cascades
+    )
+
+    # ── LONG_GRID
+    if long_pause:
+        out.append(("LONG_GRID", "❄️ COLD", "BTC падает >2% за час — паузу LONG-ботам"))
+    elif is_trend_down:
+        out.append(("LONG_GRID", "❄️ COLD", "режим trend_down — LONG-боты ловят ножи"))
+    elif is_trend_up:
+        out.append(("LONG_GRID", "🔥 HOT", "режим trend_up — LONG-боты на тренде"))
+    else:
+        out.append(("LONG_GRID", "🟡 NEUTRAL", "range — обычный режим"))
+
+    # ── SHORT_GRID
+    if short_pause:
+        out.append(("SHORT_GRID", "❄️ COLD", "BTC растёт >2% за час — паузу SHORT-ботам"))
+    elif is_trend_up:
+        out.append(("SHORT_GRID", "❄️ COLD", "режим trend_up — SHORT-боты против тренда"))
+    elif is_trend_down:
+        out.append(("SHORT_GRID", "🔥 HOT", "режим trend_down — SHORT-боты на тренде"))
+    else:
+        out.append(("SHORT_GRID", "🟡 NEUTRAL", "range — обычный режим"))
+
+    # ── LONG_DIV (наши divergence detectors)
+    # Backtest: на bull-биасном периоде PF=1.78, с BoS = PF=4.49.
+    # Hot если: rsi oversold (<35) ИЛИ свежий long_liq cascade ИЛИ regime trend_up
+    # Cold если: rsi overbought (>70) И regime trend_down
+    if rsi_1h is not None and rsi_1h < 35:
+        out.append(("LONG_DIV", "🔥 HOT", f"RSI {rsi_1h:.0f} перепродан — divergence чаще ловит дно"))
+    elif fresh_strong_cascade and any(c["kind"] == "long_liq" for c in cascades):
+        out.append(("LONG_DIV", "🔥 HOT", "свежий long-liq cascade — backtest 73% pct_up"))
+    elif is_trend_down and rsi_1h is not None and rsi_1h > 70:
+        out.append(("LONG_DIV", "❄️ COLD", "downtrend + RSI overbought — divergence не работает"))
+    elif is_trend_down:
+        out.append(("LONG_DIV", "🟡 NEUTRAL", "downtrend — div-сигналы рискованнее, требуй BoS-confirm"))
+    else:
+        out.append(("LONG_DIV", "🟡 NEUTRAL", "стандартные условия"))
+
+    # ── SHORT_NEW (открыть новый short)
+    # Наш backtest показал: SHORT side НЕТ EDGE на bull-биасе. Honest stance:
+    # отговариваем новые шорты, кроме явных rally-fade условий.
+    if is_trend_up:
+        out.append(("SHORT_NEW", "❄️ COLD", "trend_up — backtest: short divergence без edge"))
+    elif rsi_1h is not None and rsi_1h > 75:
+        out.append(("SHORT_NEW", "🟡 NEUTRAL", f"RSI {rsi_1h:.0f} overbought — rally-fade возможен"))
+    else:
+        out.append(("SHORT_NEW", "❄️ COLD", "общий bull-bias 2y — short setups дают PF<1"))
+
+    # ── POST_CASCADE
+    if fresh_strong_cascade:
+        # Отдельная категория — есть условие = HOT
+        kind = next((c["kind"] for c in cascades if c["qty"] >= CASCADE_BTC_THRESHOLD), None)
+        kind_word = "long-liq cascade" if kind == "long_liq" else "short-liq cascade" if kind == "short_liq" else "cascade"
+        out.append(("POST_CASCADE", "🔥 HOT", f"свежий {kind_word} ≥{CASCADE_BTC_THRESHOLD} BTC — окно открыто 12h"))
+    else:
+        out.append(("POST_CASCADE", "❄️ COLD", "каскадов нет — нет триггера"))
+
+    return out
+
+
 def _recommend_action(
     cascades: list[dict],
     pause_signal: dict,
@@ -324,9 +416,45 @@ def build_morning_brief() -> str:
             lines.append(f"  🚨 GRID PAUSE: триггер активен (BTC {ch:+.2f}% за час)")
         else:
             lines.append(f"  ✅ GRID PAUSE: спокойно (BTC {ch:+.2f}% за час, порог ±2%)")
+
+    # SNP correlation (S&P 500 futures via yfinance, 5min cache).
+    try:
+        from services.advisor.snp_feed import get_snp_snapshot
+        snp = get_snp_snapshot()
+        if snp.error and not snp.last_close:
+            lines.append(f"  S&P futures: данные недоступны ({snp.error[:40]})")
+        elif snp.last_close:
+            ch1h = f"{snp.change_1h_pct:+.2f}%" if snp.change_1h_pct is not None else "n/a"
+            ch24h = f"{snp.change_24h_pct:+.2f}%" if snp.change_24h_pct is not None else "n/a"
+            line = f"  S&P futures: {snp.last_close:,.0f} ({ch1h} 1h / {ch24h} 24h)"
+            if snp.is_stale:
+                line += " ⚠️ stale"
+            lines.append(line)
+            if snp.correlation_24h is not None:
+                corr = snp.correlation_24h
+                if corr > 0.5:
+                    word = "сильная положительная — risk-on/off в синхроне"
+                elif corr > 0.2:
+                    word = "умеренная положительная — частичная корреляция"
+                elif corr > -0.2:
+                    word = "слабая — BTC двигается независимо"
+                elif corr > -0.5:
+                    word = "умеренная отрицательная — расходимся"
+                else:
+                    word = "сильная отрицательная — противофаза"
+                lines.append(f"  BTC↔S&P 24h corr: {corr:+.2f} ({word})")
+    except Exception:
+        logger.exception("morning_brief.snp_block_failed")
     lines.append("")
 
-    # ── 4. BEST ACTIVE SETUP (один лучший, не все 9)
+    # ── 4. SETUP CLIMATE (Hot/Cold ratings)
+    climate = _setup_climate(pause_signal, regime, features, cascades)
+    lines.append("🌡️ КЛИМАТ ДЛЯ СЕТАПОВ")
+    for category, status, reason in climate:
+        lines.append(f"  {status}  {category:<12} — {reason}")
+    lines.append("")
+
+    # ── 5. BEST ACTIVE SETUP (один лучший, не все 9)
     high_conf = [s for s in setups if s.get("confidence_pct", 0) >= 70]
     if high_conf:
         # Prefer high-PF detector types when present
