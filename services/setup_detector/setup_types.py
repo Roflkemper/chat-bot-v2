@@ -735,6 +735,11 @@ def detect_defensive_margin_low(ctx: DetectionContext) -> Setup | None:
     )
 
 
+from services.setup_detector.double_top_bottom import (
+    detect_double_top_setup,
+    detect_double_bottom_setup,
+)
+
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_dump_reversal,
     detect_long_pdl_bounce,
@@ -744,6 +749,8 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_short_pdh_rejection,
     detect_short_overbought_fade,
     detect_short_liq_magnet,
+    detect_double_bottom_setup,   # NEW (TZ-PAPER-TRADER 2026-05-07)
+    detect_double_top_setup,      # NEW
     detect_grid_raise_boundary,
     detect_grid_pause_entries,
     detect_grid_booster_activate,

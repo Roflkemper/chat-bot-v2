@@ -16,6 +16,8 @@ class SetupType(Enum):
     SHORT_PDH_REJECTION = "short_pdh_rejection"
     SHORT_OVERBOUGHT_FADE = "short_overbought_fade"
     SHORT_LIQ_MAGNET = "short_liq_magnet"
+    LONG_DOUBLE_BOTTOM = "long_double_bottom"
+    SHORT_DOUBLE_TOP = "short_double_top"
     GRID_RAISE_BOUNDARY = "grid_raise_boundary"
     GRID_PAUSE_ENTRIES = "grid_pause_entries"
     GRID_BOOSTER_ACTIVATE = "grid_booster"

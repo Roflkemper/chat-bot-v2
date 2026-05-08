@@ -21,15 +21,42 @@ _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_ICT_PARQUET = _ROOT / "data" / "ict_levels" / "BTCUSDT_ict_levels_1m.parquet"
 
 
+def _simple_session_label(now_utc: datetime) -> str:
+    """Fallback session label without advise_v2 dependency."""
+    h = now_utc.hour
+    if 0 <= h < 8:
+        return "asia"
+    if 8 <= h < 13:
+        return "london"
+    if 13 <= h < 17:
+        return "ny_am"
+    if 17 <= h < 21:
+        return "ny_pm"
+    return "asia"
+
+
+def _simple_regime_label(snapshot: dict) -> str:
+    """Map raw regime to a simple label without advise_v2."""
+    regime = snapshot.get("regime") or {}
+    primary = regime.get("primary") or "RANGE"
+    mapping = {
+        "TREND_UP": "trend_up", "CASCADE_UP": "impulse_up",
+        "TREND_DOWN": "trend_down", "CASCADE_DOWN": "impulse_down",
+        "RANGE": "range_wide", "COMPRESSION": "consolidation",
+    }
+    return mapping.get(primary, "range_wide")
+
+
 def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
-    """Build live DetectionContext from core pipeline. Returns None on failure."""
+    """Build live DetectionContext from core pipeline. Returns None on failure.
+
+    No longer depends on services.advise_v2 (which crashed on missing pydantic).
+    """
     try:
         import pandas as pd
 
         from core.data_loader import load_klines
         from core.pipeline import build_full_snapshot
-        from services.advise_v2.regime_adapter import map_regime_dict_to_advise_label
-        from services.advise_v2.session_intelligence import compute_session_context
 
         snapshot = build_full_snapshot(symbol=pair)
         current_price = float(snapshot.get("price", 0.0))
@@ -37,12 +64,9 @@ def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
             logger.warning("setup_detector.build_context: invalid price for %s", pair)
             return None
 
-        regime = snapshot.get("regime", {})
-        regime_label = map_regime_dict_to_advise_label(regime)
-
+        regime_label = _simple_regime_label(snapshot)
         now_utc = datetime.now(timezone.utc)
-        session_ctx = compute_session_context(now_utc)
-        session_label = session_ctx.kz_active
+        session_label = _simple_session_label(now_utc)
 
         df_1m: pd.DataFrame = load_klines(symbol=pair, timeframe="1m", limit=200)
         df_1h: pd.DataFrame = load_klines(symbol=pair, timeframe="1h", limit=50)
@@ -59,7 +83,7 @@ def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
             ohlcv_1m=df_1m,
             ohlcv_1h=df_1h,
             portfolio=portfolio,
-            ict_context={},  # filled by caller after context is built
+            ict_context={},
         )
     except Exception:
         logger.exception("setup_detector.build_context_failed pair=%s", pair)
