@@ -168,9 +168,15 @@ async def _run_setup_detector(stop_event: asyncio.Event, *, telegram_app=None) -
 
         send_fn = _send
 
+    # Multi-symbol detection: BTC + ETH. Backtest TZ-3 (2026-05-08) showed
+    # ETH-only divergence is the strongest single-asset edge in the project
+    # (PF=7.43 hold_12h vs BTC's 5.36). Adding ETH to the pair list lets
+    # production capture those signals + paper-trade them. XRP excluded for
+    # now — backtest showed weaker hold_1h edge (PF=0.93).
     await setup_detector_loop(
         stop_event=stop_event,
         send_fn=send_fn,
+        pairs=("BTCUSDT", "ETHUSDT"),
     )
 
 

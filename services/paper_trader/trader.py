@@ -77,6 +77,7 @@ def open_paper_trade(setup: Setup) -> Optional[dict]:
         "side": side,
         "setup_type": setup.setup_type.value,
         "setup_id": setup.setup_id,
+        "pair": getattr(setup, "pair", "BTCUSDT"),  # multi-symbol support 2026-05-08
         "entry": entry,
         "size_usd": PAPER_NOTIONAL_USD,
         "size_btc": size_btc,
@@ -178,16 +179,36 @@ def _hours_in_trade(open_record: dict, now: datetime) -> float:
     return round((now - open_ts).total_seconds() / 3600, 2)
 
 
-def update_open_trades(current_price: float, *, now: Optional[datetime] = None) -> list[dict]:
+def update_open_trades(
+    current_price: float | dict[str, float],
+    *,
+    now: Optional[datetime] = None,
+) -> list[dict]:
     """Check all open trades; close any that hit SL/TP/time-stop.
+
+    `current_price` is either a single float (legacy: applied to all open
+    trades regardless of pair — for BTCUSDT-only deployments) OR a
+    dict[symbol -> price] for multi-symbol deployments. When dict, each
+    trade is matched against price for its `pair` field; trades with a
+    pair missing from the dict are skipped (no false TP/SL).
 
     Returns list of close events emitted (for Telegram notification).
     """
     now = now or datetime.now(timezone.utc)
     opens = journal.open_trades()
     closed_events: list[dict] = []
+    is_multi = isinstance(current_price, dict)
 
     for trade in opens:
+        # Resolve the price to use for this trade.
+        trade_pair = trade.get("pair") or "BTCUSDT"
+        if is_multi:
+            trade_price = current_price.get(trade_pair)
+            if trade_price is None or trade_price <= 0:
+                continue   # no price for this pair this tick — skip cleanly
+        else:
+            trade_price = float(current_price)
+
         side = trade["side"]
         entry = float(trade["entry"])
         sl = float(trade["sl"])
@@ -201,23 +222,23 @@ def update_open_trades(current_price: float, *, now: Optional[datetime] = None) 
         exit_price = None
 
         # Check SL hit (priority — risk first)
-        if side == "long" and current_price <= sl:
+        if side == "long" and trade_price <= sl:
             action, exit_price = "SL", sl
-        elif side == "short" and current_price >= sl:
+        elif side == "short" and trade_price >= sl:
             action, exit_price = "SL", sl
         # Check TP2 (full close)
-        elif side == "long" and tp2 is not None and current_price >= tp2:
+        elif side == "long" and tp2 is not None and trade_price >= tp2:
             action, exit_price = "TP2", tp2
-        elif side == "short" and tp2 is not None and current_price <= tp2:
+        elif side == "short" and tp2 is not None and trade_price <= tp2:
             action, exit_price = "TP2", tp2
         # Check TP1 (partial close — but for v0.1 we treat as full close to keep accounting simple)
-        elif side == "long" and tp1 is not None and current_price >= tp1:
+        elif side == "long" and tp1 is not None and trade_price >= tp1:
             action, exit_price = "TP1", tp1
-        elif side == "short" and tp1 is not None and current_price <= tp1:
+        elif side == "short" and tp1 is not None and trade_price <= tp1:
             action, exit_price = "TP1", tp1
         # Time stop
         elif now >= time_stop:
-            action, exit_price = "EXPIRE", current_price
+            action, exit_price = "EXPIRE", trade_price
 
         if action is None:
             continue

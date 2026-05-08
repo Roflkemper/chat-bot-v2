@@ -92,6 +92,43 @@ def test_long_tp1_close(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert closes[0]["realized_pnl_usd"] > 0
 
 
+def test_multi_symbol_prices_dict(tmp_path: Path) -> None:
+    """Multi-symbol support 2026-05-08: update_open_trades accepts a dict of
+    pair->price. Each trade is matched to its pair's price; trades for pairs
+    missing from the dict are skipped (no false TP/SL)."""
+    journal.JOURNAL_PATH = tmp_path / "j.jsonl"
+    btc_setup = _make_long_setup(entry=80000, sl=79500, tp1=80500, tp2=81000)
+    eth_setup = _make_long_setup(entry=3000, sl=2950, tp1=3050, tp2=3100)
+    # Patch ETH setup pair (factory defaults to BTCUSDT)
+    eth_setup_dict = eth_setup.__dict__
+    eth_setup_dict["pair"] = "ETHUSDT"
+
+    trader.open_paper_trade(btc_setup)
+    trader.open_paper_trade(eth_setup)
+
+    # Multi-symbol prices: BTC at TP1, ETH at SL.
+    closes = trader.update_open_trades({"BTCUSDT": 80500.0, "ETHUSDT": 2950.0})
+    actions = sorted(c["action"] for c in closes)
+    assert actions == ["SL", "TP1"]
+    # BTC trade hit TP1 -> +pnl; ETH trade hit SL -> -pnl.
+    btc_close = next(c for c in closes if c["action"] == "TP1")
+    eth_close = next(c for c in closes if c["action"] == "SL")
+    assert btc_close["realized_pnl_usd"] > 0
+    assert eth_close["realized_pnl_usd"] < 0
+
+
+def test_multi_symbol_skips_missing_pair(tmp_path: Path) -> None:
+    """Trade for pair not in price dict must NOT close (no false TP/SL)."""
+    journal.JOURNAL_PATH = tmp_path / "j.jsonl"
+    eth_setup = _make_long_setup(entry=3000, sl=2950, tp1=3050, tp2=3100)
+    eth_setup.__dict__["pair"] = "ETHUSDT"
+    trader.open_paper_trade(eth_setup)
+    # Only BTC price provided — ETH trade should be left alone even if BTC
+    # price would coincidentally hit ETH's TP1.
+    closes = trader.update_open_trades({"BTCUSDT": 3050.0})
+    assert closes == []
+
+
 def test_tp1_does_not_re_emit_on_subsequent_polls(tmp_path: Path) -> None:
     """Regression: prod (2026-05-08) shipped 5 duplicate TP1 alerts in 5 minutes
     because journal.open_trades() left the trade in by_id after TP1 — so the

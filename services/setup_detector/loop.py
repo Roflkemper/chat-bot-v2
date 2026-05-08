@@ -132,7 +132,13 @@ async def setup_detector_loop(
             ctx = _build_detection_context(pair)
             if ctx is None:
                 continue
-            ctx.ict_context = ict_reader.lookup(now_utc)
+            # ict_reader is BTCUSDT-only (parquet built for BTC). Apply only
+            # when pair matches; other symbols get an empty ICT context, which
+            # is fine — detectors that need ICT short-circuit on missing data.
+            if pair == "BTCUSDT":
+                ctx.ict_context = ict_reader.lookup(now_utc)
+            else:
+                ctx.ict_context = {}
             _run_detectors_once(ctx, store, send_fn)
 
         try:

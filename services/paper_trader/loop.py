@@ -115,12 +115,11 @@ def _setup_from_dict(d: dict) -> Setup | None:
 
 
 def _get_current_price() -> float | None:
-    """Read latest BTC price from market_live/market_1m.csv."""
+    """Read latest BTC price from market_live/market_1m.csv (legacy single-price)."""
     p = Path("market_live/market_1m.csv")
     if not p.exists():
         return None
     try:
-        # Read last line efficiently
         with p.open("rb") as fh:
             fh.seek(0, 2)
             size = fh.tell()
@@ -138,6 +137,31 @@ def _get_current_price() -> float | None:
     except (OSError, ValueError):
         pass
     return None
+
+
+def _get_prices_for_symbols(symbols: tuple[str, ...]) -> dict[str, float]:
+    """Fetch latest 1m close for each symbol via core.data_loader.
+
+    Returns dict[symbol -> close]. Symbols whose fetch fails are omitted
+    (paper_trader.update_open_trades skips trades with missing prices).
+    """
+    out: dict[str, float] = {}
+    try:
+        from core.data_loader import load_klines
+    except Exception:
+        logger.exception("paper_trader.loop.load_klines_unavailable")
+        return out
+    for sym in symbols:
+        try:
+            df = load_klines(symbol=sym, timeframe="1m", limit=2)
+            if df is None or df.empty:
+                continue
+            close = float(df["close"].iloc[-1])
+            if close > 0:
+                out[sym] = close
+        except Exception:
+            logger.exception("paper_trader.loop.price_fetch_failed sym=%s", sym)
+    return out
 
 
 def _format_open_alert(record: dict) -> str:
@@ -200,16 +224,24 @@ async def paper_trader_loop(
             if new_setups:
                 _save_dedup(seen_setup_ids)
 
-            # 2. Update open trades with current price
-            price = _get_current_price()
-            if price is not None and price > 0:
-                closes = trader.update_open_trades(price)
-                for ev in closes:
-                    if send_fn:
-                        try:
-                            send_fn(_format_close_alert(ev))
-                        except Exception:
-                            logger.exception("paper_trader.loop.send_close_failed")
+            # 2. Update open trades with prices for all relevant symbols.
+            # Multi-symbol since 2026-05-08: BTC + ETH paper trades both supported.
+            # Build dict of pairs we currently have OPEN trades for, fetch each.
+            try:
+                open_trades = trader.journal.open_trades()
+                pairs_in_use = {t.get("pair") or "BTCUSDT" for t in open_trades}
+            except Exception:
+                pairs_in_use = {"BTCUSDT"}
+            if pairs_in_use:
+                prices = _get_prices_for_symbols(tuple(sorted(pairs_in_use)))
+                if prices:
+                    closes = trader.update_open_trades(prices)
+                    for ev in closes:
+                        if send_fn:
+                            try:
+                                send_fn(_format_close_alert(ev))
+                            except Exception:
+                                logger.exception("paper_trader.loop.send_close_failed")
         except Exception:
             logger.exception("paper_trader.loop.iteration_failed")
 
