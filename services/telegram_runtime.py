@@ -1396,6 +1396,25 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text)
 
+        # ── /morning_brief — executive summary (TZ-MORNING-BRIEF 2026-05-08).
+        # Replaces the operator's morning routine of running 5+ commands
+        # (advise, momentum_check, regime, status). Surfaces ACTION first,
+        # then night events / current state / best setup / calendar.
+        @self.bot.message_handler(commands=['morning_brief', 'morning', 'brief'])
+        def handle_morning_brief(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.advisor.morning_brief import build_morning_brief
+                text = build_morning_brief()
+            except Exception as exc:
+                logger.exception('handle_morning_brief.failed')
+                self.bot.send_message(chat_id, f'❌ /morning_brief failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         # ── TZ-D-ADVISOR-V1: /advise ──────────────────────────────────────────
 
         @self.bot.message_handler(commands=['advise'])
