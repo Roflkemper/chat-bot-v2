@@ -336,7 +336,25 @@ class ManagedProcess:
         if self.is_running():
             return
 
+        # Startup grace period — heavy components (app_runner loads data_loader
+        # + ICT parquet ~530k rows + multiple async tasks) need ~20-30s to
+        # initialize. If supervisor's first health check after start() catches
+        # a process that's still importing, treat it as a non-counting restart
+        # rather than burning a slot in the crash budget.
+        STARTUP_GRACE_SEC = 60
         now = time.time()
+        within_grace = (
+            self.started_at is not None
+            and (time.monotonic() - self.started_at) < STARTUP_GRACE_SEC
+        )
+        if within_grace:
+            logger.info(
+                "%s: dead within startup grace (%ds) — restarting without crash count",
+                self.name, STARTUP_GRACE_SEC,
+            )
+            self.start()
+            return
+
         self._prune_crash_times()
         self._crash_times.append(now)
         crashes = len(self._crash_times)

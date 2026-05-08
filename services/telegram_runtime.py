@@ -1396,6 +1396,25 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text)
 
+        # ── /audit — health snapshot for the operator (TZ-AUDIT-CMD 2026-05-08).
+        # Surfaces silent failures: stale state files, detectors firing but
+        # being combo-blocked, DL push volume, paper-trader activity. Same
+        # checks I (the assistant) run during manual audits — just packaged.
+        @self.bot.message_handler(commands=['audit'])
+        def handle_audit(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.advisor.audit_view import build_audit_text
+                text = build_audit_text()
+            except Exception as exc:
+                logger.exception('handle_audit.failed')
+                self.bot.send_message(chat_id, f'❌ /audit failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         # ── /report_today, /report_week — manual on-demand reports (TZ-REPORTS 2026-05-08).
         # Same content as the scheduled 21:00 UTC daily/weekly posts but
         # generated for the current moment. Useful for mid-day check-in.
