@@ -174,6 +174,17 @@ def _project_bot_scenario(
     For SHORT: profit if price falls, loss if price rises.
     For LONG:  profit if price rises, loss if price falls.
     """
+    # Guard: collector may briefly return current_price=0 between cache flushes.
+    # Returning a no-op scenario is safer than letting ZeroDivisionError kill the
+    # market_forward_analysis loop tick.
+    if not current_price or current_price <= 0:
+        return {
+            "projected_price":      round(projected_price, 2),
+            "move_pct":             0.0,
+            "unrealized_delta_usd": 0.0,
+            "new_liq_dist_pct":     100.0,
+            "triggers_in":          False,
+        }
     move_pct = (projected_price - current_price) / current_price * 100
 
     if side == "SHORT":
