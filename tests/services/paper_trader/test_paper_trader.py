@@ -92,6 +92,27 @@ def test_long_tp1_close(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert closes[0]["realized_pnl_usd"] > 0
 
 
+def test_tp1_does_not_re_emit_on_subsequent_polls(tmp_path: Path) -> None:
+    """Regression: prod (2026-05-08) shipped 5 duplicate TP1 alerts in 5 minutes
+    because journal.open_trades() left the trade in by_id after TP1 — so the
+    next poll cycle saw it as still-open and emitted TP1 again. open_trades()
+    must remove the trade on TP1 (v0.1 treats TP1 as full close)."""
+    journal.JOURNAL_PATH = tmp_path / "j.jsonl"
+    setup = _make_long_setup(entry=80000, sl=79500, tp1=80500, tp2=81000)
+    trader.open_paper_trade(setup)
+    first = trader.update_open_trades(80500.0)
+    assert len(first) == 1
+    assert first[0]["action"] == "TP1"
+
+    # Second poll at the same TP1 price must not re-emit.
+    second = trader.update_open_trades(80500.0)
+    assert len(second) == 0, "TP1 should fire only once; trade is closed afterwards"
+
+    # Third poll at a different price (TP2 territory) — also no re-emit.
+    third = trader.update_open_trades(81000.0)
+    assert len(third) == 0
+
+
 def test_long_sl_close(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     journal.JOURNAL_PATH = tmp_path / "j.jsonl"
     setup = _make_long_setup(entry=80000, sl=79500, tp1=80500, tp2=81000)

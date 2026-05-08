@@ -73,7 +73,14 @@ def read_all(*, path: Path | None = None) -> list[dict]:
 
 
 def open_trades(*, path: Path | None = None) -> list[dict]:
-    """Reconstruct currently-open trades from journal events."""
+    """Reconstruct currently-open trades from journal events.
+
+    v0.1 convention: TP1, TP2, SL, EXPIRE, CANCEL all fully close the trade
+    (services/paper_trader/trader.py:163 comment: 'for v0.1 we treat as full
+    close to keep accounting simple'). Without removing the trade on TP1 the
+    loop re-emits TP1 every poll cycle (was producing 5x duplicate Telegram
+    alerts per trade — see commit history for the fix).
+    """
     events = read_all(path=_resolve_path(path))
     by_id: dict[str, dict] = {}
     for e in events:
@@ -81,14 +88,9 @@ def open_trades(*, path: Path | None = None) -> list[dict]:
         if not tid:
             continue
         if e.get("action") == "OPEN":
-            by_id[tid] = dict(e)  # remember open
+            by_id[tid] = dict(e)
         elif e.get("action") in ("TP1", "TP2", "SL", "EXPIRE", "CANCEL"):
-            # Mark closed: TP1 partially closes (50% → still open), TP2/SL/EXPIRE/CANCEL fully closes
-            if tid in by_id:
-                by_id[tid]["last_action"] = e.get("action")
-                if e.get("action") in ("TP2", "SL", "EXPIRE", "CANCEL"):
-                    by_id.pop(tid, None)
-                # TP1: partial fill, keep open with reduced size; for v0.1 we still track full close on next event
+            by_id.pop(tid, None)
     return list(by_id.values())
 
 
