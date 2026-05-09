@@ -165,33 +165,37 @@ def _get_prices_for_symbols(symbols: tuple[str, ...]) -> dict[str, float]:
 
 
 def _format_open_alert(record: dict) -> str:
+    from services.common.humanize import humanize_setup_type
     side = "📈 PAPER LONG" if record["side"] == "long" else "📉 PAPER SHORT"
     entry = record["entry"]
     sl = record["sl"]
     tp1 = record.get("tp1") or "n/a"
     tp2 = record.get("tp2") or "n/a"
     rr = record.get("rr_planned") or "n/a"
-    setup = record["setup_type"]
+    setup_code = record["setup_type"]
+    setup_ru = humanize_setup_type(setup_code)
     conf = record["confidence_pct"]
     reason = record.get("reason", "")
     return (
         f"{side} @ {entry:.0f} | SL {sl:.0f} | TP1 {tp1 if isinstance(tp1, str) else f'{tp1:.0f}'} "
         f"| TP2 {tp2 if isinstance(tp2, str) else f'{tp2:.0f}'} | RR {rr}\n"
-        f"setup: {setup} | conf {conf:.0f}% | {reason}"
+        f"сетап: {setup_ru} | conf {conf:.0f}% | {reason}"
     )
 
 
 def _format_close_alert(event: dict) -> str:
+    from services.common.humanize import humanize_setup_type
     action = event["action"]
     pnl = event["realized_pnl_usd"]
     rr = event["rr_realized"]
     hours = event["hours_in_trade"]
     side = event["side"]
-    setup = event["setup_type"]
+    setup_code = event["setup_type"]
+    setup_ru = humanize_setup_type(setup_code)
     icon = {"TP1": "✅", "TP2": "🎯", "SL": "🛑", "EXPIRE": "⏱️"}.get(action, "•")
     sign = "+" if pnl > 0 else ""
     return (
-        f"{icon} PAPER {action} | {setup} ({side}) | "
+        f"{icon} PAPER {action} | {setup_ru} ({side}) | "
         f"{sign}${pnl:.0f} | RR {rr:+.2f} | {hours:.1f}h"
     )
 
@@ -203,6 +207,7 @@ def _format_grouped_alert(events: list[dict]) -> str:
     одновременно по TP1 и заваливали TG 10+ одинаковыми карточками.
     Теперь группируем: одна карточка на всю группу.
     """
+    from services.common.humanize import humanize_setup_type
     if not events:
         return ""
     if len(events) == 1:
@@ -210,13 +215,14 @@ def _format_grouped_alert(events: list[dict]) -> str:
     sample = events[0]
     action = sample["action"]
     side = sample["side"]
-    setup = sample["setup_type"]
+    setup_code = sample["setup_type"]
+    setup_ru = humanize_setup_type(setup_code)
     icon = {"TP1": "✅", "TP2": "🎯", "SL": "🛑", "EXPIRE": "⏱️"}.get(action, "•")
     total_pnl = sum(e["realized_pnl_usd"] for e in events)
     avg_rr = sum(e["rr_realized"] for e in events) / len(events)
     sign = "+" if total_pnl >= 0 else ""
     return (
-        f"{icon} PAPER {action} ×{len(events)} | {setup} ({side}) | "
+        f"{icon} PAPER {action} ×{len(events)} | {setup_ru} ({side}) | "
         f"total {sign}${total_pnl:.0f} | avg RR {avg_rr:+.2f}"
     )
 

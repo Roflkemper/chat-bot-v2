@@ -157,6 +157,7 @@ def _format_p15_card(setup: Setup, *, direction: str) -> str:
 
 
 def _format_trade_card(setup: Setup, *, direction: str, icon: str) -> str:
+    from services.common.humanize import humanize_setup_type
     ts = setup.detected_at.strftime("%H:%M UTC")
     basis_lines = "\n".join(f"• {b.label}" for b in setup.basis[:5])
     cancel_lines = "\n".join(f"• {c}" for c in setup.cancel_conditions[:3])
@@ -166,9 +167,11 @@ def _format_trade_card(setup: Setup, *, direction: str, icon: str) -> str:
     tp1_str = f"${setup.tp1_price:,.1f}" if setup.tp1_price else "—"
     tp2_str = f"${setup.tp2_price:,.1f}" if setup.tp2_price else "—"
     rr_str = f"1:{setup.risk_reward:.1f}" if setup.risk_reward else "—"
+    setup_ru = humanize_setup_type(setup.setup_type.value)
 
     return (
-        f"{icon} {direction} SETUP — {setup.pair} | {ts}\n"
+        f"{icon} {direction} — {setup_ru}\n"
+        f"{setup.pair} | {ts}\n"
         f"\n"
         f"Цена ${setup.current_price:,.1f}\n"
         f"Сила: {setup.strength}/10 | Уверенность: {setup.confidence_pct:.0f}%\n"

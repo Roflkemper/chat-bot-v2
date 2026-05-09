@@ -26,7 +26,8 @@ def test_grouped_alert_multiple_events_collapsed():
     assert "×10" in result
     assert "total +$1000" in result
     assert "avg RR +1.00" in result
-    assert "long_multi_divergence" in result
+    # После humanize: long_multi_divergence → "Множественная дивергенция (LONG)"
+    assert "Множественная дивергенция" in result
 
 
 def test_grouped_alert_mixed_pnl_uses_total():
@@ -59,6 +60,7 @@ def test_grouped_alert_uses_first_event_metadata():
                                   side="short") for _ in range(3)]
     result = _format_grouped_alert(events)
     assert "EXPIRE" in result
-    assert "short_pdh_rejection" in result
+    # short_pdh_rejection → "Отбой от вчерашнего хая (SHORT)"
+    assert "Отбой от вчерашнего хая" in result
     assert "(short)" in result
     assert "⏱️" in result
