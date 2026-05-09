@@ -41,12 +41,13 @@ POLL_INTERVAL_SEC = 300        # 5 min
 COOLDOWN_SEC = 1800             # 30 min между алертами одного направления
 
 # Пороги
-RSI_OVERBOUGHT = 70.0           # was 75 — calibrated 2026-05-10 to actual 1h RSI distribution
-RSI_OVERSOLD = 30.0             # was 25
-MFI_OVERBOUGHT = 75.0
-MFI_OVERSOLD = 25.0
-OI_RISING_PCT = 0.5             # was 1.0 — actual OI 1h moves rarely exceed 1%
-FUNDING_HIGH_8H = 0.00003       # was 0.0004 — actual 2026 BTC funding rarely above 0.005%/8h
+RSI_OVERBOUGHT = 65.0           # was 75 — operator pointed to extrema where RSI was 68.5; 65 catches them
+RSI_OVERSOLD = 35.0             # was 25 — symmetric
+MFI_OVERBOUGHT = 70.0           # was 75 — slight loosening for symmetry
+MFI_OVERSOLD = 30.0             # was 25
+OI_RISING_PCT = 0.3             # was 1.0 — high-vol; |OI| moves >=0.3% are 81 events / 28d
+FUNDING_HIGH_8H = 0.00003       # ≈0.003%/8h — actual 2026 BTC funding rarely above 0.005%
+VOL_SPIKE_Z = 1.5               # NEW: capitulation/blow-off requires vol z-score >= 1.5
 ETH_CORR_LOOKBACK = 30
 ETH_CORR_THRESHOLD = 0.70
 ETH_RSI_HIGH = 70.0
@@ -166,12 +167,16 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
 
     # UPSIDE EXHAUSTION CHECKS
     up_signals = {}
-    # 2026-05-10: убрал "rsi_now < rsi_2bar_ago" — режет 56→1 на 1h данных.
-    # Достаточно факта overbought для сигнала истощения.
     up_signals["rsi_high"] = (rsi_now >= RSI_OVERBOUGHT)
     up_signals["mfi_high"] = (mfi_now >= MFI_OVERBOUGHT)
-    up_signals["volume_no_confirm_at_high"] = (is_new_high and vz_now < 0)
-    up_signals["oi_rising_funding_high"] = (oi_change >= OI_RISING_PCT and funding >= FUNDING_HIGH_8H)
+    # 2026-05-10 STRUCTURAL FIX: blow-off top = ВЫСОКИЙ объём на росте, не "no confirm".
+    # Capitulation buying flushes longs into the high before reversal.
+    up_signals["volume_spike_at_high"] = (vz_now >= VOL_SPIKE_Z and rsi_now >= RSI_OVERBOUGHT)
+    # 2026-05-10 STRUCTURAL FIX: на blow-off top OI падает (deleverage) ИЛИ funding высокий.
+    # Старая логика "OI растёт + funding высокий" — это профиль open shorts, не exhaustion.
+    up_signals["deleverage_or_funding_top"] = (
+        oi_change <= -OI_RISING_PCT or funding >= FUNDING_HIGH_8H
+    )
     up_signals["eth_sync_high"] = (
         btc_eth_corr >= ETH_CORR_THRESHOLD and eth_rsi_now is not None
         and eth_rsi_now >= ETH_RSI_HIGH
@@ -182,8 +187,12 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
     down_signals = {}
     down_signals["rsi_low"] = (rsi_now <= RSI_OVERSOLD)
     down_signals["mfi_low"] = (mfi_now <= MFI_OVERSOLD)
-    down_signals["volume_no_confirm_at_low"] = (is_new_low and vz_now < 0)
-    down_signals["oi_rising_funding_low"] = (oi_change >= OI_RISING_PCT and funding <= -FUNDING_HIGH_8H)
+    # 2026-05-10: capitulation low = high volume spike on the downside.
+    down_signals["volume_spike_at_low"] = (vz_now >= VOL_SPIKE_Z and rsi_now <= RSI_OVERSOLD)
+    # На капитуляции OI падает (longs закрывают) ИЛИ funding flips negative.
+    down_signals["deleverage_or_funding_bottom"] = (
+        oi_change <= -OI_RISING_PCT or funding <= -FUNDING_HIGH_8H
+    )
     down_signals["eth_sync_low"] = (
         btc_eth_corr >= ETH_CORR_THRESHOLD and eth_rsi_now is not None
         and eth_rsi_now <= ETH_RSI_LOW
