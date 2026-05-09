@@ -1,169 +1,242 @@
-"""bot7 supervisor watchdog.
+"""Unified bot7 watchdog — one file, simple logic, REALLY works.
 
-Runs independently of supervisor. Checks every POLL_INTERVAL seconds whether
-supervisor is alive. If dead for GRACE_SECONDS, sends Telegram alarm and
-attempts to restart via `python -m bot7 start`.
+Заменяет ВСЁ предыдущее:
+  - src/supervisor/daemon.py — тихо умирал каждые 2 мин на Windows pythonw
+  - scripts/keepalive_check.py — поднимал только app_runner, забывал
+    collectors/tracker/state_snapshot/liquidations
+  - bot7/__main__.py cmd_start — промежуточный слой добавлял проблем
 
-Usage (from Shell:Startup .bat or manually):
-    python scripts/watchdog.py
+Что делает:
+  Каждый запуск (через Task Scheduler каждые ~2 мин):
+    Для каждого компонента (app_runner, tracker, collectors, state_snapshot):
+      1. Проверить cmdline psutil — есть ли живой процесс с нужной командой
+      2. Проверить свежесть его output-файла (не stale ли)
+      3. Если NOT RUNNING — запустить
+      4. Если RUNNING + STALE — kill+restart
+      5. Если RUNNING + FRESH — alive (ничего не делать)
+    Лог в logs/watchdog.log
 
-Log: logs/autostart/watchdog.log
+Запуск:
+  Через Windows Task Scheduler:
+    Trigger: At system startup + Every 2 minutes
+    Action: pythonw.exe C:\\bot7\\scripts\\watchdog.py
+
+Через флаги Windows процессов:
+    DETACHED_PROCESS + CREATE_BREAKAWAY_FROM_JOB + CREATE_NEW_PROCESS_GROUP
+    → процессы переживают завершение Task Scheduler task'а
+    → процессы переживают перезагрузку Windows session
 """
 from __future__ import annotations
 
-import logging
 import os
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+ROOT = Path(__file__).resolve().parents[1]
+LOG_FILE = ROOT / "logs" / "watchdog.log"
 
-LOG_DIR = ROOT / "logs" / "autostart"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-
-WATCHDOG_PID_PATH = ROOT / "run" / "watchdog.pid"
-# Hardcoded — do NOT import from src.supervisor.daemon here.
-# That import executes setup_logging("supervisor") which reconfigures the root
-# logger, making logging.basicConfig() a no-op and routing all watchdog output
-# to supervisor.log instead of watchdog.log (confirmed in incident 2026-04-28).
-DAEMON_PID_PATH = ROOT / "run" / "supervisor.pid"
-
-_fmt = logging.Formatter(
-    fmt="%(asctime)sZ | %(levelname)-7s | watchdog | %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%S",
-)
-_file_handler = logging.FileHandler(LOG_DIR / "watchdog.log", encoding="utf-8")
-_file_handler.setFormatter(_fmt)
-_stream_handler = logging.StreamHandler(sys.stdout)
-_stream_handler.setFormatter(_fmt)
-
-log = logging.getLogger("watchdog")
-log.setLevel(logging.INFO)
-log.addHandler(_file_handler)
-log.addHandler(_stream_handler)
-log.propagate = False  # prevent leaking to root logger (which may be supervisor's)
-
-POLL_INTERVAL = 60       # seconds between checks
-GRACE_SECONDS = 120      # supervisor must be dead this long before action
-PYTHON = str(ROOT / ".venv" / "Scripts" / "python.exe")
-if not Path(PYTHON).exists():
-    PYTHON = sys.executable
+if sys.platform == "win32":
+    PYTHON = ROOT / ".venv" / "Scripts" / "pythonw.exe"
+    if not PYTHON.exists():
+        PYTHON = Path(sys.executable)
+else:
+    PYTHON = ROOT / ".venv" / "bin" / "python"
+    if not PYTHON.exists():
+        PYTHON = Path(sys.executable)
 
 
-def _read_pid(path: Path) -> int | None:
+COMPONENTS = {
+    "app_runner": {
+        "cmd": [str(PYTHON), "app_runner.py"],
+        "cmdline_must_contain": "app_runner.py",
+        "freshness_file": ROOT / "logs" / "app.log",
+        "freshness_max_min": 5,
+    },
+    "tracker": {
+        "cmd": [str(PYTHON), "ginarea_tracker/tracker.py"],
+        "cmdline_must_contain": "ginarea_tracker",
+        "freshness_file": ROOT / "ginarea_live" / "snapshots.csv",
+        "freshness_max_min": 10,
+        "stale_pid_files": [ROOT / "ginarea_tracker" / "run" / "tracker.pid"],
+    },
+    "collectors": {
+        "cmd": [str(PYTHON), "-m", "market_collector.collector"],
+        "cmdline_must_contain": "market_collector.collector",
+        "freshness_file": ROOT / "market_live" / "market_1m.csv",
+        "freshness_max_min": 10,
+        "stale_pid_files": [ROOT / "market_collector" / "run" / "collector.pid"],
+    },
+    "state_snapshot": {
+        "cmd": [str(PYTHON), "scripts/state_snapshot_loop.py", "--interval-sec", "300"],
+        "cmdline_must_contain": "state_snapshot_loop.py",
+        "freshness_file": None,
+        "freshness_max_min": None,
+    },
+}
+
+
+def _log(msg: str) -> None:
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    line = f"{ts} | {msg}"
     try:
-        return int(path.read_text().strip())
+        with LOG_FILE.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
+    try:
+        print(line, file=sys.stderr)
     except Exception:
-        return None
+        pass
 
 
-def _pid_alive(pid: int) -> bool:
+def _find_running_pid(cmdline_fragment: str) -> Optional[int]:
+    """Find first running process matching the cmdline fragment (excluding self)."""
     try:
         import psutil
-        return psutil.pid_exists(pid)
     except ImportError:
-        pass
-    if sys.platform == "win32":
-        import ctypes
-        import ctypes.wintypes
-        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-        handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
-        if not handle:
-            return False
-        code = ctypes.wintypes.DWORD()
-        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
-        ctypes.windll.kernel32.CloseHandle(handle)
-        return code.value == 259
+        _log("psutil not installed — cannot check processes")
+        return None
+    self_pid = os.getpid()
     try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                pid = int(proc.info["pid"])
+                if pid == self_pid:
+                    continue
+                name = (proc.info["name"] or "").lower()
+                if "python" not in name:
+                    continue
+                cmdline = " ".join(proc.info["cmdline"] or [])
+                if cmdline_fragment in cmdline:
+                    return pid
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception as exc:
+        _log(f"process_iter failed: {exc}")
+    return None
+
+
+def _is_stale(file_path: Optional[Path], max_age_min: Optional[float]) -> tuple[bool, str]:
+    """Returns (is_stale, age_str)."""
+    if file_path is None or max_age_min is None:
+        return False, "n/a"
+    if not file_path.exists():
+        return True, "missing"
+    age_sec = time.time() - file_path.stat().st_mtime
+    age_min = age_sec / 60
+    return age_min > max_age_min, f"{age_min:.1f}min"
+
+
+def _kill_pid(pid: int, timeout: float = 5) -> bool:
+    try:
+        import psutil
+        proc = psutil.Process(pid)
+        proc.terminate()
+        try:
+            proc.wait(timeout=timeout)
+            return True
+        except psutil.TimeoutExpired:
+            proc.kill()
+            try:
+                proc.wait(timeout=2)
+            except psutil.TimeoutExpired:
+                pass
+            return True
+    except Exception as exc:
+        _log(f"kill {pid} failed: {exc}")
         return False
 
 
-def _send_telegram(text: str) -> None:
+def _cleanup_stale_pid_files(stale_files: Optional[list]) -> None:
+    for p in stale_files or []:
+        try:
+            if p.exists():
+                p.unlink()
+        except (OSError, AttributeError):
+            pass
+
+
+def _start_component(name: str, cfg: dict) -> Optional[int]:
+    """Launch component as detached background process."""
+    cmd = cfg["cmd"]
+    _cleanup_stale_pid_files(cfg.get("stale_pid_files"))
+    kwargs: dict = {
+        "cwd": str(ROOT),
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "close_fds": True,
+    }
+    if sys.platform == "win32":
+        # DETACHED_PROCESS | CREATE_BREAKAWAY_FROM_JOB | CREATE_NEW_PROCESS_GROUP
+        kwargs["creationflags"] = 0x00000008 | 0x01000000 | 0x00000200
+    else:
+        kwargs["start_new_session"] = True
     try:
-        import requests
-        sys.path.insert(0, str(ROOT))
-        from config import TELEGRAM_BOT_TOKEN, AUTHORIZED_CHAT_IDS
-        chat_ids = AUTHORIZED_CHAT_IDS if isinstance(AUTHORIZED_CHAT_IDS, list) else [AUTHORIZED_CHAT_IDS]
-        for cid in chat_ids:
+        proc = subprocess.Popen(cmd, **kwargs)
+        try:
+            (ROOT / "run").mkdir(exist_ok=True)
+            (ROOT / "run" / f"{name}.pid").write_text(str(proc.pid), encoding="utf-8")
+        except OSError:
+            pass
+        return proc.pid
+    except OSError as exc:
+        # BREAKAWAY denied — retry without
+        if sys.platform == "win32" and "creationflags" in kwargs:
+            _log(f"{name}: BREAKAWAY denied ({exc}) — retry without")
+            kwargs["creationflags"] = 0x00000008 | 0x00000200
             try:
-                requests.post(
-                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                    json={"chat_id": cid, "text": text},
-                    timeout=10,
-                )
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-
-def _restart_supervisor() -> None:
-    log.info("Attempting bot7 start...")
-    try:
-        subprocess.Popen(
-            [PYTHON, "-m", "bot7", "start"],
-            cwd=str(ROOT),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+                proc = subprocess.Popen(cmd, **kwargs)
+                return proc.pid
+            except Exception as exc2:
+                _log(f"{name}: failed (retry): {exc2}")
+                return None
+        _log(f"{name}: failed to start: {exc}")
+        return None
     except Exception as exc:
-        log.error("Failed to restart supervisor: %s", exc)
+        _log(f"{name}: failed to start: {exc}")
+        return None
 
 
-_HEARTBEAT_INTERVAL = 300  # 5 min — keeps wd_log_age > 5 satisfied with 1 min buffer
+def _check_and_revive(name: str, cfg: dict) -> str:
+    running_pid = _find_running_pid(cfg["cmdline_must_contain"])
+    is_stale, age = _is_stale(cfg.get("freshness_file"), cfg.get("freshness_max_min"))
+
+    if running_pid is None:
+        _log(f"{name}: NOT RUNNING — starting")
+        new_pid = _start_component(name, cfg)
+        if new_pid:
+            return f"STARTED pid={new_pid}"
+        return "FAILED_TO_START"
+
+    if is_stale:
+        _log(f"{name}: STALE pid={running_pid} age={age} — kill+restart")
+        _kill_pid(running_pid)
+        time.sleep(1)
+        new_pid = _start_component(name, cfg)
+        if new_pid:
+            return f"REVIVED old={running_pid} new={new_pid}"
+        return "REVIVE_FAILED"
+
+    return f"alive pid={running_pid} age={age}"
 
 
-def main() -> None:
-    # Self-dedup: exit if another watchdog instance is already running.
-    WATCHDOG_PID_PATH.parent.mkdir(parents=True, exist_ok=True)
-    existing_pid = _read_pid(WATCHDOG_PID_PATH)
-    if existing_pid and existing_pid != os.getpid() and _pid_alive(existing_pid):
-        log.warning("Another watchdog already running (PID=%s) — exiting duplicate", existing_pid)
-        return
-
-    WATCHDOG_PID_PATH.write_text(str(os.getpid()))
-
-    log.info("Watchdog started (PID=%s, poll=%ds, grace=%ds)", os.getpid(), POLL_INTERVAL, GRACE_SECONDS)
-    dead_since: float | None = None
-    last_heartbeat = time.monotonic()
-
-    while True:
-        now_mono = time.monotonic()
-        pid = _read_pid(DAEMON_PID_PATH)
-        alive = _pid_alive(pid) if pid else False
-
-        if alive:
-            if dead_since is not None:
-                log.info("Supervisor recovered (PID=%s)", pid)
-            dead_since = None
-        else:
-            if dead_since is None:
-                dead_since = now_mono
-                log.warning("Supervisor not detected (PID=%s)", pid)
-            elif now_mono - dead_since >= GRACE_SECONDS:
-                msg = (
-                    f"🚨 bot7 watchdog: supervisor DEAD for {int(now_mono - dead_since)}s!\n"
-                    f"PID file: {pid or 'missing'}\n"
-                    f"Auto-restarting via bot7 start..."
-                )
-                log.error(msg)
-                _send_telegram(msg)
-                _restart_supervisor()
-                dead_since = None  # reset after restart attempt
-
-        # Periodic heartbeat so supervisor health check sees fresh log mtime.
-        if now_mono - last_heartbeat >= _HEARTBEAT_INTERVAL:
-            log.info("[heartbeat] supervisor_alive=%s pid=%s", alive, pid or "-")
-            last_heartbeat = now_mono
-
-        time.sleep(POLL_INTERVAL)
+def main() -> int:
+    _log("=== watchdog tick ===")
+    for name, cfg in COMPONENTS.items():
+        try:
+            status = _check_and_revive(name, cfg)
+            _log(f"  {name}: {status}")
+        except Exception as exc:
+            _log(f"  {name}: ERROR {exc}")
+    _log("=== watchdog done ===")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
