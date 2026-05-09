@@ -196,6 +196,31 @@ def _format_close_alert(event: dict) -> str:
     )
 
 
+def _format_grouped_alert(events: list[dict]) -> str:
+    """Свод по одинаковым закрытиям в одном тике (action+setup+side).
+
+    Появилось 2026-05-09: 37 дубликатов long_multi_divergence закрывались
+    одновременно по TP1 и заваливали TG 10+ одинаковыми карточками.
+    Теперь группируем: одна карточка на всю группу.
+    """
+    if not events:
+        return ""
+    if len(events) == 1:
+        return _format_close_alert(events[0])
+    sample = events[0]
+    action = sample["action"]
+    side = sample["side"]
+    setup = sample["setup_type"]
+    icon = {"TP1": "✅", "TP2": "🎯", "SL": "🛑", "EXPIRE": "⏱️"}.get(action, "•")
+    total_pnl = sum(e["realized_pnl_usd"] for e in events)
+    avg_rr = sum(e["rr_realized"] for e in events) / len(events)
+    sign = "+" if total_pnl >= 0 else ""
+    return (
+        f"{icon} PAPER {action} ×{len(events)} | {setup} ({side}) | "
+        f"total {sign}${total_pnl:.0f} | avg RR {avg_rr:+.2f}"
+    )
+
+
 async def paper_trader_loop(
     stop_event: asyncio.Event,
     *,
@@ -236,10 +261,18 @@ async def paper_trader_loop(
                 prices = _get_prices_for_symbols(tuple(sorted(pairs_in_use)))
                 if prices:
                     closes = trader.update_open_trades(prices)
-                    for ev in closes:
-                        if send_fn:
+                    if closes and send_fn:
+                        # Group identical close events to suppress TG spam.
+                        # 2026-05-09 incident: 37 duplicate long_multi_divergence
+                        # paper trades hit TP1 in the same tick → 10+ identical
+                        # cards in TG. Now: 1 grouped card per (action, setup, side).
+                        groups: dict[tuple[str, str, str], list[dict]] = {}
+                        for ev in closes:
+                            key = (ev.get("action", ""), ev.get("setup_type", ""), ev.get("side", ""))
+                            groups.setdefault(key, []).append(ev)
+                        for events in groups.values():
                             try:
-                                send_fn(_format_close_alert(ev))
+                                send_fn(_format_grouped_alert(events))
                             except Exception:
                                 logger.exception("paper_trader.loop.send_close_failed")
         except Exception:
