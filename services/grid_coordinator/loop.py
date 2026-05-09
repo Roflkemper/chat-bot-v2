@@ -41,12 +41,12 @@ POLL_INTERVAL_SEC = 300        # 5 min
 COOLDOWN_SEC = 1800             # 30 min между алертами одного направления
 
 # Пороги
-RSI_OVERBOUGHT = 75.0
-RSI_OVERSOLD = 25.0
+RSI_OVERBOUGHT = 70.0           # was 75 — calibrated 2026-05-10 to actual 1h RSI distribution
+RSI_OVERSOLD = 30.0             # was 25
 MFI_OVERBOUGHT = 75.0
 MFI_OVERSOLD = 25.0
-OI_RISING_PCT = 1.0             # %/h
-FUNDING_HIGH_8H = 0.0004        # 0.04%/8h
+OI_RISING_PCT = 0.5             # was 1.0 — actual OI 1h moves rarely exceed 1%
+FUNDING_HIGH_8H = 0.00003       # was 0.0004 — actual 2026 BTC funding rarely above 0.005%/8h
 ETH_CORR_LOOKBACK = 30
 ETH_CORR_THRESHOLD = 0.70
 ETH_RSI_HIGH = 70.0
@@ -166,7 +166,9 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
 
     # UPSIDE EXHAUSTION CHECKS
     up_signals = {}
-    up_signals["rsi_high_falling"] = (rsi_now >= RSI_OVERBOUGHT and rsi_now < rsi_2bar_ago)
+    # 2026-05-10: убрал "rsi_now < rsi_2bar_ago" — режет 56→1 на 1h данных.
+    # Достаточно факта overbought для сигнала истощения.
+    up_signals["rsi_high"] = (rsi_now >= RSI_OVERBOUGHT)
     up_signals["mfi_high"] = (mfi_now >= MFI_OVERBOUGHT)
     up_signals["volume_no_confirm_at_high"] = (is_new_high and vz_now < 0)
     up_signals["oi_rising_funding_high"] = (oi_change >= OI_RISING_PCT and funding >= FUNDING_HIGH_8H)
@@ -178,7 +180,7 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
 
     # DOWNSIDE EXHAUSTION CHECKS
     down_signals = {}
-    down_signals["rsi_low_rising"] = (rsi_now <= RSI_OVERSOLD and rsi_now > rsi_2bar_ago)
+    down_signals["rsi_low"] = (rsi_now <= RSI_OVERSOLD)
     down_signals["mfi_low"] = (mfi_now <= MFI_OVERSOLD)
     down_signals["volume_no_confirm_at_low"] = (is_new_low and vz_now < 0)
     down_signals["oi_rising_funding_low"] = (oi_change >= OI_RISING_PCT and funding <= -FUNDING_HIGH_8H)
