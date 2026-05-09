@@ -26,7 +26,25 @@ git log --oneline -5
 
 ---
 
-## 🚨 НОВЫЙ ГЛАВНЫЙ ПРИОРИТЕТ (operator request 2026-05-09 11:50)
+## 🎬 ПЛАН НА БЛИЖАЙШИЕ 3-4 СЕССИИ (operator approved 2026-05-09 12:30)
+
+**Operator одобрил все ниже:**
+- Stage B (Strategy expansion): B2/B3/B4 — Cross-asset v2, ML regime, Liq prediction
+- Stage C (Analytics): C2/C4 — Correlation matrix, Walk-fwd всех 14 детекторов
+- Stage D (Infra): D2/D3 — Backtest leaderboard auto, P-15 auto-tuner
+- Stage E (AI): E1/E2 — Genetic detector search, LLM regime narrator
+
+**Эту сессию заканчиваем — следующая стартует с 3-х TZ:**
+
+1. **⭐ TZ-TP-AUTOUPDATE-BACKTEST** (operator's starred task)
+2. **TZ-SPIKE-DEFENSIVE-DETECTOR**
+3. **TZ-BOT-PERFORMANCE-DASHBOARD** (/bots_kpi)
+
+Затем Stage B/C/D/E последовательно по 1-2 пунктов за сессию.
+
+---
+
+## 🚨 СРАЗУ ПОСЛЕ HEALTH-CHECK — 3 ОСНОВНЫХ TZ (operator request 2026-05-09 11:50)
 
 См. `docs/ANALYSIS/BOTS_KPI_2026-05-09.md` — полный анализ 5 ботов TEST/LONG-B/C
 с реальными цифрами за 7.4 дня. Найдено:
@@ -142,7 +160,70 @@ API → пишет в TG. Сделать как `services/volume_farming/monitor
 
 ---
 
-## 🛠 SECONDARY (если время остаётся)
+## 🚀 ROADMAP — Stage B/C/D/E (после 3-х основных TZ)
+
+Этот блок реализуется по 1-2 пункта за сессию. Делать в порядке:
+
+### Сессия N+1 — Stage B (Strategy expansion)
+
+**B2. Cross-asset confluence v2**
+- Сейчас есть `detect_long_multi_asset_confluence` (BTC+ETH bull DIV в ±4h, PF=3.88)
+- Расширить: + XRP как третий confirm signal (3-asset confluence)
+- Добавить correlation gate: confluence работает только когда BTC↔ETH corr > 0.7
+- Backtest sweep, walk-forward, wire если STABLE
+
+**B3. ML-based regime classifier replacement**
+- Classifier A — 600 LOC if/elif. Classifier B (`services/regime_red_green/`) — sklearn DecisionTree, 77.5% accuracy, offline-only
+- Wire B в production как **shadow mode** рядом с A
+- 30 дней живой работы → сравнить какой ловит regime-shift раньше
+- Если B лучше — заменить A, DL R-* правила станут точнее
+
+**B4. Liquidation cluster prediction**
+- Сейчас cascade_alert ловит факт каскада. Нужен предиктор **до** каскада
+- Pre-cascade signature: OI растёт + funding extreme + OB одностороннее
+- Цель: 10-30 мин предупреждения до factual cascade
+- Backtest на 6 мес исторических ликвидаций
+
+### Сессия N+2 — Stage C (Analytics)
+
+**C2. Strategy correlation matrix**
+- Какие сетапы fired **одновременно** в last 90 days?
+- Confusion matrix между всеми 14 setup_types
+- Найти top-3 confluence patterns с >80% WR + N>20
+- Это даёт mega-setups (3 detector'а согласны)
+
+**C4. Walk-forward для всех 14 детекторов**
+- В прошлой сессии прогнал 4. Осталось 10:
+  pdl_bounce, dump_reversal, oversold_reclaim, liq_magnet × LONG/SHORT,
+  double_top/bottom, multi_asset_confluence, etc.
+- Каждый STABLE/OVERFIT verdict → решение **отключить overfit**
+
+### Сессия N+3 — Stage D (Infrastructure)
+
+**D2. Backtest leaderboard auto**
+- `tools/backtest.py --register` — запускает все backtests, апдейтит `docs/STRATEGY_LEADERBOARD.md`
+- Cron 1× в неделю → актуальная картина edge'ей всех ног
+
+**D3. P-15 параметров auto-tuner**
+- Каждые 7 дней пересчитывает best params (R, K, dd_cap) по последним 30 дням
+- Если параметры существенно лучше → TG-предложение апдейтить
+- НЕ автомат — оператор решает
+
+### Сессия N+4 — Stage E (AI-assisted)
+
+**E1. Genetic-search detector generation**
+- Задать genome: RSI threshold, lookback, gate condition, indicator combo
+- GA пересчитывает на 2y данных (~сутки compute) → находит detector с лучшим walk-forward
+- Если PF > 2 + STABLE → wire как новый detector
+
+**E2. LLM-based market regime narrator**
+- Раз в час GPT-4 принимает на вход derived features последних 6h
+- Пишет narrative в TG: «Range $80,200-$80,500, ОИ накапливается shorts, funding отрицательный — типичный pre-impulse паттерн»
+- Помогает оператору видеть big picture
+
+---
+
+## 🛠 SECONDARY (если время остаётся в любой сессии)
 
 ### #6 — Walk-forward для остальных детекторов
 - В прошлой сессии walkfwd показал OVERFIT для `long_div`/`short_div` (без BoS)
