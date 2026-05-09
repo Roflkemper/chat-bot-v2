@@ -10,6 +10,10 @@ from .intervention_rules import (
     RaiseBoundaryOnConfirmedTrend,
     ResumeEntriesOnPullback,
 )
+from .intervention_rules_adaptive import (
+    AdaptivePartialUnloadOnRetracement,
+    AdaptivePauseEntriesOnUnrealizedThreshold,
+)
 from .managed_runner import ManagedGridSimRunner, ManagedRunConfig
 from .models import (
     BotState,
@@ -26,6 +30,8 @@ from .sweep_engine import SweepEngine
 
 __all__ = [
     "ActivateBoosterOnImpulseExhaustion",
+    "AdaptivePartialUnloadOnRetracement",
+    "AdaptivePauseEntriesOnUnrealizedThreshold",
     "BotState",
     "InterventionDecision",
     "InterventionEvent",
