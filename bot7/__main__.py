@@ -23,7 +23,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.supervisor.process_config import ALL_COMPONENTS, COMPONENTS, RUN_DIR, log_path, pid_path
-from src.supervisor.daemon import DAEMON_PID_PATH, _pid_alive, _read_pid, get_status_rows
+from src.supervisor.daemon import (
+    DAEMON_PID_PATH, _pid_alive, _pid_alive_for, _read_pid, get_status_rows,
+)
 
 DETACH_FLAGS = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
 
@@ -74,9 +76,14 @@ def _require_component(name: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def cmd_start(components: list[str] | None) -> None:
-    # Check if supervisor already running
+    # Check if supervisor already running. Use cmdline-checked variant —
+    # plain _pid_alive returns True on Windows PID-reuse (a stale supervisor
+    # PID can match an unrelated new process). Without the cmdline check
+    # cmd_start was returning early thinking supervisor was up, leaving the
+    # actual daemon never started — keepalive then saw the stale PID dead
+    # 2min later and looped on `bot7 start` every cycle.
     sup_pid = _read_pid(DAEMON_PID_PATH)
-    if sup_pid and _pid_alive(sup_pid):
+    if sup_pid and _pid_alive_for(sup_pid, "src.supervisor.daemon"):
         if not components:
             print(f"Supervisor already running (PID={sup_pid})")
             return
