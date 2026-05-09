@@ -2,25 +2,35 @@
 
 Cross-platform: Windows Task Scheduler / macOS launchd / Linux systemd-timer.
 
-Checks: supervisor alive? If not — runs `python -m bot7 start`.
+2026-05-09 PIVOT: This script now monitors **app_runner directly**, not the
+supervisor wrapper. The supervisor.daemon module had a chronic ~2-min
+silent-death problem on Windows pythonw + Task Scheduler that 4 separate
+fixes (signal handler, PID-reuse cmdline check, BREAKAWAY_FROM_JOB on
+self, BREAKAWAY_FROM_JOB on children) reduced but did not fully eliminate.
+
+Since app_runner.py runs all production async tasks via asyncio.gather and
+has its own internal task-restart logic, the supervisor wrapper is
+redundant — keepalive can launch app_runner directly and skip the broken
+intermediate layer entirely. orphan tracker/collectors/state_snapshot
+processes from prior runs are still cleaned by the cmdline-match logic
+on each new launch.
+
+Checks: app_runner alive? If not — launches app_runner directly.
 Logs every check to logs/autostart/keepalive.log.
-
-This is the OS-level safety net. Independent from supervisor + watchdog —
-both can fail; this script runs as a separate scheduled task and brings
-everything back up.
-
-CPU/memory usage: <0.1% averaged. Each invocation: 2-3 syscalls + log write.
 """
 from __future__ import annotations
 
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PID_FILE = ROOT / "run" / "supervisor.pid"
+APP_RUNNER_PID_FILE = ROOT / "run" / "app_runner.pid"
+SUPERVISOR_PID_FILE = ROOT / "run" / "supervisor.pid"  # legacy — sweep on new launch
 LOG_FILE = ROOT / "logs" / "autostart" / "keepalive.log"
+APP_RUNNER_SCRIPT = ROOT / "app_runner.py"
 
 # Cross-platform Python interpreter resolution
 if sys.platform == "win32":
@@ -44,113 +54,121 @@ def _log(msg: str) -> None:
         pass
 
 
-def _read_pid() -> int | None:
-    if not PID_FILE.exists():
-        return None
-    try:
-        return int(PID_FILE.read_text(encoding="utf-8").strip())
-    except (OSError, ValueError):
-        return None
-
-
-def _pid_alive(pid: int) -> bool:
-    """Check if PID is alive AND is the bot7 supervisor (not a PID-reuse stranger).
-
-    Pure psutil check (cross-platform — Windows / macOS / Linux).
-    Раньше использовал os.kill(pid, 0) который выдавал WinError 87 на Windows
-    в некоторых конфигурациях.
-
-    Verifies cmdline contains "src.supervisor.daemon" чтобы защититься от
-    PID-reuse (Windows aggressive с переиспользованием PID).
-    """
-    if pid is None or pid <= 0:
-        return False
+def _find_app_runner_pid() -> int | None:
+    """Find a live app_runner.py process by cmdline match (most reliable
+    on Windows where venv shim PIDs come and go). Returns the parent if
+    multiple are running (filter to one whose parent isn't python)."""
     try:
         import psutil
     except ImportError:
-        # psutil missing — fallback to assume alive (don't restart prematurely)
-        return True
+        return None
+    candidates: list[int] = []
     try:
-        if not psutil.pid_exists(pid):
-            return False
-        p = psutil.Process(pid)
-        if not p.is_running():
-            return False
-        cmdline = " ".join(p.cmdline()).lower()
-        return "src.supervisor.daemon" in cmdline
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        # Не наш процесс / нет доступа = считаем мёртвым → restart
-        return False
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                name = (proc.info["name"] or "").lower()
+                if "python" not in name:
+                    continue
+                cmdline = " ".join(proc.info["cmdline"] or [])
+                if "app_runner.py" in cmdline:
+                    candidates.append(int(proc.info["pid"]))
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
     except Exception:
-        # Любая другая ошибка — на стороне осторожности (не рестартим преждевременно)
-        return True
+        pass
+    if not candidates:
+        return None
+    # Return the oldest (most likely the parent shim, with the longest uptime)
+    return candidates[0]
 
 
-def _start_bot7() -> None:
-    """Run `python -m bot7 start` to bring everything up. Cross-platform.
+def _kill_orphan_supervisors() -> int:
+    """Best-effort kill of any leftover src.supervisor.daemon processes —
+    those are the legacy wrapper we no longer use, but they might be
+    consuming CPU cycles on hosts that ran the old keepalive."""
+    killed = 0
+    try:
+        import psutil
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                name = (proc.info["name"] or "").lower()
+                if "python" not in name:
+                    continue
+                cmdline = " ".join(proc.info["cmdline"] or [])
+                if "src.supervisor.daemon" in cmdline:
+                    proc.terminate()
+                    killed += 1
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception:
+        pass
+    return killed
 
-    Important on Windows: when Task Scheduler runs this script, it places
-    bot7 inside a Job Object. Without CREATE_BREAKAWAY_FROM_JOB, child
-    processes (including supervisor) die when the keepalive task itself
-    ends — that's why supervisor was dying ~2 min after each keepalive
-    cycle (Task Scheduler kills the job when the task is done if no
-    breakaway flag is set).
+
+def _start_app_runner() -> None:
+    """Launch app_runner.py directly. Bypasses the broken supervisor wrapper.
+
+    Windows: triple-flag detach — DETACHED_PROCESS + CREATE_BREAKAWAY_FROM_JOB
+    + CREATE_NEW_PROCESS_GROUP — to escape Task Scheduler's Job Object.
+    BREAKAWAY may fail with ACCESS_DENIED on locked-down systems; we retry
+    without it as a fallback.
     """
-    cmd = [str(PYTHON), "-m", "bot7", "start"]
-    _log(f"Starting bot7 via: {' '.join(cmd)}")
+    cmd = [str(PYTHON), str(APP_RUNNER_SCRIPT)]
+    _log(f"Starting app_runner directly: {' '.join(cmd)}")
+    kwargs: dict = {
+        "cwd": str(ROOT),
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "close_fds": True,
+    }
+    flags_with_breakaway = 0x00000008 | 0x01000000 | 0x00000200
+    flags_without_breakaway = 0x00000008 | 0x00000200
     try:
-        kwargs: dict = {
-            "cwd": str(ROOT),
-            "stdin": subprocess.DEVNULL,   # don't inherit Task Scheduler's stdin
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL,
-            "close_fds": True,
-        }
         if sys.platform == "win32":
-            # DETACHED_PROCESS = 0x00000008
-            # CREATE_BREAKAWAY_FROM_JOB = 0x01000000 (escape Task Scheduler's job)
-            # CREATE_NEW_PROCESS_GROUP = 0x00000200 (own ctrl-C target)
-            kwargs["creationflags"] = 0x00000008 | 0x01000000 | 0x00000200
+            kwargs["creationflags"] = flags_with_breakaway
         else:
-            # POSIX — start_new_session чтобы не зависело от watchdog'а
             kwargs["start_new_session"] = True
-        subprocess.Popen(cmd, **kwargs)
-        _log("bot7 start dispatched")
+        proc = subprocess.Popen(cmd, **kwargs)
+        _log(f"app_runner launched PID={proc.pid}")
+        # Persist PID for next-cycle health check
+        try:
+            APP_RUNNER_PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+            APP_RUNNER_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
+        except OSError:
+            pass
+    except OSError as exc:
+        if sys.platform == "win32" and "creationflags" in kwargs:
+            _log(f"BREAKAWAY denied ({exc}) — retrying without")
+            kwargs["creationflags"] = flags_without_breakaway
+            try:
+                proc = subprocess.Popen(cmd, **kwargs)
+                _log(f"app_runner launched without BREAKAWAY PID={proc.pid}")
+                APP_RUNNER_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
+            except Exception as e2:
+                _log(f"ERROR starting app_runner (retry): {e2}")
+        else:
+            _log(f"ERROR starting app_runner: {exc}")
     except Exception as e:
-        _log(f"ERROR starting bot7: {e}")
-
-
-def _read_supervisor_tail() -> str:
-    """Read last 3 lines of supervisor.log for crash diagnosis."""
-    sup_log = ROOT / "logs" / "current" / "supervisor.log"
-    if not sup_log.exists():
-        return "(no supervisor.log)"
-    try:
-        size = sup_log.stat().st_size
-        with sup_log.open("rb") as fh:
-            fh.seek(max(0, size - 2000))
-            text = fh.read().decode("utf-8", errors="replace")
-        last = text.splitlines()[-3:]
-        return " || ".join(last).replace("\n", " ")[:400]
-    except OSError:
-        return "(read failed)"
+        _log(f"ERROR starting app_runner: {e}")
 
 
 def main() -> int:
-    pid = _read_pid()
-    if pid is None:
-        _log("supervisor PID file missing — starting bot7")
-        _start_bot7()
+    """If no live app_runner.py process is found, sweep stale supervisor
+    processes and launch app_runner directly. Otherwise log a sparse
+    heartbeat."""
+    live_pid = _find_app_runner_pid()
+    if live_pid is None:
+        legacy = _kill_orphan_supervisors()
+        if legacy > 0:
+            _log(f"swept {legacy} legacy supervisor process(es)")
+        _log("no live app_runner — launching")
+        _start_app_runner()
         return 0
-    if not _pid_alive(pid):
-        tail = _read_supervisor_tail()
-        _log(f"supervisor PID={pid} dead — restarting bot7. Last lines: {tail}")
-        _start_bot7()
-        return 0
-    # Alive — heartbeat once an hour to keep log compact
+    # Alive — log heartbeat once an hour to keep log compact
     now = datetime.now(timezone.utc)
-    if now.minute < 2:  # log every hour around minute 0-1
-        _log(f"OK — supervisor PID={pid} alive (heartbeat)")
+    if now.minute < 2:
+        _log(f"OK — app_runner PID={live_pid} alive (heartbeat)")
     return 0
 
 
