@@ -465,6 +465,33 @@ async def _run_spike_alert(stop_event: asyncio.Event, *, telegram_app=None) -> N
     await spike_alert_loop(stop_event=stop_event, send_fn=send_fn)
 
 
+async def _run_grid_coordinator(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Grid Coordinator — индикатор истощения движения для grid-ботов оператора.
+
+    Каждые 5 мин проверяет 5 сигналов истощения (RSI/MFI/volume/OI/ETH-sync).
+    Если 3+ совпадают — TG-алерт. Не торгует, не управляет ботами через API
+    (пока). По задаче оператора 2026-05-09: «нужно понимать когда движение
+    заканчивается, закрыть SHORT-сетку наверху, перезайти на откате».
+    """
+    from services.grid_coordinator import grid_coordinator_loop
+
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(text: str) -> None:
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, text)
+                except Exception:
+                    logger.exception("grid_coordinator.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    await grid_coordinator_loop(stop_event=stop_event, send_fn=send_fn)
+
+
 async def _run_pre_cascade_alert(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Stage B4 — pre-cascade liquidation prediction (2026-05-09 roadmap).
 
@@ -639,6 +666,7 @@ async def main(
     regime_shadow_task = asyncio.create_task(_run_regime_shadow(stop_event), name="regime_shadow")
     regime_narrator_task = asyncio.create_task(_run_regime_narrator(stop_event, telegram_app=app), name="regime_narrator")
     pre_cascade_task = asyncio.create_task(_run_pre_cascade_alert(stop_event, telegram_app=app), name="pre_cascade_alert")
+    grid_coordinator_task = asyncio.create_task(_run_grid_coordinator(stop_event, telegram_app=app), name="grid_coordinator")
     watchlist_task = asyncio.create_task(_run_watchlist(stop_event, telegram_app=app), name="watchlist")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
@@ -650,7 +678,7 @@ async def main(
         boundary_expand_task, adaptive_grid_task, paper_journal_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, test3_tpflat_task, test3_tpflat_b_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, test3_tpflat_task, test3_tpflat_b_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
