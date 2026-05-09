@@ -26,6 +26,7 @@ class SetupType(Enum):
     LONG_MULTI_ASSET_CONFLUENCE = "long_multi_asset_confluence"
     LONG_MULTI_ASSET_CONFLUENCE_V2 = "long_multi_asset_confluence_v2"
     LONG_MEGA_DUMP_BOUNCE = "long_mega_dump_bounce"
+    LONG_RSI_MOMENTUM_GA = "long_rsi_momentum_ga"
     # P-15 rolling-trend rebalance (validated 2026-05-08, +$67k 2y on 15m).
     # 5-stage lifecycle: OPEN -> TRACK -> HARVEST -> REENTRY -> CLOSE.
     P15_LONG_OPEN = "p15_long_open"

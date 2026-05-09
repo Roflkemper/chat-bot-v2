@@ -101,20 +101,22 @@ def _mutate(g: Genome, rate: float, rng: random.Random) -> Genome:
 def _evaluate(genome: Genome, df: pd.DataFrame, n_folds: int = 4) -> dict:
     """Return fitness + metrics dict for genome on `df`. Walk-forward fold split."""
     fold_size = len(df) // n_folds
-    fold_pfs: list[float] = []
-    fold_ns: list[int] = []
-    fold_wrs: list[float] = []
+    fold_metrics: list[dict] = []
     for k in range(n_folds):
         start = k * fold_size
         end = (k + 1) * fold_size if k < n_folds - 1 else len(df)
         fold = df.iloc[start:end].reset_index(drop=True)
-        m = _eval_fold(genome, fold)
-        fold_pfs.append(m["PF"])
-        fold_ns.append(m["N"])
-        fold_wrs.append(m["WR"])
+        fold_metrics.append(_eval_fold(genome, fold))
+
+    fold_pfs = [m["PF"] for m in fold_metrics]
+    fold_ns = [m["N"] for m in fold_metrics]
+    fold_wrs = [m["WR"] for m in fold_metrics]
+    fold_means = [m["mean_pct"] for m in fold_metrics]
 
     avg_pf = float(np.mean([p for p in fold_pfs if p < 999])) if fold_pfs else 0.0
     avg_n = float(np.mean(fold_ns))
+    avg_wr = float(np.mean(fold_wrs))
+    avg_mean_pct = float(np.mean(fold_means))
     positive = sum(1 for pf, n in zip(fold_pfs, fold_ns) if pf >= 1.5 and n >= 10)
     stability = 1.0 if positive >= 3 else 0.5 if positive >= 2 else 0.0
     fitness = avg_pf * np.log(1 + avg_n) * stability
@@ -125,42 +127,61 @@ def _evaluate(genome: Genome, df: pd.DataFrame, n_folds: int = 4) -> dict:
         "fitness": float(fitness),
         "all_period_pf": avg_pf,
         "all_period_n": int(avg_n * n_folds),
-        "all_period_wr": float(np.mean(fold_wrs)),
-        "fold_metrics": [{"pf": p, "n": n, "wr": w}
-                         for p, n, w in zip(fold_pfs, fold_ns, fold_wrs)],
+        "all_period_wr": avg_wr,
+        "all_period_mean_pct": avg_mean_pct,
+        "fold_metrics": [
+            {"pf": m["PF"], "n": m["N"], "wr": m["WR"], "mean_pct": m["mean_pct"]}
+            for m in fold_metrics
+        ],
         "positive_folds": positive,
         "verdict": verdict,
     }
 
 
+FEE_PCT_PER_SIDE = 0.05  # 0.05% taker fee per side
+COOLDOWN_BARS = 4         # don't open another trade for N bars after a fire
+SIGNAL_DEDUP_BARS = 3     # collapse consecutive signal bars to one entry
+
+
 def _eval_fold(g: Genome, df: pd.DataFrame) -> dict:
-    """Run one fold: emit signals per genome, score forward returns at horizon."""
+    """Run one fold with realistic intra-bar SL/TP simulation.
+
+    For each signal bar, walk forward up to `hold_horizon_h` bars checking
+    each bar's high/low against SL price and TP1 price. First touched wins.
+    If neither is touched, exit at horizon close. Fees applied both sides.
+
+    Returns: {PF, N, WR, mean_pct, sharpe}.
+    """
     if len(df) < 250:
-        return {"PF": 0.0, "N": 0, "WR": 0.0}
+        return {"PF": 0.0, "N": 0, "WR": 0.0, "mean_pct": 0.0, "sharpe": 0.0}
 
     close = df["close"]
+    high = df["high"]
+    low = df["low"]
+    volume = df["volume"]
+
     if g.primary_ind == "RSI":
         ind = rsi(close, 14)
     elif g.primary_ind == "MFI":
-        ind = mfi(df["high"], df["low"], close, df["volume"], 14)
+        ind = mfi(high, low, close, volume, 14)
     elif g.primary_ind == "OBV":
-        ind = obv(close, df["volume"])
-        # normalize OBV via z-score for threshold to make sense
-        ind = (ind - ind.rolling(50, min_periods=1).mean()) / ind.rolling(50, min_periods=1).std()
-        ind = ind * 50 + 50  # rescale to 0-100ish
+        raw = obv(close, volume)
+        m = raw.rolling(50, min_periods=1).mean()
+        s = raw.rolling(50, min_periods=1).std().replace(0, 1.0)
+        ind = ((raw - m) / s) * 50 + 50
     elif g.primary_ind == "CMF":
-        ind = cmf(df["high"], df["low"], close, df["volume"], 20) * 100 + 50
+        ind = cmf(high, low, close, volume, 20) * 100 + 50
     else:  # MACD
         h = macd_hist(close)
-        ind = (h - h.rolling(50, min_periods=1).mean()) / h.rolling(50, min_periods=1).std()
-        ind = ind * 50 + 50
+        m = h.rolling(50, min_periods=1).mean()
+        s = h.rolling(50, min_periods=1).std().replace(0, 1.0)
+        ind = ((h - m) / s) * 50 + 50
 
     if g.primary_direction == "below":
         primary_signal = ind < g.primary_threshold
     else:
         primary_signal = ind > g.primary_threshold
 
-    # EMA gate
     if g.use_ema_gate:
         e_fast = close.ewm(span=g.ema_fast, adjust=False).mean()
         e_slow = close.ewm(span=g.ema_slow, adjust=False).mean()
@@ -172,43 +193,108 @@ def _eval_fold(g: Genome, df: pd.DataFrame) -> dict:
     else:
         signal = primary_signal
 
-    # Volume filter
     if g.use_volume_filter:
-        v_mean = df["volume"].rolling(20, min_periods=1).mean()
-        v_std = df["volume"].rolling(20, min_periods=1).std()
-        v_z = (df["volume"] - v_mean) / v_std.replace(0, 1.0)
+        v_mean = volume.rolling(20, min_periods=1).mean()
+        v_std = volume.rolling(20, min_periods=1).std().replace(0, 1.0)
+        v_z = (volume - v_mean) / v_std
         signal = signal & (v_z >= g.vol_z_min)
 
-    # Get bar indices where signal fires
-    bars = list(np.where(signal)[0])
-    if not bars:
-        return {"PF": 0.0, "N": 0, "WR": 0.0}
+    # Convert to numpy for speed
+    sig = signal.fillna(False).values
+    close_np = close.values
+    high_np = high.values
+    low_np = low.values
 
-    # Forward return at hold_horizon_h
-    pnls: list[float] = []
-    h = g.hold_horizon_h
+    bars = np.where(sig)[0]
+    if len(bars) == 0:
+        return {"PF": 0.0, "N": 0, "WR": 0.0, "mean_pct": 0.0, "sharpe": 0.0}
+
+    # Apply signal-dedup: collapse runs of consecutive signal bars (within
+    # SIGNAL_DEDUP_BARS) to the first one — avoids 50 trades from one
+    # extended condition (e.g. RSI stays >55 for 30 hours → just 1 entry).
+    deduped: list[int] = []
+    last_kept = -10**9
     for b in bars:
-        if b + h >= len(df):
+        if b - last_kept >= SIGNAL_DEDUP_BARS:
+            deduped.append(int(b))
+            last_kept = b
+    bars = deduped
+
+    horizon = g.hold_horizon_h
+    sl_pct = g.sl_pct / 100.0
+    tp_rr = g.tp1_rr
+    fee = FEE_PCT_PER_SIDE / 100.0
+
+    pnls: list[float] = []
+    cooldown_until = -1
+    n_bars = len(close_np)
+
+    for b in bars:
+        if b < cooldown_until:
             continue
-        entry = float(close.iloc[b])
-        exit_p = float(close.iloc[b + h])
+        if b + horizon >= n_bars:
+            break
+        entry = float(close_np[b])
+        if entry <= 0:
+            continue
+
         if g.direction == "long":
-            ret = (exit_p - entry) / entry * 100
+            sl_price = entry * (1 - sl_pct)
+            tp_price = entry * (1 + sl_pct * tp_rr)
         else:
-            ret = (entry - exit_p) / entry * 100
-        pnls.append(ret - 0.1)  # 0.05% per side fee approx
+            sl_price = entry * (1 + sl_pct)
+            tp_price = entry * (1 - sl_pct * tp_rr)
+
+        outcome_pct: float | None = None
+        for k in range(1, horizon + 1):
+            j = b + k
+            if j >= n_bars:
+                break
+            hi = float(high_np[j])
+            lo = float(low_np[j])
+            if g.direction == "long":
+                # SL hit takes priority on the same bar (conservative)
+                if lo <= sl_price:
+                    outcome_pct = -sl_pct * 100
+                    break
+                if hi >= tp_price:
+                    outcome_pct = sl_pct * tp_rr * 100
+                    break
+            else:
+                if hi >= sl_price:
+                    outcome_pct = -sl_pct * 100
+                    break
+                if lo <= tp_price:
+                    outcome_pct = sl_pct * tp_rr * 100
+                    break
+
+        if outcome_pct is None:
+            # Exit at horizon close
+            exit_p = float(close_np[b + horizon])
+            if g.direction == "long":
+                outcome_pct = (exit_p - entry) / entry * 100
+            else:
+                outcome_pct = (entry - exit_p) / entry * 100
+
+        # Apply fees (per side, both legs)
+        outcome_pct -= 2 * fee * 100
+        pnls.append(outcome_pct)
+        cooldown_until = b + max(COOLDOWN_BARS, 1)
 
     if not pnls:
-        return {"PF": 0.0, "N": 0, "WR": 0.0}
+        return {"PF": 0.0, "N": 0, "WR": 0.0, "mean_pct": 0.0, "sharpe": 0.0}
 
     arr = np.array(pnls)
     wins = arr[arr > 0]
     losses = arr[arr < 0]
     pf = float(wins.sum() / -losses.sum()) if losses.sum() < 0 else (999.0 if wins.sum() > 0 else 0.0)
+    std = arr.std(ddof=1) if len(arr) > 1 else 1.0
     return {
         "PF": pf,
         "N": len(arr),
         "WR": float(len(wins) / len(arr) * 100),
+        "mean_pct": float(arr.mean()),
+        "sharpe": float(arr.mean() / std) if std > 0 else 0.0,
     }
 
 
