@@ -104,12 +104,19 @@ from typing import Any, Callable, Optional
 # ── Constants from DECISION_LAYER_v1 §3 + operator chat 2026-05-06 ──────────
 
 CRITICAL_LEVELS_USD: list[float] = [78739.0, 80000.0, 82400.0, 96497.0]
-PRICE_PROXIMITY_USD: float = 300.0
+# Narrowed from 300 to 120 (operator feedback 2026-05-09): 300 USD is 0.37%
+# at $80k — too wide, fires whenever price wanders near round numbers.
+# 120 USD (~0.15%) catches actual approach close enough to act on.
+PRICE_PROXIMITY_USD: float = 120.0
 
 REGIME_CONF_CONFIRMED: float = 0.80
 REGIME_CONF_TRANSITION: float = 0.65
 REGIME_STABILITY_OK: float = 0.80
-REGIME_STABILITY_INSTABILITY: float = 0.60
+# Lowered from 0.60 to 0.40 (operator feedback 2026-05-09): on flat market
+# regime flip-flops between RANGE/COMPRESSION every few hours, stability
+# routinely dips below 0.60 — that's normal flat behaviour, not a real
+# instability event. 0.40 catches genuine break-down of the regime classifier.
+REGIME_STABILITY_INSTABILITY: float = 0.40
 
 HYSTERESIS_BARS_FULL: int = 12
 HYSTERESIS_BARS_HALF: int = 6
@@ -538,6 +545,16 @@ def _rule_M4(inp: DecisionInputs) -> Optional[Event]:
         and inp.distance_to_liquidation_pct < DIST_TO_LIQ_EMERGENCY_PCT
     )
     if not (coef_trigger or dist_trigger):
+        return None
+
+    # Safety override (operator feedback 2026-05-09): if coef is high but
+    # distance to liquidation is comfortable (>= 15%), downgrade from PRIMARY
+    # emergency to no-fire. The coef can sit at 0.95-1.0 by design when running
+    # cross-margin with multiple bots. The actual risk indicator is dist_to_liq.
+    M4_SAFE_DIST_PCT = 15.0
+    if (coef_trigger and not dist_trigger
+            and inp.distance_to_liquidation_pct is not None
+            and inp.distance_to_liquidation_pct >= M4_SAFE_DIST_PCT):
         return None
     # Bucket coef to 0.05 step (0.95, 1.00, 1.05) and dist to 1% step.
     coef_bucket = (

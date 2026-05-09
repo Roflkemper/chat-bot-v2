@@ -97,14 +97,23 @@ def test_R2_skips_when_no_hysteresis_and_low_confidence(tmp_path: Path) -> None:
 
 
 def test_R3_emits_on_low_stability(tmp_path: Path) -> None:
+    # Threshold lowered 0.60 -> 0.40 (operator feedback 2026-05-09).
+    # 0.30 is genuine instability now; 0.40-0.59 is normal flat-regime flip-flop.
     layer = _layer(tmp_path)
-    res = layer.evaluate(_baseline(regime_stability=0.4))
+    res = layer.evaluate(_baseline(regime_stability=0.3))
     assert "R-3" in [e.rule_id for e in res.events_emitted]
 
 
 def test_R3_skips_when_stability_ok(tmp_path: Path) -> None:
     layer = _layer(tmp_path)
     res = layer.evaluate(_baseline(regime_stability=0.7))
+    assert "R-3" not in [e.rule_id for e in res.events_emitted]
+
+
+def test_R3_skips_at_old_threshold_band(tmp_path: Path) -> None:
+    """0.40-0.59 stability is normal flat-market chop — should not fire R-3."""
+    layer = _layer(tmp_path)
+    res = layer.evaluate(_baseline(regime_stability=0.5))
     assert "R-3" not in [e.rule_id for e in res.events_emitted]
 
 
@@ -461,11 +470,12 @@ def test_snapshot_operator_live_values(tmp_path: Path) -> None:
     res = layer.evaluate(inp)
     rules = [e.rule_id for e in res.events_emitted]
     assert "M-3" in rules
-    assert "M-4" in rules
     assert "R-1" in rules
-    # M-4 trigger should be 'margin', not 'distance_to_liq' (18.9% > 5%)
-    m4 = next(e for e in res.events_emitted if e.rule_id == "M-4")
-    assert m4.payload["trigger"] == "margin"
+    # M-4 safety override 2026-05-09: when coef >= 0.95 BUT dist_to_liq >= 15%,
+    # M-4 is silent. Operator runs at coef ~1.0 with dist 18-25% by design.
+    # M-4 fires only on coef high AND dist genuinely tight (< 5%) or coef-only
+    # without distance data.
+    assert "M-4" not in rules, "M-4 should be silenced by safety override (dist=18.9 > 15)"
     # No Telegram side effect: result has no 'telegram_*' field, and audit log was written
     assert (tmp_path / "decisions.jsonl").exists()
 

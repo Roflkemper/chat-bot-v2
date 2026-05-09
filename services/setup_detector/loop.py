@@ -78,7 +78,10 @@ def _build_detection_context(pair: str = "BTCUSDT") -> DetectionContext | None:
         session_label = _simple_session_label(now_utc)
 
         df_1m: pd.DataFrame = load_klines(symbol=pair, timeframe="1m", limit=200)
-        df_1h: pd.DataFrame = load_klines(symbol=pair, timeframe="1h", limit=50)
+        # 1h limit raised 50 -> 250 to support EMA200 in P-15 detector (was
+        # always returning None because len < 200). Other detectors using
+        # 1h still work fine with a longer history.
+        df_1h: pd.DataFrame = load_klines(symbol=pair, timeframe="1h", limit=250)
         # 15m frame for fast-reaction detectors. limit=200 = ~50h of history,
         # enough for divergence detection (needs >=50 bars). Failure here is
         # non-fatal — detectors that need it guard for empty df_15m.
