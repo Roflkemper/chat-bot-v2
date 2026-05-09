@@ -1,0 +1,80 @@
+{
+  "BTCUSDT:long": {
+    "direction": "long",
+    "in_pos": true,
+    "layers": 1,
+    "total_size_usd": 1000.0,
+    "weighted_entry": 80700000.0,
+    "extreme_price": 80732.51,
+    "last_extreme_ts": "2026-05-09T23:24:15Z",
+    "opened_at_ts": "2026-05-09T23:20:15Z",
+    "cum_dd_pct": 0.0034572490706240356,
+    "last_emitted_stage": "OPEN",
+    "last_emitted_ts": "2026-05-09T23:20:15Z"
+  },
+  "BTCUSDT:short": {
+    "direction": "short",
+    "in_pos": false,
+    "layers": 0,
+    "total_size_usd": 0.0,
+    "weighted_entry": 0.0,
+    "extreme_price": 0.0,
+    "last_extreme_ts": "",
+    "opened_at_ts": "",
+    "cum_dd_pct": 0.0,
+    "last_emitted_stage": "",
+    "last_emitted_ts": ""
+  },
+  "ETHUSDT:long": {
+    "direction": "long",
+    "in_pos": false,
+    "layers": 0,
+    "total_size_usd": 0.0,
+    "weighted_entry": 0.0,
+    "extreme_price": 0.0,
+    "last_extreme_ts": "",
+    "opened_at_ts": "",
+    "cum_dd_pct": 0.0,
+    "last_emitted_stage": "",
+    "last_emitted_ts": ""
+  },
+  "ETHUSDT:short": {
+    "direction": "short",
+    "in_pos": false,
+    "layers": 0,
+    "total_size_usd": 0.0,
+    "weighted_entry": 0.0,
+    "extreme_price": 0.0,
+    "last_extreme_ts": "",
+    "opened_at_ts": "",
+    "cum_dd_pct": 0.0,
+    "last_emitted_stage": "",
+    "last_emitted_ts": ""
+  },
+  "XRPUSDT:long": {
+    "direction": "long",
+    "in_pos": true,
+    "layers": 2,
+    "total_size_usd": 1500.0,
+    "weighted_entry": 2145.1336440000005,
+    "extreme_price": 1.4351336440000002,
+    "last_extreme_ts": "2026-05-09T23:24:20Z",
+    "opened_at_ts": "2026-05-09T18:52:26Z",
+    "cum_dd_pct": 0.0,
+    "last_emitted_stage": "HARVEST",
+    "last_emitted_ts": "2026-05-09T23:24:20Z"
+  },
+  "XRPUSDT:short": {
+    "direction": "short",
+    "in_pos": false,
+    "layers": 0,
+    "total_size_usd": 0.0,
+    "weighted_entry": 0.0,
+    "extreme_price": 0.0,
+    "last_extreme_ts": "",
+    "opened_at_ts": "",
+    "cum_dd_pct": 0.0,
+    "last_emitted_stage": "",
+    "last_emitted_ts": ""
+  }
+}

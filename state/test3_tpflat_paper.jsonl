@@ -1,0 +1,1 @@
+{"ts": "2026-05-09T11:08:24Z", "event": "OPEN", "side": "short", "entry": 80287.92, "size_usd": 1000.0, "tp_usd": 10.0, "dd_cap_pct": 3.0, "trigger": "EMA50>EMA200 & close>EMA50 (1h)"}
