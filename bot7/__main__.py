@@ -27,7 +27,12 @@ from src.supervisor.daemon import (
     DAEMON_PID_PATH, _pid_alive, _pid_alive_for, _read_pid, get_status_rows,
 )
 
-DETACH_FLAGS = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+_CREATE_BREAKAWAY_FROM_JOB = 0x01000000  # not exported by subprocess in py3.10
+DETACH_FLAGS = (
+    subprocess.DETACHED_PROCESS
+    | subprocess.CREATE_NEW_PROCESS_GROUP
+    | _CREATE_BREAKAWAY_FROM_JOB  # so supervisor survives Task Scheduler's job ending
+)
 
 
 def _hidden_startupinfo() -> "subprocess.STARTUPINFO | None":

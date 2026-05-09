@@ -87,19 +87,30 @@ def _pid_alive(pid: int) -> bool:
 
 
 def _start_bot7() -> None:
-    """Run `python -m bot7 start` to bring everything up. Cross-platform."""
+    """Run `python -m bot7 start` to bring everything up. Cross-platform.
+
+    Important on Windows: when Task Scheduler runs this script, it places
+    bot7 inside a Job Object. Without CREATE_BREAKAWAY_FROM_JOB, child
+    processes (including supervisor) die when the keepalive task itself
+    ends — that's why supervisor was dying ~2 min after each keepalive
+    cycle (Task Scheduler kills the job when the task is done if no
+    breakaway flag is set).
+    """
     cmd = [str(PYTHON), "-m", "bot7", "start"]
     _log(f"Starting bot7 via: {' '.join(cmd)}")
     try:
         kwargs: dict = {
             "cwd": str(ROOT),
+            "stdin": subprocess.DEVNULL,   # don't inherit Task Scheduler's stdin
             "stdout": subprocess.DEVNULL,
             "stderr": subprocess.DEVNULL,
             "close_fds": True,
         }
         if sys.platform == "win32":
-            # DETACHED_PROCESS — supervisor живёт после выхода watchdog'а
-            kwargs["creationflags"] = 0x00000008
+            # DETACHED_PROCESS = 0x00000008
+            # CREATE_BREAKAWAY_FROM_JOB = 0x01000000 (escape Task Scheduler's job)
+            # CREATE_NEW_PROCESS_GROUP = 0x00000200 (own ctrl-C target)
+            kwargs["creationflags"] = 0x00000008 | 0x01000000 | 0x00000200
         else:
             # POSIX — start_new_session чтобы не зависело от watchdog'а
             kwargs["start_new_session"] = True
