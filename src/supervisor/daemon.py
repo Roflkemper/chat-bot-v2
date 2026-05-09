@@ -222,15 +222,42 @@ class ManagedProcess:
                 si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 si.wShowWindow = 0  # SW_HIDE — hides the console window
                 popen_kwargs["startupinfo"] = si
-                popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-            self.proc = subprocess.Popen(
-                cmd,
-                cwd=str(cwd),
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                env=os.environ.copy(),
-                **popen_kwargs,
-            )
+                # CREATE_NO_WINDOW + CREATE_BREAKAWAY_FROM_JOB. The breakaway
+                # is critical: without it children inherit the supervisor's
+                # Job Object (set by Task Scheduler / parent shell). When the
+                # parent task completes, Job kill-on-close cascades to every
+                # child including this supervisor — which is why it died
+                # every ~2 min in production.
+                popen_kwargs["creationflags"] = (
+                    subprocess.CREATE_NO_WINDOW | 0x01000000  # CREATE_BREAKAWAY_FROM_JOB
+                )
+            try:
+                self.proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(cwd),
+                    stdout=f,
+                    stderr=subprocess.STDOUT,
+                    env=os.environ.copy(),
+                    **popen_kwargs,
+                )
+            except OSError as os_exc:
+                # CREATE_BREAKAWAY_FROM_JOB may be denied by parent Job's
+                # JOB_OBJECT_LIMIT_BREAKAWAY_OK flag (some Task Scheduler
+                # configurations). Retry without breakaway.
+                if "creationflags" in popen_kwargs and (popen_kwargs["creationflags"] & 0x01000000):
+                    logger.warning("%s: breakaway denied (%s) — retrying without",
+                                   self.name, os_exc)
+                    popen_kwargs["creationflags"] &= ~0x01000000
+                    self.proc = subprocess.Popen(
+                        cmd,
+                        cwd=str(cwd),
+                        stdout=f,
+                        stderr=subprocess.STDOUT,
+                        env=os.environ.copy(),
+                        **popen_kwargs,
+                    )
+                else:
+                    raise
         except Exception as exc:
             logger.error("%s: failed to start: %s", self.name, exc)
             self.proc = None
@@ -561,13 +588,11 @@ class Supervisor:
                 for mp in self.procs.values():
                     mp.maybe_restart()
             except Exception:
-                # Catch per-tick failure (psutil races, log I/O, telegram
-                # alarm net errors). Without this, a single transient
-                # exception in maybe_restart() unwinds the run loop and
-                # the supervisor exits silently every ~2 min.
                 logger.exception("supervisor.tick_failed")
             _ticks += 1
-            # Per-tick heartbeat so we can pinpoint silent exits.
+            # Per-tick heartbeat — used to verify supervisor still ticks
+            # after the BREAKAWAY fix (was dying silently every ~2 min
+            # before child processes also got CREATE_BREAKAWAY_FROM_JOB).
             logger.info("[heartbeat] tick=%d managed=%d", _ticks, len(self.procs))
             self._stop.wait(HEALTH_CHECK_INTERVAL)
 

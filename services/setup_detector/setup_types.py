@@ -750,6 +750,7 @@ from services.setup_detector.multi_divergence import (
 )
 from services.setup_detector.multi_asset_confluence import detect_long_multi_asset_confluence
 from services.setup_detector.multi_asset_confluence_v2 import detect_long_multi_asset_confluence_v2
+from services.setup_detector.mega_setup import detect_long_mega_dump_bounce
 from services.setup_detector.p15_rolling import detect_p15_long, detect_p15_short
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
@@ -765,6 +766,7 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_double_top_setup,
     detect_long_multi_asset_confluence,  # 1h, PF=3.88 hold_1h, BTC+ETH (2026-05-08)
     detect_long_multi_asset_confluence_v2,  # Stage B2: 3-asset BTC+ETH+XRP + corr gate (2026-05-09)
+    detect_long_mega_dump_bounce,           # Stage B5: dump_reversal+pdl_bounce confluence, +5.7pp WR (2026-05-09)
     detect_long_div_bos_confirmed,  # 1h, PF=4.49, walk-forward stable (2026-05-08)
     detect_long_div_bos_15m,        # 15m, PF=5.01 hold_4h, fast reaction (2026-05-08)
     detect_short_div_bos_15m,       # 15m SHORT, PF=3.85 hold_1h, walk-forward stable
