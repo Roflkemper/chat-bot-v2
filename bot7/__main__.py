@@ -94,8 +94,9 @@ def cmd_start(components: list[str] | None) -> None:
         creationflags=DETACH_FLAGS,
         startupinfo=_hidden_startupinfo(),
         close_fds=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,   # без этого supervisor наследует stdin parent'а
+        stdout=subprocess.DEVNULL,  # которое закрывается → EOF на любом I/O →
+        stderr=subprocess.DEVNULL,  # silent exit. (handoff #7 watchdog post-mortem)
     )
     print(f"Supervisor started (PID={proc.pid})")
     # Give it a moment then show status

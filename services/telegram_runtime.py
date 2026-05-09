@@ -1433,6 +1433,27 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text)
 
+        @self.bot.message_handler(commands=['bots_kpi', 'kpi'])
+        def handle_bots_kpi(message) -> None:
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            # Optional arg: window in days (default 7)
+            try:
+                parts = (message.text or '').split()
+                window = float(parts[1]) if len(parts) > 1 else 7.0
+            except (ValueError, IndexError):
+                window = 7.0
+            try:
+                from services.bots_kpi import build_bots_kpi_report
+                text = build_bots_kpi_report(window_days=window)
+            except Exception as exc:
+                logger.exception('handle_bots_kpi.failed')
+                self.bot.send_message(chat_id, f'❌ /bots_kpi failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text, parse_mode='Markdown')
+
         @self.bot.message_handler(commands=['report_week', 'weekly_summary'])
         def handle_report_week(message) -> None:
             chat_id = int(message.chat.id)

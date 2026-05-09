@@ -509,6 +509,21 @@ class Supervisor:
         logger.info("Supervisor started (PID=%s)", os.getpid())
         DAEMON_PID_PATH.write_text(str(os.getpid()))
 
+        # Wrap the entire run in a catch-all so if anything in the loop
+        # (e.g. logger I/O fail with EOF on broken stdout, signal handler
+        # registration on a session-less process) raises, we get a stack
+        # trace in supervisor.log instead of a silent exit. Pre-fix the
+        # supervisor died every ~2min with no log entry, blocking
+        # downstream tasks (test3_tpflat, spike_alert) from staying up.
+        try:
+            self._run_inner()
+        except SystemExit:
+            raise
+        except BaseException:
+            logger.exception("supervisor.run.unhandled_exception")
+            raise
+
+    def _run_inner(self) -> None:
         self.start_all()
 
         rotation_thread = threading.Thread(
@@ -526,16 +541,34 @@ class Supervisor:
             logger.info("Signal %s received — stopping", signum)
             self._stop.set()
 
-        signal.signal(signal.SIGINT,  _on_signal)
-        signal.signal(signal.SIGTERM, _on_signal)
+        # signal.signal() may raise ValueError when called from a non-main
+        # thread or on Windows pythonw.exe without a console handle.
+        # Tolerate the failure so the supervisor keeps running — losing
+        # graceful SIGTERM is far better than a silent crash.
+        for sig_attr in ("SIGINT", "SIGTERM"):
+            sig = getattr(signal, sig_attr, None)
+            if sig is None:
+                continue
+            try:
+                signal.signal(sig, _on_signal)
+            except (ValueError, OSError):
+                logger.warning("supervisor.signal_handler_install_failed sig=%s "
+                               "(no console session — skipping)", sig_attr)
 
         _ticks = 0
         while not self._stop.is_set():
-            for mp in self.procs.values():
-                mp.maybe_restart()
+            try:
+                for mp in self.procs.values():
+                    mp.maybe_restart()
+            except Exception:
+                # Catch per-tick failure (psutil races, log I/O, telegram
+                # alarm net errors). Without this, a single transient
+                # exception in maybe_restart() unwinds the run loop and
+                # the supervisor exits silently every ~2 min.
+                logger.exception("supervisor.tick_failed")
             _ticks += 1
-            if _ticks % 10 == 0:  # every 10 × 30s = 5 min
-                logger.info("[heartbeat] alive, managed=%d", len(self.procs))
+            # Per-tick heartbeat so we can pinpoint silent exits.
+            logger.info("[heartbeat] tick=%d managed=%d", _ticks, len(self.procs))
             self._stop.wait(HEALTH_CHECK_INTERVAL)
 
         logger.info("Supervisor stopping")

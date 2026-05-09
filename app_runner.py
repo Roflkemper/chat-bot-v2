@@ -168,15 +168,17 @@ async def _run_setup_detector(stop_event: asyncio.Event, *, telegram_app=None) -
 
         send_fn = _send
 
-    # Multi-symbol detection: BTC + ETH. Backtest TZ-3 (2026-05-08) showed
-    # ETH-only divergence is the strongest single-asset edge in the project
-    # (PF=7.43 hold_12h vs BTC's 5.36). Adding ETH to the pair list lets
-    # production capture those signals + paper-trade them. XRP excluded for
-    # now — backtest showed weaker hold_1h edge (PF=0.93).
+    # Multi-symbol detection: BTC + ETH + XRP.
+    # ETH-only divergence is the strongest single-asset edge per TZ-3 backtest
+    # (PF=7.43 hold_12h vs BTC's 5.36). XRP added 2026-05-09 because P-15
+    # validation (BTC/ETH/XRP × LONG/SHORT, 6/6 PF>3) requires XRP coverage —
+    # post-14bbd2e diagnosis showed XRP was the only pair with active P-15
+    # long_gate while BTC/ETH sat in flat (e50≈e200). Detectors that need
+    # data not available for XRP (e.g. ICT) short-circuit on missing inputs.
     await setup_detector_loop(
         stop_event=stop_event,
         send_fn=send_fn,
-        pairs=("BTCUSDT", "ETHUSDT"),
+        pairs=("BTCUSDT", "ETHUSDT", "XRPUSDT"),
     )
 
 
@@ -437,6 +439,43 @@ async def _run_cascade_alert(stop_event: asyncio.Event, *, telegram_app=None) ->
     await cascade_alert_loop(stop_event=stop_event, send_fn=send_fn)
 
 
+async def _run_spike_alert(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Spike-defensive alert (2026-05-09 operator request).
+
+    |move 5m| >= 1.5%, taker dominant >= 75%, OI not bleeding off → TG alert
+    "spike! close SHORT-bags" (or LONG-bags on downspike). Doesn't trade.
+    Goal: prevent $4-7k drawdown when 3 SHORT bots take a +3% spike together.
+    """
+    from services.spike_alert import spike_alert_loop
+
+    send_fn = None
+    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
+        chat_ids = list(telegram_app.allowed_chat_ids)
+        bot = telegram_app.bot
+
+        def _send(text: str) -> None:
+            for cid in chat_ids:
+                try:
+                    bot.send_message(cid, text)
+                except Exception:
+                    logger.exception("spike_alert.telegram_send_failed cid=%s", cid)
+
+        send_fn = _send
+
+    await spike_alert_loop(stop_event=stop_event, send_fn=send_fn)
+
+
+async def _run_test3_tpflat_simulator(stop_event: asyncio.Event) -> None:
+    """TEST_3 TP-flat dry-run simulator (operator decision 2026-05-09).
+
+    Paper-only: polls BTC 1m, applies TP=$10 immediate dd=3% strategy,
+    journals to state/test3_tpflat_paper.jsonl. After 7d compare vs real
+    TEST_3 to decide migration.
+    """
+    from services.test3_tpflat_simulator import test3_tpflat_simulator_loop
+    await test3_tpflat_simulator_loop(stop_event=stop_event)
+
+
 async def _run_watchlist(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Watchlist — оператор задаёт правила (/watch add ...), бот алертит при срабатывании."""
     from services.watchlist import watchlist_loop
@@ -528,6 +567,8 @@ async def main(
     deriv_live_task = asyncio.create_task(_run_deriv_live(stop_event), name="deriv_live")
     bitmex_account_task = asyncio.create_task(_run_bitmex_account(stop_event), name="bitmex_account")
     cascade_alert_task = asyncio.create_task(_run_cascade_alert(stop_event, telegram_app=app), name="cascade_alert")
+    spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
+    test3_tpflat_task = asyncio.create_task(_run_test3_tpflat_simulator(stop_event), name="test3_tpflat")
     watchlist_task = asyncio.create_task(_run_watchlist(stop_event, telegram_app=app), name="watchlist")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
@@ -539,7 +580,7 @@ async def main(
         boundary_expand_task, adaptive_grid_task, paper_journal_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, test3_tpflat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
