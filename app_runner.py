@@ -4,6 +4,7 @@ import asyncio
 import logging
 import signal
 import sys
+from datetime import datetime, timezone
 from typing import Callable
 
 from config import (
@@ -48,6 +49,41 @@ def _install_signal_handlers(loop: asyncio.AbstractEventLoop, stop_event: asynci
         try:
             loop.add_signal_handler(signal.SIGTERM, stop_event.set)
         except NotImplementedError:
+            pass
+
+
+def _log_startup_audit() -> None:
+    """Append timestamp + pid to state/app_runner_starts.jsonl. Used by audit
+    tooling to detect restart loops."""
+    import json
+    import os
+    from pathlib import Path
+    audit = Path("state") / "app_runner_starts.jsonl"
+    try:
+        audit.parent.mkdir(parents=True, exist_ok=True)
+        with audit.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "pid": os.getpid(),
+            }) + "\n")
+    except OSError:
+        pass
+
+
+async def _run_heartbeat(stop_event: asyncio.Event) -> None:
+    """Periodic heartbeat to logs/app.log so watchdog freshness check never
+    triggers stale-restart on quiet markets.
+
+    2026-05-10: even with watchdog freshness=15min, app.log can go silent
+    longer when smart-pause filters out detector emits + grid_coordinator
+    is on cooldown. Heartbeat ensures log mtime is bumped every 60s.
+    """
+    interval = 60
+    while not stop_event.is_set():
+        logger.info("heartbeat.tick t=%s", datetime.now(timezone.utc).isoformat(timespec="seconds"))
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval)
+        except asyncio.TimeoutError:
             pass
 
 
@@ -651,6 +687,11 @@ async def main(
     signal_handler_installer: Callable[[asyncio.AbstractEventLoop, asyncio.Event], None] = _install_signal_handlers,
     shutdown_timeout: float = 10,
 ) -> int:
+    # 2026-05-10 TZ#10: log app_runner startup to audit file for restart-frequency
+    # alerts. If >5 restarts/hour observed, watchdog config is too aggressive
+    # OR app_runner crashes for legit reason — investigate.
+    _log_startup_audit()
+
     from services.telegram_runtime import TelegramBotApp
 
     try:
@@ -694,6 +735,7 @@ async def main(
     pre_cascade_task = asyncio.create_task(_run_pre_cascade_alert(stop_event, telegram_app=app), name="pre_cascade_alert")
     grid_coordinator_task = asyncio.create_task(_run_grid_coordinator(stop_event, telegram_app=app), name="grid_coordinator")
     grid_coordinator_intraday_task = asyncio.create_task(_run_grid_coordinator_intraday(stop_event, telegram_app=app), name="grid_coordinator_intraday")
+    heartbeat_task = asyncio.create_task(_run_heartbeat(stop_event), name="heartbeat")
     watchlist_task = asyncio.create_task(_run_watchlist(stop_event, telegram_app=app), name="watchlist")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
@@ -705,7 +747,7 @@ async def main(
         boundary_expand_task, adaptive_grid_task, paper_journal_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, test3_tpflat_task, test3_tpflat_b_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, test3_tpflat_task, test3_tpflat_b_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
