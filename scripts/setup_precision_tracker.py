@@ -133,6 +133,7 @@ def main() -> int:
 
     new_outcomes = []
     skipped = 0
+    skipped_non_trade = 0
     with SETUPS.open(encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -142,6 +143,18 @@ def main() -> int:
             except json.JSONDecodeError:
                 continue
             if setup.get("setup_id") in seen:
+                continue
+            # Skip non-trade setups (grid management): they emit grid_action
+            # and have recommended_size_btc=0.0. Their TP/SL are target levels
+            # for grid bots, not entry/exit for a discrete trade.
+            if (setup.get("grid_action")
+                    or float(setup.get("recommended_size_btc") or 0) <= 0):
+                skipped_non_trade += 1
+                continue
+            # Skip P-15 lifecycle (separate engine)
+            stype = setup.get("setup_type") or ""
+            if stype.startswith("p15_"):
+                skipped_non_trade += 1
                 continue
             res = _evaluate(setup, prices)
             if res is None:
@@ -154,7 +167,9 @@ def main() -> int:
         with OUTCOMES.open("a", encoding="utf-8") as f:
             for r in new_outcomes:
                 f.write(json.dumps(r) + "\n")
-    print(f"[precision] +{len(new_outcomes)} new outcomes, skipped {skipped} (insufficient forward)")
+    print(f"[precision] +{len(new_outcomes)} new outcomes, "
+          f"skipped {skipped} (insufficient forward), "
+          f"skipped {skipped_non_trade} (non-trade/p15)")
 
     # Aggregate
     all_outcomes = []

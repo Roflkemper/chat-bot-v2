@@ -82,18 +82,24 @@ def main() -> int:
         except (KeyError, IndexError):
             return None
 
-    def _classify(side: str, change_pct: float | None, threshold: float = 0.15):
+    # 2026-05-10: thresholds tuned to setup outcome semantics. Typical detector
+    # has TP1 at ~0.5% and SL at ~0.4% from entry. So:
+    #   "WRONG_BLOCK"   = setup would have hit TP1 (price moved 0.5%+ favorably)
+    #   "CORRECT_BLOCK" = setup would have hit SL (price moved 0.4%+ adversely)
+    #   else NEUTRAL    = setup would have timed out anyway (block didn't matter)
+    def _classify(side: str, change_pct: float | None,
+                  tp_threshold: float = 0.5, sl_threshold: float = 0.4):
         """Return 'CORRECT_BLOCK', 'WRONG_BLOCK', or 'NEUTRAL'."""
         if change_pct is None: return "NO_DATA"
-        # If LONG setup blocked: correct if price went DOWN (<=-threshold)
-        # If SHORT setup blocked: correct if price went UP (>=threshold)
+        # LONG setup blocked: correct if SL would have hit (price down <=-SL),
+        # wrong if TP1 would have hit (price up >=+TP).
         if side == "long":
-            if change_pct <= -threshold: return "CORRECT_BLOCK"
-            if change_pct >= threshold: return "WRONG_BLOCK"
+            if change_pct <= -sl_threshold: return "CORRECT_BLOCK"
+            if change_pct >= tp_threshold: return "WRONG_BLOCK"
             return "NEUTRAL"
         else:
-            if change_pct >= threshold: return "CORRECT_BLOCK"
-            if change_pct <= -threshold: return "WRONG_BLOCK"
+            if change_pct >= sl_threshold: return "CORRECT_BLOCK"
+            if change_pct <= -tp_threshold: return "WRONG_BLOCK"
             return "NEUTRAL"
 
     # Aggregate by detector
