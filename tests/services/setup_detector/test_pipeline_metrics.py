@@ -85,6 +85,31 @@ def test_record_with_extra(temp_metrics_path):
     assert obj["gc_downside"] == 0
 
 
+def test_rotation_when_size_exceeded(temp_metrics_path, monkeypatch):
+    """When file exceeds _ROTATE_AT_BYTES, _maybe_rotate moves it aside."""
+    # Write 6MB of dummy lines.
+    big_line = json.dumps({"x": "a" * 1000}) + "\n"
+    with temp_metrics_path.open("w", encoding="utf-8") as f:
+        for _ in range(6000):
+            f.write(big_line)
+    assert temp_metrics_path.stat().st_size > 5 * 1024 * 1024
+    pipeline_metrics._maybe_rotate()
+    # Original file should be gone (rotated) or empty.
+    assert (not temp_metrics_path.exists()
+            or temp_metrics_path.stat().st_size == 0)
+    # An archive named pipeline_metrics_YYYY-MM-DD.jsonl exists.
+    archives = list(temp_metrics_path.parent.glob("pipeline_metrics_*.jsonl"))
+    assert len(archives) >= 1
+
+
+def test_rotation_skips_when_small(temp_metrics_path):
+    """No rotation when file is well under threshold."""
+    temp_metrics_path.write_text("small\n", encoding="utf-8")
+    pipeline_metrics._maybe_rotate()
+    assert temp_metrics_path.exists()
+    assert temp_metrics_path.read_text(encoding="utf-8") == "small\n"
+
+
 def test_record_swallows_oserror(temp_metrics_path, monkeypatch):
     """Pipeline metrics writes are best-effort — never raise into the loop."""
     def _broken_open(*a, **kw):

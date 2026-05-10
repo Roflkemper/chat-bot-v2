@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,54 @@ logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).resolve().parents[2]
 _METRICS_PATH = _ROOT / "state" / "pipeline_metrics.jsonl"
+
+# 2026-05-10: rotate when file grows past this size. Daily KPI reads only
+# the last 24h, so older content is balast. On rotation, file is renamed
+# to pipeline_metrics_YYYY-MM-DD.jsonl and a fresh one started. Anything
+# older than KEEP_ROTATED_DAYS is deleted.
+_ROTATE_AT_BYTES = 5 * 1024 * 1024  # 5MB
+_KEEP_ROTATED_DAYS = 14
+
+
+def _maybe_rotate() -> None:
+    """If file exceeds _ROTATE_AT_BYTES, rename to dated archive and prune old."""
+    try:
+        if not _METRICS_PATH.exists():
+            return
+        if _METRICS_PATH.stat().st_size < _ROTATE_AT_BYTES:
+            return
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        archive = _METRICS_PATH.with_name(f"pipeline_metrics_{today}.jsonl")
+        # If today's archive already exists (rotated earlier today), append
+        # current file content to it and truncate current.
+        if archive.exists():
+            with _METRICS_PATH.open("rb") as src, archive.open("ab") as dst:
+                dst.write(src.read())
+            _METRICS_PATH.unlink()
+        else:
+            _METRICS_PATH.rename(archive)
+        # Prune archives older than _KEEP_ROTATED_DAYS.
+        cutoff = datetime.now(timezone.utc).timestamp() - _KEEP_ROTATED_DAYS * 86400
+        for old in _METRICS_PATH.parent.glob("pipeline_metrics_*.jsonl"):
+            try:
+                if old.stat().st_mtime < cutoff:
+                    old.unlink()
+            except OSError:
+                pass
+    except OSError:
+        logger.exception("pipeline_metrics.rotate_failed")
+
+
+class _Counter:
+    """Process-local counter to avoid stat()'ing on every write."""
+    def __init__(self) -> None:
+        self._n = 0
+    def next_value(self) -> int:
+        self._n += 1
+        return self._n
+
+
+_record_counter = _Counter()
 
 
 def record(
@@ -71,6 +120,10 @@ def record(
 
     try:
         _METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        # Rotate every ~1000 writes (cheap stat call). Real cap is by size,
+        # not call count — using modulo keeps stat() pressure low.
+        if (_record_counter.next_value() % 1000) == 0:
+            _maybe_rotate()
         with _METRICS_PATH.open("a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
     except OSError:

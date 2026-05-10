@@ -131,6 +131,10 @@ state/watchdog_alert_state.json
 state/setup_precision_outcomes.jsonl
 state/setup_detector_type_pair_dedup.json
 state/pipeline_metrics.jsonl
+state/test3_tpflat_state.json
+state/test3_tpflat_b_state.json
+state/p15_paper_trades.jsonl
+state/pre_cascade_fires.jsonl
 state/app_runner_starts.jsonl
 state/mega_setup_backtest.csv
 state/mega_short_v2_gc.csv
