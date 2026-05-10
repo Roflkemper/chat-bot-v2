@@ -45,6 +45,10 @@ COMBO_FILTER: dict[tuple[SetupType, str], str] = {
 
 # Grid and defensive types are always allowed — they are protective actions, not
 # directional speculation, and were not measured in the backtest.
+# P-15 lifecycle events are also exempt: they're emitted with strength=8 by design
+# (the strategy is validated independently with PF 3+ on multi-asset 2y), but
+# combo_filter's strength gate (>=9) was rejecting them. Live audit 2026-05-10
+# confirmed 48 p15 emits combo_blocked, preventing handle_p15_setup() from running.
 _EXEMPT_TYPES: frozenset[SetupType] = frozenset({
     SetupType.GRID_BOOSTER_ACTIVATE,
     SetupType.GRID_RAISE_BOUNDARY,
@@ -52,6 +56,10 @@ _EXEMPT_TYPES: frozenset[SetupType] = frozenset({
     SetupType.GRID_ADAPTIVE_TIGHTEN,
     SetupType.DEFENSIVE_MARGIN_LOW,
     SetupType.DEFENSIVE_LIQ_PROXIMITY,
+    SetupType.P15_LONG_OPEN, SetupType.P15_LONG_HARVEST,
+    SetupType.P15_LONG_REENTRY, SetupType.P15_LONG_CLOSE,
+    SetupType.P15_SHORT_OPEN, SetupType.P15_SHORT_HARVEST,
+    SetupType.P15_SHORT_REENTRY, SetupType.P15_SHORT_CLOSE,
 })
 
 
