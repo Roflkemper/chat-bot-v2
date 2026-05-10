@@ -285,7 +285,7 @@ def _load_anti_spam_cfg() -> dict:
     cfg_path = Path(__file__).resolve().parents[1] / "config" / "anti_spam.yaml"
     defaults = {
         "enabled": True,
-        "cooldowns_sec": {"RSI_EXTREME": 3600, "LEVEL_BREAK": 1800},
+        "cooldowns_sec": {"RSI_EXTREME": 3600, "LEVEL_BREAK": 3600},
         "log_deduped": True,
     }
     if not cfg_path.exists():
@@ -477,8 +477,16 @@ class SignalAlertWorker(threading.Thread):
             # Direction NOT in key — это анти-флап: цена качается через уровень
             # туда-сюда внутри cooldown окна, но это один и тот же "пробой",
             # не два независимых события. Иначе шлём 2× на каждое колебание.
+            #
+            # 2026-05-10 ANTI-SPAM: округляем до $200-bucket чтобы 80601, 80638,
+            # 80641, 80676, 80742 (все в скрине оператора) дедуплицировались.
+            # Раньше ping-pong'ал между 5 уровнями каждые 5-10 мин.
             level = details.get("level", 0)
-            return f"LEVEL_BREAK|{round(float(level))}"
+            try:
+                bucket = int(round(float(level) / 200.0)) * 200
+            except (TypeError, ValueError):
+                bucket = 0
+            return f"LEVEL_BREAK|bucket{bucket}"
         return None
 
     def _should_send(self, row: dict) -> bool:
