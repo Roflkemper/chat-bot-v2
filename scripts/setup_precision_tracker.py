@@ -58,6 +58,49 @@ def _load_prices() -> pd.DataFrame:
     return out.sort_values("ts_utc").set_index("ts_utc")
 
 
+def _bootstrap_ci(values: list[float], statistic_fn,
+                  n_resamples: int = 1000, alpha: float = 0.05) -> tuple[float, float]:
+    """Percentile bootstrap CI for an arbitrary statistic."""
+    if not values or len(values) < 3:
+        return (0.0, 0.0)
+    import random
+    n = len(values)
+    samples = []
+    for _ in range(n_resamples):
+        resample = [values[random.randrange(n)] for _ in range(n)]
+        samples.append(statistic_fn(resample))
+    samples.sort()
+    lo = samples[int(n_resamples * alpha / 2)]
+    hi = samples[int(n_resamples * (1 - alpha / 2)) - 1]
+    return (lo, hi)
+
+
+def _status(n: int, ci_lo: float, ci_hi: float, live_exp: float,
+            bt_exp: float | None) -> str:
+    """Status classification:
+      INSUFFICIENT — N<30, can't say anything.
+      EVALUATING   — 30<=N<100, stats forming.
+      STABLE       — N>=100, CI excludes 0 on positive side.
+      DEGRADED     — N>=30, CI excludes 0 on negative side OR live drifted >2σ
+                     from backtest expected.
+      MARGINAL     — N>=30, CI straddles 0 (inconclusive).
+    """
+    if n < 30:
+        return "INSUFFICIENT"
+    if ci_lo > 0:  # entirely positive
+        return "STABLE" if n >= 100 else "EVALUATING"
+    if ci_hi < 0:  # entirely negative — actively losing
+        return "DEGRADED"
+    # CI straddles 0 — check drift vs backtest
+    if bt_exp is not None and bt_exp > 0:
+        # Width of CI as proxy for σ
+        approx_sigma = max(1e-6, (ci_hi - ci_lo) / 4.0)
+        z = abs(live_exp - bt_exp) / approx_sigma
+        if z >= 2.0 and live_exp < bt_exp:
+            return "DEGRADED"
+    return "MARGINAL"
+
+
 def _evaluate(setup: dict, prices: pd.DataFrame) -> dict | None:
     try:
         det_at = datetime.fromisoformat(setup["detected_at"].replace("Z", "+00:00"))
@@ -181,29 +224,65 @@ def main() -> int:
     if not all_outcomes:
         print("[precision] no outcomes yet"); return 0
 
-    by_det = defaultdict(lambda: {"n": 0, "tp1": 0, "sl": 0, "timeout": 0, "pnl_sum": 0.0})
+    by_det = defaultdict(lambda: {"n": 0, "tp1": 0, "sl": 0, "timeout": 0,
+                                    "pnls": []})
     for o in all_outcomes:
         d = by_det[o["setup_type"]]
         d["n"] += 1
         d[o["outcome"].lower() if o["outcome"] != "TP1" else "tp1"] += 1
-        d["pnl_sum"] += o["pnl_pct"]
+        d["pnls"].append(float(o["pnl_pct"]))
+
+    # Backtest expected expectancy per detector (from previous research runs).
+    # When live diverges from backtest by >2σ we flag DEGRADED.
+    BACKTEST_EXPECTANCY = {
+        "short_pdh_rejection": 0.005,   # PF 1.16 calibrated; near-zero per-trade
+        "short_rally_fade": 0.005,      # PF ~1.4 with filter
+        "long_pdl_bounce": 0.001,
+        "long_dump_reversal": 0.001,
+        "long_double_bottom": 0.005,
+        "short_double_top": 0.005,
+        "long_multi_divergence": 0.0,
+        "long_rsi_momentum_ga": 0.0,
+        "short_mfi_multi_ga": 0.0,
+    }
 
     rows = []
     for det, c in by_det.items():
-        wr = c["tp1"] / c["n"] * 100 if c["n"] else 0
+        n = c["n"]
+        pnls = c["pnls"]
+        wr = c["tp1"] / n * 100 if n else 0
+        exp = sum(pnls) / n if n else 0
+        ci_lo, ci_hi = _bootstrap_ci(pnls, statistic_fn=lambda x: sum(x)/len(x) if x else 0)
+        bt_exp = BACKTEST_EXPECTANCY.get(det)
+        status = _status(n, ci_lo, ci_hi, exp, bt_exp)
         rows.append({
             "detector": det,
-            "n": c["n"],
+            "n": n,
             "tp1": c["tp1"],
             "sl": c["sl"],
             "timeout": c["timeout"],
             "wr_%": round(wr, 1),
-            "pnl_sum_%": round(c["pnl_sum"], 2),
-            "expectancy_%": round(c["pnl_sum"] / max(c["n"], 1), 4),
+            "exp_%": round(exp, 4),
+            "ci95_lo": round(ci_lo, 4),
+            "ci95_hi": round(ci_hi, 4),
+            "bt_exp_%": bt_exp,
+            "status": status,
         })
     df = pd.DataFrame(rows).sort_values("n", ascending=False)
-    print("\n=== Setup precision (live) ===")
+    print("\n=== Setup precision (live, with 95% CI) ===")
     print(df.to_string(index=False))
+
+    # Per-status summary
+    statuses = df["status"].value_counts().to_dict()
+    print(f"\nStatus breakdown: {statuses}")
+
+    # Highlight DEGRADED detectors
+    degraded = df[df["status"] == "DEGRADED"]
+    if not degraded.empty:
+        print("\n[ALERT] DEGRADED detectors (live exp drifted from backtest):")
+        for _, r in degraded.iterrows():
+            print(f"  {r['detector']}: live exp {r['exp_%']:+.4f}% vs "
+                  f"bt {r['bt_exp_%']}, CI [{r['ci95_lo']:+.4f}, {r['ci95_hi']:+.4f}]")
     return 0
 
 
