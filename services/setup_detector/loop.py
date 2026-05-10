@@ -7,9 +7,10 @@ import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from .combo_filter import filter_setups
+from .combo_filter import filter_setups, is_combo_allowed
 from .ict_context import ICT_CONTEXT_COLS, ICTContextReader
 from .models import Setup
+from .pipeline_metrics import record as metrics_record, record_setup
 from .setup_types import DETECTOR_REGISTRY, DetectionContext, PortfolioSnapshot
 from .storage import SetupStorage
 from .telegram_card import format_telegram_card
@@ -380,6 +381,8 @@ def _run_detectors_once(
                     "setup_detector.below_threshold type=%s strength=%d",
                     setup.setup_type.value, setup.strength,
                 )
+                record_setup(setup, "below_strength",
+                             drop_reason=f"strength={setup.strength}<{_MIN_STRENGTH}")
                 continue
             # Attach ICT context to each setup (frozen dataclass → use replace)
             if ict_ctx:
@@ -387,14 +390,18 @@ def _run_detectors_once(
             candidates.append(setup)
         except Exception:
             logger.exception("setup_detector.detector_failed fn=%s", detector.__name__)
+            metrics_record(stage_outcome="detector_failed",
+                           drop_reason=detector.__name__)
 
     allowed, blocked = filter_setups(candidates)
 
     for s in blocked:
+        _, reason = is_combo_allowed(s)
         logger.info(
             "setup_detector.combo_blocked type=%s regime=%s pair=%s",
             s.setup_type.value, s.regime_label, s.pair,
         )
+        record_setup(s, "combo_blocked", drop_reason=reason)
 
     # ── Semantic dedup: skip setups whose signature was emitted within TTL.
     now_utc = datetime.now(timezone.utc)
@@ -429,12 +436,16 @@ def _run_detectors_once(
                 "setup_detector.semantic_dedup_skip type=%s sig=%s pair=%s",
                 setup.setup_type.value, setup.semantic_signature, setup.pair,
             )
+            record_setup(setup, "semantic_dedup_skip",
+                         drop_reason=f"ttl={_SETUP_DEDUP_TTL_MIN}min")
             continue
         if _is_type_pair_recently_emitted(setup, type_pair_dedup, now_utc):
             logger.info(
                 "setup_detector.type_pair_dedup_skip type=%s pair=%s ttl=%dmin",
                 setup.setup_type.value, setup.pair, _TYPE_PAIR_DEDUP_MIN,
             )
+            record_setup(setup, "type_pair_dedup_skip",
+                         drop_reason=f"ttl={_TYPE_PAIR_DEDUP_MIN}min")
             continue
 
         # GC-confirmation: skip P-15 lifecycle (handled separately) and only
@@ -448,6 +459,10 @@ def _run_detectors_once(
                     gc_state.get("upside_score", 0), gc_state.get("downside_score", 0),
                     decision,
                 )
+                record_setup(setup, "gc_blocked", drop_reason=decision, extra={
+                    "gc_upside": gc_state.get("upside_score", 0),
+                    "gc_downside": gc_state.get("downside_score", 0),
+                })
                 continue
             if decision != "neutral":
                 logger.info(
@@ -455,6 +470,15 @@ def _run_detectors_once(
                     decision, setup.setup_type.value, setup.pair,
                     setup.confidence_pct, adjusted.confidence_pct,
                 )
+            # Record GC outcome for every passed-through setup (boost / penalty / neutral).
+            gc_stage = "gc_aligned" if decision == "aligned" else (
+                "gc_misaligned_penalty" if decision == "misaligned-penalty" else "gc_neutral"
+            )
+            record_setup(adjusted, gc_stage, extra={
+                "gc_upside": gc_state.get("upside_score", 0),
+                "gc_downside": gc_state.get("downside_score", 0),
+                "before_confidence": round(setup.confidence_pct, 1),
+            })
             setup = adjusted
 
         # MTF (15m/1h/4h) trend agreement modifier — never blocks.
@@ -466,6 +490,15 @@ def _run_detectors_once(
                     mtf_decision, setup.setup_type.value, setup.pair,
                     setup.confidence_pct, mtf_adjusted.confidence_pct,
                 )
+            mtf_stage = {
+                "mtf-aligned": "mtf_aligned",
+                "mtf-conflict": "mtf_conflict",
+                "mtf-neutral": "mtf_neutral",
+                "no-mtf": "mtf_neutral",
+            }.get(mtf_decision, "mtf_neutral")
+            record_setup(mtf_adjusted, mtf_stage, extra={
+                "before_confidence": round(setup.confidence_pct, 1),
+            })
             setup = mtf_adjusted
 
         emit_iso = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -473,6 +506,7 @@ def _run_detectors_once(
         type_pair_dedup[f"{setup.setup_type.value}|{setup.pair}"] = emit_iso
         store.write(setup)
         new_setups.append(setup)
+        record_setup(setup, "emitted")
         logger.info(
             "setup_detector.new_setup type=%s pair=%s strength=%d confidence=%.0f%%",
             setup.setup_type.value, setup.pair, setup.strength, setup.confidence_pct,
