@@ -756,8 +756,17 @@ def _summary_verdict(regime: dict, f: dict, setups: list[dict]) -> tuple[str, li
 
     # Verdict logic (decision-oriented):
     if not is_macro_up and not is_macro_down:
-        verdict = "БОКОВИК — без направления"
-        reasons.append("4h в RANGE/COMPRESSION — нет тренда")
+        # 2026-05-10 SMART-PAUSE (TZ #11): на боковике без активных setups
+        # советуем НЕ торговать пока не появится breakout-сигнал. Это
+        # снижает overtrading на range-фазе.
+        if not high_conf_setups:
+            verdict = "🟡 НЕ ТОРГУЙ — БОКОВИК БЕЗ СИГНАЛОВ"
+            reasons.append("4h в RANGE/COMPRESSION — нет тренда")
+            reasons.append("0 активных setup'ов с confidence ≥60% за 6h")
+            reasons.append("Жди: breakout 4h-границ ИЛИ появления setup ≥60%")
+        else:
+            verdict = "БОКОВИК — без направления"
+            reasons.append("4h в RANGE/COMPRESSION — нет тренда")
     elif is_macro_up and is_micro_up:
         verdict = "BULL CONFLUENCE — macro и micro вверх"
         reasons.append(f"4h={primary_4h}, 15m={primary_15m} — оба бычьи")

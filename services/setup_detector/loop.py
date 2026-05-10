@@ -44,6 +44,13 @@ _GC_MISALIGNED_HARD_BLOCK = {  # detectors so noisy they're hard-blocked when mi
 }
 _GC_SCORE_MIN = 3
 
+# 2026-05-10 MTF disagreement (DESIGN/MTF_DISAGREEMENT_v1.md):
+# - 3/3 TF agreement on side → +10% confidence
+# - top-down conflict (15m vs 4h opposite) → -20% confidence
+# - other → no change
+_MTF_BOOST_PCT = 10.0
+_MTF_PENALTY_PCT = 20.0
+
 
 def _query_grid_coordinator() -> dict | None:
     """Run a fresh evaluate_exhaustion on current 1h BTC/ETH + deriv state.
@@ -136,6 +143,27 @@ def _apply_gc_confirmation(setup: Setup, gc_state: dict, now_iso: str) -> tuple[
     audit["after_confidence"] = new_conf
     _gc_audit_write(audit)
     return penalised, "misaligned-penalty"
+
+
+def _apply_mtf_check(setup: Setup, ctx) -> tuple[Setup, str]:
+    """Apply MTF (15m/1h/4h) trend agreement modifier.
+
+    Returns (setup, decision_str) — never blocks, only adjusts confidence.
+    """
+    try:
+        from services.setup_detector.mtf_check import compute_mtf_view, mtf_setup_alignment
+    except ImportError:
+        return setup, "no-mtf"
+    view = compute_mtf_view(ctx)
+    side = "long" if "long" in setup.setup_type.value.lower() else "short"
+    align = mtf_setup_alignment(side, view)
+    if align == "aligned":
+        new_conf = min(99.0, setup.confidence_pct + _MTF_BOOST_PCT)
+        return dataclasses.replace(setup, confidence_pct=new_conf), "mtf-aligned"
+    if align == "conflict":
+        new_conf = max(10.0, setup.confidence_pct - _MTF_PENALTY_PCT)
+        return dataclasses.replace(setup, confidence_pct=new_conf), "mtf-conflict"
+    return setup, "mtf-neutral"
 
 
 def _simple_session_label(now_utc: datetime) -> str:
@@ -375,6 +403,17 @@ def _run_detectors_once(
                     setup.confidence_pct, adjusted.confidence_pct,
                 )
             setup = adjusted
+
+        # MTF (15m/1h/4h) trend agreement modifier — never blocks.
+        if not setup.setup_type.value.startswith("p15_"):
+            mtf_adjusted, mtf_decision = _apply_mtf_check(setup, ctx)
+            if mtf_decision in ("mtf-aligned", "mtf-conflict"):
+                logger.info(
+                    "setup_detector.%s type=%s pair=%s conf %.0f%% -> %.0f%%",
+                    mtf_decision, setup.setup_type.value, setup.pair,
+                    setup.confidence_pct, mtf_adjusted.confidence_pct,
+                )
+            setup = mtf_adjusted
 
         dedup[setup.semantic_signature] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
         store.write(setup)
