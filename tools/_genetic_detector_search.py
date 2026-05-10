@@ -138,7 +138,12 @@ def _evaluate(genome: Genome, df: pd.DataFrame, n_folds: int = 4) -> dict:
     }
 
 
-FEE_PCT_PER_SIDE = 0.05  # 0.05% taker fee per side
+FEE_PCT_PER_SIDE = 0.05  # 0.05% taker fee per side (legacy, kept for backward compat)
+# 2026-05-10: A3 honest fee model — match P15/A1 honest backtest assumptions.
+# IN (limit/maker): -0.0125% rebate. OUT (market): 0.075% taker + 0.02% slip.
+# Round-trip net: 0.165% vs old 0.10% = 65% more conservative.
+HONEST_RT_PCT = 0.165
+HONEST_FEE = bool(int(__import__("os").environ.get("GA_HONEST_FEE", "0")))
 COOLDOWN_BARS = 4         # don't open another trade for N bars after a fire
 SIGNAL_DEDUP_BARS = 3     # collapse consecutive signal bars to one entry
 
@@ -276,8 +281,12 @@ def _eval_fold(g: Genome, df: pd.DataFrame) -> dict:
             else:
                 outcome_pct = (entry - exit_p) / entry * 100
 
-        # Apply fees (per side, both legs)
-        outcome_pct -= 2 * fee * 100
+        # Apply fees. Honest mode (env GA_HONEST_FEE=1): RT 0.165% from
+        # maker rebate IN + taker+slippage OUT. Default mode: 2*0.05% = 0.10%.
+        if HONEST_FEE:
+            outcome_pct -= HONEST_RT_PCT
+        else:
+            outcome_pct -= 2 * fee * 100
         pnls.append(outcome_pct)
         cooldown_until = b + max(COOLDOWN_BARS, 1)
 
