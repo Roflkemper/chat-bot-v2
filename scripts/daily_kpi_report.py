@@ -99,6 +99,61 @@ def _p15_equity_delta(events: list[dict]) -> float:
     return total
 
 
+def _p15_breakdown_by_leg(events: list[dict]) -> dict[str, dict]:
+    """Group P-15 events by (pair, direction) → {open: n, harvest: n,
+    close: n, realized_pnl: $}."""
+    out: dict[str, dict] = {}
+    for e in events:
+        key = f"{e.get('pair', '?')}:{e.get('direction', '?')}"
+        if key not in out:
+            out[key] = {"open": 0, "harvest": 0, "close": 0, "pnl": 0.0}
+        stage = (e.get("stage") or "").upper()
+        if stage in ("OPEN", "HARVEST", "CLOSE"):
+            out[key][stage.lower()] += 1
+        v = e.get("realized_pnl_usd")
+        if v is not None:
+            try: out[key]["pnl"] += float(v)
+            except (TypeError, ValueError): pass
+    return out
+
+
+def _p15_current_legs() -> list[dict]:
+    """Read state/p15_state.json and return only in_pos legs with DD alerts."""
+    state_path = ROOT / "state" / "p15_state.json"
+    if not state_path.exists():
+        return []
+    try:
+        raw = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    now = datetime.now(timezone.utc)
+    out = []
+    for key, leg in raw.items():
+        if not isinstance(leg, dict) or not leg.get("in_pos"):
+            continue
+        try:
+            pair, direction = key.split(":", 1)
+        except ValueError:
+            continue
+        opened_at_raw = leg.get("opened_at_ts", "")
+        age_h = None
+        try:
+            dt = datetime.fromisoformat(opened_at_raw.replace("Z", "+00:00"))
+            if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+            age_h = (now - dt).total_seconds() / 3600
+        except (ValueError, AttributeError):
+            pass
+        dd = float(leg.get("cum_dd_pct", 0))
+        out.append({
+            "key": key, "pair": pair, "direction": direction,
+            "layers": int(leg.get("layers", 0)),
+            "size_usd": float(leg.get("total_size_usd", 0)),
+            "dd_pct": dd, "age_h": age_h,
+            "alert": dd > 2.0 and (age_h or 0) > 24,
+        })
+    return out
+
+
 def _emitted_setups_by_type(metrics: list[dict]) -> Counter:
     return Counter(
         m.get("setup_type", "?") for m in metrics
@@ -140,13 +195,13 @@ def main() -> int:
     if top_drops:
         lines.append("Top drop reasons:")
         for reason, n in top_drops:
-            lines.append(f"  {n}× {reason}")
+            lines.append(f"  {n}x{reason}")
         lines.append("")
 
     if emitted:
         lines.append("Emitted setups by type:")
         for t, n in emitted.most_common(10):
-            lines.append(f"  {n}× {t}")
+            lines.append(f"  {n}x{t}")
         lines.append("")
 
     if gc_decisions:
@@ -161,12 +216,37 @@ def main() -> int:
         lines.append("")
 
     lines.append(f"P-15 realized PnL: ${p15_delta:+.2f} on {len(p15_events)} events")
+
+    # Per-leg breakdown of P-15 activity in window.
+    p15_breakdown = _p15_breakdown_by_leg(p15_events)
+    if p15_breakdown:
+        lines.append("  by leg (open/harvest/close/PnL):")
+        for key in sorted(p15_breakdown):
+            b = p15_breakdown[key]
+            lines.append(f"    {key:<18} O={b['open']} H={b['harvest']} "
+                          f"C={b['close']} PnL=${b['pnl']:+.2f}")
+
+    # Currently open legs + DD alerts.
+    current_legs = _p15_current_legs()
+    if current_legs:
+        lines.append("")
+        lines.append(f"P-15 open right now ({len(current_legs)} legs):")
+        for leg in current_legs:
+            age_str = f"{leg['age_h']:.1f}h" if leg["age_h"] is not None else "n/a"
+            alert = " [ALERT DD>2% age>24h]" if leg["alert"] else ""
+            lines.append(
+                f"  {leg['pair']:<10} {leg['direction']:<5}  "
+                f"layers={leg['layers']}  ${leg['size_usd']:.0f}  "
+                f"DD={leg['dd_pct']:.2f}%  age={age_str}{alert}"
+            )
     lines.append("")
 
     if not metrics and not audit and not p15_events:
         lines.append("[WARN] No data in window — pipeline silent or files missing.")
 
     msg = "\n".join(lines)
+    # Print with utf-8 to avoid cp1251 crashes on cyrillic/×/emoji.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     print(msg)
 
     # Send to TG via done.py if available

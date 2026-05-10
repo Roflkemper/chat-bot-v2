@@ -530,7 +530,7 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
                 "layers": leg.layers,
             })
             # Mutate state: realize half, prepare for reentry
-            reentry_size = _resolve_base_size_usd()
+            reentry_size = _resolve_base_size_usd(getattr(ctx, "pair", "BTCUSDT"))
             leg.total_size_usd -= harvest_size
             leg.weighted_entry -= avg * harvest_size
             leg.weighted_entry += reentry_price * reentry_size
@@ -543,7 +543,11 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
 
     # REENTRY: emitted as a separate stage card right after HARVEST.
     # Detected by transition: last stage was HARVEST, position is healthy, gate still on.
+    # 2026-05-11 fix: reentry_size was defined inside the HARVEST branch above and
+    # was out of scope when REENTRY ran on the next tick. UnboundLocalError fired
+    # 131x in 24h until found via daily KPI. Now: re-resolve from pair.
     if leg.last_emitted_stage == "HARVEST":
+        reentry_size_repo = _resolve_base_size_usd(getattr(ctx, "pair", "BTCUSDT"))
         stype = SetupType.P15_LONG_REENTRY if is_long else SetupType.P15_SHORT_REENTRY
         s = _build_setup(
             setup_type=stype, ctx=ctx, leg=leg,
@@ -551,7 +555,7 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
                 "stage": "REENTRY",
                 "reentry_price": round(leg.extreme_price, 2),
                 "new_avg_entry": round(avg, 2),
-                "new_layer_size_usd": reentry_size,
+                "new_layer_size_usd": reentry_size_repo,
                 "next_target_extreme_pct": f"+{P15_R_PCT}% from now",
             },
         )
