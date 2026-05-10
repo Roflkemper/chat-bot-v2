@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .combo_filter import filter_setups, is_combo_allowed
+from .runtime_disabled import is_detector_disabled
 from .ict_context import ICT_CONTEXT_COLS, ICTContextReader
 from .models import Setup
 from .pipeline_metrics import record as metrics_record, record_setup
@@ -372,6 +373,10 @@ def _run_detectors_once(
     ict_ctx = ctx.ict_context  # captured once per tick
 
     for detector in DETECTOR_REGISTRY:
+        if is_detector_disabled(detector.__name__):
+            metrics_record(stage_outcome="env_disabled",
+                           drop_reason=detector.__name__)
+            continue
         try:
             setup = detector(ctx)
             if setup is None:
