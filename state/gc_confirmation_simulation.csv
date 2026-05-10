@@ -1,0 +1,15 @@
+detector,setup_type,total,aligned_%,misaligned_%,neutral_%,no_gc_%,hard_block_list,would_block,would_keep,keep_rate_%
+detect_long_multi_divergence,long_multi_divergence,341,6.2,7.6,86.2,0.0,True,26,315,92.4
+detect_double_bottom_setup,long_double_bottom,187,8.6,2.1,89.3,0.0,True,4,183,97.9
+detect_double_top_setup,short_double_top,183,1.1,6.6,92.3,0.0,True,12,171,93.4
+detect_long_dump_reversal,long_dump_reversal,160,39.4,0.0,60.6,0.0,False,0,160,100.0
+detect_short_pdh_rejection,short_pdh_rejection,30,33.3,0.0,66.7,0.0,False,0,30,100.0
+detect_long_rsi_momentum_ga,long_rsi_momentum_ga,26,0.0,80.8,19.2,0.0,False,0,26,100.0
+detect_short_rally_fade,short_rally_fade,21,66.7,0.0,33.3,0.0,False,0,21,100.0
+detect_long_pdl_bounce,long_pdl_bounce,20,20.0,0.0,80.0,0.0,False,0,20,100.0
+detect_short_mfi_multi_ga,short_mfi_multi_ga,8,25.0,12.5,62.5,0.0,False,0,8,100.0
+detect_long_div_bos_confirmed,long_div_bos_confirmed,7,0.0,0.0,100.0,0.0,False,0,7,100.0
+detect_long_div_bos_15m,long_div_bos_15m,6,0.0,0.0,100.0,0.0,False,0,6,100.0
+detect_short_overbought_fade,short_overbought_fade,5,60.0,0.0,40.0,0.0,False,0,5,100.0
+detect_long_oversold_reclaim,long_oversold_reclaim,4,75.0,0.0,25.0,0.0,False,0,4,100.0
+detect_short_div_bos_15m,short_div_bos_15m,1,0.0,0.0,100.0,0.0,False,0,1,100.0

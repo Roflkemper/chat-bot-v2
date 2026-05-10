@@ -29,6 +29,111 @@ _DEDUP_PATH = Path("state/setup_detector_semantic_dedup.json")
 _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_ICT_PARQUET = _ROOT / "data" / "ict_levels" / "BTCUSDT_ict_levels_1m.parquet"
 
+# 2026-05-10 GC-confirmation: see docs/STRATEGIES/GRID_COORDINATOR_VS_DETECTORS.md.
+# Detectors with high alignment (>=30% aligned, 0% misaligned) get confidence
+# boost when GC confirms; detectors with high misalignment (multi_divergence,
+# double_top/bottom) get suppressed when GC contradicts.
+_GC_AUDIT_PATH = Path("state/gc_confirmation_audit.jsonl")
+_GC_BOOST_PCT = 15.0     # +15% confidence when aligned
+_GC_PENALTY_PCT = 30.0   # -30% confidence when misaligned
+_GC_MISALIGNED_HARD_BLOCK = {  # detectors so noisy they're hard-blocked when misaligned
+    "long_multi_divergence", "long_double_bottom", "short_double_top",
+}
+_GC_SCORE_MIN = 3
+
+
+def _query_grid_coordinator() -> dict | None:
+    """Run a fresh evaluate_exhaustion on current 1h BTC/ETH + deriv state.
+
+    Returns {'upside_score': int, 'downside_score': int, 'details': dict} or None
+    if data unavailable. Cached errors swallowed.
+    """
+    try:
+        from services.grid_coordinator.loop import evaluate_exhaustion, _read_deriv
+        from core.data_loader import load_klines
+        btc = load_klines(symbol="BTCUSDT", timeframe="1h", limit=50)
+        eth = load_klines(symbol="ETHUSDT", timeframe="1h", limit=50)
+        deriv = _read_deriv()
+        return evaluate_exhaustion(btc, eth, deriv)
+    except Exception:
+        logger.exception("setup_detector.gc_query_failed")
+        return None
+
+
+def _gc_alignment(setup: Setup, gc_state: dict) -> str:
+    """Returns 'aligned' / 'misaligned' / 'neutral'.
+
+    aligned:    LONG setup + downside_score>=3, OR SHORT setup + upside_score>=3
+    misaligned: LONG setup + upside_score>=3, OR SHORT setup + downside_score>=3
+    neutral:    GC has no strong signal (both <3) or only same-direction signal
+    """
+    setup_side = "long" if "long" in setup.setup_type.value.lower() else "short"
+    up = int(gc_state.get("upside_score", 0))
+    down = int(gc_state.get("downside_score", 0))
+    if setup_side == "long":
+        if down >= _GC_SCORE_MIN: return "aligned"
+        if up >= _GC_SCORE_MIN: return "misaligned"
+    else:  # short
+        if up >= _GC_SCORE_MIN: return "aligned"
+        if down >= _GC_SCORE_MIN: return "misaligned"
+    return "neutral"
+
+
+def _gc_audit_write(record: dict) -> None:
+    try:
+        _GC_AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _GC_AUDIT_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+    except OSError:
+        pass
+
+
+def _apply_gc_confirmation(setup: Setup, gc_state: dict, now_iso: str) -> tuple[Setup | None, str]:
+    """Apply GC alignment to a setup.
+
+    Returns (setup_or_None, decision_str). None means hard-blocked.
+    """
+    alignment = _gc_alignment(setup, gc_state)
+    audit = {
+        "ts": now_iso,
+        "setup_type": setup.setup_type.value,
+        "pair": setup.pair,
+        "setup_id": setup.setup_id,
+        "side": "long" if "long" in setup.setup_type.value.lower() else "short",
+        "gc_upside": gc_state.get("upside_score", 0),
+        "gc_downside": gc_state.get("downside_score", 0),
+        "alignment": alignment,
+        "before_confidence": setup.confidence_pct,
+    }
+
+    if alignment == "neutral":
+        audit["decision"] = "pass-through"
+        audit["after_confidence"] = setup.confidence_pct
+        _gc_audit_write(audit)
+        return setup, "neutral"
+
+    if alignment == "aligned":
+        new_conf = min(99.0, setup.confidence_pct + _GC_BOOST_PCT)
+        boosted = dataclasses.replace(setup, confidence_pct=new_conf)
+        audit["decision"] = f"boost +{_GC_BOOST_PCT}%"
+        audit["after_confidence"] = new_conf
+        _gc_audit_write(audit)
+        return boosted, "aligned"
+
+    # misaligned
+    if setup.setup_type.value in _GC_MISALIGNED_HARD_BLOCK:
+        audit["decision"] = "hard-block (high-noise detector)"
+        audit["after_confidence"] = None
+        _gc_audit_write(audit)
+        return None, "misaligned-blocked"
+
+    new_conf = max(10.0, setup.confidence_pct - _GC_PENALTY_PCT)
+    penalised = dataclasses.replace(setup, confidence_pct=new_conf)
+    audit["decision"] = f"penalty -{_GC_PENALTY_PCT}%"
+    audit["after_confidence"] = new_conf
+    _gc_audit_write(audit)
+    return penalised, "misaligned-penalty"
+
 
 def _simple_session_label(now_utc: datetime) -> str:
     """Fallback session label without advise_v2 dependency."""
@@ -235,6 +340,10 @@ def _run_detectors_once(
         )
     }
 
+    # Query grid_coordinator once per cycle for GC-confirmation gating.
+    gc_state = _query_grid_coordinator() if allowed else None
+    now_iso = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     new_setups: list[Setup] = []
     for setup in allowed:
         if _is_recently_emitted(setup, dedup, now_utc):
@@ -243,6 +352,27 @@ def _run_detectors_once(
                 setup.setup_type.value, setup.semantic_signature, setup.pair,
             )
             continue
+
+        # GC-confirmation: skip P-15 lifecycle (handled separately) and only
+        # apply when GC state is available (else pass-through unchanged).
+        if gc_state is not None and not setup.setup_type.value.startswith("p15_"):
+            adjusted, decision = _apply_gc_confirmation(setup, gc_state, now_iso)
+            if adjusted is None:
+                logger.info(
+                    "setup_detector.gc_blocked type=%s pair=%s gc_up=%d gc_down=%d reason=%s",
+                    setup.setup_type.value, setup.pair,
+                    gc_state.get("upside_score", 0), gc_state.get("downside_score", 0),
+                    decision,
+                )
+                continue
+            if decision != "neutral":
+                logger.info(
+                    "setup_detector.gc_%s type=%s pair=%s conf %.0f%% -> %.0f%%",
+                    decision, setup.setup_type.value, setup.pair,
+                    setup.confidence_pct, adjusted.confidence_pct,
+                )
+            setup = adjusted
+
         dedup[setup.semantic_signature] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
         store.write(setup)
         new_setups.append(setup)
