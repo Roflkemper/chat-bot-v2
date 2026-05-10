@@ -88,3 +88,19 @@ SWING_LOW_BUFFER = 0.997
 GRID_BOUNDARY_PREMIUM = 1.003
 # Trigger threshold: price must exceed reference by 0.1% to consider raising.
 GRID_BOUNDARY_TRIGGER = 1.001
+
+# ─── Scope of this module ───────────────────────────────────────────────────
+# Per-strategy constants stay in their own modules. They're tuned by backtest
+# specifically for that strategy and pulling them here would create false
+# coupling. NOT here:
+#   - mega_setup.py:        MEGA_SL_PCT / MEGA_TP*_RR (validated 2y BTC)
+#   - multi_asset_confluence.py / _v2.py: CROSS_ASSET_*, V2_*, CORRELATION_THRESHOLD
+#   - multi_divergence.py:  SL_PCT, TP*_RR, CONFIRMED_*, SL_PCT_15M*
+#   - rsi_momentum_ga.py:   RSI_THRESHOLD=71.0 (GA-optimized, not generic)
+#   - mfi_multi_ga.py:      MFI_THRESHOLD=71.3 (GA-optimized)
+#   - p15_rolling.py:       P15_R_PCT / K_PCT / DD_CAP_PCT (validated multi-asset)
+#
+# This file holds ONLY values reused across multiple generic detectors in
+# setup_types.py (PDL/PDH bounce/rejection, dump/rally fade, oversold reclaim,
+# overbought fade, liq magnet) — where the same buffer multiplier or RSI gate
+# appeared inline in 5+ places.

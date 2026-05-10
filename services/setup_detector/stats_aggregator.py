@@ -119,7 +119,10 @@ def compute_setup_stats(
     # Filter by recency
     recent_setups = [s for s in setups_raw if _is_recent(s.get("detected_at", ""), cutoff_ts)]
 
-    # Include historical backtest data if available
+    # Include historical backtest data if available. The parquet was a
+    # 2026-04 artifact from setup_backtest.py runs; it's optional and may
+    # not exist on a fresh deploy. Audited 2026-05-10: file missing means
+    # stats show live-only — log a single info line for clarity.
     hist_rows: list[dict[str, Any]] = []
     if include_backtest:
         hist_path = historical_path or _DEFAULT_HISTORICAL_PARQUET
@@ -130,6 +133,10 @@ def compute_setup_stats(
                 hist_rows = hdf.to_dict("records")
             except Exception:
                 logger.exception("stats_aggregator.load_historical_failed")
+        else:
+            logger.info("stats_aggregator.historical_parquet_missing path=%s "
+                         "(live-only stats — generate via tools/setup_backtest.py "
+                         "if backtest aggregation needed)", hist_path)
 
     all_setups = recent_setups
     hist_count = len(hist_rows)
