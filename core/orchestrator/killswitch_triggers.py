@@ -16,7 +16,10 @@ def check_margin_drawdown_trigger(initial_balance_usd: float, threshold_pct: flo
     total_balance = sum(float(getattr(bot, "balance_usd", 0.0) or 0.0) for bot in snapshot.bots.values())
 
     if initial_balance_usd <= 0 or total_balance == 0:
-        logger.warning("[KILLSWITCH] Баланс портфолио = 0, триггер пропущен.")
+        # 2026-05-10: понижено WARN -> DEBUG. Это нормальное состояние когда
+        # bot не получает live баланса (paper mode / нет open positions).
+        # Раньше флудило 30+ раз/час в logs/app.log.
+        logger.debug("[KILLSWITCH] Баланс портфолио = 0, триггер пропущен.")
         return
 
     drawdown_pct = ((initial_balance_usd - total_balance) / initial_balance_usd) * 100.0

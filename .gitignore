@@ -119,6 +119,7 @@ state/setups_active.json
 state/setup_outcomes.jsonl
 state/paper_trades.jsonl
 state/paper_trader_dedup.json
+state/paper_trader_pending.json
 state/cascade_alert_dedup.json
 state/telegram_sent_dedup.json
 state/stale_monitor_state.json
@@ -135,6 +136,35 @@ data/exit_advisor/dd_onset_cache.json
 data/forecast_features/latest_forecast.json
 data/regime/switcher_state.json
 docs/STATE/ohlcv_ingest_log.jsonl
+
+# 2026-05-10: live state files added by recent sessions
+state/p15_state.json
+state/phase_state.json
+state/regime_shadow.jsonl
+state/setup_detector_semantic_dedup.json
+state/pre_cascade_dedup.json
+state/spike_alert_dedup.json
+state/test3_tpflat_*.jsonl
+state/test3_tpflat_*_state.json
+state/test3_tpflat_compare.jsonl
+state/leaderboard_history.jsonl
+state/p15_tuner_history.jsonl
+state/gc_confirmation_audit.jsonl
+
+# Research outputs (regenerable from tools/)
+state/setup_research_*.csv
+state/detectors_honest_runs.csv
+state/grid_coordinator_retro_signals.csv
+state/grid_coordinator_vs_detectors.csv
+state/gc_confirmation_simulation.csv
+state/combined_all_bots_v2.csv
+state/combined_all_bots_v3_adaptive.csv
+state/a2_tick_edge_runs.csv
+state/ga_*.jsonl
+
+# Binance derivative history (re-fetchable via tools/_download_binance_history.py)
+data/historical/binance_*.csv
+data/historical/binance_*.parquet
 
 # Local Claude Code settings (operator-specific permissions)
 .claude/settings.json

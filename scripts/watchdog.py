@@ -54,7 +54,11 @@ COMPONENTS = {
         "cmd": [str(PYTHON), "app_runner.py"],
         "cmdline_must_contain": "app_runner.py",
         "freshness_file": ROOT / "logs" / "app.log",
-        "freshness_max_min": 5,
+        # 2026-05-10 fix: было 5 мин — слишком агрессивно. На тихом рынке +
+        # smart-pause приводило к 30 рестартам/час потому что setup_detector
+        # не эмитил сетапы и log молчал >5min. Увеличиваем до 15 мин — этого
+        # хватит чтобы deriv_live (5min interval) что-то записал между тиками.
+        "freshness_max_min": 15,
     },
     "tracker": {
         "cmd": [str(PYTHON), "ginarea_tracker/tracker.py"],

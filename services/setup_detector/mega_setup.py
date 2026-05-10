@@ -43,21 +43,27 @@ def _read_recent_setups(window_min: int, pair: str | None = None) -> list[dict]:
         return []
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_min)
     out: list[dict] = []
+    # 2026-05-10 fix: open as binary then decode per-line, otherwise text-mode
+    # f.seek() into middle of multi-byte UTF-8 sequence raises UnicodeDecodeError
+    # (observed in app.log: 'utf-8' codec can't decode byte 0xb6).
     try:
-        with SETUPS_PATH.open(encoding="utf-8") as f:
-            # Read tail-only for performance — file can be large.
+        with SETUPS_PATH.open("rb") as f:
             try:
                 f.seek(0, 2)  # SEEK_END
                 size = f.tell()
                 seek_to = max(0, size - 256_000)
                 f.seek(seek_to)
-                # Only discard partial line if we seeked past the start —
-                # otherwise we'd skip the first valid record on a small file.
                 if seek_to > 0:
-                    f.readline()
-                lines = f.readlines()
+                    f.readline()  # discard possibly-partial line in bytes
+                raw_lines = f.readlines()
             except OSError:
-                lines = []
+                raw_lines = []
+        lines = []
+        for rb in raw_lines:
+            try:
+                lines.append(rb.decode("utf-8"))
+            except UnicodeDecodeError:
+                continue  # skip corrupt line
         for raw in lines:
             try:
                 rec = json.loads(raw)
