@@ -34,9 +34,34 @@ def _ctx_dump(regime: str = "consolidation", session: str = "NY_AM") -> Detectio
 
 
 def _ctx_rally(regime: str = "consolidation", session: str = "NY_AM") -> DetectionContext:
-    """Context with strong rally — should trigger SHORT_RALLY_FADE."""
+    """Context with strong rally — should trigger SHORT_RALLY_FADE.
+
+    2026-05-10: detect_short_rally_fade now requires RSI_15m>=75 + 6h slope.
+    Provide ohlcv_15m with strong uptrend so RSI computes >=75.
+    """
     df_1m = make_rally_ohlcv(n=100, start_price=80000.0, rally_pct=4.0, volume_spike=2.0)
-    df_1h = make_1h_rally(n=20, start_price=80000.0, rally_pct=5.0)
+    # 1h: flat for first 13 bars, then sharp rally last 7 → slope_6h >= 1.5%
+    import pandas as pd
+    import numpy as np
+    h_prices = np.concatenate([
+        np.full(13, 80000.0),
+        np.linspace(80000.0, 83200.0, 7),
+    ])
+    h_idx = pd.date_range("2026-01-01", periods=20, freq="1h", tz="UTC")
+    df_1h = pd.DataFrame({
+        "open": h_prices, "high": h_prices * 1.005, "low": h_prices * 0.998,
+        "close": h_prices, "volume": 1000.0,
+    }, index=h_idx)
+    # 15m: build series where last 14 closes are strictly rising → RSI >=75
+    prices = np.concatenate([
+        np.full(15, 78000.0),
+        np.linspace(78000.0, 84500.0, 15),
+    ])
+    idx = pd.date_range("2026-01-01", periods=30, freq="15min", tz="UTC")
+    df_15m = pd.DataFrame({
+        "open": prices, "high": prices * 1.001, "low": prices * 0.999,
+        "close": prices, "volume": 1000.0,
+    }, index=idx)
     return DetectionContext(
         pair="BTCUSDT",
         current_price=float(df_1m["close"].iloc[-1]),
@@ -44,6 +69,7 @@ def _ctx_rally(regime: str = "consolidation", session: str = "NY_AM") -> Detecti
         session_label=session,
         ohlcv_1m=df_1m,
         ohlcv_1h=df_1h,
+        ohlcv_15m=df_15m,
         portfolio=PortfolioSnapshot(),
     )
 
@@ -115,8 +141,15 @@ def test_detect_long_dump_reversal_below_min_strength() -> None:
 
 def test_detect_short_rally_fade_correct() -> None:
     ctx = _ctx_rally()
+    from services.setup_detector.indicators import compute_rsi
+    from services.setup_detector.setup_types import _price_change_pct
+    rsi_15m = compute_rsi(ctx.ohlcv_15m["close"], period=14)
+    slope = _price_change_pct(ctx.current_price, float(ctx.ohlcv_1h["close"].iloc[-7]))
     setup = detect_short_rally_fade(ctx)
-    assert setup is not None
+    assert setup is not None, (
+        f"RSI_15m={rsi_15m:.2f} (need>=75), slope_6h={slope:.2f}% (need>=1.5), "
+        f"current={ctx.current_price:.2f}"
+    )
     assert setup.setup_type == SetupType.SHORT_RALLY_FADE
     assert setup.strength >= 6
     assert setup.stop_price is not None and setup.entry_price is not None

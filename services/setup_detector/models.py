@@ -104,15 +104,31 @@ class Setup:
     def semantic_signature(self) -> str:
         """Stable hash identifying the same logical setup across detector cycles.
 
-        Used by detector loop to suppress re-emission of the same divergence /
-        pattern every 5 minutes while the underlying basis hasn't changed.
-        Includes setup_type, pair, regime, and basis values rounded to 2dp.
+        2026-05-10 incident: short_pdh_rejection emitted every 4min on XRP because
+        basis values (RSI, volume) drift continuously while the same PDH/PDL
+        condition holds. Now: round numerics to 1dp/coarse-bucket so micro-drift
+        doesn't break dedup. Setup is "the same" as long as level + regime hold.
+
+        Includes setup_type, pair, regime. Basis numeric values bucketed:
+          - RSI/MFI/score → integer (rounded)
+          - prices → 1dp
+          - volume ratios / vol_z → 1 decimal
         """
         parts = [self.setup_type.value, self.pair, self.regime_label]
         for b in sorted(self.basis, key=lambda x: x.label):
             v = b.value
+            label_lower = b.label.lower() if isinstance(b.label, str) else ""
             if isinstance(v, float):
-                v = f"{v:.2f}"
+                # Coarse-bucket noisy indicators so micro-drift doesn't bypass dedup.
+                # Stride 5 for RSI/MFI (62-67 -> "65"), stride 0.5 for volume ratios.
+                if any(k in label_lower for k in ("rsi", "mfi")):
+                    v = str(int(round(v / 5.0) * 5))  # bucket by 5
+                elif any(k in label_lower for k in ("score", "тест", "wick", "test")):
+                    v = str(int(round(v)))  # integer
+                elif any(k in label_lower for k in ("объём", "volume", "ratio", "vol_z")):
+                    v = f"{round(v * 2) / 2:.1f}"  # 0.5 stride: 1.55 -> 1.5
+                else:
+                    v = f"{v:.1f}"
             parts.append(f"{b.label}={v}")
         canonical = "|".join(parts)
         return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:12]
