@@ -416,6 +416,20 @@ def detect_short_rally_fade(ctx: DetectionContext) -> Setup | None:
     if len(df1h) < 6 or len(df1m) < 30:
         return None
 
+    # 2026-05-10 SETUP_FILTER_RESEARCH (commit 1434a44): на 365д baseline PF был
+    # 0.54 (-114% PnL). После добавления фильтра RSI_15m>=75.6 + trend_slope_6h>=1.6%
+    # PF стал 1.39. Без этого hard-gate детектор выпускает ~3x ложных сигналов.
+    df15m = ctx.ohlcv_15m
+    if df15m is None or len(df15m) < 20:
+        return None
+    rsi_15m = compute_rsi(df15m["close"], period=14)
+    if rsi_15m < 75.0:
+        return None  # rally not extreme enough — skip
+    if len(df1h) >= 7:
+        slope_6h = _price_change_pct(ctx.current_price, float(df1h["close"].iloc[-7]))
+        if slope_6h < 1.5:
+            return None  # uptrend not strong enough — skip
+
     price_4h_ago = float(df1h["close"].iloc[-5])
     price_change_4h = _price_change_pct(ctx.current_price, price_4h_ago)
     cond_rally = price_change_4h >= 2.0

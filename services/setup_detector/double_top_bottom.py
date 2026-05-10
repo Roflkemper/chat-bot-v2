@@ -201,6 +201,10 @@ def detect_double_bottom_setup(ctx) -> Setup | None:
 
             entry = last_close
             stop = avg * 0.997
+            # 2026-05-10 SETUP_FILTER_RESEARCH: попытка перенести TP1 на peak дала
+            # WR 4.7% (TP касается, но slippage съедает). Возвращаем оригинал.
+            # Реальная проблема: entry=last_close возле peak, нужен новый детектор
+            # который входит ПОСЛЕ прорыва neckline (breakout-confirmed) — TODO.
             tp1 = peak + (peak - avg) * 0.5
             tp2 = peak + (peak - avg) * 1.0
             rr = abs(tp1 - entry) / max(abs(entry - stop), 1e-6)

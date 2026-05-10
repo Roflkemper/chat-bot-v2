@@ -30,6 +30,14 @@ logger = logging.getLogger(__name__)
 LOOP_INTERVAL_SEC = 60
 SETUPS_PATH = Path("state/setups.jsonl")
 DEDUP_PATH = Path("state/paper_trader_dedup.json")  # tracks setup_ids already opened
+PENDING_PATH = Path("state/paper_trader_pending.json")  # confirmation-gated setups
+
+# 2026-05-10 SETUP_FILTER_RESEARCH (commit 1434a44): confirmation gate boosted
+# long_multi_divergence PF 0.83 -> 1.53 just by waiting and requiring drift.
+# Apply globally to all paper trades.
+CONFIRMATION_LAG_MIN = 10        # wait 10 min after detection before considering entry
+CONFIRMATION_DRIFT_PCT = 0.10    # require 0.1% price move in setup direction
+CONFIRMATION_TIMEOUT_MIN = 30    # cancel if no drift within 30 min
 
 
 def _load_dedup() -> set[str]:
@@ -47,6 +55,55 @@ def _save_dedup(seen: set[str]) -> None:
         DEDUP_PATH.write_text(json.dumps(sorted(seen)), encoding="utf-8")
     except OSError:
         pass
+
+
+def _load_pending() -> dict:
+    """Pending setups awaiting confirmation: setup_id -> {detected_at, side, entry, pair}."""
+    if not PENDING_PATH.exists():
+        return {}
+    try:
+        return json.loads(PENDING_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_pending(pending: dict) -> None:
+    PENDING_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        PENDING_PATH.write_text(json.dumps(pending, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _check_confirmation(pending_entry: dict, current_price: float, now: datetime
+                       ) -> tuple[str, str | None]:
+    """Decide whether a pending setup is ready / cancelled / still waiting.
+
+    Returns ("ready", None) | ("cancel", reason) | ("wait", reason).
+    """
+    try:
+        detected = datetime.fromisoformat(pending_entry["detected_at"].replace("Z", "+00:00"))
+        if detected.tzinfo is None:
+            detected = detected.replace(tzinfo=timezone.utc)
+    except (KeyError, ValueError, TypeError):
+        return ("cancel", "bad-detected-at")
+
+    age_min = (now - detected).total_seconds() / 60
+    if age_min < CONFIRMATION_LAG_MIN:
+        return ("wait", f"age {age_min:.1f}min < {CONFIRMATION_LAG_MIN}")
+    if age_min > CONFIRMATION_TIMEOUT_MIN:
+        return ("cancel", f"timeout {age_min:.1f}min")
+
+    entry = float(pending_entry.get("entry", 0))
+    side = pending_entry.get("side", "")
+    if entry <= 0 or side not in ("long", "short"):
+        return ("cancel", "bad-entry-or-side")
+    drift_pct = (current_price / entry - 1) * 100
+    if side == "long" and drift_pct >= CONFIRMATION_DRIFT_PCT:
+        return ("ready", f"drift +{drift_pct:.2f}%")
+    if side == "short" and drift_pct <= -CONFIRMATION_DRIFT_PCT:
+        return ("ready", f"drift {drift_pct:.2f}%")
+    return ("wait", f"drift {drift_pct:+.2f}%")
 
 
 def _read_recent_setups() -> list[dict]:
@@ -234,26 +291,66 @@ async def paper_trader_loop(
     interval_sec: int = LOOP_INTERVAL_SEC,
 ) -> None:
     """Main async loop. Runs until stop_event is set."""
-    logger.info("paper_trader.loop.start interval=%ds", interval_sec)
+    logger.info("paper_trader.loop.start interval=%ds confirm_lag=%dmin drift=%.2f%%",
+                interval_sec, CONFIRMATION_LAG_MIN, CONFIRMATION_DRIFT_PCT)
     seen_setup_ids = _load_dedup()
+    pending = _load_pending()
     while not stop_event.is_set():
         try:
-            # 1. New setups → open paper trades
+            # 1a. New setups → enter pending pool (NOT open immediately)
             setups_raw = _read_recent_setups()
             new_setups = [s for s in setups_raw if s.get("setup_id") not in seen_setup_ids]
             for raw in new_setups:
-                seen_setup_ids.add(raw.get("setup_id", ""))
-                setup = _setup_from_dict(raw)
-                if setup is None:
+                sid = raw.get("setup_id", "")
+                seen_setup_ids.add(sid)
+                if not sid: continue
+                # Skip P-15 lifecycle setups — they have their own handler
+                if str(raw.get("setup_type", "")).startswith("p15_"):
                     continue
-                opened = trader.open_paper_trade(setup)
-                if opened and send_fn:
-                    try:
-                        send_fn(_format_open_alert(opened))
-                    except Exception:
-                        logger.exception("paper_trader.loop.send_open_failed")
+                side = "long" if "long" in str(raw.get("setup_type", "")).lower() else "short"
+                pending[sid] = {
+                    "detected_at": raw.get("detected_at", ""),
+                    "side": side,
+                    "entry": float(raw.get("entry_price") or raw.get("current_price") or 0),
+                    "pair": raw.get("pair", "BTCUSDT"),
+                    "raw": raw,  # keep full dict for later open
+                }
             if new_setups:
                 _save_dedup(seen_setup_ids)
+                _save_pending(pending)
+
+            # 1b. Check pending pool for confirmation
+            now = datetime.now(timezone.utc)
+            ready_ids = []
+            cancel_ids = []
+            # Group pending by pair for batched price fetch
+            pending_pairs = {p.get("pair", "BTCUSDT") for p in pending.values()}
+            pending_prices = _get_prices_for_symbols(tuple(sorted(pending_pairs))) if pending_pairs else {}
+            for sid, entry in list(pending.items()):
+                pair = entry.get("pair", "BTCUSDT")
+                cur = pending_prices.get(pair)
+                if cur is None: continue
+                state, reason = _check_confirmation(entry, cur, now)
+                if state == "ready":
+                    ready_ids.append((sid, entry, reason))
+                elif state == "cancel":
+                    cancel_ids.append((sid, entry, reason))
+            for sid, entry, reason in ready_ids:
+                setup = _setup_from_dict(entry["raw"])
+                if setup is None:
+                    pending.pop(sid, None); continue
+                opened = trader.open_paper_trade(setup)
+                pending.pop(sid, None)
+                if opened and send_fn:
+                    try:
+                        send_fn(f"⏱ confirmed ({reason})\n" + _format_open_alert(opened))
+                    except Exception:
+                        logger.exception("paper_trader.loop.send_open_failed")
+            for sid, entry, reason in cancel_ids:
+                pending.pop(sid, None)
+                logger.info("paper_trader.loop.confirmation_cancelled sid=%s reason=%s", sid, reason)
+            if ready_ids or cancel_ids:
+                _save_pending(pending)
 
             # 2. Update open trades with prices for all relevant symbols.
             # Multi-symbol since 2026-05-08: BTC + ETH paper trades both supported.
