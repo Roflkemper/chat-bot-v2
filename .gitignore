@@ -127,6 +127,9 @@ state/grid_coordinator_intraday_dedup.json
 state/app_runner_starts.jsonl
 state/mega_setup_backtest.csv
 state/mega_short_v2_gc.csv
+state/mega_short_backtest.csv
+state/mega_quad_exploration.csv
+state/grid_intraday_signals.csv
 state/stale_monitor_state.json
 state/signal_alert_last_sent.json
 state/advise_audit.jsonl

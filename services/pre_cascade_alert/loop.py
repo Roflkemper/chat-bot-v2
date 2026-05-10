@@ -27,10 +27,13 @@ JOURNAL_PATH = ROOT / "state" / "pre_cascade_fires.jsonl"
 POLL_INTERVAL_SEC = 60
 SYMBOLS = ("BTCUSDT", "ETHUSDT", "XRPUSDT")
 
-OI_RISING_PCT = 1.5            # +1.5% oi_change_1h_pct
-FUNDING_EXTREME = 0.0006       # 0.06% per 8h
-LS_LONG_CROWDED = 1.30         # global_ls_ratio
-LS_SHORT_CROWDED = 0.77
+# 2026-05-10: relaxed from 1.5%/0.06%/1.30/0.77 (those gave 0 signals/28d in
+# backtest — current 2025-2026 BTC funding mostly negative, LS rarely >1.05).
+# New thresholds tuned to actual data range (see PRE_CASCADE_BACKTEST.md).
+OI_RISING_PCT = 0.5            # was 1.5
+FUNDING_EXTREME = 0.0001       # was 0.0006 (current funding median -0.003%)
+LS_LONG_CROWDED = 1.05         # was 1.30 (current LS max 1.08)
+LS_SHORT_CROWDED = 0.60        # was 0.77 (current LS min 0.48)
 
 COOLDOWN_SEC = 3600            # 1h between alerts per (symbol, direction)
 
