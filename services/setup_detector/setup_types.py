@@ -779,7 +779,8 @@ from services.setup_detector.mega_setup import detect_long_mega_dump_bounce
 from services.setup_detector.rsi_momentum_ga import detect_long_rsi_momentum_ga
 from services.setup_detector.mfi_multi_ga import detect_short_mfi_multi_ga
 from services.setup_detector.p15_rolling import detect_p15_long, detect_p15_short
-from services.setup_detector.h10_adapter import detect_h10_liquidity_probe
+# from services.setup_detector.h10_adapter import detect_h10_liquidity_probe
+# 2026-05-10: H10 disabled in registry (PF 0.51-0.64 across 4 configs on 365d).
 
 DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_dump_reversal,
@@ -806,7 +807,10 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_long_multi_divergence,   # 1h base, PF=1.78 (2026-05-08)
     detect_p15_long,                # P-15 LONG leg, +$65k/2y validated (2026-05-09)
     detect_p15_short,               # P-15 SHORT leg, +$67k/2y validated (2026-05-09)
-    detect_h10_liquidity_probe,     # H10 liquidity grid, 79.3% WR / +$324 / 150 cycles (TZ-056)
+    # detect_h10_liquidity_probe,   # 2026-05-10: DISABLED. 365d sweep PF 0.51-0.64
+                                    # все 4 конфигурации убыточны. Original 79.3% claim
+                                    # был на специфичном апреле 2026 + 0% liq weight.
+                                    # Re-enable когда условия рынка изменятся (cf. H10_PARAM_SWEEP.md).
     detect_grid_raise_boundary,
     detect_grid_pause_entries,
     detect_grid_booster_activate,

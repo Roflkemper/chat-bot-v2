@@ -89,6 +89,19 @@ def _resolve_base_size_usd() -> float:
 P15_MAX_LAYERS = 10
 
 P15_STATE_PATH = Path("state/p15_state.json")
+# 2026-05-10 TZ#2: equity curve writer. Each CLOSE/HARVEST event appends
+# one line. Used by edge_tracker + future analytics.
+P15_EQUITY_PATH = Path("state/p15_equity.jsonl")
+
+
+def _append_equity_event(event: dict) -> None:
+    """Best-effort append. Never blocks detector path."""
+    try:
+        P15_EQUITY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with P15_EQUITY_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(event, default=str) + "\n")
+    except OSError:
+        logger.exception("p15_rolling.equity_write_failed")
 
 
 @dataclass
@@ -320,6 +333,16 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
             leg.cum_dd_pct = 0.0
             leg.last_emitted_stage = "OPEN"
             leg.last_emitted_ts = now_iso
+            # Equity curve event (2026-05-10 TZ#2)
+            _append_equity_event({
+                "ts": now_iso,
+                "pair": getattr(ctx, "pair", "BTCUSDT"),
+                "direction": direction,
+                "stage": "OPEN",
+                "open_price": round(cur, 2),
+                "size_usd": round(base_size, 2),
+                "layers": 1,
+            })
             stype = SetupType.P15_LONG_OPEN if is_long else SetupType.P15_SHORT_OPEN
             return _build_setup(
                 setup_type=stype, ctx=ctx, leg=leg,
@@ -386,6 +409,21 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
                 "realized_pnl_usd": round(pnl_usd, 2),
             },
         )
+        # Equity curve event (2026-05-10 TZ#2)
+        _append_equity_event({
+            "ts": now_iso,
+            "pair": getattr(ctx, "pair", "BTCUSDT"),
+            "direction": direction,
+            "stage": "CLOSE",
+            "reason": close_reason,
+            "open_ts": leg.opened_at_ts,
+            "avg_entry": round(avg, 2),
+            "close_price": round(cur, 2),
+            "qty_size_usd": round(leg.total_size_usd, 2),
+            "layers": leg.layers,
+            "cum_dd_pct": round(leg.cum_dd_pct, 2),
+            "realized_pnl_usd": round(pnl_usd, 2),
+        })
         # Reset state
         leg.in_pos = False
         leg.layers = 0
@@ -416,6 +454,19 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
                     "next_reentry_price": round(reentry_price, 2),
                 },
             )
+            # Equity curve event (2026-05-10 TZ#2)
+            _append_equity_event({
+                "ts": now_iso,
+                "pair": getattr(ctx, "pair", "BTCUSDT"),
+                "direction": direction,
+                "stage": "HARVEST",
+                "open_ts": leg.opened_at_ts,
+                "avg_entry": round(avg, 2),
+                "exit_price": round(exit_price, 2),
+                "harvest_size_usd": round(harvest_size, 0),
+                "realized_pnl_usd": round(harvest_pnl_usd, 2),
+                "layers": leg.layers,
+            })
             # Mutate state: realize half, prepare for reentry
             reentry_size = _resolve_base_size_usd()
             leg.total_size_usd -= harvest_size
