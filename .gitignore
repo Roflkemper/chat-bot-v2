@@ -124,6 +124,9 @@ state/cascade_alert_dedup.json
 state/telegram_sent_dedup.json
 state/telegram_rate_limit.json
 state/grid_coordinator_intraday_dedup.json
+state/grid_coordinator_dedup.json
+state/grid_coordinator_fires.jsonl
+state/p15_equity.jsonl
 state/app_runner_starts.jsonl
 state/mega_setup_backtest.csv
 state/mega_short_v2_gc.csv

@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
 SETUPS_PATH = ROOT / "state" / "setups.jsonl"
 
+# 2026-05-10 LOCK: do NOT adaptive-tune these. Walk-forward validation
+# (tools/_mega_adaptive_retune.py) showed FIXED +24.40% vs ADAPTIVE +3.83%
+# (-84.3%) over 815d. Fixed params are stable across regimes; adaptive
+# overfits to recent window and degrades next fold. Rationale in commit
+# history under "mega adaptive REJECTED".
 MEGA_WINDOW_MIN = 60   # both constituents must fire within this window
 MEGA_DEDUP_HOURS = 4   # don't fire mega twice in 4h on the same pair
 MEGA_SL_PCT = 0.8      # tighter than dump_reversal/pdl_bounce defaults
