@@ -28,6 +28,7 @@
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -38,6 +39,10 @@ from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG_FILE = ROOT / "logs" / "watchdog.log"
+ALERT_STATE = ROOT / "state" / "watchdog_alert_state.json"
+# Alert if same component fails-to-start (or stays NOT RUNNING after restart)
+# this many consecutive ticks. 3 ticks * 2min = 6 min of unrecoverable down.
+ALERT_THRESHOLD = 3
 
 if sys.platform == "win32":
     PYTHON = ROOT / ".venv" / "Scripts" / "pythonw.exe"
@@ -230,14 +235,71 @@ def _check_and_revive(name: str, cfg: dict) -> str:
     return f"alive pid={running_pid} age={age}"
 
 
+def _load_alert_state() -> dict:
+    try:
+        if ALERT_STATE.exists():
+            return json.loads(ALERT_STATE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        pass
+    return {}
+
+
+def _save_alert_state(state: dict) -> None:
+    try:
+        ALERT_STATE.parent.mkdir(parents=True, exist_ok=True)
+        ALERT_STATE.write_text(json.dumps(state), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _send_tg_alert(message: str) -> None:
+    """Best-effort TG notification via done.py (already-handles env+chunking)."""
+    try:
+        subprocess.Popen(
+            [sys.executable, str(ROOT / "scripts" / "done.py"), message],
+            cwd=str(ROOT),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+        )
+    except Exception as exc:
+        _log(f"alert TG send failed: {exc}")
+
+
+def _track_status_and_alert(name: str, status: str, alert_state: dict) -> dict:
+    """If component is FAILED_TO_START or repeatedly NOT RUNNING, alert operator
+    once after ALERT_THRESHOLD consecutive bad ticks. Reset counter on recovery."""
+    is_bad = status.startswith("FAILED_TO_START") or status.startswith("REVIVE_FAILED")
+    key = f"{name}_bad_ticks"
+    sent_key = f"{name}_alert_sent"
+    if is_bad:
+        alert_state[key] = alert_state.get(key, 0) + 1
+        if alert_state[key] >= ALERT_THRESHOLD and not alert_state.get(sent_key):
+            _send_tg_alert(
+                f"⚠ watchdog: {name} не поднимается {alert_state[key]} ticks подряд "
+                f"(статус: {status}). Нужна ручная диагностика."
+            )
+            alert_state[sent_key] = True
+    else:
+        if alert_state.get(key, 0) > 0 or alert_state.get(sent_key):
+            if alert_state.get(sent_key):
+                _send_tg_alert(f"✅ watchdog: {name} восстановлен ({status})")
+        alert_state[key] = 0
+        alert_state[sent_key] = False
+    return alert_state
+
+
 def main() -> int:
     _log("=== watchdog tick ===")
+    alert_state = _load_alert_state()
     for name, cfg in COMPONENTS.items():
         try:
             status = _check_and_revive(name, cfg)
             _log(f"  {name}: {status}")
+            alert_state = _track_status_and_alert(name, status, alert_state)
         except Exception as exc:
             _log(f"  {name}: ERROR {exc}")
+    _save_alert_state(alert_state)
     _log("=== watchdog done ===")
     return 0
 
