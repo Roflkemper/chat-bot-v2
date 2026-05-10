@@ -116,9 +116,13 @@ def _journal(rec: dict) -> None:
 
 
 def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
-                       deriv: dict) -> dict:
+                       deriv: dict, xrp: pd.DataFrame | None = None) -> dict:
     """Возвращает dict со счётчиками сигналов:
-       {'upside_score': 0..5, 'downside_score': 0..5, 'details': {...}}
+       {'upside_score': 0..6, 'downside_score': 0..6, 'details': {...}}
+
+    2026-05-10: добавлен 6-й сигнал XRP lead (MFI). XRP исторически опережает
+    BTC на 1-4ч в exhaustion-фазах (см. detect_short_mfi_multi_ga). XRP MFI
+    overbought/oversold добавляется к score.
     """
     if btc is None or len(btc) < 35:
         return {"upside_score": 0, "downside_score": 0, "details": {"reason": "btc_thin"}}
@@ -165,6 +169,16 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
             except Exception:
                 btc_eth_corr = 0.0
 
+    # XRP — lead indicator. XRP MFI overbought/oversold suggests BTC will follow.
+    xrp_mfi_now = None
+    if xrp is not None and len(xrp) >= 20:
+        xrp_high = xrp["high"].astype(float)
+        xrp_low = xrp["low"].astype(float)
+        xrp_close = xrp["close"].astype(float)
+        xrp_volume = xrp["volume"].astype(float)
+        xrp_mfi = _mfi(xrp_high, xrp_low, xrp_close, xrp_volume)
+        xrp_mfi_now = float(xrp_mfi.iloc[-1])
+
     # UPSIDE EXHAUSTION CHECKS
     up_signals = {}
     up_signals["rsi_high"] = (rsi_now >= RSI_OVERBOUGHT)
@@ -181,6 +195,8 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
         btc_eth_corr >= ETH_CORR_THRESHOLD and eth_rsi_now is not None
         and eth_rsi_now >= ETH_RSI_HIGH
     )
+    # XRP lead — 6th signal (2026-05-10)
+    up_signals["xrp_mfi_high"] = (xrp_mfi_now is not None and xrp_mfi_now >= MFI_OVERBOUGHT)
     upside_score = sum(1 for v in up_signals.values() if v)
 
     # DOWNSIDE EXHAUSTION CHECKS
@@ -197,6 +213,7 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
         btc_eth_corr >= ETH_CORR_THRESHOLD and eth_rsi_now is not None
         and eth_rsi_now <= ETH_RSI_LOW
     )
+    down_signals["xrp_mfi_low"] = (xrp_mfi_now is not None and xrp_mfi_now <= MFI_OVERSOLD)
     downside_score = sum(1 for v in down_signals.values() if v)
 
     return {
@@ -213,6 +230,7 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
             "funding_rate_8h": funding,
             "eth_rsi_now": round(eth_rsi_now, 1) if eth_rsi_now is not None else None,
             "btc_eth_corr_30h": round(btc_eth_corr, 3),
+            "xrp_mfi_now": round(xrp_mfi_now, 1) if xrp_mfi_now is not None else None,
             "btc_close": round(close_now, 1),
             "up_signals": up_signals,
             "down_signals": down_signals,
@@ -223,12 +241,12 @@ def evaluate_exhaustion(btc: pd.DataFrame, eth: pd.DataFrame | None,
 def _format_card(direction: str, score: int, details: dict) -> str:
     if direction == "up":
         emoji = "🔝"
-        title = f"ВЕРХ ИСТОЩАЕТСЯ ({score}/5 сигналов)"
+        title = f"ВЕРХ ИСТОЩАЕТСЯ ({score}/6 сигналов)"
         action = "Рассмотри закрытие SHORT-сеток сейчас и переоткрытие на откате."
         sigs = details.get("up_signals", {})
     else:
         emoji = "🔻"
-        title = f"НИЗ ИСТОЩАЕТСЯ ({score}/5 сигналов)"
+        title = f"НИЗ ИСТОЩАЕТСЯ ({score}/6 сигналов)"
         action = "Рассмотри закрытие LONG-сеток сейчас и переоткрытие на откате."
         sigs = details.get("down_signals", {})
 
@@ -240,6 +258,7 @@ def _format_card(direction: str, score: int, details: dict) -> str:
     oi = details.get("oi_change_1h_pct")
     fund = details.get("funding_rate_8h", 0) * 100  # to %
     eth_rsi = details.get("eth_rsi_now")
+    xrp_mfi = details.get("xrp_mfi_now")
     corr = details.get("btc_eth_corr_30h")
 
     return (
@@ -247,7 +266,7 @@ def _format_card(direction: str, score: int, details: dict) -> str:
         f"\n"
         f"BTC: ${btc_close:,.0f}  RSI={rsi}  MFI={mfi}  vol_z={vz}\n"
         f"OI 1h: {oi:+.2f}%  funding 8h: {fund:+.4f}%\n"
-        f"ETH RSI: {eth_rsi}  BTC↔ETH corr: {corr}\n"
+        f"ETH RSI: {eth_rsi}  XRP MFI: {xrp_mfi}  corr={corr}\n"
         f"\n"
         f"Сигналы: {', '.join(triggered) if triggered else 'нет'}\n"
         f"\n"
@@ -282,10 +301,14 @@ async def grid_coordinator_loop(stop_event: asyncio.Event, *, send_fn=None,
             from core.data_loader import load_klines
             btc = load_klines(symbol="BTCUSDT", timeframe="1h", limit=50)
             eth = load_klines(symbol="ETHUSDT", timeframe="1h", limit=50)
+            try:
+                xrp = load_klines(symbol="XRPUSDT", timeframe="1h", limit=50)
+            except Exception:
+                xrp = None  # gracefully degrade if XRP fetch fails
             deriv = _read_deriv()
             now = datetime.now(timezone.utc)
 
-            ev = evaluate_exhaustion(btc, eth, deriv)
+            ev = evaluate_exhaustion(btc, eth, deriv, xrp=xrp)
             up = ev["upside_score"]
             down = ev["downside_score"]
             details = ev["details"]
@@ -326,6 +349,91 @@ async def grid_coordinator_loop(stop_event: asyncio.Event, *, send_fn=None,
 
         except Exception:
             logger.exception("grid_coordinator.tick_failed")
+
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            pass
+
+
+# 2026-05-10: 15m intraday-flush detector (downside-only).
+# Night research showed 15m TF too noisy for upside (PF -6%), but operator's
+# missed extrema (21 Apr 19:46, 29 Apr 18:10) were intraday flushes. Run
+# 15m grid_coordinator parallel to 1h, but ONLY emit downside score>=4 alerts.
+INTRADAY_DEDUP_PATH = ROOT / "state" / "grid_coordinator_intraday_dedup.json"
+INTRADAY_INTERVAL_SEC = 60   # check every 1 min on 15m TF
+INTRADAY_COOLDOWN_SEC = 900  # 15 min cooldown between alerts (shorter than 1h's 30)
+INTRADAY_DOWNSIDE_THRESHOLD = 4
+
+
+def _load_intraday_dedup() -> dict:
+    if not INTRADAY_DEDUP_PATH.exists(): return {}
+    try:
+        return json.loads(INTRADAY_DEDUP_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_intraday_dedup(d: dict) -> None:
+    try:
+        INTRADAY_DEDUP_PATH.parent.mkdir(parents=True, exist_ok=True)
+        INTRADAY_DEDUP_PATH.write_text(json.dumps(d), encoding="utf-8")
+    except OSError:
+        pass
+
+
+async def grid_coordinator_intraday_loop(stop_event, *, send_fn=None,
+                                          interval_sec: int = INTRADAY_INTERVAL_SEC) -> None:
+    """15m TF parallel loop, downside-only (intraday capitulation lows).
+
+    Different cooldown (15m) and threshold (>=4) than the 1h main loop to
+    reduce noise while catching fast flushes the 1h misses.
+    """
+    logger.info(
+        "grid_coordinator.intraday.start interval=%ds tf=15m threshold=down>=%d cooldown=%ds",
+        interval_sec, INTRADAY_DOWNSIDE_THRESHOLD, INTRADAY_COOLDOWN_SEC,
+    )
+    while not stop_event.is_set():
+        try:
+            from core.data_loader import load_klines
+            btc_15m = load_klines(symbol="BTCUSDT", timeframe="15m", limit=60)
+            eth_15m = load_klines(symbol="ETHUSDT", timeframe="15m", limit=60)
+            try:
+                xrp_15m = load_klines(symbol="XRPUSDT", timeframe="15m", limit=60)
+            except Exception:
+                xrp_15m = None
+            deriv = _read_deriv()
+            now = datetime.now(timezone.utc)
+
+            ev = evaluate_exhaustion(btc_15m, eth_15m, deriv, xrp=xrp_15m)
+            down = ev["downside_score"]
+            details = ev["details"]
+
+            dedup = _load_intraday_dedup()
+            last = dedup.get("down")
+            on_cooldown = False
+            if last:
+                try:
+                    last_ts = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                    on_cooldown = (now - last_ts).total_seconds() < INTRADAY_COOLDOWN_SEC
+                except (ValueError, AttributeError):
+                    pass
+
+            if down >= INTRADAY_DOWNSIDE_THRESHOLD and not on_cooldown:
+                text = "⚡ 15m " + _format_card("down", down, details)
+                logger.info("grid_coordinator.intraday.DOWNSIDE_FLUSH score=%d", down)
+                if send_fn:
+                    try:
+                        send_fn(text)
+                    except Exception:
+                        logger.exception("grid_coordinator.intraday.send_failed")
+                dedup["down"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+                _save_intraday_dedup(dedup)
+                _journal({"ts": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                          "tf": "15m", "direction": "down", "score": down,
+                          "details": details})
+        except Exception:
+            logger.exception("grid_coordinator.intraday.tick_failed")
 
         try:
             await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
