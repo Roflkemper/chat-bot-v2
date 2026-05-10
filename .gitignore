@@ -129,6 +129,7 @@ state/grid_coordinator_fires.jsonl
 state/p15_equity.jsonl
 state/watchdog_alert_state.json
 state/setup_precision_outcomes.jsonl
+state/setup_detector_type_pair_dedup.json
 state/app_runner_starts.jsonl
 state/mega_setup_backtest.csv
 state/mega_short_v2_gc.csv

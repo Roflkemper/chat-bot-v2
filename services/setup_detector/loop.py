@@ -26,6 +26,13 @@ _MIN_STRENGTH = 6
 # (price_LL 79500->79181) fired 18:54/18:59/19:04/19:09/19:14 etc.
 _SETUP_DEDUP_TTL_MIN = 240  # 4h — covers most setup window_minutes (240min)
 _DEDUP_PATH = Path("state/setup_detector_semantic_dedup.json")
+# 2026-05-10: belt-and-suspenders dedup. semantic_signature includes basis
+# label strings with embedded numeric formatting (e.g. "Объём x1.4") which
+# drifts every 5min loop, leaking through dedup. Cap to 1 emit per
+# setup_type+pair per N minutes regardless of basis differences.
+# Observed live: short_pdh_rejection emitted 29× on 2026-05-01 trending day.
+_TYPE_PAIR_DEDUP_MIN = 60
+_TYPE_PAIR_DEDUP_PATH = Path("state/setup_detector_type_pair_dedup.json")
 _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_ICT_PARQUET = _ROOT / "data" / "ict_levels" / "BTCUSDT_ict_levels_1m.parquet"
 
@@ -276,6 +283,36 @@ def _is_recently_emitted(setup: Setup, dedup: dict[str, str], now: datetime) -> 
     return (now - last) < timedelta(minutes=_SETUP_DEDUP_TTL_MIN)
 
 
+def _load_type_pair_dedup() -> dict[str, str]:
+    if not _TYPE_PAIR_DEDUP_PATH.exists():
+        return {}
+    try:
+        return json.loads(_TYPE_PAIR_DEDUP_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def _save_type_pair_dedup(state: dict[str, str]) -> None:
+    try:
+        _TYPE_PAIR_DEDUP_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _TYPE_PAIR_DEDUP_PATH.write_text(json.dumps(state), encoding="utf-8")
+    except OSError:
+        logger.exception("setup_detector.type_pair_dedup_write_failed")
+
+
+def _is_type_pair_recently_emitted(setup: Setup, dedup: dict[str, str],
+                                    now: datetime) -> bool:
+    key = f"{setup.setup_type.value}|{setup.pair}"
+    last_iso = dedup.get(key)
+    if not last_iso:
+        return False
+    try:
+        last = datetime.fromisoformat(last_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return (now - last) < timedelta(minutes=_TYPE_PAIR_DEDUP_MIN)
+
+
 def _build_portfolio_snapshot(snapshot: dict) -> PortfolioSnapshot:
     try:
         state_exposure = snapshot.get("exposure", {})
@@ -371,6 +408,16 @@ def _run_detectors_once(
         )
     }
 
+    # Type+pair time-based dedup (belt-and-suspenders for label-drift leaks).
+    type_pair_dedup = _load_type_pair_dedup()
+    tp_cutoff = now_utc - timedelta(minutes=_TYPE_PAIR_DEDUP_MIN)
+    type_pair_dedup = {
+        k: ts for k, ts in type_pair_dedup.items()
+        if (lambda t: t is not None and t >= tp_cutoff)(
+            _parse_iso_safe(ts)
+        )
+    }
+
     # Query grid_coordinator once per cycle for GC-confirmation gating.
     gc_state = _query_grid_coordinator() if allowed else None
     now_iso = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -381,6 +428,12 @@ def _run_detectors_once(
             logger.info(
                 "setup_detector.semantic_dedup_skip type=%s sig=%s pair=%s",
                 setup.setup_type.value, setup.semantic_signature, setup.pair,
+            )
+            continue
+        if _is_type_pair_recently_emitted(setup, type_pair_dedup, now_utc):
+            logger.info(
+                "setup_detector.type_pair_dedup_skip type=%s pair=%s ttl=%dmin",
+                setup.setup_type.value, setup.pair, _TYPE_PAIR_DEDUP_MIN,
             )
             continue
 
@@ -415,7 +468,9 @@ def _run_detectors_once(
                 )
             setup = mtf_adjusted
 
-        dedup[setup.semantic_signature] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+        emit_iso = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+        dedup[setup.semantic_signature] = emit_iso
+        type_pair_dedup[f"{setup.setup_type.value}|{setup.pair}"] = emit_iso
         store.write(setup)
         new_setups.append(setup)
         logger.info(
@@ -462,6 +517,7 @@ def _run_detectors_once(
                     logger.exception("setup_detector.p15_paper_trader_failed")
 
     _save_semantic_dedup(dedup)
+    _save_type_pair_dedup(type_pair_dedup)
     return new_setups
 
 
