@@ -74,18 +74,59 @@ P15_BASE_SIZE_USD = 1000.0
 P15_PCT_OF_DEPO = 6.5  # base size = ADVISOR_DEPO_TOTAL × this / 100
 P15_MIN_BASE_USD = 500.0
 
+# 2026-05-10 TZ-1: per-pair sizing factor. Backtest PFs (BTC 3.84/3.91 vs
+# XRP 3.48/3.04 vs ETH 3.36/3.39) say BTC is the strongest edge — give it
+# full size; alts get reduced. Also reflects spread/slippage: XRP smaller
+# market depth, less liquidity at midprice. Six potential open legs (3
+# pairs × 2 dirs) → without scaling we'd over-allocate to alts.
+P15_PAIR_SIZE_FACTOR = {
+    "BTCUSDT": 1.0,
+    "ETHUSDT": 0.5,
+    "XRPUSDT": 0.3,
+}
 
-def _resolve_base_size_usd() -> float:
-    """Read ADVISOR_DEPO_TOTAL at runtime, scale base size. Fall back to fixed."""
+# 2026-05-10 TZ-1: cross-asset correlation cap. If 2 pairs already open in
+# the same direction, refuse OPEN on the 3rd — they're highly correlated,
+# would be 3x the same risk under one regime. Counted across BTC/ETH/XRP.
+P15_MAX_SAME_DIRECTION_LEGS = 2
+
+
+def _resolve_base_size_usd(pair: str = "BTCUSDT") -> float:
+    """Read ADVISOR_DEPO_TOTAL at runtime, scale base size. Fall back to fixed.
+
+    Pair factor adjusts for relative edge strength / market depth.
+    """
+    factor = P15_PAIR_SIZE_FACTOR.get(pair, 0.5)
     try:
         from config import ADVISOR_DEPO_TOTAL
         depo = float(ADVISOR_DEPO_TOTAL or 0)
         if depo > 0:
-            sized = depo * P15_PCT_OF_DEPO / 100.0
-            return max(P15_MIN_BASE_USD, sized)
+            sized = depo * P15_PCT_OF_DEPO / 100.0 * factor
+            return max(P15_MIN_BASE_USD * factor, sized)
     except Exception:
         pass
-    return P15_BASE_SIZE_USD
+    return P15_BASE_SIZE_USD * factor
+
+
+def _count_same_direction_open_legs(state: dict, direction: str,
+                                     except_pair: str | None = None) -> int:
+    """Count how many legs are currently open in the given direction
+    across all pairs, optionally excluding one pair."""
+    n = 0
+    for key, leg in state.items():
+        if not leg.in_pos:
+            continue
+        try:
+            pair, dir_ = key.split(":", 1)
+        except ValueError:
+            continue
+        if except_pair is not None and pair == except_pair:
+            continue
+        if dir_ == direction:
+            n += 1
+    return n
+
+
 P15_MAX_LAYERS = 10
 
 P15_STATE_PATH = Path("state/p15_state.json")
@@ -301,8 +342,13 @@ def _build_setup(
 
 
 def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
-                           closes_1h: list[float], now_iso: str) -> Optional[Setup]:
+                           closes_1h: list[float], now_iso: str,
+                           all_legs: dict[str, "_LegState"] | None = None,
+                           ) -> Optional[Setup]:
     """Run the state machine for one direction (long or short).
+
+    `all_legs` is the cross-pair state map ({"BTCUSDT:long": _LegState, ...})
+    used for cross-asset correlation cap on OPEN.
 
     Returns a Setup to emit (the new stage transition), or None if no change.
     Mutates `leg` in-place.
@@ -323,9 +369,25 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
     # IDLE → check for OPEN trigger
     if not leg.in_pos:
         if gate:
+            # 2026-05-10 TZ-1: cross-asset correlation cap. Refuse OPEN if
+            # ≥MAX_SAME_DIRECTION_LEGS already open in this direction across
+            # other pairs — BTC/ETH/XRP are highly correlated, 3 same-side
+            # legs would be 3x the same regime risk.
+            current_pair = getattr(ctx, "pair", "BTCUSDT")
+            n_same_dir = _count_same_direction_open_legs(
+                all_legs or {}, direction, except_pair=current_pair,
+            )
+            if n_same_dir >= P15_MAX_SAME_DIRECTION_LEGS:
+                logger.info(
+                    "p15_rolling.open_blocked pair=%s dir=%s reason=correlation "
+                    "(already %d legs open same direction)",
+                    current_pair, direction, n_same_dir,
+                )
+                return None
+
             leg.in_pos = True
             leg.layers = 1
-            base_size = _resolve_base_size_usd()
+            base_size = _resolve_base_size_usd(current_pair)
             leg.total_size_usd = base_size
             leg.weighted_entry = cur * base_size
             leg.extreme_price = cur
@@ -336,7 +398,7 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
             # Equity curve event (2026-05-10 TZ#2)
             _append_equity_event({
                 "ts": now_iso,
-                "pair": getattr(ctx, "pair", "BTCUSDT"),
+                "pair": current_pair,
                 "direction": direction,
                 "stage": "OPEN",
                 "open_price": round(cur, 2),
@@ -524,6 +586,6 @@ def _detect_p15(ctx: DetectionContext, direction: str) -> Optional[Setup]:
 
     state = _load_state()
     leg = _get_or_create(state, ctx.pair, direction)
-    setup = _detect_one_direction(ctx, leg, closes_1h, now_iso)
+    setup = _detect_one_direction(ctx, leg, closes_1h, now_iso, all_legs=state)
     _save_state(state)
     return setup

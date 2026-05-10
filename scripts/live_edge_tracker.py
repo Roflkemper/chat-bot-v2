@@ -43,13 +43,23 @@ OUTCOMES = ROOT / "state" / "setup_outcomes.jsonl"
 PAPER_TRADES = ROOT / "state" / "paper_trades.jsonl"
 
 # Backtest expectations per week (calibrated from 365/815-day backtests)
+# P-15 per-pair: 2y backtest showed BTC 2401 long emits, BTC 2498 short,
+# ETH 2816 long, ETH 2368 short, XRP 3296 long, XRP 2834 short. That's
+# average ~5-7/day per (pair, dir) at 1h-bar granularity, BUT each
+# OPEN is gated by trend_gate flip (rare), so live emits are 1-3/week.
 EXPECTED_WEEKLY = {
     "mega_long_dump_bounce_emits": 2.5,    # 115/365×7
     "gc_up_score_3plus": 7.0,              # ~365 up-signals / 365×7
     "gc_down_score_3plus": 7.0,            # ~365 down-signals / 365×7
     "intraday_score_4plus": 1.7,           # 89/365×7
-    "p15_long_open_emits": 0.5,            # rough: ~25 entries / year
-    "p15_short_open_emits": 0.5,
+    # P-15 OPEN events per pair × direction (rough estimate based on
+    # historical trend-gate flip frequency: ~1-2 per week per leg).
+    "p15_BTCUSDT_long_open_emits": 1.5,
+    "p15_BTCUSDT_short_open_emits": 1.5,
+    "p15_ETHUSDT_long_open_emits": 1.5,
+    "p15_ETHUSDT_short_open_emits": 1.5,
+    "p15_XRPUSDT_long_open_emits": 1.5,
+    "p15_XRPUSDT_short_open_emits": 1.5,
 }
 
 
@@ -115,14 +125,22 @@ def main() -> int:
             p15_n_trades += 1
             p15_pnl_usd += float(t.get("realized_pnl_usd", 0) or 0)
 
+    # P-15 per (pair, direction) counts — read pair from emitted setup.
+    p15_per_pair = Counter()
+    for s in recent_setups:
+        st = s.get("setup_type", "")
+        if st in ("p15_long_open", "p15_short_open"):
+            direction = "long" if st == "p15_long_open" else "short"
+            pair = s.get("pair", "BTCUSDT")
+            p15_per_pair[f"p15_{pair}_{direction}_open_emits"] += 1
+
     # Comparison
     actual = {
         "mega_long_dump_bounce_emits": setup_counts.get("long_mega_dump_bounce", 0),
         "gc_up_score_3plus": gc_up_3,
         "gc_down_score_3plus": gc_down_3,
         "intraday_score_4plus": gc_up_4 + gc_down_4,  # rough proxy
-        "p15_long_open_emits": setup_counts.get("p15_long_open", 0),
-        "p15_short_open_emits": setup_counts.get("p15_short_open", 0),
+        **{k: p15_per_pair.get(k, 0) for k in EXPECTED_WEEKLY if k.startswith("p15_")},
     }
 
     rows = []
@@ -160,9 +178,9 @@ def main() -> int:
 
     # TG alert if any LOW/ZERO
     if alerts:
-        print(f"\n⚠ {len(alerts)} edge-degradation alerts:")
+        print(f"\n[WARN] {len(alerts)} edge-degradation alerts:")
         for a in alerts: print(f"  - {a}")
-        msg = (f"⚠ Edge tracker {WINDOW_DAYS}d alert ({len(alerts)} issues):\n" +
+        msg = (f"[WARN] Edge tracker {WINDOW_DAYS}d alert ({len(alerts)} issues):\n" +
                "\n".join(f"• {a}" for a in alerts) +
                f"\n\nP-15 paper: {p15_n_trades} trades, ${p15_pnl_usd:.0f} realized\n" +
                f"Total setups: {len(recent_setups)}, GC down>=4: {gc_down_4}")
