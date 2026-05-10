@@ -5,6 +5,19 @@ from typing import Callable
 
 import pandas as pd
 
+from .constants import (
+    GRID_BOUNDARY_PREMIUM, GRID_BOUNDARY_TRIGGER,
+    LONG_ENTRY_NEAR_LEVEL, LONG_ENTRY_PREMIUM,
+    LONG_RECLAIM_MIN, LONG_REJECTION_TOLERANCE,
+    LONG_STOP_BUFFER_BELOW, LONG_STOP_BUFFER_DEEP, LONG_STOP_FROM_LIQ,
+    RSI_MOMENTUM_HIGH, RSI_NEUTRAL_HIGH, RSI_NEUTRAL_LOW,
+    RSI_OVERBOUGHT, RSI_OVERBOUGHT_STRICT,
+    RSI_OVERSOLD, RSI_OVERSOLD_STRICT,
+    SHORT_ENTRY_NEAR_LEVEL, SHORT_ENTRY_PREMIUM,
+    SHORT_REJECT_MIN, SHORT_REJECTION_TOLERANCE,
+    SHORT_STOP_BUFFER_ABOVE, SHORT_STOP_BUFFER_DEEP, SHORT_STOP_FROM_LIQ,
+    SLOPE_6H_MIN_FOR_SHORT, SWING_HIGH_BUFFER, SWING_LOW_BUFFER,
+)
 from .indicators import (
     compute_rsi,
     compute_volume_ratio,
@@ -265,7 +278,7 @@ def detect_long_dump_reversal(ctx: DetectionContext) -> Setup | None:
     price_change_4h = _price_change_pct(ctx.current_price, price_4h_ago)
     cond_dump = price_change_4h <= -2.0
     rsi_1h = compute_rsi(df1h["close"], period=14)
-    cond_rsi = rsi_1h < 35.0
+    cond_rsi = rsi_1h < RSI_OVERSOLD
     wick_cnt = reversal_wick_count(
         df1m["open"].iloc[-10:],
         df1m["high"].iloc[-10:],
@@ -296,8 +309,9 @@ def detect_long_dump_reversal(ctx: DetectionContext) -> Setup | None:
     if cond_pdl and pdl > 0.0:
         basis_items.append(SetupBasis(f"PDL ${pdl:,.0f} ({pdl_tests} тест)", pdl, 0.9))
 
-    entry = ctx.current_price * 0.997
-    stop = min(_recent_swing_low(df1m) * 0.995, entry * 0.993)
+    entry = ctx.current_price * LONG_ENTRY_PREMIUM
+    stop = min(_recent_swing_low(df1m) * LONG_STOP_BUFFER_BELOW,
+               entry * LONG_STOP_BUFFER_DEEP)
     return _long_trade(
         ctx,
         setup_type=SetupType.LONG_DUMP_REVERSAL,
@@ -323,9 +337,10 @@ def detect_long_pdl_bounce(ctx: DetectionContext) -> Setup | None:
     last_bar = df1m.iloc[-1]
     touch_count = count_touches_at_level(df1m["low"].iloc[-30:], pdl, tolerance_pct=0.3)
     cond_touch = touch_count >= 1
-    cond_reject = float(last_bar["low"]) <= pdl * 1.003 and float(last_bar["close"]) > pdl
+    cond_reject = (float(last_bar["low"]) <= pdl * LONG_REJECTION_TOLERANCE
+                    and float(last_bar["close"]) > pdl)
     rsi_1h = compute_rsi(df1h["close"])
-    cond_rsi = rsi_1h < 45.0
+    cond_rsi = rsi_1h < RSI_NEUTRAL_LOW
     vol_ratio = _last_volume_ratio(df1m, lookback=20)
     cond_volume = vol_ratio >= 1.3
     if not all([cond_touch, cond_reject, cond_rsi, cond_volume]):
@@ -337,8 +352,8 @@ def detect_long_pdl_bounce(ctx: DetectionContext) -> Setup | None:
         SetupBasis(f"RSI 1h = {rsi_1h:.0f}", rsi_1h, 0.9),
         SetupBasis(f"Объём x{vol_ratio:.1f}", vol_ratio, 0.8),
     )
-    entry = ctx.current_price * 0.998
-    stop = pdl * 0.995
+    entry = ctx.current_price * LONG_ENTRY_NEAR_LEVEL
+    stop = pdl * LONG_STOP_BUFFER_BELOW
     return _long_trade(
         ctx,
         setup_type=SetupType.LONG_PDL_BOUNCE,
@@ -356,7 +371,7 @@ def detect_long_oversold_reclaim(ctx: DetectionContext) -> Setup | None:
     if len(df1h) < 16 or len(df1m) < 10:
         return None
     rsi_1h = compute_rsi(df1h["close"])
-    cond_rsi = rsi_1h < 30.0
+    cond_rsi = rsi_1h < RSI_OVERSOLD_STRICT
     cond_reclaim = _higher_close_reclaim(df1m)
     cond_volume = _volume_increasing(df1m, bars=3)
     if not all([cond_rsi, cond_reclaim, cond_volume]):
@@ -373,7 +388,7 @@ def detect_long_oversold_reclaim(ctx: DetectionContext) -> Setup | None:
         setup_type=SetupType.LONG_OVERSOLD_RECLAIM,
         basis=basis,
         entry=ctx.current_price,
-        stop=recent_low * 0.997,
+        stop=recent_low * SWING_LOW_BUFFER,
         window_minutes=180,
         note="Long reclaim после extreme oversold",
     )
@@ -388,7 +403,7 @@ def detect_long_liq_magnet(ctx: DetectionContext) -> Setup | None:
         return None
     recent_low = float(df1m["low"].iloc[-30:].min())
     cond_cluster = abs(recent_low - liq) / liq * 100.0 <= 0.5
-    cond_reclaim = ctx.current_price > liq * 1.003
+    cond_reclaim = ctx.current_price > liq * LONG_RECLAIM_MIN
     vol_ratio = _last_volume_ratio(df1m, lookback=20)
     cond_volume = vol_ratio >= 1.5
     if not all([cond_cluster, cond_reclaim, cond_volume]):
@@ -403,8 +418,8 @@ def detect_long_liq_magnet(ctx: DetectionContext) -> Setup | None:
         ctx,
         setup_type=SetupType.LONG_LIQ_MAGNET,
         basis=basis,
-        entry=ctx.current_price * 0.998,
-        stop=liq * 0.997,
+        entry=ctx.current_price * LONG_ENTRY_NEAR_LEVEL,
+        stop=liq * LONG_STOP_FROM_LIQ,
         window_minutes=180,
         note="Long после похода в нижний liq cluster",
     )
@@ -434,7 +449,7 @@ def detect_short_rally_fade(ctx: DetectionContext) -> Setup | None:
     price_change_4h = _price_change_pct(ctx.current_price, price_4h_ago)
     cond_rally = price_change_4h >= 2.0
     rsi_1h = compute_rsi(df1h["close"], period=14)
-    cond_rsi = rsi_1h > 65.0
+    cond_rsi = rsi_1h > RSI_MOMENTUM_HIGH
     wick_cnt = reversal_wick_count(
         df1m["open"].iloc[-10:],
         df1m["high"].iloc[-10:],
@@ -465,8 +480,9 @@ def detect_short_rally_fade(ctx: DetectionContext) -> Setup | None:
     if cond_pdh and pdh > 0.0:
         basis_items.append(SetupBasis(f"PDH ${pdh:,.0f} ({pdh_tests} тест)", pdh, 0.9))
 
-    entry = ctx.current_price * 1.003
-    stop = max(_recent_swing_high(df1m) * 1.005, entry * 1.007)
+    entry = ctx.current_price * SHORT_ENTRY_PREMIUM
+    stop = max(_recent_swing_high(df1m) * SHORT_STOP_BUFFER_ABOVE,
+               entry * SHORT_STOP_BUFFER_DEEP)
     return _short_trade(
         ctx,
         setup_type=SetupType.SHORT_RALLY_FADE,
@@ -490,11 +506,11 @@ def detect_short_pdh_rejection(ctx: DetectionContext) -> Setup | None:
     # Filter+Conf (RSI_1h>=72, MFI_1h>=72, trend_slope_6h>=1.0%) → PF 1.35,
     # WF 3/4 folds positive. Hard-gate the strict overbought condition.
     rsi_1h = compute_rsi(df1h["close"])
-    if rsi_1h < 72.0:
+    if rsi_1h < RSI_OVERBOUGHT_STRICT:
         return None
     if len(df1h) >= 7:
         slope_6h = _price_change_pct(ctx.current_price, float(df1h["close"].iloc[-7]))
-        if slope_6h < 1.0:
+        if slope_6h < SLOPE_6H_MIN_FOR_SHORT:
             return None
 
     pdh, _ = find_pdh_pdl(df1h.iloc[-24:])
@@ -503,8 +519,9 @@ def detect_short_pdh_rejection(ctx: DetectionContext) -> Setup | None:
     last_bar = df1m.iloc[-1]
     touch_count = count_touches_at_level(df1m["high"].iloc[-30:], pdh, tolerance_pct=0.3)
     cond_touch = touch_count >= 1
-    cond_reject = float(last_bar["high"]) >= pdh * 0.997 and float(last_bar["close"]) < pdh
-    cond_rsi = rsi_1h > 55.0  # already gated >72 above, kept for basis logic
+    cond_reject = (float(last_bar["high"]) >= pdh * SHORT_REJECTION_TOLERANCE
+                    and float(last_bar["close"]) < pdh)
+    cond_rsi = rsi_1h > RSI_NEUTRAL_HIGH  # already gated >72 above, kept for basis logic
     vol_ratio = _last_volume_ratio(df1m, lookback=20)
     cond_volume = vol_ratio >= 1.3
     if not all([cond_touch, cond_reject, cond_rsi, cond_volume]):
@@ -516,8 +533,8 @@ def detect_short_pdh_rejection(ctx: DetectionContext) -> Setup | None:
         SetupBasis(f"RSI 1h = {rsi_1h:.0f}", rsi_1h, 0.9),
         SetupBasis(f"Объём x{vol_ratio:.1f}", vol_ratio, 0.8),
     )
-    entry = ctx.current_price * 1.002
-    stop = pdh * 1.005
+    entry = ctx.current_price * SHORT_ENTRY_NEAR_LEVEL
+    stop = pdh * SHORT_STOP_BUFFER_ABOVE
     return _short_trade(
         ctx,
         setup_type=SetupType.SHORT_PDH_REJECTION,
@@ -535,7 +552,7 @@ def detect_short_overbought_fade(ctx: DetectionContext) -> Setup | None:
     if len(df1h) < 16 or len(df1m) < 10:
         return None
     rsi_1h = compute_rsi(df1h["close"])
-    cond_rsi = rsi_1h > 70.0
+    cond_rsi = rsi_1h > RSI_OVERBOUGHT
     cond_momentum_loss = _lower_close_fade(df1m)
     cond_volume = _volume_increasing(df1m, bars=3)
     if not all([cond_rsi, cond_momentum_loss, cond_volume]):
@@ -552,7 +569,7 @@ def detect_short_overbought_fade(ctx: DetectionContext) -> Setup | None:
         setup_type=SetupType.SHORT_OVERBOUGHT_FADE,
         basis=basis,
         entry=ctx.current_price,
-        stop=recent_high * 1.003,
+        stop=recent_high * SWING_HIGH_BUFFER,
         window_minutes=180,
         note="Short fade после overbought momentum loss",
     )
@@ -567,7 +584,7 @@ def detect_short_liq_magnet(ctx: DetectionContext) -> Setup | None:
         return None
     recent_high = float(df1m["high"].iloc[-30:].max())
     cond_cluster = abs(recent_high - liq) / liq * 100.0 <= 0.5
-    cond_reject = ctx.current_price < liq * 0.997
+    cond_reject = ctx.current_price < liq * SHORT_REJECT_MIN
     vol_ratio = _last_volume_ratio(df1m, lookback=20)
     cond_volume = vol_ratio >= 1.5
     if not all([cond_cluster, cond_reject, cond_volume]):
@@ -582,8 +599,8 @@ def detect_short_liq_magnet(ctx: DetectionContext) -> Setup | None:
         ctx,
         setup_type=SetupType.SHORT_LIQ_MAGNET,
         basis=basis,
-        entry=ctx.current_price * 1.002,
-        stop=liq * 1.003,
+        entry=ctx.current_price * SHORT_ENTRY_NEAR_LEVEL,
+        stop=liq * SHORT_STOP_FROM_LIQ,
         window_minutes=180,
         note="Short после похода в верхний liq cluster",
     )
@@ -602,10 +619,11 @@ def detect_grid_raise_boundary(ctx: DetectionContext) -> Setup | None:
     delta_4h = _price_change_pct(ctx.current_price, float(df1h["close"].iloc[-5]))
     continuation = min(1.0, max(0.0, delta_4h / 1.5))
     shorts_in_stress = ctx.portfolio.free_margin_pct < 45.0
-    if not (ctx.current_price > reference * 1.001 and hold and continuation > 0.7 and shorts_in_stress):
+    if not (ctx.current_price > reference * GRID_BOUNDARY_TRIGGER
+             and hold and continuation > 0.7 and shorts_in_stress):
         return None
 
-    new_boundary = round(reference * 1.003, 1)
+    new_boundary = round(reference * GRID_BOUNDARY_PREMIUM, 1)
     basis = (
         SetupBasis(f"Пробой ref ${reference:,.0f}", reference, 1.0),
         SetupBasis("Hold выше 15м", 15, 1.0),
@@ -665,7 +683,7 @@ def detect_grid_booster_activate(ctx: DetectionContext) -> Setup | None:
     if len(df1h) < 16:
         return None
     rsi_1h = compute_rsi(df1h["close"], period=14)
-    if rsi_1h >= 35.0:
+    if rsi_1h >= RSI_OVERSOLD:
         return None
 
     near_liq = (
