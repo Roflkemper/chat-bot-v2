@@ -28,6 +28,14 @@ _MIN_STRENGTH = 6
 # (price_LL 79500->79181) fired 18:54/18:59/19:04/19:09/19:14 etc.
 _SETUP_DEDUP_TTL_MIN = 240  # 4h — covers most setup window_minutes (240min)
 _DEDUP_PATH = Path("state/setup_detector_semantic_dedup.json")
+
+# 2026-05-11 TZ-N3: shadow mode. When env GC_SHADOW_MODE=1, GC decisions
+# are recorded in the audit (alignment, would-be decision) but NOT applied
+# to the setup. Lets operator collect a week of data on a candidate config
+# (e.g. relaxed HARD_BLOCK or higher score threshold) before committing.
+import os as _os  # local alias to avoid touching toplevel imports
+def _gc_shadow_mode() -> bool:
+    return _os.environ.get("GC_SHADOW_MODE", "").strip() in ("1", "true", "yes")
 # 2026-05-10: belt-and-suspenders dedup. semantic_signature includes basis
 # label strings with embedded numeric formatting (e.g. "Объём x1.4") which
 # drifts every 5min loop, leaking through dedup. Cap to 1 emit per
@@ -457,7 +465,29 @@ def _run_detectors_once(
         # apply when GC state is available (else pass-through unchanged).
         if gc_state is not None and not setup.setup_type.value.startswith("p15_"):
             adjusted, decision = _apply_gc_confirmation(setup, gc_state, now_iso)
-            if adjusted is None:
+            # Shadow mode: audit recorded inside _apply_gc_confirmation, but we
+            # do NOT apply hard-block or confidence adjustment to the setup.
+            if _gc_shadow_mode():
+                if adjusted is None:
+                    logger.info(
+                        "setup_detector.gc_shadow_would_block type=%s pair=%s reason=%s",
+                        setup.setup_type.value, setup.pair, decision,
+                    )
+                else:
+                    if decision != "neutral":
+                        logger.info(
+                            "setup_detector.gc_shadow_would_%s type=%s pair=%s "
+                            "delta_conf=%.0f%%",
+                            decision, setup.setup_type.value, setup.pair,
+                            adjusted.confidence_pct - setup.confidence_pct,
+                        )
+                # Pass-through unchanged: setup stays as it was.
+                record_setup(setup, "gc_shadow", extra={
+                    "gc_upside": gc_state.get("upside_score", 0),
+                    "gc_downside": gc_state.get("downside_score", 0),
+                    "would_decision": decision,
+                })
+            elif adjusted is None:
                 logger.info(
                     "setup_detector.gc_blocked type=%s pair=%s gc_up=%d gc_down=%d reason=%s",
                     setup.setup_type.value, setup.pair,
@@ -469,22 +499,26 @@ def _run_detectors_once(
                     "gc_downside": gc_state.get("downside_score", 0),
                 })
                 continue
-            if decision != "neutral":
-                logger.info(
-                    "setup_detector.gc_%s type=%s pair=%s conf %.0f%% -> %.0f%%",
-                    decision, setup.setup_type.value, setup.pair,
-                    setup.confidence_pct, adjusted.confidence_pct,
+            else:
+                # Real (non-shadow) mode: adjusted is not None here.
+                if decision != "neutral":
+                    logger.info(
+                        "setup_detector.gc_%s type=%s pair=%s conf %.0f%% -> %.0f%%",
+                        decision, setup.setup_type.value, setup.pair,
+                        setup.confidence_pct, adjusted.confidence_pct,
+                    )
+                # Record GC outcome for every passed-through setup
+                # (boost / penalty / neutral).
+                gc_stage = "gc_aligned" if decision == "aligned" else (
+                    "gc_misaligned_penalty" if decision == "misaligned-penalty"
+                    else "gc_neutral"
                 )
-            # Record GC outcome for every passed-through setup (boost / penalty / neutral).
-            gc_stage = "gc_aligned" if decision == "aligned" else (
-                "gc_misaligned_penalty" if decision == "misaligned-penalty" else "gc_neutral"
-            )
-            record_setup(adjusted, gc_stage, extra={
-                "gc_upside": gc_state.get("upside_score", 0),
-                "gc_downside": gc_state.get("downside_score", 0),
-                "before_confidence": round(setup.confidence_pct, 1),
-            })
-            setup = adjusted
+                record_setup(adjusted, gc_stage, extra={
+                    "gc_upside": gc_state.get("upside_score", 0),
+                    "gc_downside": gc_state.get("downside_score", 0),
+                    "before_confidence": round(setup.confidence_pct, 1),
+                })
+                setup = adjusted
 
         # MTF (15m/1h/4h) trend agreement modifier — never blocks.
         if not setup.setup_type.value.startswith("p15_"):

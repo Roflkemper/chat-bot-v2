@@ -184,9 +184,12 @@ def main() -> int:
     md.append(f"**Window:** {start} -> {end}  ({(end-start).total_seconds()/86400:.1f}d)")
     md.append(f"**Samples:** {len(df)}")
     md.append("")
-    md.append("**Caveat:** only 20 days of deriv data available. To validate")
-    md.append("on 2y, backfill `data/historical/binance_combined_*.parquet`")
-    md.append("from Binance Futures public archive.")
+    md.append("**Caveat:** Binance public `/futures/data/openInterestHist`")
+    md.append("only serves the most recent ~30 days of data. The backfill")
+    md.append("script (scripts/backfill_deriv_2y.py) was run 2026-05-11 but")
+    md.append("returned only 29d worth — this is a structural API limit,")
+    md.append("not a script bug. For real 2y validation we need Coinglass")
+    md.append("or a 3rd-party historical dump.")
     md.append("")
 
     for side in ("up", "down"):
