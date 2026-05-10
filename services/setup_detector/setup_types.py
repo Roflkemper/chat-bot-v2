@@ -755,6 +755,7 @@ def detect_defensive_margin_low(ctx: DetectionContext) -> Setup | None:
 from services.setup_detector.double_top_bottom import (
     detect_double_top_setup,
     detect_double_bottom_setup,
+    detect_double_bottom_breakout,
 )
 from services.setup_detector.multi_divergence import (
     detect_long_multi_divergence,
@@ -779,6 +780,9 @@ DETECTOR_REGISTRY: tuple[DetectorFn, ...] = (
     detect_short_overbought_fade,
     detect_short_liq_magnet,
     detect_double_bottom_setup,
+    # detect_double_bottom_breakout — 2026-05-10: написан и протестирован, но
+    # honest backtest на 365д дал PF 0.62 / 94% timeout. Цель TP1 слишком
+    # далеко за 240мин окно. Не выводим в prod до trailing TP refactor.
     detect_double_top_setup,
     detect_long_multi_asset_confluence,  # 1h, PF=3.88 hold_1h, BTC+ETH (2026-05-08)
     detect_long_multi_asset_confluence_v2,  # Stage B2: 3-asset BTC+ETH+XRP + corr gate (2026-05-09)

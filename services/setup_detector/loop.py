@@ -37,7 +37,10 @@ _GC_AUDIT_PATH = Path("state/gc_confirmation_audit.jsonl")
 _GC_BOOST_PCT = 15.0     # +15% confidence when aligned
 _GC_PENALTY_PCT = 30.0   # -30% confidence when misaligned
 _GC_MISALIGNED_HARD_BLOCK = {  # detectors so noisy they're hard-blocked when misaligned
-    "long_multi_divergence", "long_double_bottom", "short_double_top",
+    "long_multi_divergence",       # 9% aligned vs 9% misaligned (worst signal-to-GC)
+    "long_double_bottom",          # 1% aligned vs 9% misaligned (predict-against-trend)
+    "short_double_top",            # 1% aligned vs 9% misaligned
+    "long_rsi_momentum_ga",        # 0% aligned vs 80% misaligned (90d sample)
 }
 _GC_SCORE_MIN = 3
 

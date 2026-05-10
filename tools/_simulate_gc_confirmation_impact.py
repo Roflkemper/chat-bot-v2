@@ -35,7 +35,8 @@ OUT_CSV = ROOT / "state" / "gc_confirmation_simulation.csv"
 LOOKBACK_DAYS = 90
 WINDOW_MIN = 60
 GC_SCORE_MIN = 3
-GC_HARD_BLOCK = {"long_multi_divergence", "long_double_bottom", "short_double_top"}
+GC_HARD_BLOCK = {"long_multi_divergence", "long_double_bottom", "short_double_top",
+                 "long_rsi_momentum_ga"}
 
 
 def _generate_grid_signals(df_1h, eth, deriv):

@@ -74,6 +74,122 @@ def _find_peak_max(df: pd.DataFrame, idx_a: int, idx_b: int) -> Optional[float]:
     return float(df.iloc[idx_a + 1 : idx_b]["high"].max())
 
 
+# 2026-05-10: breakout-confirmed entry variant.
+# After double bottom forms + price closes ABOVE neckline (peak between bottoms),
+# wait for pullback >=0.3% toward neckline. Entry on pullback gives realistic
+# RR target and avoids the "predict the bounce" entry that gave 87% timeout.
+BREAKOUT_PULLBACK_MIN_PCT = 0.3  # min pullback from breakout peak before entry
+BREAKOUT_LOOKBACK_BARS = 12       # how many recent 1h bars to scan for breakout
+
+
+def detect_double_bottom_breakout(ctx) -> Setup | None:
+    """Double bottom + neckline breakout + pullback entry.
+
+    Sequence required:
+      1. Two swing lows within tolerance separated by peak (depth >=1.5%)
+      2. Price breaks ABOVE neckline (peak) at some bar in last 12h
+      3. Price pulls back >=0.3% from breakout high but stays >= neckline
+      4. Entry at current pullback price; stop below 2nd swing low; TP1 at
+         breakout high + 1.0 × pattern depth
+    """
+    df = ctx.ohlcv_1h
+    if df is None or len(df) < 30:
+        return None
+    if not all(col in df.columns for col in ("high", "low", "open", "close")):
+        return None
+
+    swings = _find_swing_lows(df)
+    if len(swings) < 2:
+        return None
+
+    n = len(df)
+    last_close = float(df["close"].iloc[-1])
+
+    # Find double-bottom + neckline confirmed broken
+    for j in range(len(swings) - 1, 0, -1):
+        for i in range(j - 1, -1, -1):
+            idx_a, val_a = swings[i]
+            idx_b, val_b = swings[j]
+            avg = (val_a + val_b) / 2
+            if abs(val_a - val_b) / avg * 100 > TOP_TOLERANCE_PCT:
+                continue
+            peak = _find_peak_max(df, idx_a, idx_b)
+            if peak is None:
+                continue
+            depth_pct = (peak - avg) / avg * 100
+            if depth_pct < VALLEY_DEPTH_MIN_PCT:
+                continue
+            if (n - 1 - idx_b) > MAX_PATTERN_AGE_BARS:
+                return None
+
+            # CHECK BREAKOUT: did highs in last BREAKOUT_LOOKBACK_BARS exceed peak?
+            recent_lookback = min(BREAKOUT_LOOKBACK_BARS, n - 1 - idx_b)
+            if recent_lookback <= 0:
+                continue
+            recent = df.iloc[-recent_lookback:]
+            breakout_high = float(recent["high"].max())
+            if breakout_high <= peak * 1.001:  # need >=0.1% above neckline to confirm
+                continue
+
+            # CHECK PULLBACK: current price pulled back from breakout_high,
+            # but still above neckline.
+            pullback_pct = (breakout_high - last_close) / breakout_high * 100
+            if pullback_pct < BREAKOUT_PULLBACK_MIN_PCT:
+                continue
+            if last_close < peak * 0.998:  # broke back below neckline = pattern failed
+                continue
+
+            entry = last_close
+            stop = val_b * 0.997  # below 2nd swing low
+            tp1 = breakout_high + (peak - avg) * 0.5
+            tp2 = breakout_high + (peak - avg) * 1.0
+            rr = abs(tp1 - entry) / max(abs(entry - stop), 1e-6)
+
+            confirmation = candle_confirmation(df, side="long", idx=-1)
+            strength = 8
+            if confirmation:
+                strength = min(10, strength + 1)
+            confidence_pct = 70.0 if confirmation else 60.0
+
+            basis_items = [
+                SetupBasis("double_bottom_low_1", round(val_a, 2), 0.3),
+                SetupBasis("double_bottom_low_2", round(val_b, 2), 0.3),
+                SetupBasis("neckline", round(peak, 2), 0.2),
+                SetupBasis("breakout_high", round(breakout_high, 2), 0.3),
+                SetupBasis("pullback_pct", round(pullback_pct, 2), 0.2),
+                SetupBasis("depth_pct", round(depth_pct, 2), 0.2),
+            ]
+            if confirmation:
+                basis_items.append(SetupBasis("candle_confirmation", confirmation, 0.3))
+
+            return make_setup(
+                setup_type=SetupType.LONG_DOUBLE_BOTTOM_BREAKOUT,
+                pair=ctx.pair,
+                current_price=last_close,
+                regime_label=ctx.regime_label,
+                session_label=ctx.session_label,
+                entry_price=entry,
+                stop_price=stop,
+                tp1_price=tp1,
+                tp2_price=tp2,
+                risk_reward=round(rr, 2),
+                strength=strength,
+                confidence_pct=confidence_pct,
+                basis=tuple(basis_items),
+                cancel_conditions=(
+                    f"close below {peak:.0f} (neckline retest fail)",
+                    f"new low below {val_b:.0f}",
+                ),
+                window_minutes=240,
+                portfolio_impact_note=(
+                    f"Double bottom breakout {val_a:.0f}/{val_b:.0f} → {peak:.0f} → "
+                    f"pullback to {last_close:.0f}"
+                ),
+            )
+
+    return None
+
+
 def detect_double_top_setup(ctx) -> Setup | None:
     """Double top: two swing highs within tolerance + valley + price near neckline."""
     df = ctx.ohlcv_1h

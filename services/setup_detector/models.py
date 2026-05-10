@@ -18,6 +18,7 @@ class SetupType(Enum):
     SHORT_OVERBOUGHT_FADE = "short_overbought_fade"
     SHORT_LIQ_MAGNET = "short_liq_magnet"
     LONG_DOUBLE_BOTTOM = "long_double_bottom"
+    LONG_DOUBLE_BOTTOM_BREAKOUT = "long_double_bottom_breakout"
     SHORT_DOUBLE_TOP = "short_double_top"
     LONG_MULTI_DIVERGENCE = "long_multi_divergence"
     LONG_DIV_BOS_CONFIRMED = "long_div_bos_confirmed"
