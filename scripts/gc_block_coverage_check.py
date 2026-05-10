@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT))
 
 AUDIT = ROOT / "state" / "gc_confirmation_audit.jsonl"
 DATA_1M = ROOT / "backtests" / "frozen" / "BTCUSDT_1m_2y.csv"
+DATA_LIVE = ROOT / "market_live" / "market_1m.csv"
 
 HORIZONS_MIN = (60, 240)
 
@@ -56,11 +57,20 @@ def main() -> int:
     penalised = [r for r in records if "penalty" in str(r.get("decision", ""))]
     print(f"  blocked: {len(blocked)}, penalty: {len(penalised)}")
 
-    # Load 1m prices for forward returns
-    df_1m = pd.read_csv(DATA_1M)
-    df_1m["ts_utc"] = pd.to_datetime(df_1m["ts"], unit="ms", utc=True)
-    df_idx = df_1m.set_index("ts_utc").sort_index()
+    # Load 1m prices for forward returns. Prefer live CSV (covers recent days),
+    # fallback to frozen 2y CSV for older audit records.
+    df_frozen = pd.read_csv(DATA_1M)
+    df_frozen["ts_utc"] = pd.to_datetime(df_frozen["ts"], unit="ms", utc=True)
+    frames = [df_frozen[["ts_utc", "close"]]]
+    if DATA_LIVE.exists():
+        df_live = pd.read_csv(DATA_LIVE)
+        df_live["ts_utc"] = pd.to_datetime(df_live["ts_utc"], utc=True, errors="coerce")
+        df_live = df_live.dropna(subset=["ts_utc"])
+        frames.append(df_live[["ts_utc", "close"]])
+    df_1m = pd.concat(frames, ignore_index=True).drop_duplicates("ts_utc").sort_values("ts_utc")
+    df_idx = df_1m.set_index("ts_utc")
     closes = df_idx["close"]
+    print(f"[gc-cover] price data: {df_idx.index.min()} -> {df_idx.index.max()}  ({len(df_idx):,} bars)")
 
     def _forward_pct(ts: datetime, minutes: int) -> float | None:
         try:
@@ -72,7 +82,7 @@ def main() -> int:
         except (KeyError, IndexError):
             return None
 
-    def _classify(side: str, change_pct: float | None, threshold: float = 0.3):
+    def _classify(side: str, change_pct: float | None, threshold: float = 0.15):
         """Return 'CORRECT_BLOCK', 'WRONG_BLOCK', or 'NEUTRAL'."""
         if change_pct is None: return "NO_DATA"
         # If LONG setup blocked: correct if price went DOWN (<=-threshold)
@@ -139,13 +149,13 @@ def main() -> int:
         if n_eval < 5:
             continue
         if r["correct_rate_%"] >= 60:
-            print(f"  ✅ {r['detector']}: GC block correctly saves money "
-                  f"({r['correct_rate_%']}% on N={n_eval}). Keep.")
+            print(f"  [KEEP] {r['detector']}: GC block correctly saves money "
+                  f"({r['correct_rate_%']}% on N={n_eval}).")
         elif r["correct_rate_%"] >= 40:
-            print(f"  🟡 {r['detector']}: GC block marginal ({r['correct_rate_%']}% "
+            print(f"  [MARG] {r['detector']}: GC block marginal ({r['correct_rate_%']}% "
                   f"on N={n_eval}). No harm but no clear benefit.")
         else:
-            print(f"  ❌ {r['detector']}: GC block HURTS "
+            print(f"  [DROP] {r['detector']}: GC block HURTS "
                   f"({r['correct_rate_%']}% on N={n_eval}). Consider removing from HARD_BLOCK.")
     return 0
 
