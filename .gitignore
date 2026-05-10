@@ -122,6 +122,8 @@ state/paper_trader_dedup.json
 state/paper_trader_pending.json
 state/cascade_alert_dedup.json
 state/telegram_sent_dedup.json
+state/telegram_rate_limit.json
+state/grid_coordinator_intraday_dedup.json
 state/stale_monitor_state.json
 state/signal_alert_last_sent.json
 state/advise_audit.jsonl

@@ -62,7 +62,30 @@ logger = logging.getLogger(__name__)
 P15_R_PCT = 0.3        # retrace from extreme to harvest
 P15_K_PCT = 1.0        # reentry offset above/below harvest exit
 P15_DD_CAP_PCT = 3.0   # emergency hard close
+# 2026-05-10 TZ#8: time-stop if position held >MAX_HOLD_HOURS with cum_dd>1%
+# AND no HARVEST event. Prevents stuck positions in slow grinds.
+P15_MAX_HOLD_HOURS = 48.0
+P15_TIME_STOP_DD_TRIGGER_PCT = 1.0
 P15_BASE_SIZE_USD = 1000.0
+# 2026-05-10 TZ#9: margin-aware sizing — scale base size to % of operator's
+# total deposit. Cap at 8 layers (after 7 reentries it's 8x size). At
+# typical $15k depo, P15_PCT_OF_DEPO=6.5% gives base $1000, max $8000 = 53%
+# of depo — leaves headroom for grid bots.
+P15_PCT_OF_DEPO = 6.5  # base size = ADVISOR_DEPO_TOTAL × this / 100
+P15_MIN_BASE_USD = 500.0
+
+
+def _resolve_base_size_usd() -> float:
+    """Read ADVISOR_DEPO_TOTAL at runtime, scale base size. Fall back to fixed."""
+    try:
+        from config import ADVISOR_DEPO_TOTAL
+        depo = float(ADVISOR_DEPO_TOTAL or 0)
+        if depo > 0:
+            sized = depo * P15_PCT_OF_DEPO / 100.0
+            return max(P15_MIN_BASE_USD, sized)
+    except Exception:
+        pass
+    return P15_BASE_SIZE_USD
 P15_MAX_LAYERS = 10
 
 P15_STATE_PATH = Path("state/p15_state.json")
@@ -289,8 +312,9 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
         if gate:
             leg.in_pos = True
             leg.layers = 1
-            leg.total_size_usd = P15_BASE_SIZE_USD
-            leg.weighted_entry = cur * P15_BASE_SIZE_USD
+            base_size = _resolve_base_size_usd()
+            leg.total_size_usd = base_size
+            leg.weighted_entry = cur * base_size
             leg.extreme_price = cur
             leg.opened_at_ts = now_iso
             leg.cum_dd_pct = 0.0
@@ -303,7 +327,7 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
                     "stage": "OPEN",
                     "trigger": f"EMA50{'>' if is_long else '<'}EMA200 & close{'>' if is_long else '<'}EMA50",
                     "open_price": round(cur, 2),
-                    "size_usd": P15_BASE_SIZE_USD,
+                    "size_usd": base_size,
                 },
             )
         return None
@@ -328,12 +352,26 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
     leg.cum_dd_pct = max(leg.cum_dd_pct, adverse_pct)
     leg.last_extreme_ts = now_iso
 
-    # CLOSE: dd_cap or gate flip
+    # CLOSE: dd_cap, gate flip, or time-stop (2026-05-10 TZ#8)
     close_reason: Optional[str] = None
     if leg.cum_dd_pct >= P15_DD_CAP_PCT:
         close_reason = f"dd_cap {P15_DD_CAP_PCT}% breached"
     elif not gate:
         close_reason = f"trend gate flipped (EMA50{'<' if is_long else '>'}EMA200)"
+    elif leg.opened_at_ts and leg.last_emitted_stage in ("OPEN", "REENTRY"):
+        # Stuck check: position held > MAX_HOLD_HOURS AND in drawdown but
+        # never harvested (cum_dd > trigger but < dd_cap).
+        try:
+            opened_ts = datetime.fromisoformat(leg.opened_at_ts.replace("Z", "+00:00"))
+            now_dt = datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
+            held_hours = (now_dt - opened_ts).total_seconds() / 3600
+            if (held_hours >= P15_MAX_HOLD_HOURS and
+                leg.cum_dd_pct >= P15_TIME_STOP_DD_TRIGGER_PCT):
+                close_reason = (f"time-stop {held_hours:.1f}h held with "
+                               f"dd={leg.cum_dd_pct:.2f}% >= "
+                               f"{P15_TIME_STOP_DD_TRIGGER_PCT}%")
+        except (ValueError, AttributeError):
+            pass
 
     if close_reason is not None:
         pnl_pct = ((cur - avg) / avg) if is_long else ((avg - cur) / avg)
@@ -379,10 +417,11 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
                 },
             )
             # Mutate state: realize half, prepare for reentry
+            reentry_size = _resolve_base_size_usd()
             leg.total_size_usd -= harvest_size
             leg.weighted_entry -= avg * harvest_size
-            leg.weighted_entry += reentry_price * P15_BASE_SIZE_USD
-            leg.total_size_usd += P15_BASE_SIZE_USD
+            leg.weighted_entry += reentry_price * reentry_size
+            leg.total_size_usd += reentry_size
             leg.layers += 1
             leg.extreme_price = reentry_price
             leg.last_emitted_stage = "HARVEST"
@@ -399,7 +438,7 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
                 "stage": "REENTRY",
                 "reentry_price": round(leg.extreme_price, 2),
                 "new_avg_entry": round(avg, 2),
-                "new_layer_size_usd": P15_BASE_SIZE_USD,
+                "new_layer_size_usd": reentry_size,
                 "next_target_extreme_pct": f"+{P15_R_PCT}% from now",
             },
         )

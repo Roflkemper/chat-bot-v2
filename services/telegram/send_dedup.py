@@ -80,3 +80,65 @@ def mark_sent(chat_id: int, text: str) -> None:
         k = _key(chat_id, text)
         d[k] = now
         _save(d)
+
+
+# 2026-05-10 TZ#10: per-chat rate limiter (anti-flood). Independent of text dedup.
+# State file is in-memory only — no persistence, OK to lose on restart.
+RATE_LIMIT_PATH = Path("state/telegram_rate_limit.json")
+RATE_LIMIT_INTERVAL_SEC = 30  # max 1 message every 30 seconds per chat
+RATE_LIMIT_BURST = 3          # allow burst of 3 messages then throttle
+
+
+def _load_rate() -> dict:
+    if not RATE_LIMIT_PATH.exists():
+        return {}
+    try:
+        return json.loads(RATE_LIMIT_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_rate(d: dict) -> None:
+    RATE_LIMIT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        RATE_LIMIT_PATH.write_text(json.dumps(d), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def is_rate_limited(chat_id: int) -> bool:
+    """Returns True if chat is currently rate-limited (= caller should skip).
+
+    Algorithm: keep last RATE_LIMIT_BURST timestamps per chat. If all
+    BURST timestamps are within last RATE_LIMIT_INTERVAL_SEC × BURST window,
+    block. Otherwise allow.
+    """
+    with _lock:
+        now = time.time()
+        d = _load_rate()
+        key = str(chat_id)
+        history = d.get(key, [])
+        # Drop timestamps older than the burst window
+        burst_window = RATE_LIMIT_INTERVAL_SEC * RATE_LIMIT_BURST
+        history = [ts for ts in history if now - ts < burst_window]
+        if len(history) >= RATE_LIMIT_BURST:
+            # Already at burst limit — check if oldest is still recent
+            oldest = min(history)
+            if now - oldest < burst_window:
+                logger.info("telegram.rate_limit.suppressed chat_id=%s burst=%d/%d",
+                            chat_id, len(history), RATE_LIMIT_BURST)
+                return True
+        return False
+
+
+def mark_sent_rate(chat_id: int) -> None:
+    with _lock:
+        now = time.time()
+        d = _load_rate()
+        key = str(chat_id)
+        history = d.get(key, [])
+        burst_window = RATE_LIMIT_INTERVAL_SEC * RATE_LIMIT_BURST
+        history = [ts for ts in history if now - ts < burst_window]
+        history.append(now)
+        d[key] = history
+        _save_rate(d)

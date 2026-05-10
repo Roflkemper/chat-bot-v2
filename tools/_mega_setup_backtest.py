@@ -45,7 +45,8 @@ from _backtest_detectors_honest import (  # noqa: E402
 OUT_MD = ROOT / "docs" / "STRATEGIES" / "MEGA_SETUP_BACKTEST.md"
 OUT_CSV = ROOT / "state" / "mega_setup_backtest.csv"
 
-LOOKBACK_DAYS = 365
+import os as _os
+LOOKBACK_DAYS = int(_os.environ.get("BARS_DAYS", "365"))
 WINDOW_MIN = 60        # both constituents must fire within this window
 DEDUP_HOURS = 4        # don't fire mega twice in 4h
 SL_PCT = 0.8
