@@ -150,6 +150,7 @@ state/test3_tpflat_compare.jsonl
 state/leaderboard_history.jsonl
 state/p15_tuner_history.jsonl
 state/gc_confirmation_audit.jsonl
+state/.regime_narrator_warned.txt
 
 # Research outputs (regenerable from tools/)
 state/setup_research_*.csv

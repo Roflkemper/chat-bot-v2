@@ -211,31 +211,64 @@ def _load_liquidations(
     ts: pd.Timestamp,
     lookback_hours: int,
 ) -> pd.DataFrame:
+    """Load liquidations from BOTH sources:
+      1. Per-day parquet files (backfilled / archived)
+      2. Live liquidations.csv (collector.py writes this in real-time)
+
+    2026-05-10: live csv was being missed because it's a single rolling file
+    not a per-day parquet. Now we read both and concat.
+    """
     start_day = (ts - pd.Timedelta(hours=lookback_hours)).normalize()
     end_day = ts.normalize()
     day = start_day
     frames: list[pd.DataFrame] = []
     datatype_dir = market_data_dir / "liquidations"
-    if not datatype_dir.exists():
-        return pd.DataFrame()
 
-    while day <= end_day:
-        date_str = day.strftime("%Y-%m-%d")
-        pattern = f"{date_str}*.parquet"
-        for exchange_dir in datatype_dir.iterdir():
-            if not exchange_dir.is_dir():
-                continue
-            symbol_dir = exchange_dir / symbol
-            candidate_dirs = [symbol_dir, exchange_dir]
-            for candidate_dir in candidate_dirs:
-                if not candidate_dir.exists():
+    # Source 1: per-day parquet files (legacy / backfilled)
+    if datatype_dir.exists():
+        while day <= end_day:
+            date_str = day.strftime("%Y-%m-%d")
+            pattern = f"{date_str}*.parquet"
+            for exchange_dir in datatype_dir.iterdir():
+                if not exchange_dir.is_dir():
                     continue
-                for path in candidate_dir.glob(pattern):
-                    try:
-                        frames.append(pd.read_parquet(path))
-                    except Exception:
+                symbol_dir = exchange_dir / symbol
+                candidate_dirs = [symbol_dir, exchange_dir]
+                for candidate_dir in candidate_dirs:
+                    if not candidate_dir.exists():
                         continue
-        day += pd.Timedelta(days=1)
+                    for path in candidate_dir.glob(pattern):
+                        try:
+                            frames.append(pd.read_parquet(path))
+                        except Exception:
+                            continue
+            day += pd.Timedelta(days=1)
+
+    # Source 2: live rolling csv from market_collector (continuous)
+    csv_path = market_data_dir / "liquidations.csv"
+    if csv_path.exists():
+        try:
+            df = pd.read_csv(csv_path)
+            # Live CSV schema: ts_utc, exchange, side, qty, price (no value_usd)
+            # Synthesize value_usd = qty × price for compatibility with score function.
+            if "ts_utc" in df.columns:
+                df["ts"] = pd.to_datetime(df["ts_utc"], utc=True, errors="coerce")
+                df = df.dropna(subset=["ts"])
+                # Drop empty rows
+                df = df.dropna(subset=["price", "qty"])
+                df["price"] = pd.to_numeric(df["price"], errors="coerce")
+                df["qty"] = pd.to_numeric(df["qty"], errors="coerce")
+                df = df.dropna(subset=["price", "qty"])
+                # Compute value_usd if missing
+                if "value_usd" not in df.columns:
+                    df["value_usd"] = df["qty"] * df["price"]
+                # Add ts_ms for downstream compatibility
+                df["ts_ms"] = (df["ts"].astype("int64") // 10**6).astype("int64")
+                # Filter by symbol if column exists; live csv doesn't have symbol col
+                # — assume all live liq are for the current symbol (BTCUSDT-only collector).
+                frames.append(df[["ts_ms", "exchange", "side", "qty", "price", "value_usd", "ts"]])
+        except Exception:
+            pass  # corrupt csv - skip silently
 
     if not frames:
         return pd.DataFrame()
@@ -243,7 +276,8 @@ def _load_liquidations(
     liquidations = pd.concat(frames, ignore_index=True)
     if "ts_ms" not in liquidations.columns:
         return pd.DataFrame()
-    liquidations["ts"] = pd.to_datetime(liquidations["ts_ms"], unit="ms", utc=True, errors="coerce")
+    if "ts" not in liquidations.columns:
+        liquidations["ts"] = pd.to_datetime(liquidations["ts_ms"], unit="ms", utc=True, errors="coerce")
     liquidations = liquidations.dropna(subset=["ts", "price", "value_usd"])
     start = ts - pd.Timedelta(hours=lookback_hours)
     liquidations = liquidations[(liquidations["ts"] >= start) & (liquidations["ts"] < ts)]

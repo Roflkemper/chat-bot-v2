@@ -304,8 +304,24 @@ async def regime_narrator_loop(stop_event: asyncio.Event, *, send_fn=None,
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        logger.warning("regime_narrator.no_api_key — set ANTHROPIC_API_KEY in .env "
-                       "to enable. Service will idle until restart.")
+        # 2026-05-10: throttle this warning to once per day max via sentinel file.
+        # Was logging at WARN every app_runner restart (30+ times/day).
+        sentinel = ROOT / "state" / ".regime_narrator_warned.txt"
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
+        from datetime import date
+        today = date.today().isoformat()
+        last = sentinel.read_text(encoding="utf-8").strip() if sentinel.exists() else ""
+        if last != today:
+            logger.warning(
+                "regime_narrator.no_api_key — set ANTHROPIC_API_KEY in .env to enable. "
+                "Service will idle until restart."
+            )
+            try:
+                sentinel.write_text(today, encoding="utf-8")
+            except OSError:
+                pass
+        else:
+            logger.info("regime_narrator.no_api_key (already warned today, idling silently)")
         await stop_event.wait()
         return
 
