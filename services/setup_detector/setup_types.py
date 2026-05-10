@@ -486,6 +486,17 @@ def detect_short_pdh_rejection(ctx: DetectionContext) -> Setup | None:
     if ctx.regime_label not in _RANGE_OR_UP:
         return None
 
+    # 2026-05-10 SETUP_FILTER_RESEARCH: 2y honest baseline PF 0.58 (-45% PnL).
+    # Filter+Conf (RSI_1h>=72, MFI_1h>=72, trend_slope_6h>=1.0%) → PF 1.35,
+    # WF 3/4 folds positive. Hard-gate the strict overbought condition.
+    rsi_1h = compute_rsi(df1h["close"])
+    if rsi_1h < 72.0:
+        return None
+    if len(df1h) >= 7:
+        slope_6h = _price_change_pct(ctx.current_price, float(df1h["close"].iloc[-7]))
+        if slope_6h < 1.0:
+            return None
+
     pdh, _ = find_pdh_pdl(df1h.iloc[-24:])
     if pdh <= 0.0:
         return None
@@ -493,8 +504,7 @@ def detect_short_pdh_rejection(ctx: DetectionContext) -> Setup | None:
     touch_count = count_touches_at_level(df1m["high"].iloc[-30:], pdh, tolerance_pct=0.3)
     cond_touch = touch_count >= 1
     cond_reject = float(last_bar["high"]) >= pdh * 0.997 and float(last_bar["close"]) < pdh
-    rsi_1h = compute_rsi(df1h["close"])
-    cond_rsi = rsi_1h > 55.0
+    cond_rsi = rsi_1h > 55.0  # already gated >72 above, kept for basis logic
     vol_ratio = _last_volume_ratio(df1m, lookback=20)
     cond_volume = vol_ratio >= 1.3
     if not all([cond_touch, cond_reject, cond_rsi, cond_volume]):
