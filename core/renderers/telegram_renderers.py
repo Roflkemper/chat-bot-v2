@@ -37,6 +37,7 @@ def build_help_text() -> str:
         "• /p15 — детальный per-leg отчёт P-15 (avg/extreme/dd + последние 5 событий)",
         "• /ginarea (alias /bots) — снимок всех GinArea ботов: позиции, unrz PnL, дистанция до liq",
         "• /changelog (alias /log24) — что произошло за 24ч: коммиты, pipeline, P-15 PnL",
+        "• /changelog_archive [YYYY-MM-DD] — архив changelog за конкретный день",
         "• /pipeline — детектор funnel: fired/blocked/emit yield% по каждому детектору",
         "• /precision — live precision: per-detector + per-pair + CI95",
         "• /histogram (alias /pipeline7d) — pipeline daily breakdown за 7 дней",

@@ -401,6 +401,41 @@ def main() -> int:
         # outcomes after the 2026-05-11 schema update).
         print("\n(Per-regime breakdown empty — outcomes pre-2026-05-11 schema "
               "had no regime field. Will populate as new outcomes accumulate.)")
+
+    # Per (detector, session) breakdown — surfaces session-specific perf.
+    by_det_session = defaultdict(lambda: {"n": 0, "tp1": 0, "sl": 0, "timeout": 0,
+                                            "pnls": []})
+    for o in all_outcomes:
+        session = o.get("session")
+        if not session: continue
+        key = (o["setup_type"], session)
+        d = by_det_session[key]
+        d["n"] += 1
+        d[o["outcome"].lower() if o["outcome"] != "TP1" else "tp1"] += 1
+        d["pnls"].append(float(o["pnl_pct"]))
+
+    session_rows = []
+    for (det, session), c in by_det_session.items():
+        if c["n"] < 5: continue
+        n = c["n"]
+        pnls = c["pnls"]
+        session_rows.append({
+            "detector": det,
+            "session": session,
+            "n": n,
+            "wr_%": round(c["tp1"] / n * 100, 1),
+            "exp_%": round(sum(pnls) / n, 4),
+            "tp1": c["tp1"],
+            "sl": c["sl"],
+            "timeout": c["timeout"],
+        })
+
+    if session_rows:
+        df_session = pd.DataFrame(session_rows).sort_values(
+            ["detector", "n"], ascending=[True, False],
+        )
+        print("\n=== Per (detector, session) breakdown (N>=5) ===")
+        print(df_session.to_string(index=False))
     return 0
 
 

@@ -136,8 +136,30 @@ def main() -> int:
         lines.append("")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines), encoding="utf-8")
+    body = "\n".join(lines)
+    OUT.write_text(body, encoding="utf-8")
     print(f"[change-log] wrote {OUT}")
+
+    # 2026-05-11: archive each run by date so historical trends remain
+    # accessible. Archive dir kept under docs/changelog_archive/ — small
+    # markdown files, ~5KB each. After 90 days oldest archive auto-pruned.
+    archive_dir = ROOT / "docs" / "changelog_archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / f"{now.strftime('%Y-%m-%d')}.md"
+    archive_path.write_text(body, encoding="utf-8")
+    print(f"[change-log] archived {archive_path}")
+
+    # Prune archives older than 90 days
+    import time
+    cutoff_ts = time.time() - 90 * 86400
+    for old in archive_dir.glob("*.md"):
+        try:
+            if old.stat().st_mtime < cutoff_ts:
+                old.unlink()
+                print(f"[change-log] pruned {old.name}")
+        except OSError:
+            pass
+
     print("\n".join(lines[:30]))
     return 0
 

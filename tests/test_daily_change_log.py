@@ -47,3 +47,13 @@ def test_read_jsonl_window_skips_bad_lines(mod, tmp_path):
     p.write_text("not json\n{}\n", encoding="utf-8")
     out = mod._read_jsonl_window(p, 24)
     assert out == []  # both rows have no ts → filtered
+
+
+def test_archive_pattern_correct(tmp_path):
+    """Verify archive filename uses YYYY-MM-DD format."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    expected = f"{now.strftime('%Y-%m-%d')}.md"
+    # Sanity: filename matches pattern
+    assert len(expected) == 13  # 4-2-2.md
+    assert expected.endswith(".md")

@@ -1488,6 +1488,18 @@ class TelegramBotApp:
                     f"Now disabled: env={d['env']}, runtime={d['state_file']}"
                 )
             else:
+                # Helpful: if token is in env but not runtime, tell operator
+                # to edit .env.local — not silently say "not in runtime".
+                env_match = [t for t in d['env'] if t in token or token in t]
+                if env_match:
+                    self.bot.send_message(
+                        chat_id,
+                        f"[NOTE] '{token}' is in .env DISABLED_DETECTORS "
+                        f"({env_match}), not in runtime list.\n"
+                        f"To enable: edit .env.local, remove the token from "
+                        f"DISABLED_DETECTORS, restart bot."
+                    )
+                    return
                 self.bot.send_message(
                     chat_id, f"'{token}' was not in runtime list. "
                             f"Current: {d['state_file']}"
@@ -1587,6 +1599,45 @@ class TelegramBotApp:
                 self.bot.send_message(chat_id, f'❌ /pipeline failed: {exc}')
                 return
             self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+
+        @self.bot.message_handler(commands=['changelog_archive', 'log_history'])
+        def handle_changelog_archive(message) -> None:
+            """`/changelog_archive [YYYY-MM-DD]` — show archived day.
+            No date → list available archives."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from pathlib import Path as _P
+            arch_dir = _P("docs/changelog_archive")
+            if not arch_dir.exists():
+                self.bot.send_message(chat_id, 'No archive yet.')
+                return
+            args = str(message.text or '').strip().split(maxsplit=1)
+            files = sorted(arch_dir.glob("*.md"))
+            if len(args) < 2:
+                if not files:
+                    self.bot.send_message(chat_id, 'No archive entries.')
+                    return
+                lst = "\n".join(f"  {f.stem}" for f in files[-30:])
+                self.bot.send_message(
+                    chat_id,
+                    f"Archive (last 30):\n{lst}\n\n"
+                    f"Usage: /changelog_archive YYYY-MM-DD"
+                )
+                return
+            target = arch_dir / f"{args[1].strip()}.md"
+            if not target.exists():
+                self.bot.send_message(chat_id, f"No archive for '{args[1]}'")
+                return
+            try:
+                text = target.read_text(encoding="utf-8")
+                if len(text) > 3800:
+                    text = text[:3800] + "\n... (truncated)"
+            except OSError as exc:
+                self.bot.send_message(chat_id, f'❌ read failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
 
         @self.bot.message_handler(commands=['changelog', 'log24'])
         def handle_changelog(message) -> None:
