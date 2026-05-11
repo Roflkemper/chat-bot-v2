@@ -58,6 +58,33 @@ def _load_prices() -> pd.DataFrame:
     return out.sort_values("ts_utc").set_index("ts_utc")
 
 
+_DEFAULT_BACKTEST_EXPECTANCY = {
+    "short_pdh_rejection": 0.005,   # PF 1.16 calibrated
+    "short_rally_fade": 0.005,      # PF ~1.4 with filter
+    "long_pdl_bounce": 0.001,
+    "long_dump_reversal": 0.001,
+    "long_double_bottom": 0.005,
+    "short_double_top": 0.005,
+    "long_multi_divergence": 0.0,
+    "long_rsi_momentum_ga": 0.0,
+    "short_mfi_multi_ga": 0.0,
+}
+
+_BACKTEST_EXP_PATH = ROOT / "config" / "backtest_expectancy.json"
+
+
+def _load_backtest_expectancy() -> dict[str, float]:
+    """Load per-detector expected expectancy from JSON, fall back to defaults."""
+    if _BACKTEST_EXP_PATH.exists():
+        try:
+            data = json.loads(_BACKTEST_EXP_PATH.read_text(encoding="utf-8"))
+            return {k: float(v) for k, v in data.items()
+                    if isinstance(v, (int, float))}
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
+    return dict(_DEFAULT_BACKTEST_EXPECTANCY)
+
+
 def _bootstrap_ci(values: list[float], statistic_fn,
                   n_resamples: int = 1000, alpha: float = 0.05) -> tuple[float, float]:
     """Percentile bootstrap CI for an arbitrary statistic."""
@@ -232,19 +259,11 @@ def main() -> int:
         d[o["outcome"].lower() if o["outcome"] != "TP1" else "tp1"] += 1
         d["pnls"].append(float(o["pnl_pct"]))
 
-    # Backtest expected expectancy per detector (from previous research runs).
-    # When live diverges from backtest by >2σ we flag DEGRADED.
-    BACKTEST_EXPECTANCY = {
-        "short_pdh_rejection": 0.005,   # PF 1.16 calibrated; near-zero per-trade
-        "short_rally_fade": 0.005,      # PF ~1.4 with filter
-        "long_pdl_bounce": 0.001,
-        "long_dump_reversal": 0.001,
-        "long_double_bottom": 0.005,
-        "short_double_top": 0.005,
-        "long_multi_divergence": 0.0,
-        "long_rsi_momentum_ga": 0.0,
-        "short_mfi_multi_ga": 0.0,
-    }
+    # Backtest expected expectancy per detector. Loaded from
+    # config/backtest_expectancy.json if present (refresh by running
+    # tools/_backtest_detectors_honest.py and updating the json).
+    # Falls back to hardcoded defaults from 2026-05-10 research runs.
+    BACKTEST_EXPECTANCY = _load_backtest_expectancy()
 
     rows = []
     for det, c in by_det.items():

@@ -1,0 +1,12 @@
+{
+  "_comment": "Per-detector expected per-trade expectancy in % from latest backtest run. Used by scripts/setup_precision_tracker.py to flag DEGRADED status when live diverges >2σ from backtest. Refresh by running tools/_backtest_detectors_honest.py and replacing values here. Last updated: 2026-05-11.",
+  "short_pdh_rejection": 0.005,
+  "short_rally_fade": 0.005,
+  "long_pdl_bounce": 0.001,
+  "long_dump_reversal": 0.001,
+  "long_double_bottom": 0.005,
+  "short_double_top": 0.005,
+  "long_multi_divergence": 0.0,
+  "long_rsi_momentum_ga": 0.0,
+  "short_mfi_multi_ga": 0.0
+}
