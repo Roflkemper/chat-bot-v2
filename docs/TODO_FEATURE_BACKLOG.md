@@ -111,6 +111,21 @@ state files (already gitignored).
 
 **Priority:** low — costs 1 minute/tick of compute, nothing on fire.
 
+## TODO-7: Watch short_mfi_multi_ga — DEGRADED candidate
+
+**Live precision (2026-05-11):** N=9, exp=-0.32%, CI95 [-0.73, +0.13].
+8/9 outcomes TIMEOUT, 1 SL. Direction wrong on uptrending market.
+
+Status MARGINAL (not yet DEGRADED — CI straddles 0). At N=30 we'll
+have decisive verdict. Until then leave enabled — accumulating sample
+is the whole point.
+
+Action: re-check on every `setup_precision_tracker` cron run.
+If status flips to DEGRADED → add to `DISABLED_DETECTORS` like
+short_pdh_rejection.
+
+---
+
 ## TODO-6: Consolidate text-chunking helpers
 
 **Duplicated:**

@@ -8,5 +8,13 @@
   "short_double_top": 0.005,
   "long_multi_divergence": 0.0,
   "long_rsi_momentum_ga": 0.0,
-  "short_mfi_multi_ga": 0.0
+  "short_mfi_multi_ga": 0.0,
+  "long_div_bos_15m": 0.0,
+  "short_div_bos_15m": 0.0,
+  "long_div_bos_confirmed": 0.0,
+  "long_oversold_reclaim": 0.0,
+  "short_overbought_fade": 0.0,
+  "long_mega_dump_bounce": 0.01,
+  "long_multi_asset_confluence": 0.0,
+  "long_multi_asset_confluence_v2": 0.0
 }

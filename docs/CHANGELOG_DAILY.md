@@ -1,0 +1,85 @@
+# Daily change log — 2026-05-11
+
+_Auto-generated 09:57 UTC covering last 24h_
+
+## Commits (49)
+
+- `78b312c` feat(tg): /ginarea command вЂ” readonly GinArea bot summary
+- `cbeb936` feat(observability): setup_detector loop heartbeat every ~1h
+- `11ba81a` test+config: TZ-#12 daily KPI alerts coverage + disable DEGRADED detector
+- `3e2e9a7` chore: cleanup batch вЂ” test3 deletion, help update, compact script, rotation
+- `2fe4049` fix(dedup): _is_duplicate_recent window relative to event.ts, not now()
+- `32292d1` fix(tests): unblock decision_log + regulation_filter test collection
+- `ef86bb0` feat+chore: close TODO backlog вЂ” forward-invalidation, holdout, retire test3
+- `b1fd1ec` feat(precision): TZ-B2 backtest expectancy from config/ вЂ” single source
+- `f5a78b8` docs: TZ-B10 add test3_tpflat simulators to backlog for decision
+- `9377ac5` fix(paper_trader): TZ-B5 skip P-15 trades in update_open_trades loop
+- `9afc3e9` feat(observability): TZ-B7 /p15 TG command + TZ-B8 KPI alerts section
+- `e13b63a` feat(infra): TZ-B6 watchdog structured audit log
+- `9f6cc72` feat(infra): TZ-B3+B4 rotation for growing jsonl state journals
+- `bc68ea3` test(p15): TZ-B1 regression coverage for REENTRY UnboundLocalError
+- `a176053` docs: TZ-N8 single source of truth for open TODOs
+- `b2980db` docs: TZ-N7 P-15 multi-asset PnL projection with pair-factor scaling
+- `3246dd6` feat(gc): TZ-N2+N3 backfill rerun + shadow mode
+- `b9e0bb5` feat(kpi)+fix(p15): TZ-N6 P-15 daily section + production bug found
+- `bdd5756` feat(setup_detector): TZ-N5 runtime kill switch via DISABLED_DETECTORS env
+- `05f2b2d` feat(tg): TZ-N4 /status command вЂ” on-demand health snapshot
+- `419d458` docs+chore: TZ-4 scope doc + stats_aggregator audit note
+- `e50a974` feat(research): TZ-3.1 deriv 2y backfill script
+- `690e679` fix(test): update M-4 dashboard test for 2026-05-09 safety override
+- `791be76` chore+feat: gitignore runtime + pipeline_metrics rotation + precision cron
+- `0a7ac6b` feat(p15): TZ-1 per-pair sizing + cross-asset correlation cap
+- `81780d5` chore: TZ-6 reject liq_cluster_detector вЂ” kill, not wire
+- `c2be4ee` feat(precision): TZ-5 bootstrap CI + status classification
+- `379ebf9` refactor: TZ-4 centralize RSI/multiplier constants + add .env.example
+- `aba6ac9` feat(research): TZ-3 GC score historical backtest (20d window)
+- `5c669e4` feat(observability): TZ-2 pipeline metrics + daily KPI report
+- `f54120f` fix(combo_filter): exempt P-15 lifecycle types from strength gate
+- `ce0c1e0` fix(precision/coverage): non-trade skip + correct threshold semantics
+- `b373e95` fix(setup_detector): type+pair time dedup for short_pdh_rejection storm
+- `fd330ae` feat: setup precision tracker + watchdog TG alert on persistent failure
+- `c23f649` chore: gitignore runtime files + lock mega-pair fixed params
+- `cf9ad3e` fix(gc-coverage): use live 1m CSV + lower threshold + remove emoji
+- `8a93732` feat: 5-task batch вЂ” equity writer + 14-detector pipeline + H10 disabled
+- `5f451aa` feat: mega adaptive REJECTED + pre_cascade relaxed + edge tracker
+- `50fcea7` feat(stability): heartbeat + restart audit + hourly restart-frequency check
+- `33c31d4` feat: 6-task batch вЂ” P-15 deep analysis + mega 815d + H10/PDH validation
+- `8fb8b50` feat: 10-task batch вЂ” backtests + P-15 enhancements + TG rate limit
+- `19343c3` feat: 5-task batch вЂ” SHORT mega/quad/XRP/15m intraday/overbought verdicts
+- `d922b56` feat: mega-triple backtest STABLE + liq_map live CSV bridge + narrator log throttle
+- `68d2d35` fix(stability): watchdog freshness 5min->15min + mega_setup UTF-8 fix + killswitch noise
+- `c84f0b4` feat: H10 wire + MTF disagreement + smart-pause + 5m P-15 verdict + 4 final decisions
+- `6b9948b` feat: D2/D3 cron tools + GC audit reporter + breakout detector + HARD_BLOCK update
+- `4933f39` feat(setup_detector): GC-confirmation gating with audit + simulation tool
+- `caa477e` fix(detector): coarse-bucket dedup signature + GC vs detectors co-firing analysis
+- `3d99c98` feat(detectors+paper): RSI_15m gate for short_rally_fade + global confirmation gate in paper_trader
+
+## Pipeline (2326 events, 93 setups emitted)
+
+- combo_blocked: 945
+- type_pair_dedup_skip: 705
+- env_disabled: 367
+- detector_failed: 132
+- emitted: 93
+- semantic_dedup_skip: 37
+- mtf_conflict: 13
+- gc_neutral: 13
+- gc_aligned: 9
+- mtf_neutral: 9
+- gc_blocked: 3
+
+## app_runner restarts: 272
+
+[WARN] elevated restart count — check watchdog audit
+
+## P-15 lifecycle
+
+- realized PnL: $-466.14
+- OPEN: 35, HARVEST: 85, CLOSE: 35
+
+## GC decisions
+
+- boost +15.0%: 96
+- penalty -30.0%: 84
+- pass-through: 64
+- hard-block: 45
