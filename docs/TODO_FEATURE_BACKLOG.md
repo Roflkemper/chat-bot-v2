@@ -60,6 +60,28 @@ saved holdout split and computes confusion matrix + per-regime stats.
 **Priority:** medium — regime classifier is critical input to many
 downstream filters. Knowing if it drifts matters.
 
+## TODO-4: test3_tpflat simulators — review or retire
+
+**Files:**
+- [services/test3_tpflat_simulator/loop.py](services/test3_tpflat_simulator/loop.py)
+- [services/test3_tpflat_b_simulator/loop.py](services/test3_tpflat_b_simulator/loop.py)
+- Output: `state/test3_tpflat_paper.jsonl` (last write 2026-05-09)
+- Output: `state/test3_tpflat_b_paper.jsonl` (last write 2026-05-09)
+
+**Status:** wired into app_runner as two parallel tasks. Last journal
+writes >2 days ago — gate condition not firing. Each tick still does
+poll work (60s loop), modest but non-zero cost.
+
+**Decision needed:** either re-enable / re-validate, or retire if
+experiment is concluded.
+
+**Effort:** ~30 min to make a verdict — read both loops, check what
+"flat TP" means in current data, compare against P-15. If retiring:
+remove from app_runner all_tasks + delete service dirs + gitignore
+state files (already gitignored).
+
+**Priority:** low — costs 1 minute/tick of compute, nothing on fire.
+
 ## Closed TODOs (audited and dismissed)
 
 - `advisor_v2.py:40 TODO(reuse): clustering reimplements DedupLayer` —
