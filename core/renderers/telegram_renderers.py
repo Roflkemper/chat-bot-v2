@@ -35,6 +35,7 @@ def build_help_text() -> str:
         "СЛЭШ-КОМАНДЫ (текстом, on-demand):",
         "• /status — heartbeat, pid процессов, открытые P-15 leg, последний сетап + GC",
         "• /p15 — детальный per-leg отчёт P-15 (avg/extreme/dd + последние 5 событий)",
+        "• /ginarea (alias /bots) — снимок всех GinArea ботов: позиции, unrz PnL, дистанция до liq",
         "• /audit — текущая аудит-сводка (advisor)",
         "• /report_today / /report_week — итог дня / недели",
         "• /setups setup_stats — статистика по детекторам за 7д",

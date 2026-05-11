@@ -1416,6 +1416,22 @@ class TelegramBotApp:
         # Surfaces silent failures: stale state files, detectors firing but
         # being combo-blocked, DL push volume, paper-trader activity. Same
         # checks I (the assistant) run during manual audits — just packaged.
+        @self.bot.message_handler(commands=['ginarea', 'bots'])
+        def handle_ginarea(message) -> None:
+            """Read-only summary of GinArea bot states."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.ginarea_report import build_ginarea_report
+                text = build_ginarea_report()
+            except Exception as exc:
+                logger.exception('handle_ginarea.failed')
+                self.bot.send_message(chat_id, f'❌ /ginarea failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         @self.bot.message_handler(commands=['p15'])
         def handle_p15(message) -> None:
             """Detailed P-15 per-leg report with recent equity events."""

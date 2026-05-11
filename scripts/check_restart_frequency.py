@@ -37,9 +37,13 @@ def main() -> int:
     print(f"[restart-check] {n} app_runner starts in last {RESTART_WINDOW_HOURS}h "
           f"(threshold: {RESTART_LIMIT})")
     if n >= RESTART_LIMIT:
-        msg = (f"⚠ App_runner restarted {n} times in last {RESTART_WINDOW_HOURS}h "
+        msg = (f"[WARN] App_runner restarted {n} times in last {RESTART_WINDOW_HOURS}h "
                f"(threshold {RESTART_LIMIT}). Investigate watchdog or crashes.\n"
                f"Recent starts: " + ", ".join(s["ts"] for s in starts[-5:]))
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
         print(msg)
         try:
             import requests
