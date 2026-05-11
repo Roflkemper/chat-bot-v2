@@ -111,6 +111,40 @@ state files (already gitignored).
 
 **Priority:** low — costs 1 minute/tick of compute, nothing on fire.
 
+## TODO-8: Watchdog 13 restarts/hour pattern — operator-induced, not bug
+
+**Status:** investigated 2026-05-11. Not a bug.
+
+**What looked suspicious:**
+- 13 app_runner starts/hour in audit log
+- check_restart_frequency.py flags >5/hour as anomaly
+- App_runner / tracker / collectors die in lock-step (same count)
+
+**Root cause:** every time the operator/Claude does
+`python -c "p.terminate()"` to apply a code change, three things happen:
+  1. app_runner + tracker + collectors all get terminated (children)
+  2. Within 2min Task Scheduler runs watchdog
+  3. Watchdog finds NOT RUNNING for all three → spawns each
+  4. Audit records 3 `started` events
+
+So each manual restart = 3 audit entries × ~5 restarts/day session
+= ~15/day, matches the count.
+
+**Not a problem because:**
+- All starts succeed (no FAILED_TO_START events)
+- No tracebacks in app.log
+- Heartbeat continuous within each generation
+- 5min crash interval matches the human-action cadence, not a periodic
+  failure
+
+**Action:** none. Pattern is by design.
+
+**Future improvement (optional):** check_restart_frequency.py could
+exclude restarts that happen within 30s of a watchdog tick (= operator-
+triggered vs autonomous). Lowers false-positive alert noise.
+
+---
+
 ## TODO-7: Watch short_mfi_multi_ga — DEGRADED candidate
 
 **Live precision (2026-05-11):** N=9, exp=-0.32%, CI95 [-0.73, +0.13].

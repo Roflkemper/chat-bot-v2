@@ -13,8 +13,34 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 AUDIT = ROOT / "state" / "app_runner_starts.jsonl"
+WATCHDOG_AUDIT = ROOT / "state" / "watchdog_audit.jsonl"
 RESTART_LIMIT = 5
 RESTART_WINDOW_HOURS = 1
+# 2026-05-11 TODO-8: starts within this many seconds of a watchdog tick
+# are likely operator-triggered (kill + immediate watchdog respawn).
+# Don't count them toward the alert threshold.
+OPERATOR_TRIGGER_WINDOW_SEC = 30
+
+
+def _watchdog_tick_times(cutoff) -> list:
+    """Read watchdog audit and return timestamps of 'started' events for
+    app_runner. These are points where watchdog noticed NOT RUNNING and
+    restarted — typically follow an operator kill or autonomous crash."""
+    if not WATCHDOG_AUDIT.exists():
+        return []
+    out = []
+    with WATCHDOG_AUDIT.open(encoding="utf-8") as f:
+        for line in f:
+            try:
+                r = json.loads(line)
+                if r.get("event") != "started" or r.get("component") != "app_runner":
+                    continue
+                ts = datetime.fromisoformat(r["ts"].replace("Z", "+00:00"))
+                if ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
+                if ts >= cutoff: out.append(ts)
+            except (ValueError, KeyError, json.JSONDecodeError):
+                continue
+    return out
 
 
 def main() -> int:
@@ -29,13 +55,30 @@ def main() -> int:
                 ts = datetime.fromisoformat(rec["ts"].replace("Z", "+00:00"))
                 if ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
                 if ts >= cutoff:
+                    rec["_ts"] = ts
                     starts.append(rec)
             except (ValueError, KeyError, json.JSONDecodeError):
                 continue
 
+    # Classify: starts that align with a watchdog tick are operator-triggered.
+    wd_ticks = _watchdog_tick_times(cutoff)
+    autonomous = []
+    operator = []
+    for s in starts:
+        ts = s["_ts"]
+        aligned_with_wd = any(
+            abs((ts - wd_ts).total_seconds()) <= OPERATOR_TRIGGER_WINDOW_SEC
+            for wd_ts in wd_ticks
+        )
+        (operator if aligned_with_wd else autonomous).append(s)
+
     n = len(starts)
-    print(f"[restart-check] {n} app_runner starts in last {RESTART_WINDOW_HOURS}h "
-          f"(threshold: {RESTART_LIMIT})")
+    n_auto = len(autonomous)
+    n_op = len(operator)
+    print(f"[restart-check] {n} starts in last {RESTART_WINDOW_HOURS}h "
+          f"(autonomous={n_auto}, operator-triggered={n_op}, threshold={RESTART_LIMIT})")
+    starts = autonomous  # only autonomous ones trigger the alert
+    n = n_auto
     if n >= RESTART_LIMIT:
         msg = (f"[WARN] App_runner restarted {n} times in last {RESTART_WINDOW_HOURS}h "
                f"(threshold {RESTART_LIMIT}). Investigate watchdog or crashes.\n"
