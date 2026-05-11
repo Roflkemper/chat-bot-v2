@@ -21,7 +21,7 @@ def test_keyboard_essential_buttons_present():
     for row in kb.keyboard:
         for btn in row:
             texts.add(btn["text"] if isinstance(btn, dict) else btn.text)
-    essentials = {"/status", "/p15", "/ginarea", "/morning_brief", "HELP"}
+    essentials = {"/status", "/setups", "/ginarea", "/morning_brief", "HELP"}
     missing = essentials - texts
     assert not missing, f"Missing essential buttons: {missing}"
 
@@ -33,6 +33,9 @@ def test_keyboard_excludes_debug_commands():
     for row in kb.keyboard:
         for btn in row:
             texts.add(btn["text"] if isinstance(btn, dict) else btn.text)
-    debug = {"/regime_v2"}
+    # /pipeline /precision /histogram /inspect /cron — debug observability,
+    # available via text but not on the keyboard.
+    debug = {"/regime_v2", "/pipeline", "/precision", "/histogram",
+             "/inspect", "/cron"}
     leaked = debug & texts
     assert not leaked, f"Debug commands on keyboard: {leaked}"

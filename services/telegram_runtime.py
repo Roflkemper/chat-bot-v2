@@ -1704,6 +1704,23 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text)
 
+        @self.bot.message_handler(commands=['setups', 'trades'])
+        def handle_setups(message) -> None:
+            """Подробный список paper-позиций + P-15 legs + свежие сигналы:
+            entry/SL/TP/R-R/PnL/action — всё что нужно для ручной сделки."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.setups_report import build_setups_report
+                text = build_setups_report()
+            except Exception as exc:
+                logger.exception('handle_setups.failed')
+                self.bot.send_message(chat_id, f'❌ /setups failed: {exc}')
+                return
+            self._send_long_text(chat_id, text, filename="setups.txt")
+
         @self.bot.message_handler(commands=['ginarea', 'bots'])
         def handle_ginarea(message) -> None:
             """Read-only summary of GinArea bot states."""

@@ -27,25 +27,23 @@ def _safe_bool(value: Any) -> bool:
 
 
 def build_main_keyboard() -> ReplyKeyboardMarkup:
-    """Redesigned 2026-05-11 — see docs/TG_AUDIT_REPORT.md for rationale.
+    """Trader-first layout. Updated 2026-05-11 per operator feedback.
 
-    Layout principles:
-      - Row 1: daily snapshot (state of bot + open legs + grid bots)
-      - Row 2: trading insight (brief → final decision → advise)
-      - Row 3: health & history (pipeline funnel, precision, changelog)
-      - Row 4: utility (watch, help)
-    Removed duplicates (/advise + /advisor), debug commands (/regime_v2),
-    redundant buttons (BTC SUMMARY, СТАТУС БОТОВ → /ginarea).
+    Row 1 — что сейчас (state, открытые сделки с цифрами, гинари-боты)
+    Row 2 — что делать (утро + рынок + грид-решение)
+    Row 3 — история и алерты + помощь
+
+    Убраны разработческие команды (/pipeline /precision /histogram /inspect
+    /cron) с кнопок — доступны текстом для дебага. P-15 включён в /setups
+    как часть «открытые позиции» вместе с paper trades.
     """
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
-    # Row 1 — daily snapshot
-    kb.row(_btn("/status"), _btn("/p15"), _btn("/ginarea"))
-    # Row 2 — trading insight
-    kb.row(_btn("/morning_brief"), _btn("FINAL DECISION"), _btn("/advise"))
-    # Row 3 — health & history
-    kb.row(_btn("/pipeline"), _btn("/precision"), _btn("/changelog"))
-    # Row 4 — utility
-    kb.row(_btn("/watch"), _btn("HELP"))
+    # Row 1 — состояние
+    kb.row(_btn("/status"), _btn("/setups"), _btn("/ginarea"))
+    # Row 2 — решения
+    kb.row(_btn("/morning_brief"), _btn("/advise"), _btn("FINAL DECISION"))
+    # Row 3 — история + помощь
+    kb.row(_btn("/changelog"), _btn("/watch"), _btn("HELP"))
     return kb
 
 
