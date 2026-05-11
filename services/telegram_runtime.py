@@ -1123,6 +1123,32 @@ class TelegramBotApp:
     def _is_allowed(self, chat_id: int) -> bool:
         return not self.allowed_chat_ids or chat_id in self.allowed_chat_ids
 
+    def _send_long_text(self, chat_id: int, text: str, *,
+                         filename: str = "report.txt",
+                         max_inline: int = 3800) -> None:
+        """Send `text` to TG. Short → message. Long → attached file."""
+        if len(text) <= max_inline:
+            self.bot.send_message(chat_id, f"```\n{text}\n```",
+                                    parse_mode='Markdown')
+            return
+        # Long: write to temp file, send as document
+        try:
+            import tempfile
+            from pathlib import Path as _Path
+            tmp = _Path(tempfile.gettempdir()) / f"bot7_{filename}"
+            tmp.write_text(text, encoding="utf-8")
+            with tmp.open("rb") as fh:
+                self.bot.send_document(chat_id, fh,
+                                        caption=f"{filename} ({len(text):,} chars)")
+        except Exception as exc:
+            logger.exception('_send_long_text.failed')
+            # Fallback: truncate inline
+            self.bot.send_message(
+                chat_id,
+                f"```\n{text[:max_inline]}\n... (truncated, send_document failed: {exc})\n```",
+                parse_mode='Markdown'
+            )
+
     def _dispatch(self, chat_id: int, text: str) -> None:
         resolved = resolve_telegram_text(text)
         if not resolved:
@@ -1523,9 +1549,7 @@ class TelegramBotApp:
                     self.bot.send_message(chat_id, f"Bad pid: '{args[1]}'")
                     return
             text = build_inspect_report(pid=pid)
-            if len(text) > 3800:
-                text = text[:3800] + "\n... (truncated)"
-            self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+            self._send_long_text(chat_id, text, filename="inspect.txt")
 
         @self.bot.message_handler(commands=['histogram', 'pipeline7d'])
         def handle_histogram(message) -> None:
@@ -1543,13 +1567,11 @@ class TelegramBotApp:
                     cwd=str(_P.cwd()), capture_output=True, text=True, timeout=15,
                 )
                 text = result.stdout or 'No output'
-                if len(text) > 3800:
-                    text = text[:3800] + "\n... (truncated)"
             except Exception as exc:
                 logger.exception('handle_histogram.failed')
                 self.bot.send_message(chat_id, f'❌ /histogram failed: {exc}')
                 return
-            self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+            self._send_long_text(chat_id, text, filename="histogram_7d.txt")
 
         @self.bot.message_handler(commands=['precision'])
         def handle_precision(message) -> None:
@@ -1567,13 +1589,11 @@ class TelegramBotApp:
                     cwd=str(_P.cwd()), capture_output=True, text=True, timeout=30,
                 )
                 text = result.stdout or result.stderr or 'No output'
-                if len(text) > 3800:
-                    text = text[:3800] + "\n... (truncated)"
             except Exception as exc:
                 logger.exception('handle_precision.failed')
                 self.bot.send_message(chat_id, f'❌ /precision failed: {exc}')
                 return
-            self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+            self._send_long_text(chat_id, text, filename="precision.txt")
 
         @self.bot.message_handler(commands=['pipeline'])
         def handle_pipeline(message) -> None:
@@ -1592,13 +1612,11 @@ class TelegramBotApp:
                     cwd=str(_P.cwd()), capture_output=True, text=True, timeout=10,
                 )
                 text = result.stdout or 'No output'
-                if len(text) > 3800:
-                    text = text[:3800] + "\n... (truncated)"
             except Exception as exc:
                 logger.exception('handle_pipeline.failed')
                 self.bot.send_message(chat_id, f'❌ /pipeline failed: {exc}')
                 return
-            self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+            self._send_long_text(chat_id, text, filename="pipeline.txt")
 
         @self.bot.message_handler(commands=['changelog_archive', 'log_history'])
         def handle_changelog_archive(message) -> None:

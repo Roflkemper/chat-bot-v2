@@ -33,6 +33,7 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+PREV_STATUS = ROOT / "state" / "setup_precision_prev_status.json"
 SETUPS = ROOT / "state" / "setups.jsonl"
 OUTCOMES = ROOT / "state" / "setup_precision_outcomes.jsonl"
 DATA_FROZEN = ROOT / "backtests" / "frozen" / "BTCUSDT_1m_2y.csv"
@@ -305,6 +306,57 @@ def main() -> int:
         for _, r in degraded.iterrows():
             print(f"  {r['detector']}: live exp {r['exp_%']:+.4f}% vs "
                   f"bt {r['bt_exp_%']}, CI [{r['ci95_lo']:+.4f}, {r['ci95_hi']:+.4f}]")
+
+    # ── Status transition detection (DEGRADED auto-notify) ────────────────
+    current_status_map = dict(zip(df["detector"], df["status"]))
+    prev_status_map: dict[str, str] = {}
+    if PREV_STATUS.exists():
+        try:
+            prev_status_map = json.loads(PREV_STATUS.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            prev_status_map = {}
+
+    transitions = []
+    for det, cur_status in current_status_map.items():
+        prev = prev_status_map.get(det)
+        if prev == cur_status:
+            continue
+        # Only alert on entering DEGRADED — that's the actionable transition.
+        if cur_status == "DEGRADED" and prev not in (None, "INSUFFICIENT"):
+            row = df[df["detector"] == det].iloc[0]
+            transitions.append(
+                f"[DEGRADED] {det}: {prev} -> DEGRADED  "
+                f"live exp {row['exp_%']:+.4f}% (CI [{row['ci95_lo']:+.4f}, "
+                f"{row['ci95_hi']:+.4f}]) — consider /disable {det}"
+            )
+        # Also alert on recovery — DEGRADED → not-DEGRADED
+        if prev == "DEGRADED" and cur_status != "DEGRADED":
+            transitions.append(
+                f"[RECOVERED] {det}: DEGRADED -> {cur_status}"
+            )
+
+    if transitions:
+        print("\n=== STATUS TRANSITIONS (TG notify) ===")
+        for t in transitions:
+            print(f"  {t}")
+        # Send to TG via done.py
+        try:
+            done_script = ROOT / "scripts" / "done.py"
+            if done_script.exists():
+                msg = "Precision status changes:\n" + "\n".join(transitions)
+                import subprocess
+                subprocess.run([sys.executable, str(done_script), msg],
+                               cwd=str(ROOT), check=False, timeout=15)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[precision] TG notify failed: {exc}", file=sys.stderr)
+
+    # Save current status for next run's comparison
+    try:
+        PREV_STATUS.parent.mkdir(parents=True, exist_ok=True)
+        PREV_STATUS.write_text(json.dumps(current_status_map, indent=2),
+                                encoding="utf-8")
+    except OSError as exc:
+        print(f"[precision] status save failed: {exc}", file=sys.stderr)
 
     # Per (detector, pair) breakdown — surfaces pair-specific drift
     # that aggregate stats hide.
