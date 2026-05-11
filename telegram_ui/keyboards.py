@@ -27,15 +27,25 @@ def _safe_bool(value: Any) -> bool:
 
 
 def build_main_keyboard() -> ReplyKeyboardMarkup:
+    """Redesigned 2026-05-11 — see docs/TG_AUDIT_REPORT.md for rationale.
+
+    Layout principles:
+      - Row 1: daily snapshot (state of bot + open legs + grid bots)
+      - Row 2: trading insight (brief → final decision → advise)
+      - Row 3: health & history (pipeline funnel, precision, changelog)
+      - Row 4: utility (watch, help)
+    Removed duplicates (/advise + /advisor), debug commands (/regime_v2),
+    redundant buttons (BTC SUMMARY, СТАТУС БОТОВ → /ginarea).
+    """
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
-    # Row 1 — flagship: morning brief (one-glance summary), then deep-dive
-    kb.row(_btn("/morning_brief"), _btn("/advise"), _btn("FINAL DECISION"))
-    # Row 2 — momentum / 15m setups / regime
-    kb.row(_btn("/momentum_check"), _btn("/setups_15m"), _btn("/regime_v2"))
-    # Row 3 — bots / portfolio summaries
-    kb.row(_btn("СТАТУС БОТОВ"), _btn("BTC GINAREA"), _btn("BTC SUMMARY"))
-    # Row 4 — paper trader / watchlist / advisor / help
-    kb.row(_btn("/papertrader"), _btn("/watch"), _btn("/advisor"), _btn("HELP"))
+    # Row 1 — daily snapshot
+    kb.row(_btn("/status"), _btn("/p15"), _btn("/ginarea"))
+    # Row 2 — trading insight
+    kb.row(_btn("/morning_brief"), _btn("FINAL DECISION"), _btn("/advise"))
+    # Row 3 — health & history
+    kb.row(_btn("/pipeline"), _btn("/precision"), _btn("/changelog"))
+    # Row 4 — utility
+    kb.row(_btn("/watch"), _btn("HELP"))
     return kb
 
 
