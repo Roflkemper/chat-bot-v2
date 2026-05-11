@@ -11,7 +11,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Repo root (parents[3] = c:/bot7) — not tests/. Without this, services.telegram_runtime
+# imports core.app_logging which lives under c:/bot7/core, not c:/bot7/tests/core.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from services.decision_log.models import (
     CapturedEvent,

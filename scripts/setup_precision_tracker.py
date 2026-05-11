@@ -70,7 +70,7 @@ _DEFAULT_BACKTEST_EXPECTANCY = {
     "short_mfi_multi_ga": 0.0,
 }
 
-_BACKTEST_EXP_PATH = ROOT / "config" / "backtest_expectancy.json"
+_BACKTEST_EXP_PATH = ROOT / "data" / "config" / "backtest_expectancy.json"
 
 
 def _load_backtest_expectancy() -> dict[str, float]:

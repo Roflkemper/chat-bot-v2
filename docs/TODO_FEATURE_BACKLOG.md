@@ -111,6 +111,19 @@ state files (already gitignored).
 
 **Priority:** low — costs 1 minute/tick of compute, nothing on fire.
 
+## TODO-5: ginarea_api tests missing pytest-httpx
+
+**Files:** [tests/services/ginarea_api/test_client.py](tests/services/ginarea_api/test_client.py)
+
+**Status:** 7 tests fail collection with `fixture 'httpx_mock' not found`.
+Tests use `pytest-httpx` plugin which is not in requirements.txt.
+
+**Effort:** ~5 min — add `pytest-httpx` to dev requirements, install,
+re-run.
+
+**Priority:** low — these are HTTP mock tests for ginarea retry logic.
+Production code works; tests just can't run.
+
 ## Closed TODOs (audited and dismissed)
 
 - `advisor_v2.py:40 TODO(reuse): clustering reimplements DedupLayer` —
