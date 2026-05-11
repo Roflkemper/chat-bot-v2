@@ -302,6 +302,60 @@ def main() -> int:
         for _, r in degraded.iterrows():
             print(f"  {r['detector']}: live exp {r['exp_%']:+.4f}% vs "
                   f"bt {r['bt_exp_%']}, CI [{r['ci95_lo']:+.4f}, {r['ci95_hi']:+.4f}]")
+
+    # Per (detector, pair) breakdown — surfaces pair-specific drift
+    # that aggregate stats hide.
+    by_det_pair = defaultdict(lambda: {"n": 0, "tp1": 0, "sl": 0, "timeout": 0,
+                                         "pnls": []})
+    for o in all_outcomes:
+        key = (o["setup_type"], o.get("pair", "?"))
+        d = by_det_pair[key]
+        d["n"] += 1
+        d[o["outcome"].lower() if o["outcome"] != "TP1" else "tp1"] += 1
+        d["pnls"].append(float(o["pnl_pct"]))
+
+    pair_rows = []
+    for (det, pair), c in by_det_pair.items():
+        if c["n"] < 5:
+            continue  # too thin to render
+        n = c["n"]
+        pnls = c["pnls"]
+        exp = sum(pnls) / n
+        wr = c["tp1"] / n * 100
+        pair_rows.append({
+            "detector": det,
+            "pair": pair,
+            "n": n,
+            "wr_%": round(wr, 1),
+            "exp_%": round(exp, 4),
+            "tp1": c["tp1"],
+            "sl": c["sl"],
+            "timeout": c["timeout"],
+        })
+
+    if pair_rows:
+        df_pair = pd.DataFrame(pair_rows).sort_values(
+            ["detector", "n"], ascending=[True, False],
+        )
+        print("\n=== Per (detector, pair) breakdown (N>=5) ===")
+        print(df_pair.to_string(index=False))
+
+        # Highlight detectors with strong cross-pair divergence:
+        # if one pair has positive exp and another has clearly negative,
+        # it's a candidate for pair-aware config (DISABLED_DETECTORS by pair).
+        divergent = []
+        for det in df_pair["detector"].unique():
+            sub = df_pair[df_pair["detector"] == det]
+            if len(sub) < 2: continue
+            min_exp = sub["exp_%"].min()
+            max_exp = sub["exp_%"].max()
+            if min_exp < -0.05 and max_exp > 0.05:
+                divergent.append((det, min_exp, max_exp))
+        if divergent:
+            print("\n[INSIGHT] detectors with cross-pair divergence:")
+            for det, lo, hi in divergent:
+                print(f"  {det}: best pair +{hi:.3f}%, worst pair {lo:+.3f}% "
+                      f"— consider pair-aware disable")
     return 0
 
 

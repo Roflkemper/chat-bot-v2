@@ -1493,6 +1493,30 @@ class TelegramBotApp:
                             f"Current: {d['state_file']}"
                 )
 
+        @self.bot.message_handler(commands=['precision'])
+        def handle_precision(message) -> None:
+            """Setup precision: per-detector + per-pair status with CI."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                import subprocess
+                import sys as _sys
+                from pathlib import Path as _P
+                result = subprocess.run(
+                    [_sys.executable, "scripts/setup_precision_tracker.py"],
+                    cwd=str(_P.cwd()), capture_output=True, text=True, timeout=30,
+                )
+                text = result.stdout or result.stderr or 'No output'
+                if len(text) > 3800:
+                    text = text[:3800] + "\n... (truncated)"
+            except Exception as exc:
+                logger.exception('handle_precision.failed')
+                self.bot.send_message(chat_id, f'❌ /precision failed: {exc}')
+                return
+            self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+
         @self.bot.message_handler(commands=['pipeline'])
         def handle_pipeline(message) -> None:
             """Setup detector pipeline funnel — per-detector yield."""
