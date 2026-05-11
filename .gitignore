@@ -132,6 +132,7 @@ state/watchdog_audit.jsonl
 state/disabled_detectors.json
 state/setup_precision_prev_status.json
 state/pipeline_growth_log.jsonl
+data/backtest_archive/
 state/paper_trades.jsonl.bak_TZ
 state/paper_trades.jsonl.bak_*
 state/setup_precision_outcomes.jsonl

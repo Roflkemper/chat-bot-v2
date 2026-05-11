@@ -189,6 +189,14 @@ def _evaluate(setup: dict, prices: pd.DataFrame) -> dict | None:
 
 
 def main() -> int:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--pair", default=None,
+                    help="Filter all output to a single pair (e.g. BTCUSDT)")
+    ap.add_argument("--detector", default=None,
+                    help="Filter all output to a single detector substring")
+    args = ap.parse_args()
+
     if not SETUPS.exists():
         print("[precision] no setups.jsonl"); return 0
     prices = _load_prices()
@@ -255,6 +263,17 @@ def main() -> int:
     if not all_outcomes:
         print("[precision] no outcomes yet"); return 0
 
+    # Apply --pair / --detector filters
+    if args.pair:
+        all_outcomes = [o for o in all_outcomes if o.get("pair") == args.pair]
+        print(f"[precision] filtered to pair={args.pair}: {len(all_outcomes)} outcomes")
+    if args.detector:
+        all_outcomes = [o for o in all_outcomes
+                        if args.detector in str(o.get("setup_type", ""))]
+        print(f"[precision] filtered to detector~={args.detector}: {len(all_outcomes)} outcomes")
+    if not all_outcomes:
+        print("[precision] no outcomes after filter"); return 0
+
     by_det = defaultdict(lambda: {"n": 0, "tp1": 0, "sl": 0, "timeout": 0,
                                     "pnls": []})
     for o in all_outcomes:
@@ -308,9 +327,10 @@ def main() -> int:
                   f"bt {r['bt_exp_%']}, CI [{r['ci95_lo']:+.4f}, {r['ci95_hi']:+.4f}]")
 
     # ── Status transition detection (DEGRADED auto-notify) ────────────────
+    # Skipped on filtered runs — see args.pair / args.detector handling below.
     current_status_map = dict(zip(df["detector"], df["status"]))
     prev_status_map: dict[str, str] = {}
-    if PREV_STATUS.exists():
+    if PREV_STATUS.exists() and not (args.pair or args.detector):
         try:
             prev_status_map = json.loads(PREV_STATUS.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -350,13 +370,18 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"[precision] TG notify failed: {exc}", file=sys.stderr)
 
-    # Save current status for next run's comparison
-    try:
-        PREV_STATUS.parent.mkdir(parents=True, exist_ok=True)
-        PREV_STATUS.write_text(json.dumps(current_status_map, indent=2),
-                                encoding="utf-8")
-    except OSError as exc:
-        print(f"[precision] status save failed: {exc}", file=sys.stderr)
+    # Save current status for next run's comparison — but ONLY when running
+    # without filters. Filtered run produces an artificial subset and would
+    # falsely flag DEGRADED→RECOVERED transitions if persisted.
+    if not args.pair and not args.detector:
+        try:
+            PREV_STATUS.parent.mkdir(parents=True, exist_ok=True)
+            PREV_STATUS.write_text(json.dumps(current_status_map, indent=2),
+                                    encoding="utf-8")
+        except OSError as exc:
+            print(f"[precision] status save failed: {exc}", file=sys.stderr)
+    else:
+        print("[precision] (filtered run — prev_status not saved)")
 
     # Per (detector, pair) breakdown — surfaces pair-specific drift
     # that aggregate stats hide.

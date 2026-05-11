@@ -43,6 +43,38 @@ JOURNALS = [
 KEEP_DAYS = 30
 
 
+BACKUP_GLOBS = [
+    ROOT / "state",  # *.bak* / *.bak_TZ files
+]
+BACKUP_KEEP_DAYS = 7
+
+
+def _cleanup_backups(dry_run: bool) -> None:
+    """Remove *.bak* files older than BACKUP_KEEP_DAYS.
+
+    Created by scripts/compact_paper_trades.py, manual backups, etc.
+    Keep recent ones in case rollback is needed; prune old ones.
+    """
+    import time
+    cutoff = time.time() - BACKUP_KEEP_DAYS * 86400
+    for base in BACKUP_GLOBS:
+        if not base.exists(): continue
+        for p in base.rglob("*.bak*"):
+            if not p.is_file(): continue
+            try:
+                age_d = (time.time() - p.stat().st_mtime) / 86400
+                if p.stat().st_mtime < cutoff:
+                    if dry_run:
+                        print(f"  [backup] {p.name:<45} age={age_d:.1f}d  WOULD DELETE")
+                    else:
+                        p.unlink()
+                        print(f"  [backup] {p.name:<45} age={age_d:.1f}d  deleted")
+                else:
+                    print(f"  [backup] {p.name:<45} age={age_d:.1f}d  keep")
+            except OSError as exc:
+                print(f"  [backup] {p.name}: failed ({exc})")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true",
@@ -64,6 +96,9 @@ def main() -> int:
             continue
         result = rotate_if_large(path, max_bytes=max_bytes, keep_days=KEEP_DAYS)
         print(f"  {path.name:<45} {size_mb:>6.2f}MB  -> {result}")
+
+    print(f"[rotate] cleanup *.bak* files (keep_days={BACKUP_KEEP_DAYS})")
+    _cleanup_backups(args.dry_run)
     print("[rotate] done")
     return 0
 
