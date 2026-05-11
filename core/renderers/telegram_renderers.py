@@ -42,6 +42,7 @@ def build_help_text() -> str:
         "• /precision — live precision: per-detector + per-pair + CI95",
         "• /histogram (alias /pipeline7d) — pipeline daily breakdown за 7 дней",
         "• /inspect [pid] — детали процесса (mem/cpu/age/parent) или список всех",
+        "• /cron — список зарегистрированных scheduled tasks с last/next run + status",
         "• /disable <token> — runtime kill detector (substring match)",
         "• /enable <token> — снять runtime disable (env-level disable не трогает)",
         "• /audit — текущая аудит-сводка (advisor)",

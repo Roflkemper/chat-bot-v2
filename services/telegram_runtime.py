@@ -644,7 +644,10 @@ class SignalAlertWorker(threading.Thread):
                     # Batch LEVEL_BREAK ребят в один алерт когда пробито несколько уровней
                     # одним тиком (см. _batch_level_breaks).
                     new_signals = self._batch_level_breaks(new_signals)
-                    from services.telegram.send_dedup import should_send as _ss, mark_sent as _ms
+                    from services.telegram.send_dedup import (
+                        should_send as _ss, mark_sent as _ms,
+                        is_rate_limited as _irl, mark_sent_rate as _msr,
+                    )
                     for row in new_signals:
                         if not self._should_send(row):
                             continue
@@ -664,9 +667,15 @@ class SignalAlertWorker(threading.Thread):
                             # workers / process restarts / race conditions.
                             if not _ss(chat_id, text):
                                 continue
+                            # Rate limit: 3 sends per 90s per chat. Suppresses
+                            # alert floods (e.g. 10 cascading bot fails firing
+                            # back-to-back). Caller logs the suppression.
+                            if _irl(chat_id):
+                                continue
                             try:
                                 self.bot.send_message(chat_id, text)
                                 _ms(chat_id, text)
+                                _msr(chat_id)
                                 time.sleep(0.1)
                             except Exception:
                                 logger.exception("signal_alert_worker.send_failed chat_id=%s", chat_id)
@@ -1530,6 +1539,22 @@ class TelegramBotApp:
                     chat_id, f"'{token}' was not in runtime list. "
                             f"Current: {d['state_file']}"
                 )
+
+        @self.bot.message_handler(commands=['cron'])
+        def handle_cron(message) -> None:
+            """List registered Windows Task Scheduler bot7-* tasks."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.cron_report import build_cron_report
+                text = build_cron_report()
+            except Exception as exc:
+                logger.exception('handle_cron.failed')
+                self.bot.send_message(chat_id, f'❌ /cron failed: {exc}')
+                return
+            self._send_long_text(chat_id, text, filename="cron.txt")
 
         @self.bot.message_handler(commands=['inspect'])
         def handle_inspect(message) -> None:
