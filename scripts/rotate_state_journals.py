@@ -37,6 +37,8 @@ JOURNALS = [
     (ROOT / "state" / "pipeline_metrics.jsonl",              5 * 1024 * 1024),
     (ROOT / "logs"  / "watchdog.log",                        5 * 1024 * 1024),
     (ROOT / "state" / "app_runner_starts.jsonl",             2 * 1024 * 1024),
+    (ROOT / "state" / "watchdog_audit.jsonl",                 5 * 1024 * 1024),
+    (ROOT / "state" / "paper_trades.jsonl",                  10 * 1024 * 1024),
 ]
 KEEP_DAYS = 30
 

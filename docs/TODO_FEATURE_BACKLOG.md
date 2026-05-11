@@ -111,6 +111,23 @@ state files (already gitignored).
 
 **Priority:** low — costs 1 minute/tick of compute, nothing on fire.
 
+## TODO-6: Consolidate text-chunking helpers
+
+**Duplicated:**
+- `services/telegram_runtime.py` — `split_text_chunks()`, `_MAX_MESSAGE_LEN = 3800`
+- `services/telegram_alert_service.py` — `_split_chunks()`, `_MAX_MESSAGE_LEN = 3800`
+
+**Decision:** these split logic is non-trivial (handles \n\n blocks,
+falls back to line-by-line, then char-by-char). Moving to a shared
+module would be ~30 LOC + tests + risk of subtly different behavior.
+Live in prod, both work — defer until next time someone touches
+either.
+
+**Effort:** ~1h with tests.
+**Priority:** very low.
+
+---
+
 ## TODO-5: ginarea_api tests missing pytest-httpx
 
 **Files:** [tests/services/ginarea_api/test_client.py](tests/services/ginarea_api/test_client.py)

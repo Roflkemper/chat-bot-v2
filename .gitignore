@@ -129,6 +129,8 @@ state/grid_coordinator_fires.jsonl
 state/p15_equity.jsonl
 state/watchdog_alert_state.json
 state/watchdog_audit.jsonl
+state/paper_trades.jsonl.bak_TZ
+state/paper_trades.jsonl.bak_*
 state/setup_precision_outcomes.jsonl
 state/setup_detector_type_pair_dedup.json
 state/pipeline_metrics.jsonl
