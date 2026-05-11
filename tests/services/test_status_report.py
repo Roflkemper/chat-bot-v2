@@ -24,10 +24,14 @@ def isolated_paths(tmp_path, monkeypatch):
 def test_build_report_when_everything_empty(isolated_paths):
     """No files → still produces a readable report, not a crash."""
     text = status_report.build_status_report()
-    assert "[STATUS]" in text
-    assert "Heartbeat:" in text
-    assert "P-15 open legs: 0" in text
-    assert "Last setup: (none)" in text
+    # Russian-only header (rewritten 2026-05-11 for operator readability).
+    assert "СТАТУС БОТА" in text
+    # No legs → friendly Russian message
+    assert "АКТИВНЫХ ПОЗИЦИЙ P-15 нет" in text
+    # No setups → friendly Russian message
+    assert "нет за сутки" in text
+    # Always has a Выводы section
+    assert "ВЫВОДЫ" in text
 
 
 def test_heartbeat_age_parsed_from_log(isolated_paths):

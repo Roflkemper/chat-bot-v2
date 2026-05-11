@@ -25,6 +25,8 @@ _GC_FIRES = _ROOT / "state" / "grid_coordinator_fires.jsonl"
 _P15_STATE = _ROOT / "state" / "p15_state.json"
 _APP_RUNNER_STARTS = _ROOT / "state" / "app_runner_starts.jsonl"
 _PIPELINE_METRICS = _ROOT / "state" / "pipeline_metrics.jsonl"
+_DERIV_LIVE = _ROOT / "state" / "deriv_live.json"
+_P15_EQUITY = _ROOT / "state" / "p15_equity.jsonl"
 
 
 def _read_last_lines(path: Path, n: int = 50) -> list[str]:
@@ -247,6 +249,92 @@ def _disabled_summary() -> dict:
         return {"env": [], "state_file": []}
 
 
+def _trader_positions() -> dict:
+    """Read deriv_live.json to get top trader long/short % per pair."""
+    if not _DERIV_LIVE.exists():
+        return {}
+    try:
+        d = json.loads(_DERIV_LIVE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out = {}
+    if isinstance(d, dict):
+        for pair in ("BTCUSDT", "ETHUSDT", "XRPUSDT"):
+            p = d.get(pair) or {}
+            if not isinstance(p, dict): continue
+            # Field names vary across data sources — try both styles.
+            long_pct = p.get("top_trader_long_pct") or p.get("top_trader_long_account_pct")
+            short_pct = p.get("top_trader_short_pct") or p.get("top_trader_short_account_pct")
+            global_long = p.get("global_long_pct") or p.get("global_long_account_pct")
+            global_short = p.get("global_short_pct") or p.get("global_short_account_pct")
+            funding = p.get("funding_rate_8h")
+            oi_change = p.get("oi_change_1h_pct")
+            if long_pct is not None or global_long is not None or funding is not None:
+                out[pair] = {
+                    "top_long": long_pct,
+                    "top_short": short_pct,
+                    "global_long": global_long,
+                    "global_short": global_short,
+                    "funding": funding,
+                    "oi_change": oi_change,
+                }
+    return out
+
+
+def _p15_pnl_24h() -> float:
+    """Sum realized PnL from p15_equity.jsonl over last 24h."""
+    if not _P15_EQUITY.exists():
+        return 0.0
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    total = 0.0
+    try:
+        with _P15_EQUITY.open(encoding="utf-8") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                    dt = _parse_iso(rec.get("ts", ""))
+                    if dt and dt >= cutoff:
+                        v = rec.get("realized_pnl_usd")
+                        if v is not None:
+                            total += float(v)
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    continue
+    except OSError:
+        pass
+    return total
+
+
+def _bar(value: float, max_val: float = 100, width: int = 10) -> str:
+    """Simple ASCII bar like ▰▰▰▱▱▱▱▱▱▱ for ratio display."""
+    if max_val <= 0: return "─" * width
+    filled = int(round(value / max_val * width))
+    filled = max(0, min(width, filled))
+    return "▰" * filled + "▱" * (width - filled)
+
+
+def _setup_type_ru(setup_type: str) -> str:
+    """Human-readable Russian name for setup_type."""
+    mapping = {
+        "p15_long_open": "P-15 LONG открыт",
+        "p15_long_harvest": "P-15 LONG harvest",
+        "p15_long_reentry": "P-15 LONG re-entry",
+        "p15_long_close": "P-15 LONG закрыт",
+        "p15_short_open": "P-15 SHORT открыт",
+        "p15_short_harvest": "P-15 SHORT harvest",
+        "p15_short_reentry": "P-15 SHORT re-entry",
+        "p15_short_close": "P-15 SHORT закрыт",
+        "short_pdh_rejection": "SHORT от PDH",
+        "short_rally_fade": "SHORT fade rally",
+        "short_mfi_multi_ga": "SHORT MFI multi",
+        "long_pdl_bounce": "LONG bounce PDL",
+        "long_dump_reversal": "LONG разворот после дампа",
+        "long_double_bottom": "LONG двойное дно",
+        "long_multi_divergence": "LONG multi-дивергенция",
+        "short_double_top": "SHORT двойная вершина",
+    }
+    return mapping.get(setup_type, setup_type)
+
+
 def build_status_report() -> str:
     now = datetime.now(timezone.utc)
     hb_age, hb_ts = _heartbeat_age(now)
@@ -257,67 +345,130 @@ def build_status_report() -> str:
     restarts = _restarts_last_hour(now)
     pipeline = _pipeline_summary_last_hour(now)
     disabled = _disabled_summary()
+    traders = _trader_positions()
+    p15_pnl = _p15_pnl_24h()
 
-    lines = [f"[STATUS] {now:%Y-%m-%d %H:%M UTC}", ""]
-
-    # Heartbeat
-    if hb_age is not None:
-        emoji = "[OK]" if hb_age < 5 else ("[WARN]" if hb_age < 15 else "[STALE]")
-        lines.append(f"Heartbeat: {emoji} age {hb_age:.1f}min  last={hb_ts}")
-    else:
-        lines.append("Heartbeat: [UNKNOWN] no recent ticks in app.log")
-
-    # Processes
-    proc_parts = []
-    for name, pid in procs.items():
-        proc_parts.append(f"{name}={pid if pid else 'DOWN'}")
-    lines.append("Procs: " + " | ".join(proc_parts))
-    lines.append(f"Restarts last 1h: {restarts}")
+    lines = []
+    lines.append(f"📊 СТАТУС БОТА  ({now:%H:%M UTC, %d.%m})")
     lines.append("")
 
-    # Last setup
-    if last_setup:
-        lines.append(
-            f"Last setup: {last_setup['type']} {last_setup['pair']}  "
-            f"age {last_setup['age_min']:.0f}min  "
-            f"s{last_setup['strength']}/c{last_setup['conf']:.0f}%"
-        )
+    # === 1. ЗДОРОВЬЕ БОТА ===
+    if hb_age is None:
+        lines.append("🔴 Бот: НЕТ СВЯЗИ (heartbeat молчит)")
+    elif hb_age < 3:
+        lines.append(f"🟢 Бот живой ({hb_age:.0f} мин назад был tick)")
+    elif hb_age < 15:
+        lines.append(f"🟡 Бот замедлен ({hb_age:.0f} мин с последнего tick)")
     else:
-        lines.append("Last setup: (none)")
+        lines.append(f"🔴 Бот завис ({hb_age:.0f} мин без tick — watchdog скоро поднимет)")
 
-    # Last GC fire
-    if last_gc:
-        lines.append(
-            f"Last GC fire: {last_gc['direction']} score={last_gc['score']}  "
-            f"age {last_gc['age_min']:.0f}min"
-        )
+    procs_up = sum(1 for v in procs.values() if v)
+    procs_total = len(procs)
+    if procs_up == procs_total:
+        lines.append(f"🟢 Процессы: все {procs_total} живы")
     else:
-        lines.append("Last GC fire: (none yet)")
+        down = [k for k, v in procs.items() if not v]
+        lines.append(f"🟡 Процессы: {procs_up}/{procs_total} живы (down: {', '.join(down)})")
     lines.append("")
 
-    # P-15 open legs
+    # === 2. ПОЗИЦИИ P-15 ===
     if legs:
-        lines.append(f"P-15 open legs ({len(legs)}):")
+        total_size = sum(l["size_usd"] for l in legs)
+        avg_dd = sum(abs(l["dd_pct"]) for l in legs) / len(legs)
+        lines.append(f"💼 АКТИВНЫЕ ПОЗИЦИИ P-15: {len(legs)} (всего ${total_size:.0f})")
         for leg in legs:
+            dir_emoji = "🟢" if leg["direction"] == "long" else "🔴"
+            dd = leg["dd_pct"]
+            dd_emoji = "✅" if abs(dd) < 1 else ("⚠️" if abs(dd) < 2 else "🚨")
             lines.append(
-                f"  {leg['pair']} {leg['direction']:>5}  "
-                f"layers={leg['layers']}  ${leg['size_usd']:.0f}  "
-                f"DD={leg['dd_pct']:.2f}%  age={leg['age_min']:.0f}min"
+                f"  {dir_emoji} {leg['pair']} {leg['direction']:<5}  "
+                f"${leg['size_usd']:>5.0f}  слоёв={leg['layers']}  "
+                f"DD={dd:+.2f}% {dd_emoji}  держим {leg['age_min']:.0f}м"
             )
+        if avg_dd > 1.5:
+            lines.append(f"  ⚠️ Средний DD {avg_dd:.2f}% — близко к лимиту 3%")
     else:
-        lines.append("P-15 open legs: 0 (all idle)")
-
-    # Pipeline summary last 1h
+        lines.append("💼 АКТИВНЫХ ПОЗИЦИЙ P-15 нет")
     lines.append("")
-    lines.append(
-        f"Pipeline 1h: {pipeline['total']} events, "
-        f"{pipeline['emitted']} emitted, {pipeline['blocked']} blocked, "
-        f"{pipeline['failed']} failed"
-    )
 
-    # Disabled detectors
+    # === 3. P-15 PnL 24h ===
+    pnl_emoji = "🟢" if p15_pnl >= 0 else "🔴"
+    lines.append(f"{pnl_emoji} P-15 за сутки: ${p15_pnl:+.2f}")
+    lines.append("")
+
+    # === 4. ПОЗИЦИИ ТРЕЙДЕРОВ BINANCE ===
+    if traders:
+        lines.append("📈 ТОП-ТРЕЙДЕРЫ BINANCE (long vs short):")
+        for pair, t in traders.items():
+            tl = t.get("top_long")
+            ts = t.get("top_short")
+            gl = t.get("global_long")
+            gs = t.get("global_short")
+            if tl is not None and ts is not None:
+                bar = _bar(tl, 100)
+                bias = "🟢 LONG bias" if tl > 55 else ("🔴 SHORT bias" if tl < 45 else "⚖️ нейтрал")
+                lines.append(f"  {pair} топ:  {bar} {tl:.0f}%/{ts:.0f}%  {bias}")
+            if gl is not None and gs is not None:
+                bar = _bar(gl, 100)
+                lines.append(f"  {pair} все:  {bar} {gl:.0f}%/{gs:.0f}%")
+            fr = t.get("funding")
+            if fr is not None:
+                fr_pct = float(fr) * 100
+                fr_emoji = "🔴 шорт-плата" if fr_pct < -0.005 else ("🟢 лонг-плата" if fr_pct > 0.005 else "⚖️")
+                lines.append(f"  {pair} funding: {fr_pct:+.4f}%  {fr_emoji}")
+    else:
+        lines.append("📈 Trader-positions недоступно (deriv_live.json пустой)")
+    lines.append("")
+
+    # === 5. ПОСЛЕДНИЙ СИГНАЛ ===
+    if last_setup:
+        ru_type = _setup_type_ru(last_setup['type'])
+        age = last_setup['age_min']
+        age_str = f"{age:.0f} мин" if age < 60 else f"{age/60:.1f} ч"
+        lines.append(f"🎯 Последний сигнал: {ru_type} на {last_setup['pair']}")
+        lines.append(f"   {age_str} назад, уверенность {last_setup['conf']:.0f}%")
+    else:
+        lines.append("🎯 Последний сигнал: нет за сутки")
+    lines.append("")
+
+    # === 6. PIPELINE 1h ===
+    if pipeline['total'] > 0:
+        emit_pct = pipeline['emitted'] / pipeline['total'] * 100
+        lines.append(f"⚙️ Pipeline 1ч: {pipeline['total']} событий → "
+                      f"{pipeline['emitted']} в TG ({emit_pct:.0f}%)")
+        if pipeline['failed'] > 0:
+            lines.append(f"   🚨 Ошибок детекторов: {pipeline['failed']}")
+    lines.append("")
+
+    # === 7. РЕЖИМ И УПРАВЛЕНИЕ ===
     all_disabled = list(disabled.get("env", [])) + list(disabled.get("state_file", []))
     if all_disabled:
-        lines.append(f"Disabled: {', '.join(all_disabled)}")
+        lines.append(f"⏸️ Отключены: {', '.join(all_disabled)}")
+    if restarts > 5:
+        lines.append(f"⚠️ Рестартов за час: {restarts} (норма ≤5)")
+
+    # === ВЫВОДЫ ===
+    lines.append("")
+    lines.append("📋 ВЫВОДЫ:")
+    conclusions = []
+    if hb_age is None or hb_age > 15:
+        conclusions.append("• бот не отвечает — проверь watchdog")
+    elif procs_up < procs_total:
+        conclusions.append(f"• часть процессов мертва ({procs_total - procs_up})")
+    else:
+        conclusions.append("• бот работает штатно")
+    if p15_pnl < -50:
+        conclusions.append(f"• ⚠️ значимая просадка P-15 за сутки: ${p15_pnl:+.2f}")
+    elif p15_pnl > 50:
+        conclusions.append(f"• 💚 хороший день P-15: ${p15_pnl:+.2f}")
+    if legs and any(abs(l["dd_pct"]) > 2 for l in legs):
+        bad_legs = [l for l in legs if abs(l["dd_pct"]) > 2]
+        conclusions.append(f"• 🚨 {len(bad_legs)} leg(ов) в DD>2% — рассмотри ручное закрытие")
+    if not last_setup or (last_setup and last_setup['age_min'] > 240):
+        conclusions.append("• рынок тихий — мало сигналов")
+    if all_disabled:
+        conclusions.append(f"• {len(all_disabled)} детектор отключён (нормально, выжидаем данных)")
+    for c in conclusions:
+        lines.append(c)
 
     return "\n".join(lines)
