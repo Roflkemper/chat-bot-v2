@@ -350,6 +350,7 @@ async def setup_detector_loop(
     else:
         logger.warning("setup_detector_loop.ict_reader_empty — ICT context will be blank")
 
+    tick_count = 0
     while not stop_event.is_set():
         now_utc = datetime.now(timezone.utc)
         for pair in pairs:
@@ -364,6 +365,13 @@ async def setup_detector_loop(
             else:
                 ctx.ict_context = {}
             _run_detectors_once(ctx, store, send_fn)
+
+        # Heartbeat every 12 ticks (~1h at 5min interval). Lets the
+        # daily KPI / status report detect a wedged loop.
+        tick_count += 1
+        if tick_count % 12 == 0:
+            logger.info("setup_detector_loop.heartbeat tick=%d pairs=%s",
+                         tick_count, list(pairs))
 
         try:
             await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
