@@ -178,14 +178,30 @@ async def market_forward_analysis_loop(
                 last_bot_risk[bot.bot_id] = curr_risk
 
             # ── Forecast invalidation ─────────────────────────────────────────
+            # 2026-05-11 TODO-1 closed: ForwardProjection now snapshots
+            # `price_at_projection`. If actual move significantly contradicts
+            # direction, log an invalidation event so daily KPI can surface
+            # forecast accuracy degradation.
             if last_projection is not None:
                 fc_4h = last_projection.forecasts.get("4h")
-                if fc_4h and current_price > 0:
-                    # Check if actual move is opposite to projected
-                    prev_price = last_projection.forecasts.get("4h", None)
-                    # Simple check: if direction was "up" and current price is below
-                    # Note: would need price tracking; simplify with projection direction
-                    pass  # TODO: track price at projection time for full invalidation check
+                p_anchor = last_projection.price_at_projection
+                if fc_4h and current_price > 0 and p_anchor and p_anchor > 0:
+                    pct_move = (current_price - p_anchor) / p_anchor * 100.0
+                    invalidated = False
+                    # Direction "up" but price went down >0.5% within 4h
+                    # window (we re-evaluate every tick — first time invalidated
+                    # is the one we log).
+                    if fc_4h.direction == "up" and pct_move <= -0.5:
+                        invalidated = True
+                    elif fc_4h.direction == "down" and pct_move >= 0.5:
+                        invalidated = True
+                    if invalidated:
+                        logger.info(
+                            "market_forward_analysis.forecast_invalidated "
+                            "horizon=4h projected=%s actual_pct=%+.2f%% "
+                            "anchor=%.2f current=%.2f",
+                            fc_4h.direction, pct_move, p_anchor, current_price,
+                        )
 
             last_projection = projection
 

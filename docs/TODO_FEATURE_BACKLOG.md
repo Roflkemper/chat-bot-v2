@@ -3,7 +3,18 @@
 Single source of truth for inline TODOs that should become tickets.
 Audited 2026-05-11.
 
-## TODO-1: Forward analysis — track price at projection time
+## TODO-1: Forward analysis — track price at projection time [DONE 2026-05-11]
+
+ForwardProjection now snapshots `price_at_projection` (commit pending).
+Loop checks ±0.5% adverse move vs projected direction within 4h window;
+emits `market_forward_analysis.forecast_invalidated` log line so daily
+KPI can surface forecast degradation.
+
+Tests added: `tests/services/market_forward_analysis/test_forward_projection.py`.
+
+---
+
+## TODO-1 (archived): Forward analysis — track price at projection time
 
 **File:** [services/market_forward_analysis/loop.py:188](services/market_forward_analysis/loop.py#L188)
 
@@ -42,7 +53,17 @@ backtest on 2y, wire into registry if PF >= 1.2.
 because of negative live precision; refactoring risks confusion.
 Defer until live precision drops the existing variant entirely.
 
-## TODO-3: Regime red-green actual holdout metrics
+## TODO-3: Regime red-green actual holdout metrics [DONE 2026-05-11]
+
+`_build_holdout_report(metrics, transition_acc, holdout_start, n_holdout)`
+now renders real metrics — accuracy, per-class precision/recall,
+confusion matrix, transition accuracy. `cmd_validate` predicts via
+generated rules.py (loaded by importlib) or falls back to dominant-class
+baseline when rules.py is absent.
+
+---
+
+## TODO-3 (archived): Regime red-green actual holdout metrics
 
 **File:** [services/regime_red_green/runner.py:416](services/regime_red_green/runner.py#L416)
 
@@ -60,7 +81,15 @@ saved holdout split and computes confusion matrix + per-regime stats.
 **Priority:** medium — regime classifier is critical input to many
 downstream filters. Knowing if it drifts matters.
 
-## TODO-4: test3_tpflat simulators — review or retire
+## TODO-4: test3_tpflat simulators — review or retire [DONE — RETIRED 2026-05-11]
+
+**Decision:** retired. Both simulators removed from app_runner all_tasks.
+Service code preserved on disk. See `docs/STRATEGIES/TEST3_TPFLAT_RETIRED.md`
+for diagnosis + what-to-do-if-revisiting.
+
+---
+
+## TODO-4 (archived): test3_tpflat simulators — review or retire
 
 **Files:**
 - [services/test3_tpflat_simulator/loop.py](services/test3_tpflat_simulator/loop.py)

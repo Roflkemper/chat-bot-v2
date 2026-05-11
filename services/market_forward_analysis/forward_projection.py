@@ -72,6 +72,10 @@ class ForwardProjection:
     # Calibration quality
     brier_score: Optional[float] = None   # filled during checkpoint 2
 
+    # 2026-05-11 TODO-1: price snapshot at projection time, used by the loop
+    # to check whether the actual move invalidated the forecast direction.
+    price_at_projection: Optional[float] = None
+
 
 # ── Historical data loader ────────────────────────────────────────────────────
 
@@ -348,6 +352,14 @@ def compute_forward_projection(
     if "ls_bias" in conditions and conditions["ls_bias"] != "balanced":
         micro_notes.append(f"ls_ratio: {conditions['ls_bias']}")
 
+    # Snapshot the price at projection time for downstream invalidation checks.
+    price_at_projection: Optional[float] = None
+    if df_1h is not None and not df_1h.empty and "close" in df_1h.columns:
+        try:
+            price_at_projection = float(df_1h["close"].iloc[-1])
+        except (IndexError, ValueError, TypeError):
+            price_at_projection = None
+
     return ForwardProjection(
         generated_at=phase_state.ts,
         phase_label=phase_state.macro_label.value,
@@ -358,6 +370,7 @@ def compute_forward_projection(
         key_resistance=key_resistance,
         key_support=key_support,
         micro_notes=micro_notes,
+        price_at_projection=price_at_projection,
     )
 
 

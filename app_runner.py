@@ -614,21 +614,15 @@ async def _run_regime_shadow(stop_event: asyncio.Event) -> None:
     await regime_shadow_loop(stop_event=stop_event)
 
 
-async def _run_test3_tpflat_b_simulator(stop_event: asyncio.Event) -> None:
-    """TEST_3 TP-flat B variant — TP=$5 immediate dd=3%."""
-    from services.test3_tpflat_b_simulator import test3_tpflat_b_simulator_loop
-    await test3_tpflat_b_simulator_loop(stop_event=stop_event)
-
-
-async def _run_test3_tpflat_simulator(stop_event: asyncio.Event) -> None:
-    """TEST_3 TP-flat dry-run simulator (operator decision 2026-05-09).
-
-    Paper-only: polls BTC 1m, applies TP=$10 immediate dd=3% strategy,
-    journals to state/test3_tpflat_paper.jsonl. After 7d compare vs real
-    TEST_3 to decide migration.
-    """
-    from services.test3_tpflat_simulator import test3_tpflat_simulator_loop
-    await test3_tpflat_simulator_loop(stop_event=stop_event)
+# 2026-05-11 TZ-B10: test3_tpflat simulators retired. Both wired
+# 2026-05-09 to do a 7d paper run of TP=$10 / TP=$5 SHORT-fade strategies.
+# After 2 days neither produced a single CLOSE event — gate fires, position
+# opens, market trends up, TP never hit. Simulator essentially stalled.
+# Decision: retire. The strategy itself is salvageable but needs a
+# revised gate / TP architecture; rebuilding from scratch is cheaper than
+# debugging the current loops. Service code preserved on disk in case
+# we want to reference it; tasks below removed from all_tasks.
+# See docs/STRATEGIES/TEST3_TPFLAT_RETIRED.md.
 
 
 async def _run_watchlist(stop_event: asyncio.Event, *, telegram_app=None) -> None:
@@ -728,8 +722,7 @@ async def main(
     bitmex_account_task = asyncio.create_task(_run_bitmex_account(stop_event), name="bitmex_account")
     cascade_alert_task = asyncio.create_task(_run_cascade_alert(stop_event, telegram_app=app), name="cascade_alert")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
-    test3_tpflat_task = asyncio.create_task(_run_test3_tpflat_simulator(stop_event), name="test3_tpflat")
-    test3_tpflat_b_task = asyncio.create_task(_run_test3_tpflat_b_simulator(stop_event), name="test3_tpflat_b")
+    # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
     regime_shadow_task = asyncio.create_task(_run_regime_shadow(stop_event), name="regime_shadow")
     regime_narrator_task = asyncio.create_task(_run_regime_narrator(stop_event, telegram_app=app), name="regime_narrator")
     pre_cascade_task = asyncio.create_task(_run_pre_cascade_alert(stop_event, telegram_app=app), name="pre_cascade_alert")
@@ -747,7 +740,7 @@ async def main(
         boundary_expand_task, adaptive_grid_task, paper_journal_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, test3_tpflat_task, test3_tpflat_b_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
