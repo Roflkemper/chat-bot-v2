@@ -181,6 +181,9 @@ def _evaluate(setup: dict, prices: pd.DataFrame) -> dict | None:
         "entry": entry,
         "exit": round(exit_price, 4),
         "pnl_pct": round(pnl_pct, 4),
+        # 2026-05-11: regime + session for cross-dimension analysis
+        "regime": setup.get("regime_label"),
+        "session": setup.get("session_label"),
     }
 
 
@@ -356,6 +359,48 @@ def main() -> int:
             for det, lo, hi in divergent:
                 print(f"  {det}: best pair +{hi:.3f}%, worst pair {lo:+.3f}% "
                       f"— consider pair-aware disable")
+
+    # Per (detector, regime) breakdown — surfaces regime-specific perf.
+    # Only includes outcomes with regime field (added 2026-05-11; old
+    # outcomes pre-this-change have regime=None and are skipped).
+    by_det_regime = defaultdict(lambda: {"n": 0, "tp1": 0, "sl": 0, "timeout": 0,
+                                           "pnls": []})
+    for o in all_outcomes:
+        regime = o.get("regime")
+        if not regime: continue
+        key = (o["setup_type"], regime)
+        d = by_det_regime[key]
+        d["n"] += 1
+        d[o["outcome"].lower() if o["outcome"] != "TP1" else "tp1"] += 1
+        d["pnls"].append(float(o["pnl_pct"]))
+
+    regime_rows = []
+    for (det, regime), c in by_det_regime.items():
+        if c["n"] < 5: continue
+        n = c["n"]
+        pnls = c["pnls"]
+        regime_rows.append({
+            "detector": det,
+            "regime": regime,
+            "n": n,
+            "wr_%": round(c["tp1"] / n * 100, 1),
+            "exp_%": round(sum(pnls) / n, 4),
+            "tp1": c["tp1"],
+            "sl": c["sl"],
+            "timeout": c["timeout"],
+        })
+
+    if regime_rows:
+        df_regime = pd.DataFrame(regime_rows).sort_values(
+            ["detector", "n"], ascending=[True, False],
+        )
+        print("\n=== Per (detector, regime) breakdown (N>=5) ===")
+        print(df_regime.to_string(index=False))
+    else:
+        # Inform operator that this dimension is empty (waiting for fresh
+        # outcomes after the 2026-05-11 schema update).
+        print("\n(Per-regime breakdown empty — outcomes pre-2026-05-11 schema "
+              "had no regime field. Will populate as new outcomes accumulate.)")
     return 0
 
 

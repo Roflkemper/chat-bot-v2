@@ -1493,6 +1493,28 @@ class TelegramBotApp:
                             f"Current: {d['state_file']}"
                 )
 
+        @self.bot.message_handler(commands=['inspect'])
+        def handle_inspect(message) -> None:
+            """`/inspect [pid]` — process details. Without pid: lists all
+            .venv bot7 processes with cpu/mem/age."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.inspect_report import build_inspect_report
+            args = str(message.text or "").strip().split(maxsplit=1)
+            pid = None
+            if len(args) >= 2:
+                try:
+                    pid = int(args[1].strip())
+                except ValueError:
+                    self.bot.send_message(chat_id, f"Bad pid: '{args[1]}'")
+                    return
+            text = build_inspect_report(pid=pid)
+            if len(text) > 3800:
+                text = text[:3800] + "\n... (truncated)"
+            self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+
         @self.bot.message_handler(commands=['histogram', 'pipeline7d'])
         def handle_histogram(message) -> None:
             """Pipeline 7d daily histogram."""

@@ -269,6 +269,11 @@ def _continuous_trend_down(df1h: pd.DataFrame, bars: int = 4) -> bool:
 
 
 def detect_long_dump_reversal(ctx: DetectionContext) -> Setup | None:
+    # 2026-05-11 note: pipeline_analyzer shows 1180 fires / 2 emits (0.2% yield)
+    # over 24h. ~99% of fires die at combo_filter strength<9 gate.
+    # Tightening the cond count threshold here (3→4) would reduce noise but
+    # also risks the documented edge (PF 0.70 on full backtest). Leave as
+    # is — fires are cheap (compute_strength + combo check, ~ms each).
     df1h = ctx.ohlcv_1h
     df1m = ctx.ohlcv_1m
     if len(df1h) < 6 or len(df1m) < 30:

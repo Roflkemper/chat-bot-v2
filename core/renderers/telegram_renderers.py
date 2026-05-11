@@ -40,6 +40,7 @@ def build_help_text() -> str:
         "• /pipeline — детектор funnel: fired/blocked/emit yield% по каждому детектору",
         "• /precision — live precision: per-detector + per-pair + CI95",
         "• /histogram (alias /pipeline7d) — pipeline daily breakdown за 7 дней",
+        "• /inspect [pid] — детали процесса (mem/cpu/age/parent) или список всех",
         "• /disable <token> — runtime kill detector (substring match)",
         "• /enable <token> — снять runtime disable (env-level disable не трогает)",
         "• /audit — текущая аудит-сводка (advisor)",
