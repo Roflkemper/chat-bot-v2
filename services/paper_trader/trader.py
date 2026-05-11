@@ -209,6 +209,20 @@ def update_open_trades(
         else:
             trade_price = float(current_price)
 
+        # 2026-05-11 fix: P-15 setups are managed by their own state machine
+        # (see services/setup_detector/p15_rolling.py). They emit OPEN/HARVEST/
+        # REENTRY/CLOSE events without a fixed SL/TP — exit decisions come
+        # from R%/K%/dd_cap logic, not price levels. So they don't carry
+        # sl/tp1/tp2 in paper_trades.jsonl. Skip them in this generic loop
+        # — they don't need SL/TP/timestop monitoring here.
+        # Was causing KeyError: 'sl' every loop tick.
+        if (trade.get("strategy") == "p15"
+                or str(trade.get("setup_type", "")).startswith("p15_")):
+            continue
+        # Other defensive: legacy/partial trade record without sl entirely.
+        if "sl" not in trade:
+            continue
+
         side = trade["side"]
         entry = float(trade["entry"])
         sl = float(trade["sl"])

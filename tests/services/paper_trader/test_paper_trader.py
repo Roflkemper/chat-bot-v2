@@ -210,3 +210,31 @@ def test_daily_summary_stats(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert summary["n_wins"] == 1
     assert summary["n_losses"] == 1
     assert summary["net_pnl_usd"] != 0
+
+
+def test_p15_trades_skipped_by_update_loop(tmp_path: Path) -> None:
+    """Regression 2026-05-11: P-15 trades have no sl/tp1/tp2 (they're managed
+    by P-15 state machine, not SL/TP levels). update_open_trades must skip
+    them. Was throwing KeyError: 'sl' every loop tick."""
+    journal.JOURNAL_PATH = tmp_path / "j.jsonl"
+    # Write a P-15 trade record directly into the journal (the P-15 handler
+    # uses a different open path).
+    p15_record = {
+        "ts": "2026-05-10T22:00:00Z",
+        "trade_id": "p15-long-test",
+        "strategy": "p15",
+        "setup_type": "p15_long_open",
+        "side": "long",
+        "pair": "BTCUSDT",
+        "action": "OPEN",
+        "stage": "OPEN",
+        "p15_layer": 1,
+        "p15_avg_entry": 80000.0,
+        # No sl / tp1 / tp2 / time_stop_at — would crash old code.
+    }
+    journal.JOURNAL_PATH.write_text(json.dumps(p15_record) + "\n", encoding="utf-8")
+
+    # Should not raise.
+    closes = trader.update_open_trades(80500.0)
+    # Nothing closed — P-15 is managed elsewhere.
+    assert closes == []
