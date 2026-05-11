@@ -1493,6 +1493,30 @@ class TelegramBotApp:
                             f"Current: {d['state_file']}"
                 )
 
+        @self.bot.message_handler(commands=['histogram', 'pipeline7d'])
+        def handle_histogram(message) -> None:
+            """Pipeline 7d daily histogram."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                import subprocess
+                import sys as _sys
+                from pathlib import Path as _P
+                result = subprocess.run(
+                    [_sys.executable, "scripts/pipeline_histogram_7d.py"],
+                    cwd=str(_P.cwd()), capture_output=True, text=True, timeout=15,
+                )
+                text = result.stdout or 'No output'
+                if len(text) > 3800:
+                    text = text[:3800] + "\n... (truncated)"
+            except Exception as exc:
+                logger.exception('handle_histogram.failed')
+                self.bot.send_message(chat_id, f'❌ /histogram failed: {exc}')
+                return
+            self.bot.send_message(chat_id, f"```\n{text}\n```", parse_mode='Markdown')
+
         @self.bot.message_handler(commands=['precision'])
         def handle_precision(message) -> None:
             """Setup precision: per-detector + per-pair status with CI."""
