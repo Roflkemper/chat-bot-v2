@@ -25,7 +25,9 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, r"C:\Users\Kemper\Documents\Codex\2026-04-20-new-chat\src")
+import os as _os
+sys.path.insert(0, _os.environ.get("CODEX_SRC",
+    r"C:\Users\Kemper\Documents\Codex\2026-04-20-new-chat\src"))
 
 try:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True)

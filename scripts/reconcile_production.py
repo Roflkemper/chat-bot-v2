@@ -37,7 +37,9 @@ sys.stdout = __import__('io').TextIOWrapper(sys.stdout.buffer, encoding='utf-8',
 # Paths
 # ---------------------------------------------------------------------------
 BOT7_ROOT = Path(__file__).parent.parent
-CODEX_SRC  = Path(r"C:\Users\Kemper\Documents\Codex\2026-04-20-new-chat\src")
+import os as _os
+CODEX_SRC  = Path(_os.environ.get("CODEX_SRC",
+    r"C:\Users\Kemper\Documents\Codex\2026-04-20-new-chat\src"))
 OHLCV_PATH = BOT7_ROOT / "backtests" / "frozen" / "BTCUSDT_1m_2y.csv"
 SNAPS_PATH = BOT7_ROOT / "ginarea_live" / "snapshots.csv"
 STATE_PATH = BOT7_ROOT / "docs" / "STATE" / "state_latest.json"

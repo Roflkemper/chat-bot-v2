@@ -1,21 +1,64 @@
-"""Read-only summary of Windows Task Scheduler bot7-* tasks for /cron command.
+"""Read-only summary of scheduled tasks for /cron command.
 
-Calls schtasks.exe via subprocess (no PowerShell needed). Renders compact
-list of registered tasks with state, last run, last result, next run.
+On Windows: calls schtasks.exe and filters bot7-* tasks.
+On Mac: calls launchctl list and filters com.bot7.* labels.
+On Linux: empty (no implementation yet).
 """
 from __future__ import annotations
 
 import subprocess
+import sys
 from datetime import datetime
+
+
+def _query_tasks_mac() -> list[dict]:
+    """Returns list of bot7 tasks visible to launchctl on Mac.
+
+    `launchctl list` output columns: PID, Status, Label.
+    We don't have last/next run from this — would need launchctl print
+    per-label which is slow. Return minimal: name + state.
+    """
+    try:
+        result = subprocess.run(
+            ["launchctl", "list"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return []
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return []
+
+    out = []
+    for line in result.stdout.splitlines()[1:]:  # skip header
+        parts = line.split("\t")
+        if len(parts) < 3: continue
+        label = parts[2].strip()
+        if not label.startswith("com.bot7."):
+            continue
+        pid = parts[0].strip()
+        status = parts[1].strip()
+        state = "Running" if pid != "-" else ("Ready" if status == "0" else f"Status={status}")
+        out.append({
+            "name": label,
+            "state": state,
+            "last_run": "n/a",
+            "last_result": status if status != "0" else "ok",
+            "next_run": "n/a",
+        })
+    return out
 
 
 def _query_tasks() -> list[dict]:
     """Returns list of {name, state, last_run, last_result, next_run} for
     bot7-* tasks. Empty list on any error.
 
-    Uses schtasks /Query /FO CSV /V which produces verbose CSV per task.
-    We filter to TaskName starting with bot7-.
+    Uses schtasks /Query /FO CSV /V on Windows; launchctl on Mac.
     """
+    if sys.platform == "darwin":
+        return _query_tasks_mac()
+    if sys.platform != "win32":
+        return []  # Linux/other — no implementation
+
     try:
         result = subprocess.run(
             ["schtasks", "/Query", "/FO", "CSV", "/V", "/NH"],

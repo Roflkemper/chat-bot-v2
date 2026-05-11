@@ -24,7 +24,9 @@ from typing import Optional
 # Paths
 # ---------------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parents[1]
-CODEX_SRC = Path(r"C:\Users\Kemper\Documents\Codex\2026-04-20-new-chat\src")
+import os as _os
+CODEX_SRC = Path(_os.environ.get("CODEX_SRC",
+    r"C:\Users\Kemper\Documents\Codex\2026-04-20-new-chat\src"))
 OHLCV_PATH = ROOT / "backtests" / "frozen" / "BTCUSDT_1m_2y.csv"
 DEFAULT_OUT = ROOT / "docs" / "calibration" / "CALIBRATION_VS_GINAREA_2026-04-30.md"
 
