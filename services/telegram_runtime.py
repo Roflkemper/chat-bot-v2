@@ -974,7 +974,15 @@ class DecisionLogAlertWorker(threading.Thread):
     def _is_duplicate_recent(self, event) -> bool:
         try:
             sig = self._compute_signature(event)
-            cutoff = datetime.now(timezone.utc) - timedelta(minutes=_ALERT_DEDUP_WINDOW_MINUTES)
+            # Window-cutoff is relative to the event's timestamp, not wall-clock.
+            # An event observed at T is considered duplicate of any recent ping
+            # within [T - window, T]. Fixed 2026-05-11: was using now() which
+            # made the dedup check unusable for backfill / replayed events and
+            # for unit tests with fixed timestamps.
+            ev_ts = getattr(event, "ts", None) or datetime.now(timezone.utc)
+            if isinstance(ev_ts, datetime) and ev_ts.tzinfo is None:
+                ev_ts = ev_ts.replace(tzinfo=timezone.utc)
+            cutoff = ev_ts - timedelta(minutes=_ALERT_DEDUP_WINDOW_MINUTES)
             for recent in self._recent_pings:
                 if recent["ts"] < cutoff:
                     continue
