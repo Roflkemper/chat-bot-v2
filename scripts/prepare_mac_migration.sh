@@ -99,7 +99,8 @@ On Mac:
   6. python3 -m venv .venv && source .venv/bin/activate
   7. pip install -r requirements.txt
   8. cp docs/launchd_templates/*.plist ~/Library/LaunchAgents/
-     sed -i '' 's/USERNAME/$(whoami)/g' ~/Library/LaunchAgents/com.bot7.*.plist
+     # On Mac, run this with literal \$(whoami) — it expands to your username:
+     sed -i '' "s/USERNAME/\$(whoami)/g" ~/Library/LaunchAgents/com.bot7.*.plist
      for p in ~/Library/LaunchAgents/com.bot7.*.plist; do launchctl load \$p; done
   9. python -m pytest tests/services/setup_detector/ -q
 EOF
