@@ -311,20 +311,81 @@ def main() -> int:
             "status": status,
         })
     df = pd.DataFrame(rows).sort_values("n", ascending=False)
-    print("\n=== Setup precision (live, with 95% CI) ===")
-    print(df.to_string(index=False))
+
+    # Russian detector names
+    DETECTOR_RU = {
+        "long_dump_reversal": "LONG разворот после дампа",
+        "long_pdl_bounce": "LONG отбой от PDL",
+        "long_double_bottom": "LONG двойное дно",
+        "long_multi_divergence": "LONG мульти-дивергенция",
+        "long_rsi_momentum_ga": "LONG RSI momentum",
+        "short_pdh_rejection": "SHORT от PDH",
+        "short_rally_fade": "SHORT fade rally",
+        "short_mfi_multi_ga": "SHORT MFI multi",
+        "short_double_top": "SHORT двойная вершина",
+        "short_div_bos_15m": "SHORT div BOS 15m",
+        "short_overbought_fade": "SHORT overbought fade",
+    }
+    STATUS_RU = {
+        "DEGRADED": "🚨 ПРОИГРЫВАЕТ",
+        "EVALUATING": "🟡 НАКАПЛИВАЕТ",
+        "STABLE": "🟢 СТАБИЛЬНО",
+        "MARGINAL": "⚪ НЕЯСНО",
+        "INSUFFICIENT": "⏳ МАЛО ДАННЫХ",
+    }
+
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
+    print()
+    print("📊 ТОЧНОСТЬ ДЕТЕКТОРОВ (paper trading за всё время)")
+    print()
+
+    for _, r in df.iterrows():
+        det = r["detector"]
+        n = r["n"]
+        if n < 5: continue
+        ru_name = DETECTOR_RU.get(det, det)
+        status_ru = STATUS_RU.get(r["status"], r["status"])
+        exp = r["exp_%"]
+        exp_emoji = "✅" if exp > 0.01 else ("❌" if exp < -0.01 else "⚪")
+        bt = r["bt_exp_%"]
+        bt_str = f"+{bt:.3f}%" if bt and bt > 0 else (f"{bt:.3f}%" if bt is not None else "?")
+
+        print(f"  {status_ru}  {ru_name}")
+        print(f"     {n} сделок: TP1×{r['tp1']}  SL×{r['sl']}  timeout×{r['timeout']}")
+        print(f"     {exp_emoji} в среднем {exp:+.3f}%/сделка  (бэктест: {bt_str})")
+
+        # Plain-language explanation
+        if r["status"] == "DEGRADED":
+            print(f"     ⚠️  CI95 целиком ниже нуля → 95% уверенность что детектор хуже бэктеста")
+            print(f"     💡 рекомендую: /disable {det}")
+        elif r["status"] == "EVALUATING":
+            print(f"     📈 CI95 целиком выше нуля → детектор работает, но N<100, ждём подтверждения")
+        elif r["status"] == "INSUFFICIENT":
+            print(f"     ⏳ нужно ≥30 сделок для уверенного вывода")
+        elif r["status"] == "MARGINAL":
+            print(f"     ⚪ CI95 пересекает 0 → нет однозначной картины")
+        print()
 
     # Per-status summary
     statuses = df["status"].value_counts().to_dict()
-    print(f"\nStatus breakdown: {statuses}")
+    summary = ", ".join(f"{STATUS_RU.get(k,k)}: {v}" for k, v in statuses.items())
+    print(f"📋 Итого: {summary}")
+    print()
 
-    # Highlight DEGRADED detectors
+    # Highlight DEGRADED — actionable
     degraded = df[df["status"] == "DEGRADED"]
     if not degraded.empty:
-        print("\n[ALERT] DEGRADED detectors (live exp drifted from backtest):")
+        print("🚨 ДЕЙСТВИЕ НУЖНО:")
         for _, r in degraded.iterrows():
-            print(f"  {r['detector']}: live exp {r['exp_%']:+.4f}% vs "
-                  f"bt {r['bt_exp_%']}, CI [{r['ci95_lo']:+.4f}, {r['ci95_hi']:+.4f}]")
+            det = r["detector"]
+            ru_name = DETECTOR_RU.get(det, det)
+            print(f"   • '{ru_name}' стабильно теряет деньги в paper trading")
+            print(f"     → отправь в TG: /disable {det}")
+        print()
 
     # ── Status transition detection (DEGRADED auto-notify) ────────────────
     # Skipped on filtered runs — see args.pair / args.detector handling below.
