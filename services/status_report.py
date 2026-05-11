@@ -24,6 +24,7 @@ _SETUPS = _ROOT / "state" / "setups.jsonl"
 _GC_FIRES = _ROOT / "state" / "grid_coordinator_fires.jsonl"
 _P15_STATE = _ROOT / "state" / "p15_state.json"
 _APP_RUNNER_STARTS = _ROOT / "state" / "app_runner_starts.jsonl"
+_PIPELINE_METRICS = _ROOT / "state" / "pipeline_metrics.jsonl"
 
 
 def _read_last_lines(path: Path, n: int = 50) -> list[str]:
@@ -206,6 +207,46 @@ def _restarts_last_hour(now: datetime) -> int:
         return 0
 
 
+def _pipeline_summary_last_hour(now: datetime) -> dict:
+    """Quick funnel: events / emitted / detector_failed in last 1h."""
+    if not _PIPELINE_METRICS.exists():
+        return {"total": 0, "emitted": 0, "failed": 0, "blocked": 0}
+    cutoff = now - timedelta(hours=1)
+    total = emitted = failed = blocked = 0
+    try:
+        # Tail last ~5000 lines is enough — 1h ~= ~2000 events typically.
+        lines = _read_last_lines(_PIPELINE_METRICS, n=5000)
+        for line in lines:
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            dt = _parse_iso(rec.get("ts", ""))
+            if not dt or dt < cutoff:
+                continue
+            total += 1
+            outcome = rec.get("stage_outcome", "")
+            if outcome == "emitted":
+                emitted += 1
+            elif outcome == "detector_failed":
+                failed += 1
+            elif outcome.startswith("gc_blocked") or outcome.startswith("combo_blocked") \
+                    or outcome.endswith("_dedup_skip") or outcome == "env_disabled":
+                blocked += 1
+    except OSError:
+        pass
+    return {"total": total, "emitted": emitted, "failed": failed, "blocked": blocked}
+
+
+def _disabled_summary() -> dict:
+    """Pull from runtime_disabled what's currently off."""
+    try:
+        from services.setup_detector.runtime_disabled import list_disabled
+        return list_disabled()
+    except Exception:
+        return {"env": [], "state_file": []}
+
+
 def build_status_report() -> str:
     now = datetime.now(timezone.utc)
     hb_age, hb_ts = _heartbeat_age(now)
@@ -214,6 +255,8 @@ def build_status_report() -> str:
     last_gc = _last_gc_fire(now)
     legs = _p15_legs(now)
     restarts = _restarts_last_hour(now)
+    pipeline = _pipeline_summary_last_hour(now)
+    disabled = _disabled_summary()
 
     lines = [f"[STATUS] {now:%Y-%m-%d %H:%M UTC}", ""]
 
@@ -263,5 +306,18 @@ def build_status_report() -> str:
             )
     else:
         lines.append("P-15 open legs: 0 (all idle)")
+
+    # Pipeline summary last 1h
+    lines.append("")
+    lines.append(
+        f"Pipeline 1h: {pipeline['total']} events, "
+        f"{pipeline['emitted']} emitted, {pipeline['blocked']} blocked, "
+        f"{pipeline['failed']} failed"
+    )
+
+    # Disabled detectors
+    all_disabled = list(disabled.get("env", [])) + list(disabled.get("state_file", []))
+    if all_disabled:
+        lines.append(f"Disabled: {', '.join(all_disabled)}")
 
     return "\n".join(lines)

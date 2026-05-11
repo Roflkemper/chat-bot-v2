@@ -1416,6 +1416,83 @@ class TelegramBotApp:
         # Surfaces silent failures: stale state files, detectors firing but
         # being combo-blocked, DL push volume, paper-trader activity. Same
         # checks I (the assistant) run during manual audits — just packaged.
+        @self.bot.message_handler(commands=['disable'])
+        def handle_disable(message) -> None:
+            """`/disable <token>` adds detector token to runtime disable list.
+            `/disable` (no arg) lists current state. Token is substring-matched
+            against detector function names."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.setup_detector.runtime_disabled import (
+                add_runtime_disabled, list_disabled,
+            )
+            text = str(message.text or '').strip()
+            args = text.split(maxsplit=1)
+            if len(args) < 2:
+                # No arg → list current
+                d = list_disabled()
+                self.bot.send_message(
+                    chat_id,
+                    f"Currently disabled:\n"
+                    f"  via .env: {d['env'] or '(none)'}\n"
+                    f"  via /disable: {d['state_file'] or '(none)'}\n\n"
+                    f"Usage: /disable <token>  (e.g. /disable multi_divergence)"
+                )
+                return
+            token = args[1].strip()
+            added = add_runtime_disabled(token)
+            d = list_disabled()
+            if added:
+                self.bot.send_message(
+                    chat_id,
+                    f"✓ Added '{token}' to runtime disable list.\n"
+                    f"Now disabled: {d['env'] + d['state_file']}\n"
+                    f"Takes effect within 60s (cache TTL)."
+                )
+            else:
+                self.bot.send_message(
+                    chat_id, f"'{token}' was already disabled — no change."
+                )
+
+        @self.bot.message_handler(commands=['enable'])
+        def handle_enable(message) -> None:
+            """`/enable <token>` removes from runtime disable list. Does NOT
+            touch .env DISABLED_DETECTORS — that's permanent config."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.setup_detector.runtime_disabled import (
+                remove_runtime_disabled, list_disabled,
+            )
+            text = str(message.text or '').strip()
+            args = text.split(maxsplit=1)
+            if len(args) < 2:
+                self.bot.send_message(chat_id, 'Usage: /enable <token>')
+                return
+            token = args[1].strip()
+            removed = remove_runtime_disabled(token)
+            d = list_disabled()
+            if removed:
+                env_still = [t for t in d['env'] if t in token or token in t]
+                extra = ""
+                if env_still:
+                    extra = (f"\n[NOTE] '{token}' is ALSO listed in .env "
+                             f"DISABLED_DETECTORS — still disabled there. "
+                             f"Edit .env.local to remove permanently.")
+                self.bot.send_message(
+                    chat_id,
+                    f"✓ Removed '{token}' from runtime disable list.{extra}\n"
+                    f"Now disabled: env={d['env']}, runtime={d['state_file']}"
+                )
+            else:
+                self.bot.send_message(
+                    chat_id, f"'{token}' was not in runtime list. "
+                            f"Current: {d['state_file']}"
+                )
+
         @self.bot.message_handler(commands=['pipeline'])
         def handle_pipeline(message) -> None:
             """Setup detector pipeline funnel — per-detector yield."""

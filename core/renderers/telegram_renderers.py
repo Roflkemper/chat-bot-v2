@@ -38,6 +38,8 @@ def build_help_text() -> str:
         "• /ginarea (alias /bots) — снимок всех GinArea ботов: позиции, unrz PnL, дистанция до liq",
         "• /changelog (alias /log24) — что произошло за 24ч: коммиты, pipeline, P-15 PnL",
         "• /pipeline — детектор funnel: fired/blocked/emit yield% по каждому детектору",
+        "• /disable <token> — runtime kill detector (substring match)",
+        "• /enable <token> — снять runtime disable (env-level disable не трогает)",
         "• /audit — текущая аудит-сводка (advisor)",
         "• /report_today / /report_week — итог дня / недели",
         "• /setups setup_stats — статистика по детекторам за 7д",
