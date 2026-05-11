@@ -1416,6 +1416,28 @@ class TelegramBotApp:
         # Surfaces silent failures: stale state files, detectors firing but
         # being combo-blocked, DL push volume, paper-trader activity. Same
         # checks I (the assistant) run during manual audits — just packaged.
+        @self.bot.message_handler(commands=['changelog', 'log24'])
+        def handle_changelog(message) -> None:
+            """Last 24h commits + pipeline summary + GC decisions."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from pathlib import Path as _P
+            p = _P("docs/CHANGELOG_DAILY.md")
+            if not p.exists():
+                self.bot.send_message(chat_id, 'No change log yet — cron fires daily 09:30.')
+                return
+            try:
+                text = p.read_text(encoding="utf-8")
+                # Truncate to telegram limit
+                if len(text) > 3800:
+                    text = text[:3800] + "\n... (truncated)"
+            except OSError as exc:
+                self.bot.send_message(chat_id, f'❌ /changelog read failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         @self.bot.message_handler(commands=['ginarea', 'bots'])
         def handle_ginarea(message) -> None:
             """Read-only summary of GinArea bot states."""
