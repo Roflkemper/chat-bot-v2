@@ -431,15 +431,28 @@ class CommandActions:
         return self.ctx.plain(handle_state_command())
 
     def advise(self) -> BotResponsePayload:
-        # /advise — алиас на v2 (рынок + сетапы + paper trades).
-        # Legacy v0.1 ("ADVISOR v2 — multi-asset / cold start") отключён по
-        # требованию оператора 2026-05-07: давать выводы и сетапы, а не "cold start".
+        # /advise — короткая 1-screen карточка с выводами (lite).
+        # Операторская обратная связь 2026-05-11: длинная v2 даёт сырые
+        # цифры и повторяет одно и то же, читается только 3 строки.
+        # Новый формат: 15 строк, каждая цифра уже интерпретирована.
+        # Старая v2 доступна как /advise_full.
+        try:
+            from services.advisor.advisor_lite import build_advisor_lite_text
+            text = build_advisor_lite_text()
+        except Exception as exc:
+            logger.exception("advise.failed")
+            return self.ctx.plain(f"❌ advise failed: {exc}")
+        self._log_manual_command(action="ADVISOR_LITE")
+        return self.ctx.plain(text)
+
+    def advise_full(self) -> BotResponsePayload:
+        # Verbose v2 card — kept for deep dive when lite isn't enough.
         try:
             from services.advisor import build_advisor_v2_text
             text = build_advisor_v2_text()
         except Exception as exc:
-            logger.exception("advise.failed")
-            return self.ctx.plain(f"❌ advise failed: {exc}")
+            logger.exception("advise_full.failed")
+            return self.ctx.plain(f"❌ advise_full failed: {exc}")
         self._log_manual_command(action="ADVISOR_V2")
         return self.ctx.plain(text)
 
@@ -1554,6 +1567,7 @@ def build_action_map(ctx: CommandActionContext) -> dict[str, Callable[[], BotRes
         '_cmd_ginarea': actions.ginarea,
         '_cmd_portfolio': actions.portfolio,
         '_cmd_advise': actions.advise,
+        '_cmd_advise_full': actions.advise_full,
         '_cmd_regime': actions.regime,
         '_cmd_category': actions.category,
         '_cmd_bot': actions.bot,

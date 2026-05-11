@@ -103,6 +103,8 @@ class CommandHandler:
         registry.register('СТЕЙТ', '_cmd_state', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('/advise', '_cmd_advise', capabilities=CommandCapabilities(renderer='grid'))
         registry.register('СОВЕТ', '_cmd_advise', capabilities=CommandCapabilities(renderer='grid'))
+        # /advise_full — verbose v2 (legacy, kept for deep dive 2026-05-11)
+        registry.register('/advise_full', '_cmd_advise_full', capabilities=CommandCapabilities(renderer='grid'))
         # /advisor — v0.1 advisor: live state + reconciled foundation synthesis
         # (TZ-LIVE-ADVISOR-V0_1, 2026-05-06)
         registry.register('/advisor', '_cmd_advisor', capabilities=CommandCapabilities(renderer='grid'))
