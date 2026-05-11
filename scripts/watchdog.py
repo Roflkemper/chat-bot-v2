@@ -39,6 +39,7 @@ from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG_FILE = ROOT / "logs" / "watchdog.log"
+AUDIT_FILE = ROOT / "state" / "watchdog_audit.jsonl"  # 2026-05-11 TZ-B6 structured
 ALERT_STATE = ROOT / "state" / "watchdog_alert_state.json"
 # Alert if same component fails-to-start (or stays NOT RUNNING after restart)
 # this many consecutive ticks. 3 ticks * 2min = 6 min of unrecoverable down.
@@ -100,6 +101,19 @@ def _log(msg: str) -> None:
     try:
         print(line, file=sys.stderr)
     except Exception:
+        pass
+
+
+def _audit(event: str, **fields) -> None:
+    """Structured per-component event. Used by analysis scripts to find
+    restart patterns, mttr, etc — anything beyond grep on watchdog.log."""
+    try:
+        AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        rec = {"ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "event": event, **fields}
+        with AUDIT_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
+    except OSError:
         pass
 
 
@@ -296,12 +310,49 @@ def main() -> int:
         try:
             status = _check_and_revive(name, cfg)
             _log(f"  {name}: {status}")
+            _audit_status(name, status)
             alert_state = _track_status_and_alert(name, status, alert_state)
         except Exception as exc:
             _log(f"  {name}: ERROR {exc}")
+            _audit("error", component=name, error=str(exc))
     _save_alert_state(alert_state)
     _log("=== watchdog done ===")
     return 0
+
+
+def _audit_status(name: str, status: str) -> None:
+    """Convert a status string into one structured audit event."""
+    if status.startswith("alive"):
+        # "alive pid=X age=Ymin"
+        pid = _extract_int(status, "pid=")
+        _audit("alive", component=name, pid=pid)
+    elif status.startswith("STARTED"):
+        pid = _extract_int(status, "pid=")
+        _audit("started", component=name, pid=pid, reason="not_running")
+    elif status.startswith("REVIVED"):
+        old_pid = _extract_int(status, "old=")
+        new_pid = _extract_int(status, "new=")
+        _audit("revived", component=name, old_pid=old_pid, new_pid=new_pid,
+               reason="stale_freshness")
+    elif status.startswith("FAILED_TO_START"):
+        _audit("failed_to_start", component=name)
+    elif status.startswith("REVIVE_FAILED"):
+        _audit("revive_failed", component=name)
+
+
+def _extract_int(text: str, prefix: str) -> int | None:
+    """Find 'prefix<digits>' and return the int, or None."""
+    idx = text.find(prefix)
+    if idx < 0:
+        return None
+    rest = text[idx + len(prefix):]
+    digits = ""
+    for c in rest:
+        if c.isdigit():
+            digits += c
+        else:
+            break
+    return int(digits) if digits else None
 
 
 if __name__ == "__main__":
