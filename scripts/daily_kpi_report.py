@@ -161,6 +161,54 @@ def _emitted_setups_by_type(metrics: list[dict]) -> Counter:
     )
 
 
+def _compute_alerts(metrics: list[dict], p15_events: list[dict],
+                     current_legs: list[dict], now: datetime) -> list[str]:
+    """Surface anomalies that need operator attention.
+
+    Returns one line per alert. Empty list if all is healthy.
+    """
+    out: list[str] = []
+    emitted = sum(1 for m in metrics if m.get("stage_outcome") == "emitted")
+    failures = sum(1 for m in metrics if m.get("stage_outcome") == "detector_failed")
+
+    # 0 setups emitted in 24h is concerning (we usually see 10+/day even on quiet
+    # markets). Could mean: bot down, regime so flat that all filters block,
+    # combo_filter misconfigured, or a wedged loop.
+    if not metrics:
+        out.append("[CRIT] 0 pipeline events in 24h — bot may be down")
+    elif emitted == 0:
+        out.append("[WARN] 0 setups emitted in 24h — all candidates blocked")
+    elif emitted < 3:
+        out.append(f"[INFO] only {emitted} setup(s) emitted in 24h — quiet market")
+
+    # Detector exceptions firing repeatedly = bug.
+    if failures >= 10:
+        # Count by detector name (drop_reason carries it).
+        by_det: dict[str, int] = {}
+        for m in metrics:
+            if m.get("stage_outcome") == "detector_failed":
+                key = str(m.get("drop_reason") or "?")
+                by_det[key] = by_det.get(key, 0) + 1
+        top = sorted(by_det.items(), key=lambda kv: -kv[1])[:3]
+        details = ", ".join(f"{k}={v}" for k, v in top)
+        out.append(f"[BUG] {failures} detector exceptions in 24h: {details}")
+
+    # P-15 leg in DD>2% AND age>24h = needs attention.
+    for leg in current_legs:
+        if leg.get("alert"):
+            out.append(
+                f"[P15] {leg['pair']} {leg['direction']} dd={leg['dd_pct']:.2f}% "
+                f"age={leg['age_h']:.1f}h — consider manual close"
+            )
+
+    # P-15 realized PnL deeply negative last 24h.
+    pnl_24h = _p15_equity_delta(p15_events)
+    if pnl_24h < -50:
+        out.append(f"[P15] realized PnL 24h: ${pnl_24h:+.2f} — significant loss")
+
+    return out
+
+
 def main() -> int:
     now = datetime.now(timezone.utc)
     window_end = now
@@ -240,6 +288,14 @@ def main() -> int:
                 f"DD={leg['dd_pct']:.2f}%  age={age_str}{alert}"
             )
     lines.append("")
+
+    # Alerts section — surface degraded or anomalous state.
+    alerts = _compute_alerts(metrics, p15_events, current_legs, now)
+    if alerts:
+        lines.append("[ALERTS]")
+        for a in alerts:
+            lines.append(f"  {a}")
+        lines.append("")
 
     if not metrics and not audit and not p15_events:
         lines.append("[WARN] No data in window — pipeline silent or files missing.")

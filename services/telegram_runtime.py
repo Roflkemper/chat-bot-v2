@@ -1408,6 +1408,22 @@ class TelegramBotApp:
         # Surfaces silent failures: stale state files, detectors firing but
         # being combo-blocked, DL push volume, paper-trader activity. Same
         # checks I (the assistant) run during manual audits — just packaged.
+        @self.bot.message_handler(commands=['p15'])
+        def handle_p15(message) -> None:
+            """Detailed P-15 per-leg report with recent equity events."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.p15_report import build_p15_report
+                text = build_p15_report()
+            except Exception as exc:
+                logger.exception('handle_p15.failed')
+                self.bot.send_message(chat_id, f'❌ /p15 failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text)
+
         @self.bot.message_handler(commands=['status'])
         def handle_status(message) -> None:
             """On-demand status snapshot: heartbeat, procs, last setup,
