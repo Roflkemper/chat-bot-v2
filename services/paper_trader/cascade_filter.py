@@ -22,8 +22,22 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
 LIQ_CSV = ROOT / "market_live" / "liquidations.csv"
 
+# Эмпирически подобрано после audit_paper_trader_filters.py за 7 дней:
+# - типичный фон ликвидаций (bybit + okx, обе стороны) ~250-500 BTC за 30 мин
+# - реальные ликвидационные spike (как 12.05 в 16:46-18:46) дают 800-1500+
+# - порог 50 BTC резал все winning trades; 200 BTC блокирует только настоящие spike
 COOLDOWN_MIN = 30
-THRESHOLD_BTC = 50.0
+THRESHOLD_BTC = 800.0
+
+# OKX BTC-USDT-SWAP передаёт qty в контрактах, не в BTC.
+# 1 контракт = 0.01 BTC (документация OKX, поле sz).
+# market_collector/liquidations.py не нормализует — поэтому делаем
+# конверсию здесь. Если когда-то collector нормализует — убрать
+# этот словарь и просто читать qty as-is.
+_EXCHANGE_QTY_MULTIPLIER = {
+    "okx": 0.01,
+    "bybit": 1.0,
+}
 
 
 def recent_cascade_volume_btc(
@@ -63,7 +77,9 @@ def recent_cascade_volume_btc(
                     qty = float(qty_str)
                 except ValueError:
                     continue
-                total += qty
+                exchange = (row.get("exchange") or "").strip().lower()
+                mult = _EXCHANGE_QTY_MULTIPLIER.get(exchange, 1.0)
+                total += qty * mult
     except OSError:
         logger.exception("cascade_filter.read_failed path=%s", csv_path)
         return 0.0
@@ -84,3 +100,25 @@ def should_block_long_entry(
     """
     vol = recent_cascade_volume_btc(now=now, window_min=window_min, csv_path=csv_path)
     return vol >= threshold_btc, vol
+
+
+def should_block_entry(
+    side: str,
+    *,
+    now: datetime | None = None,
+    window_min: int = COOLDOWN_MIN,
+    threshold_btc: float = THRESHOLD_BTC,
+    csv_path: Path = LIQ_CSV,
+) -> tuple[bool, float]:
+    """Универсальный фильтр для обеих сторон.
+
+    Симметричная логика: каскад любой стороны = рынок в разрядке.
+    Не входим ни в LONG, ни в SHORT пока ликвидации не утихнут.
+    Зеркальный кейс к LONG: 12.05 19:53 был SHORT-каскад 88 BTC —
+    SHORT-сетап после него попал бы в squeeze и проиграл.
+    """
+    if side not in ("long", "short"):
+        return False, 0.0
+    return should_block_long_entry(
+        now=now, window_min=window_min, threshold_btc=threshold_btc, csv_path=csv_path
+    )

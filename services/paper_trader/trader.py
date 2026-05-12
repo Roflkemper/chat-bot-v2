@@ -20,7 +20,8 @@ from pathlib import Path
 from typing import Optional
 
 from services.paper_trader import journal
-from services.paper_trader.cascade_filter import should_block_long_entry
+from services.paper_trader.cascade_filter import should_block_entry
+from services.paper_trader.streak_guard import should_pause
 from services.setup_detector.models import Setup, SetupType
 
 logger = logging.getLogger(__name__)
@@ -64,14 +65,21 @@ def open_paper_trade(setup: Setup) -> Optional[dict]:
     if setup.tp1_price is None and setup.tp2_price is None:
         return None
 
-    if side == "long":
-        blocked, recent_vol = should_block_long_entry()
-        if blocked:
-            logger.info(
-                "paper_trader.long_blocked_by_cascade type=%s recent_liq_btc=%.1f",
-                setup.setup_type.value, recent_vol,
-            )
-            return None
+    paused, streak, pause_reason = should_pause()
+    if paused:
+        logger.info(
+            "paper_trader.entry_blocked_by_streak type=%s %s",
+            setup.setup_type.value, pause_reason,
+        )
+        return None
+
+    blocked, recent_vol = should_block_entry(side)
+    if blocked:
+        logger.info(
+            "paper_trader.entry_blocked_by_cascade side=%s type=%s recent_liq_btc=%.1f",
+            side, setup.setup_type.value, recent_vol,
+        )
+        return None
 
     entry = float(setup.entry_price)
     if entry <= 0:
