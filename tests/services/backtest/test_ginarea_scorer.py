@@ -8,6 +8,7 @@ from services.backtest.ginarea_scorer import (
     rank_configs,
     score_config,
     V5_CONFIGS_LONG,
+    V5_CONFIGS_SHORT,
 )
 
 
@@ -82,3 +83,29 @@ def test_r1_overtakes_at_high_rebate() -> None:
     in_limit = [s for s in ranked if s.total != float("-inf")]
     leader_name = in_limit[0].cfg.name
     assert "R1" in leader_name, f"expected R1 at top, got {leader_name}"
+
+
+def test_short_configs_loaded_with_tiers() -> None:
+    """V5_CONFIGS_SHORT должны покрывать T1/T2/T3."""
+    tiers = {c.tier for c in V5_CONFIGS_SHORT}
+    assert tiers == {"T1", "T2", "T3"}
+    assert all(c.side == "short" for c in V5_CONFIGS_SHORT)
+
+
+def test_short_t1_leader_top_at_default_rebate() -> None:
+    """SH-T1 TP=15/15 = текущий лидер T1 → должен быть в топ-3."""
+    ranked = rank_configs(V5_CONFIGS_SHORT, rebate_per_m=250, risk_limit_usd=50_000)
+    in_limit = [s for s in ranked if s.total != float("-inf")]
+    top3 = [s.cfg.name for s in in_limit[:3]]
+    assert any("SH-T1 TP=15/15" in n for n in top3), f"top3={top3}"
+
+
+def test_short_t1_efficiency_beats_t2() -> None:
+    """SH-T1 TP=10/10 efficiency (score/peak) выше T2-180 — у T1 меньше peak."""
+    t1_10 = next(c for c in V5_CONFIGS_SHORT if "TP=10/10" in c.name)
+    t2_180 = next(c for c in V5_CONFIGS_SHORT if "TP=180/180" in c.name)
+    s1 = score_config(t1_10, risk_limit_usd=50_000)
+    s2 = score_config(t2_180, risk_limit_usd=50_000)
+    eff1 = s1.total / t1_10.peak_exposure_usd
+    eff2 = s2.total / t2_180.peak_exposure_usd
+    assert eff1 > eff2

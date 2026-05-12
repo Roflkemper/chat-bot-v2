@@ -39,13 +39,15 @@ class GinAreaConfig:
     td: float
     mult: float
     tp: str  # "off" or "X/X"
-    max_size: int
+    max_size: int | str  # int (USD contracts) для LONG, str (BTC sizes) для SHORT
     profit_usd: float
     vol_musd: float        # USD volume in millions over the period
-    peak_exposure_usd: float  # peak USD-экспозиция на 07.02 LIBERATION
+    peak_exposure_usd: float  # peak USD-экспозиция (07.02 LIBERATION для LONG)
     dd_usd: float = 0.0    # realized drawdown if known, else 0
     side: str = "long"
     notes: str = ""
+    tier: str = ""         # "T1" / "T2" / "T3" tier label
+    bitmex_id: str = ""
 
 
 @dataclass
@@ -196,6 +198,152 @@ V5_CONFIGS_LONG: list[GinAreaConfig] = [
         profit_usd=30_153, vol_musd=25.8, peak_exposure_usd=140_000, dd_usd=4_500,
     ),
 ]
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# SHORT-конфиги из V5 (пачки #3-#8). Linear USDT_FUT BTCUSDT.
+# size в формате "BTC_initial/BTC_max" (на платформе: 0.001/0.003).
+# peak_exposure_usd оценка: max позиция в bag × текущая цена.
+# По TG POS сообщениям: SHORT bot pos обычно -1.5 BTC × $80k ≈ $120k bag,
+# но это уже усреднённый bag из 3-4 ботов вместе. На одного SHORT-бота
+# реалистично $30-45k peak exposure.
+# DD для SHORT: малая просадка (~$500-1000) — bag быстро возвращается,
+# поскольку рынок 2024-2026 имел bull-bias.
+# ──────────────────────────────────────────────────────────────────────────
+
+V5_CONFIGS_SHORT: list[GinAreaConfig] = [
+    # ── Tier-1 SHORT (gs=0.02, быстрый) ──────────────────────────────────
+    GinAreaConfig(
+        name="SH-T1 TP=10/10",
+        side="short", tier="T1",
+        gs=0.02, thresh=0.7, td=0.21, mult=1.3, tp="10/10", max_size="0.001/0.003",
+        profit_usd=2_027, vol_musd=13.7, peak_exposure_usd=30_000, dd_usd=500,
+        notes="самый чистый exit, unreal=0 стабильно",
+    ),
+    GinAreaConfig(
+        name="SH-T1 TP=12/12",
+        side="short", tier="T1",
+        gs=0.02, thresh=0.7, td=0.21, mult=1.3, tp="12/12", max_size="0.001/0.003",
+        profit_usd=1_956, vol_musd=13.87, peak_exposure_usd=35_000, dd_usd=1_000,
+        notes="нестабильно: смешанные exit-ы",
+    ),
+    GinAreaConfig(
+        name="SH-T1 TP=15/15 (текущий лидер T1)",
+        side="short", tier="T1",
+        gs=0.02, thresh=0.7, td=0.21, mult=1.3, tp="15/15", max_size="0.001/0.003",
+        profit_usd=2_407, vol_musd=14.1, peak_exposure_usd=35_000, dd_usd=600,
+        notes="максимум profit при чистом exit",
+    ),
+    GinAreaConfig(
+        name="SH-T1 TP=25/25",
+        side="short", tier="T1",
+        gs=0.02, thresh=0.7, td=0.21, mult=1.3, tp="25/25", max_size="0.001/0.003",
+        profit_usd=1_866, vol_musd=14.7, peak_exposure_usd=45_000, dd_usd=1_550,
+        notes="unreal -1554 = замороз капитал",
+    ),
+    # ── Tier-2 SHORT (gs=0.03, средний) ──────────────────────────────────
+    GinAreaConfig(
+        name="SH-T2 TP=40/40",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="40/40", max_size="0.002/0.004",
+        profit_usd=1_713, vol_musd=3.67, peak_exposure_usd=30_000, dd_usd=400,
+    ),
+    GinAreaConfig(
+        name="SH-T2 TP=60/60",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="60/60", max_size="0.002/0.004",
+        profit_usd=2_334, vol_musd=4.44, peak_exposure_usd=32_000, dd_usd=450,
+    ),
+    GinAreaConfig(
+        name="SH-T2 TP=80/80",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="80/80", max_size="0.002/0.004",
+        profit_usd=2_930, vol_musd=4.78, peak_exposure_usd=35_000, dd_usd=500,
+    ),
+    GinAreaConfig(
+        name="SH-T2 TP=99/99",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="99/99", max_size="0.002/0.004",
+        profit_usd=3_306, vol_musd=5.31, peak_exposure_usd=37_000, dd_usd=550,
+    ),
+    GinAreaConfig(
+        name="SH-T2 TP=120/120",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="120/120", max_size="0.002/0.004",
+        profit_usd=3_840, vol_musd=5.69, peak_exposure_usd=40_000, dd_usd=600,
+    ),
+    GinAreaConfig(
+        name="SH-T2 TP=140/140",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="140/140", max_size="0.002/0.004",
+        profit_usd=4_206, vol_musd=5.71, peak_exposure_usd=42_000, dd_usd=650,
+    ),
+    GinAreaConfig(
+        name="SH-T2 TP=160/160",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="160/160", max_size="0.002/0.004",
+        profit_usd=4_335, vol_musd=5.79, peak_exposure_usd=44_000, dd_usd=700,
+    ),
+    GinAreaConfig(
+        name="SH-T2 TP=180/180 (текущий лидер T2)",
+        side="short", tier="T2",
+        gs=0.03, thresh=1.5, td=0.35, mult=1.3, tp="180/180", max_size="0.002/0.004",
+        profit_usd=4_611, vol_musd=5.98, peak_exposure_usd=45_000, dd_usd=750,
+        notes="плато перед обвалом TP=220",
+    ),
+    # ── Tier-3 SHORT (gs=0.05, редкий) ───────────────────────────────────
+    GinAreaConfig(
+        name="SH-T3 TP=60/60 TD=0.45",
+        side="short", tier="T3",
+        gs=0.05, thresh=2.0, td=0.45, mult=1.2, tp="60/60", max_size="0.002/0.005",
+        profit_usd=1_081, vol_musd=1.33, peak_exposure_usd=22_000, dd_usd=300,
+    ),
+    GinAreaConfig(
+        name="SH-T3 TP=80/80 TD=0.45",
+        side="short", tier="T3",
+        gs=0.05, thresh=2.0, td=0.45, mult=1.2, tp="80/80", max_size="0.002/0.005",
+        profit_usd=1_362, vol_musd=1.62, peak_exposure_usd=23_000, dd_usd=350,
+    ),
+    GinAreaConfig(
+        name="SH-T3 TP=99/99 TD=0.45",
+        side="short", tier="T3",
+        gs=0.05, thresh=2.0, td=0.45, mult=1.2, tp="99/99", max_size="0.002/0.005",
+        profit_usd=1_662, vol_musd=1.77, peak_exposure_usd=24_000, dd_usd=400,
+    ),
+    GinAreaConfig(
+        name="SH-T3 TP=140/140 TD=0.6",
+        side="short", tier="T3",
+        gs=0.05, thresh=2.0, td=0.6, mult=1.2, tp="140/140", max_size="0.002/0.005",
+        profit_usd=2_242, vol_musd=1.57, peak_exposure_usd=25_000, dd_usd=450,
+    ),
+    GinAreaConfig(
+        name="SH-T3 TP=180/180 TD=0.6",
+        side="short", tier="T3",
+        gs=0.05, thresh=2.0, td=0.6, mult=1.2, tp="180/180", max_size="0.002/0.005",
+        profit_usd=2_692, vol_musd=1.70, peak_exposure_usd=27_000, dd_usd=500,
+    ),
+    GinAreaConfig(
+        name="SH-T3 TP=240/240 TD=0.6",
+        side="short", tier="T3",
+        gs=0.05, thresh=2.0, td=0.6, mult=1.2, tp="240/240", max_size="0.002/0.005",
+        profit_usd=3_115, vol_musd=2.06, peak_exposure_usd=29_000, dd_usd=600,
+    ),
+    GinAreaConfig(
+        name="SH-T3 TP=270/270 TD=0.6 (текущий лидер T3)",
+        side="short", tier="T3",
+        gs=0.05, thresh=2.0, td=0.6, mult=1.2, tp="270/270", max_size="0.002/0.005",
+        profit_usd=3_248, vol_musd=2.17, peak_exposure_usd=30_000, dd_usd=650,
+        notes="дисперсия 0.06% — очень устойчиво",
+    ),
+]
+
+
+def all_long_configs() -> list[GinAreaConfig]:
+    return V5_CONFIGS_LONG
+
+
+def all_short_configs() -> list[GinAreaConfig]:
+    return V5_CONFIGS_SHORT
 
 
 def format_ranking(
