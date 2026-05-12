@@ -1830,6 +1830,30 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text, parse_mode='Markdown')
 
+        @self.bot.message_handler(commands=['filter_dashboard'])
+        def handle_filter_dashboard(message) -> None:
+            """Накопительная статистика фильтров paper_trader по дням.
+            /filter_dashboard [N=14]"""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            parts = (message.text or "").split()
+            days = 14
+            if len(parts) > 1:
+                try:
+                    days = max(1, min(90, int(parts[1])))
+                except ValueError:
+                    pass
+            try:
+                from services.paper_trader.filter_dashboard import render_dashboard
+                text = render_dashboard(days=days)
+            except Exception as exc:
+                logger.exception('handle_filter_dashboard.failed')
+                self.bot.send_message(chat_id, f'❌ /filter_dashboard failed: {exc}')
+                return
+            self._send_long_text(chat_id, text, filename="filter_dashboard.txt")
+
         @self.bot.message_handler(commands=['ginarea', 'bots'])
         def handle_ginarea(message) -> None:
             """Read-only summary of GinArea bot states."""
