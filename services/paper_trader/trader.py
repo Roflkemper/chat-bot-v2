@@ -21,6 +21,7 @@ from typing import Optional
 
 from services.paper_trader import journal
 from services.paper_trader.cascade_filter import should_block_entry
+from services.paper_trader.regime_filter import should_block_for_instability
 from services.paper_trader.streak_guard import should_pause
 from services.setup_detector.models import Setup, SetupType
 
@@ -73,11 +74,20 @@ def open_paper_trade(setup: Setup) -> Optional[dict]:
         )
         return None
 
-    blocked, recent_vol = should_block_entry(side)
+    pair = getattr(setup, "pair", "BTCUSDT") or "BTCUSDT"
+    blocked, recent_vol = should_block_entry(side, pair=pair)
     if blocked:
         logger.info(
-            "paper_trader.entry_blocked_by_cascade side=%s type=%s recent_liq_btc=%.1f",
-            side, setup.setup_type.value, recent_vol,
+            "paper_trader.entry_blocked_by_cascade side=%s pair=%s type=%s recent_liq_btc=%.1f",
+            side, pair, setup.setup_type.value, recent_vol,
+        )
+        return None
+
+    regime_blocked, low_stab = should_block_for_instability()
+    if regime_blocked:
+        logger.info(
+            "paper_trader.entry_blocked_by_regime type=%s stability=%.2f",
+            setup.setup_type.value, low_stab if low_stab is not None else 0.0,
         )
         return None
 

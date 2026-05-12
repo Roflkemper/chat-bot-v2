@@ -1205,6 +1205,92 @@ class TelegramBotApp:
                 return
             self._dispatch(chat_id, str(message.text or '').strip())
 
+        @self.bot.message_handler(commands=['playbook'])
+        def handle_playbook(message) -> None:
+            """Full position playbook on-demand (replaces the hourly noise).
+            Hourly alert now compact; full playbook only when operator asks."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.exit_advisor.position_state import (
+                    build_position_state_snapshot,
+                )
+                from services.exit_advisor.honest_renderer import (
+                    format_honest_advisory,
+                )
+                state = build_position_state_snapshot()
+                text = format_honest_advisory(state)
+                if not text:
+                    text = 'Нет активной позиции — playbook не применим.'
+                self.bot.send_message(chat_id, text)
+            except Exception as exc:
+                logger.exception('playbook.failed')
+                self.bot.send_message(chat_id, f'⚠️ /playbook failed: {exc}')
+
+        @self.bot.message_handler(commands=['confluence_now', 'cn'])
+        def handle_confluence_now(message) -> None:
+            """Show current confluence buffer: which detectors fired same side
+            in last 6h. Helps operator see why confidence got boosted (or not).
+            2026-05-12, related to services.setup_detector.confluence_score.
+            """
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён для этого чата.')
+                return
+            try:
+                from services.setup_detector.confluence_score import (
+                    get_tracker, BOOST_K2, BOOST_K3, BOOST_K4_PLUS,
+                )
+                from datetime import datetime, timezone
+                tracker = get_tracker()
+                now = datetime.now(timezone.utc)
+                tracker._prune(now)
+                items = list(tracker._items)
+                long_dets: dict[str, str] = {}
+                short_dets: dict[str, str] = {}
+                for item in items:
+                    rel_min = int((now - item.ts).total_seconds() / 60)
+                    age = f"{rel_min}м назад"
+                    if item.side == "long":
+                        # keep most recent per detector
+                        long_dets[item.detector] = age
+                    else:
+                        short_dets[item.detector] = age
+                n_long = len(long_dets)
+                n_short = len(short_dets)
+                lines = ["📊 CONFLUENCE BUFFER (последние 6 ч)", ""]
+                lines.append(f"🟢 LONG: {n_long} detector(s)")
+                if long_dets:
+                    for det, age in sorted(long_dets.items()):
+                        lines.append(f"   • {det} — {age}")
+                else:
+                    lines.append("   (нет активных сигналов)")
+                lines.append("")
+                lines.append(f"🔴 SHORT: {n_short} detector(s)")
+                if short_dets:
+                    for det, age in sorted(short_dets.items()):
+                        lines.append(f"   • {det} — {age}")
+                else:
+                    lines.append("   (нет активных сигналов)")
+                lines.append("")
+                # Boost forecast
+                def _boost_str(n: int) -> str:
+                    if n >= 4: return f"×{BOOST_K4_PLUS} (K≥4)"
+                    if n >= 3: return f"×{BOOST_K3} (K≥3)"
+                    if n >= 2: return f"×{BOOST_K2} (K≥2)"
+                    return "×1.0 (нет boost)"
+                lines.append("⚙️ Если детектор сейчас сработает:")
+                lines.append(f"   LONG → confidence {_boost_str(n_long)}")
+                lines.append(f"   SHORT → confidence {_boost_str(n_short)}")
+                lines.append("")
+                lines.append(f"Всего setups в буфере: {len(items)}")
+                self.bot.send_message(chat_id, "\n".join(lines))
+            except Exception as exc:
+                logger.exception('confluence_now.failed')
+                self.bot.send_message(chat_id, f'⚠️ /confluence_now failed: {exc}')
+
         @self.bot.message_handler(commands=['verbose'])
         def handle_verbose(message) -> None:
             chat_id = int(message.chat.id)
@@ -1720,6 +1806,29 @@ class TelegramBotApp:
                 self.bot.send_message(chat_id, f'❌ /setups failed: {exc}')
                 return
             self._send_long_text(chat_id, text, filename="setups.txt")
+
+        @self.bot.message_handler(commands=['audit_filters'])
+        def handle_audit_filters(message) -> None:
+            """Эффективность paper_trader-фильтров за N дней. /audit_filters [7]"""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            parts = (message.text or "").split()
+            days = 7
+            if len(parts) > 1:
+                try:
+                    days = max(1, min(60, int(parts[1])))
+                except ValueError:
+                    pass
+            try:
+                from services.paper_trader.audit_report import build_filter_audit
+                text = build_filter_audit(days=days)
+            except Exception as exc:
+                logger.exception('handle_audit_filters.failed')
+                self.bot.send_message(chat_id, f'❌ /audit_filters failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text, parse_mode='Markdown')
 
         @self.bot.message_handler(commands=['ginarea', 'bots'])
         def handle_ginarea(message) -> None:

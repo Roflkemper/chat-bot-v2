@@ -14,30 +14,43 @@ from __future__ import annotations
 
 import csv
 import logging
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+_CACHE_TTL_SEC = 60
+_cache: dict[tuple, tuple[float, float]] = {}  # key -> (value, expires_at_ts)
+_cache_lock = threading.Lock()
+
 ROOT = Path(__file__).resolve().parents[2]
 LIQ_CSV = ROOT / "market_live" / "liquidations.csv"
 
-# Эмпирически подобрано после audit_paper_trader_filters.py за 7 дней:
-# - типичный фон ликвидаций (bybit + okx, обе стороны) ~250-500 BTC за 30 мин
-# - реальные ликвидационные spike (как 12.05 в 16:46-18:46) дают 800-1500+
-# - порог 50 BTC резал все winning trades; 200 BTC блокирует только настоящие spike
+# Эмпирически (после OKX qty normalization 2026-05-12):
+# - типичный фон ликвидаций bybit+okx за 30 мин ~5-30 BTC
+# - сильные spike (12.05 13:00-19:00) до ~80 BTC
+# - порог 150 BTC ловит только настоящий кризис, фон не блокирует
 COOLDOWN_MIN = 30
-THRESHOLD_BTC = 800.0
+THRESHOLD_BTC = 150.0
 
-# OKX BTC-USDT-SWAP передаёт qty в контрактах, не в BTC.
-# 1 контракт = 0.01 BTC (документация OKX, поле sz).
-# market_collector/liquidations.py не нормализует — поэтому делаем
-# конверсию здесь. Если когда-то collector нормализует — убрать
-# этот словарь и просто читать qty as-is.
-_EXCHANGE_QTY_MULTIPLIER = {
-    "okx": 0.01,
-    "bybit": 1.0,
-}
+# OKX BTC-USDT-SWAP передаёт `sz` в контрактах (1 контракт = 0.01 BTC).
+# С 2026-05-12 нормализация делается на источнике в market_collector/liquidations.py
+# (см. OKX_CONTRACT_SIZE_BTC). Существующие исторические строки приведены
+# скриптом scripts/migrate_okx_liquidations_qty.py. Здесь qty читается as-is.
+
+
+def _purge_cache(now_ts: float) -> None:
+    """Drop expired cache entries. Called under _cache_lock."""
+    expired = [k for k, (_, exp) in _cache.items() if exp <= now_ts]
+    for k in expired:
+        _cache.pop(k, None)
+
+
+def clear_cache() -> None:
+    """Test hook: forget all cached volumes."""
+    with _cache_lock:
+        _cache.clear()
 
 
 def recent_cascade_volume_btc(
@@ -45,16 +58,31 @@ def recent_cascade_volume_btc(
     now: datetime | None = None,
     window_min: int = COOLDOWN_MIN,
     csv_path: Path = LIQ_CSV,
+    use_cache: bool = True,
 ) -> float:
     """Сумма BTC ликвидаций за последние `window_min` минут.
 
     Считаем обе стороны (long+short) — paper_trader блокирует только LONG-входы,
     но любой крупный каскад означает что рынок ещё в разрядке.
+
+    Кеш: TTL 60s, ключ (now_minute, window_min, csv_path). За один tick loop'а
+    проверок может быть несколько (по числу новых setup'ов) — кеш убирает
+    повторное чтение всего CSV (~3000+ строк).
     """
     if not csv_path.exists():
         return 0.0
     if now is None:
         now = datetime.now(timezone.utc)
+    if use_cache:
+        # Квантуем now до минуты — иначе ключ всегда уникален и кеш бесполезен.
+        now_min = now.replace(second=0, microsecond=0)
+        key = (now_min, int(window_min), str(csv_path))
+        wall = datetime.now(timezone.utc).timestamp()
+        with _cache_lock:
+            _purge_cache(wall)
+            hit = _cache.get(key)
+            if hit is not None:
+                return hit[0]
     cutoff = now - timedelta(minutes=window_min)
     total = 0.0
     try:
@@ -71,18 +99,23 @@ def recent_cascade_volume_btc(
                         ts = ts.replace(tzinfo=timezone.utc)
                 except ValueError:
                     continue
-                if ts < cutoff:
+                if ts < cutoff or ts > now:
+                    # ts > now: защита для ретроспективных запросов (audit-скрипт
+                    # передаёт now=момент_входа). Без этого фильтр учитывал бы
+                    # ликвидации из «будущего», которых не было на момент решения.
                     continue
                 try:
                     qty = float(qty_str)
                 except ValueError:
                     continue
-                exchange = (row.get("exchange") or "").strip().lower()
-                mult = _EXCHANGE_QTY_MULTIPLIER.get(exchange, 1.0)
-                total += qty * mult
+                total += qty
     except OSError:
         logger.exception("cascade_filter.read_failed path=%s", csv_path)
         return 0.0
+    if use_cache:
+        wall = datetime.now(timezone.utc).timestamp()
+        with _cache_lock:
+            _cache[key] = (total, wall + _CACHE_TTL_SEC)
     return total
 
 
@@ -105,6 +138,7 @@ def should_block_long_entry(
 def should_block_entry(
     side: str,
     *,
+    pair: str = "BTCUSDT",
     now: datetime | None = None,
     window_min: int = COOLDOWN_MIN,
     threshold_btc: float = THRESHOLD_BTC,
@@ -114,10 +148,16 @@ def should_block_entry(
 
     Симметричная логика: каскад любой стороны = рынок в разрядке.
     Не входим ни в LONG, ни в SHORT пока ликвидации не утихнут.
-    Зеркальный кейс к LONG: 12.05 19:53 был SHORT-каскад 88 BTC —
-    SHORT-сетап после него попал бы в squeeze и проиграл.
+
+    `pair`: применяем фильтр только если pair = BTC*. Для ETH/XRP/SOL
+    сетапов BTC-каскад не релевантен — у этих активов своя ликвидационная
+    динамика, которую мы пока не собираем. Чтобы избежать ложных блокировок,
+    pair != BTC* пропускаем мимо фильтра.
     """
     if side not in ("long", "short"):
+        return False, 0.0
+    p = (pair or "BTCUSDT").upper()
+    if not (p.startswith("BTC") or p.startswith("XBT")):
         return False, 0.0
     return should_block_long_entry(
         now=now, window_min=window_min, threshold_btc=threshold_btc, csv_path=csv_path

@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from services.paper_trader.cascade_filter import recent_cascade_volume_btc, THRESHOLD_BTC, COOLDOWN_MIN
+from services.paper_trader.regime_filter import recent_instability_stability, WINDOW_MIN as REGIME_WINDOW_MIN
 from services.paper_trader.streak_guard import MAX_LOSS_STREAK, PAUSE_HOURS
 
 
@@ -109,6 +110,7 @@ def audit(days: int = 7) -> None:
     streak_blocked = _simulate_streak_block(recent)
 
     cascade_blocked: list[dict] = []
+    regime_blocked: list[dict] = []
     survived: list[dict] = []
     for t in recent:
         open_ev = t["open"]
@@ -118,7 +120,7 @@ def audit(days: int = 7) -> None:
         open_ts = _parse_ts(open_ev.get("ts", ""))
         if open_ts is None:
             continue
-        vol = recent_cascade_volume_btc(now=open_ts, csv_path=LIQ_CSV)
+        vol = recent_cascade_volume_btc(now=open_ts, csv_path=LIQ_CSV, use_cache=False)
         rec = {
             "trade_id": tid,
             "ts": open_ev.get("ts"),
@@ -129,6 +131,11 @@ def audit(days: int = 7) -> None:
         }
         if vol >= THRESHOLD_BTC:
             cascade_blocked.append(rec)
+            continue
+        low_stab = recent_instability_stability(now=open_ts, window_min=REGIME_WINDOW_MIN)
+        if low_stab is not None:
+            rec["regime_stability"] = round(low_stab, 2)
+            regime_blocked.append(rec)
         else:
             survived.append(rec)
 
@@ -150,16 +157,19 @@ def audit(days: int = 7) -> None:
     print(f"Total OPEN events:    {len(recent)}")
     print(f"Blocked by streak:    {len(streak_blocked_records)}")
     print(f"Blocked by cascade:   {len(cascade_blocked)}")
-    print(f"Survived both:        {len(survived)}\n")
+    print(f"Blocked by regime:    {len(regime_blocked)}")
+    print(f"Survived all:         {len(survived)}\n")
 
     pnl_streak = _sum_pnl(streak_blocked_records)
     pnl_cascade = _sum_pnl(cascade_blocked)
+    pnl_regime = _sum_pnl(regime_blocked)
     pnl_survived = _sum_pnl(survived)
     pnl_all = _sum_pnl([{"pnl": (t["close"] or {}).get("realized_pnl_usd")} for t in recent])
 
     print(f"PnL без фильтров:     {pnl_all:+.0f} $")
     print(f"PnL заблокированных streak:  {pnl_streak:+.0f} $ (saved)")
     print(f"PnL заблокированных cascade: {pnl_cascade:+.0f} $ (saved)")
+    print(f"PnL заблокированных regime:  {pnl_regime:+.0f} $ (saved)")
     print(f"PnL после фильтров:   {pnl_survived:+.0f} $")
     print(f"Δ улучшение:          {pnl_survived - pnl_all:+.0f} $\n")
 

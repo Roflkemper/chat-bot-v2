@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Callable
 
 from services.paper_trader import journal, trader
+from services.paper_trader.streak_notifier import check_and_notify as _streak_check
 from services.setup_detector.models import (
     Setup,
     SetupBasis,
@@ -297,6 +298,12 @@ async def paper_trader_loop(
     pending = _load_pending()
     while not stop_event.is_set():
         try:
+            # 0. Check streak_guard state transitions → notify operator on pause/resume
+            try:
+                _streak_check(send_fn)
+            except Exception:
+                logger.exception("paper_trader.loop.streak_notify_failed")
+
             # 1a. New setups → enter pending pool (NOT open immediately)
             setups_raw = _read_recent_setups()
             new_setups = [s for s in setups_raw if s.get("setup_id") not in seen_setup_ids]
