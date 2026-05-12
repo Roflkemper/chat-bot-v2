@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 from services.paper_trader import journal
+from services.paper_trader.cascade_filter import should_block_long_entry
 from services.setup_detector.models import Setup, SetupType
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,15 @@ def open_paper_trade(setup: Setup) -> Optional[dict]:
         return None
     if setup.tp1_price is None and setup.tp2_price is None:
         return None
+
+    if side == "long":
+        blocked, recent_vol = should_block_long_entry()
+        if blocked:
+            logger.info(
+                "paper_trader.long_blocked_by_cascade type=%s recent_liq_btc=%.1f",
+                setup.setup_type.value, recent_vol,
+            )
+            return None
 
     entry = float(setup.entry_price)
     if entry <= 0:
