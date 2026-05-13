@@ -515,6 +515,72 @@ async def _run_cascade_alert(stop_event: asyncio.Event, *, telegram_app=None) ->
     await cascade_alert_loop(stop_event=stop_event, send_fn=send_fn)
 
 
+async def _run_cascade_accuracy_eval(stop_event: asyncio.Event) -> None:
+    """KPI feedback-loop: каждый час evaluate_pending заполняет realized_pct
+    для прогнозов где прошло >=4/12/24h. Логи: cascade_accuracy_eval.filled n=N."""
+    from services.cascade_alert.loop import cascade_accuracy_eval_loop
+    await cascade_accuracy_eval_loop(stop_event=stop_event)
+
+
+async def _run_cliff_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Cliff monitor: каждые 5 мин проверяет SHORT-T2 боты + bag aggregate.
+    Per-bot пороги: WARNING −$1500, DANGER −$3000. Bag: суммы по всем SHORT."""
+    import csv as _csv
+    from services.ginarea_api.cliff_monitor import (
+        check_short_t2_bots,
+        check_short_bag_aggregate,
+    )
+    from services.telegram.channel_router import build_send_fn
+
+    send_fn = build_send_fn(telegram_app, "MARGIN_ALERT") if telegram_app else None
+
+    snapshots_csv = Path("ginarea_live/snapshots.csv")
+    interval_sec = 300  # 5 min
+
+    def _latest_bots() -> list[dict]:
+        if not snapshots_csv.exists():
+            return []
+        latest: dict[str, dict] = {}
+        try:
+            with snapshots_csv.open(newline="", encoding="utf-8") as fh:
+                for row in _csv.DictReader(fh):
+                    bid = row.get("bot_id", "").strip()
+                    if not bid:
+                        continue
+                    latest[bid] = row
+        except OSError:
+            return []
+        bots = []
+        for bid, row in latest.items():
+            try:
+                position_btc = float(row.get("position") or 0.0)
+                unrealized = float(row.get("current_profit") or 0.0)
+            except ValueError:
+                continue
+            bots.append({
+                "bot_id": bid,
+                "alias": row.get("alias", "") or row.get("bot_name", ""),
+                "position_btc": position_btc,
+                "unrealized_usd": unrealized,
+            })
+        return bots
+
+    logger.info("cliff_monitor.start interval=%ds", interval_sec)
+    while not stop_event.is_set():
+        try:
+            bots = _latest_bots()
+            if bots and send_fn is not None:
+                check_short_t2_bots(bots, send_fn=send_fn)
+                check_short_bag_aggregate(bots, send_fn=send_fn)
+        except Exception:
+            logger.exception("cliff_monitor.tick_failed")
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            continue
+    logger.info("cliff_monitor.stopped")
+
+
 async def _run_spike_alert(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Spike-defensive alert (2026-05-09 operator request).
 
@@ -715,6 +781,8 @@ async def main(
     deriv_live_task = asyncio.create_task(_run_deriv_live(stop_event), name="deriv_live")
     bitmex_account_task = asyncio.create_task(_run_bitmex_account(stop_event), name="bitmex_account")
     cascade_alert_task = asyncio.create_task(_run_cascade_alert(stop_event, telegram_app=app), name="cascade_alert")
+    cascade_accuracy_task = asyncio.create_task(_run_cascade_accuracy_eval(stop_event), name="cascade_accuracy_eval")
+    cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
     regime_shadow_task = asyncio.create_task(_run_regime_shadow(stop_event), name="regime_shadow")
@@ -735,7 +803,7 @@ async def main(
         weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0

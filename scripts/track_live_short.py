@@ -19,31 +19,40 @@ from services.ginarea_api.live_config_tracker import LiveConfig, add_config
 
 CONFIGS = {
     "t1": {
-        "name": "SH-T1 TP=12 (пачка #22 sweet spot)",
+        "name": "SH-T1 TP=12 stops=0.012/0.035 (пачка #23 — wide)",
         "gs": 0.02, "thresh": 0.7, "td": 0.21, "mult": 1.3,
         "tp": "12/12", "max_size": "0.001/0.003",
-        "expected_profit_3mo_usd": 2_267.0,
-        "expected_vol_3mo_musd": 13.79,
-        "expected_peak_usd": 30_000.0,
-        "note": "Запущен после пачки #22. backtest +2 267$ при чистом exit (1 из 2 повторов).",
+        "expected_profit_3mo_usd": 2_315.0,
+        "expected_vol_3mo_musd": 13.52,
+        "expected_peak_usd": 120_000.0,
+        "note": (
+            "Пачка #23: T1 чувствителен к стопам. min=0.012 / max=0.035 — "
+            "+10.6% vs узкого 0.005/0.015. Backtest +2 314.89$ (id 4839809357)."
+        ),
     },
     "t2": {
-        "name": "SH-T2 TP=175 (sweet spot перед cliff)",
+        "name": "SH-T2 TP=175 stops=0.006/0.020 (пачка #23 — tight)",
         "gs": 0.03, "thresh": 1.5, "td": 0.35, "mult": 1.3,
         "tp": "175/175", "max_size": "0.002/0.004",
-        "expected_profit_3mo_usd": 4_752.0,
+        "expected_profit_3mo_usd": 4_699.0,
         "expected_vol_3mo_musd": 6.00,
-        "expected_peak_usd": 45_000.0,
-        "note": "TP=175 — дисперсия 0.02%, на 1% хуже TP=200, но дальше от cliff (TP=220 обвал).",
+        "expected_peak_usd": 80_000.0,
+        "note": (
+            "Пачка #23: T2 нечувствителен к профиту, узкий min=0.006/max=0.020 "
+            "режет пик USD на 9% без потерь. Backtest +4 698.85$ (id 4794987162)."
+        ),
     },
     "t3": {
-        "name": "SH-T3 TP=270 (Tier-3 лидер)",
+        "name": "SH-T3 TP=270 stops=0.012/0.045 (пачка #23 — tight)",
         "gs": 0.05, "thresh": 2.0, "td": 0.6, "mult": 1.2,
         "tp": "270/270", "max_size": "0.002/0.005",
-        "expected_profit_3mo_usd": 3_248.0,
-        "expected_vol_3mo_musd": 2.17,
-        "expected_peak_usd": 30_000.0,
-        "note": "Дисперсия 0.06% (3247/3249) — самый стабильный из всех T3-точек.",
+        "expected_profit_3mo_usd": 3_247.0,
+        "expected_vol_3mo_musd": 2.18,
+        "expected_peak_usd": 48_000.0,
+        "note": (
+            "Пачка #23: T3 нечувствителен, узкий min=0.012/max=0.045 даёт тот же "
+            "профит при пике −15% (48k vs 56k). Backtest +3 247.35$ (id 6064034130)."
+        ),
     },
 }
 

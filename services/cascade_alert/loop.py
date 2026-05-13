@@ -25,6 +25,16 @@ MEGA_WINDOW_MINUTES = 1    # tight window for mega tier
 DEDUP_COOLDOWN_SEC = 1800  # 30 min between alerts per side
 MEGA_DEDUP_COOLDOWN_SEC = 3600  # 1h cooldown for rare mega events
 
+# Predicted +12h % move (from EDGE_TEXT stats). Used by accuracy_tracker.
+PREDICTED_PCT_12H = {
+    ("long", 5.0): 1.14,
+    ("long", 2.0): 0.68,
+    ("long", 10.0): 2.0,   # rough estimate for mega
+    ("short", 5.0): 0.29,
+    ("short", 2.0): 1.06,
+    ("short", 10.0): -2.0,  # mega short = expected drop
+}
+
 # Backtest results (POST_LIQUIDATION_CASCADE_2026-05-07.md, n=103/102)
 EDGE_TEXT = {
     ("long", 5.0): {
@@ -149,6 +159,78 @@ def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float
     return "\n".join(lines)
 
 
+EVAL_INTERVAL_SEC = 3600  # evaluate_pending запускается раз в час
+MARKET_1M_CSV = ROOT / "market_live" / "market_1m.csv"
+
+
+def _price_at(target: datetime) -> float | None:
+    """Lookup close-price for target ts (±2 min). Reads market_1m.csv tail."""
+    if not MARKET_1M_CSV.exists():
+        return None
+    target_floor = target.replace(second=0, microsecond=0)
+    window = (target_floor - timedelta(minutes=2), target_floor + timedelta(minutes=2))
+    best: tuple[float, float] | None = None  # (abs_dt_sec, close)
+    try:
+        with MARKET_1M_CSV.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    ts = datetime.fromisoformat(row["ts_utc"])
+                except (ValueError, KeyError):
+                    continue
+                if ts < window[0] or ts > window[1]:
+                    continue
+                try:
+                    close = float(row["close"])
+                except (ValueError, KeyError):
+                    continue
+                dt_sec = abs((ts - target_floor).total_seconds())
+                if best is None or dt_sec < best[0]:
+                    best = (dt_sec, close)
+    except OSError:
+        return None
+    return best[1] if best else None
+
+
+async def cascade_accuracy_eval_loop(stop_event: asyncio.Event,
+                                     interval_sec: int = EVAL_INTERVAL_SEC) -> None:
+    """Background tick: evaluates pending cascade prognoses every hour."""
+    from services.cascade_alert.accuracy_tracker import evaluate_pending
+    logger.info("cascade_accuracy_eval.start interval=%ds", interval_sec)
+    while not stop_event.is_set():
+        try:
+            n = evaluate_pending(get_price_fn=_price_at)
+            if n > 0:
+                logger.info("cascade_accuracy_eval.filled n=%d", n)
+        except Exception:
+            logger.exception("cascade_accuracy_eval.tick_failed")
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            continue
+    logger.info("cascade_accuracy_eval.stopped")
+
+
+def _record_cascade_prognosis(side: str, threshold: float, qty_btc: float,
+                              last_price: float | None, now: datetime) -> None:
+    """Best-effort journal write for accuracy tracker. Never raises."""
+    if last_price is None or last_price <= 0:
+        return
+    try:
+        from services.cascade_alert.accuracy_tracker import CascadePrognosis, record_prognosis
+        predicted = PREDICTED_PCT_12H.get((side, threshold), 0.0)
+        record_prognosis(CascadePrognosis(
+            ts=now.isoformat(timespec="seconds"),
+            direction=side,
+            threshold_btc=float(threshold),
+            spot_price=float(last_price),
+            qty_btc=float(qty_btc),
+            predicted_pct_12h=float(predicted),
+        ))
+    except Exception:
+        logger.exception("cascade_alert.record_prognosis_failed")
+
+
 async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interval_sec: int = POLL_INTERVAL_SEC) -> None:
     """Async loop. Каждые 60 сек проверяет cascade в last 5min window.
 
@@ -188,6 +270,7 @@ async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interva
                         send_fn(text)
                     except Exception:
                         logger.exception("cascade_alert.mega_send_failed")
+                _record_cascade_prognosis(side, THRESHOLD_BTC_MEGA, mega_qty, last_price, now)
                 dedup[key] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
             for side, qty in (("long", long_btc), ("short", short_btc)):
@@ -217,6 +300,7 @@ async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interva
                         send_fn(text)
                     except Exception:
                         logger.exception("cascade_alert.send_failed")
+                _record_cascade_prognosis(side, threshold, qty, last_price, now)
 
                 # Auto paper trade (B2): originally opened a virtual position
                 # on every cascade. Disabled 2026-05-08 — live data showed
