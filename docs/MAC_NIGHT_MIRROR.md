@@ -145,7 +145,135 @@ python app_runner.py
 # Если ОК — Ctrl+C, переход к launchd.
 ```
 
-## Шаг 4: На Mac — launchd для 4 main процессов
+## Шаг 4: Перенести журналы и live-данные с Win на Mac
+
+Чтобы Mac запустился **с накопленной историей** (не с нуля), переносим:
+
+- `state/` — все journals (paper_trades, setups, KPI, dedup)
+- `ginarea_live/` — снапшоты ботов GinArea за всё время (для cliff_monitor history)
+- `market_live/` — live CSV (liquidations, OHLCV)
+
+### На Win — упаковать данные
+
+В cmd или PowerShell:
+
+```cmd
+cd c:\bot7
+scripts\prepare_mac_transfer.bat
+```
+
+Занимает ~30 секунд. Скрипт создаст в `C:\bot7-transfer\`:
+- `bot7_state_<TIMESTAMP>.tar.gz` (~7 MB — все journals, KPI, dedup)
+- `bot7_ginarea_live_<TIMESTAMP>.tar.gz` (~3 MB — снапшоты ботов)
+- `bot7_market_live_<TIMESTAMP>.tar.gz` (~0.3 MB — live CSV, без orderbook 2.6 GB)
+- `bot7_secrets_<TIMESTAMP>.txt` (СЕКРЕТЫ — .env.local + BOT_TOKEN/CHAT_ID из env)
+
+**Итого ~11 MB** на 4 файла — моментально через AirDrop / iCloud / USB.
+
+Скрипт **не** переносит:
+- `market_live/orderbook/` (2.6 GB — не используется в services, мак соберёт заново при необходимости)
+- `backtests/` (5.5 GB — research-only, остаётся на Win)
+- `data/historical/` (R&D parquet — переносить если хочешь делать research на маке)
+- `state/_archive/`, `state/decision_log/*.jsonl` (старые archives, не критично)
+
+### Перенести архивы на Mac
+
+Варианты:
+- **AirDrop** (если оба в одной сети): открыть `C:\bot7-transfer\` в проводнике → правый клик → Share → AirDrop. На маке примет в `~/Downloads/`.
+- **USB-флешка** / внешний диск
+- **iCloud Drive** или Google Drive — закинул на Win, скачал на Mac
+- **scp** (если на Mac включён SSH): `scp bot7_*.tar.gz mac_user@<mac_ip>:~/Downloads/`
+
+Секреты (`bot7_secrets_*.txt`) перенеси **отдельным защищённым каналом**:
+- Зашифрованный ZIP с паролем
+- 1Password / Bitwarden secure note
+- AirDrop напрямую (не через cloud)
+- НЕ через обычный email / Telegram
+
+### На Mac — распаковать
+
+```bash
+cd ~/code/bot7
+
+# Распаковать архивы (заменят пустые папки state/, ginarea_live/, market_live/)
+tar xzf ~/Downloads/bot7_state_*.tar.gz
+tar xzf ~/Downloads/bot7_ginarea_live_*.tar.gz
+tar xzf ~/Downloads/bot7_market_live_*.tar.gz
+
+# Проверка
+ls state/ | wc -l          # ожидание: 100+ файлов
+ls ginarea_live/           # ожидание: snapshots.csv, params.csv, events.csv
+ls market_live/            # ожидание: market_1m.csv, liquidations.csv, signals.csv
+
+# Размеры
+du -sh state/ ginarea_live/ market_live/
+# state/      ~50 MB
+# ginarea_live/  ~100 MB
+# market_live/   ~10 MB
+```
+
+### Секреты — открыть и применить
+
+```bash
+# 1. Открой bot7_secrets_*.txt в любом текстовом редакторе
+# 2. Скопируй секцию '=== .env.local content ===' (всё до '=== System env')
+# 3. Вставь в ~/code/bot7/.env.local
+# 4. Из секции '=== System env (Windows User scope) ===' тоже добавь в .env.local:
+nano ~/code/bot7/.env.local
+# Должно быть в итоге примерно:
+#   BOT_TOKEN=<реальный prod>
+#   CHAT_ID=574716090
+#   ALLOWED_CHAT_IDS=574716090
+#   ROUTINE_CHAT_IDS=-1003968750380
+#   BITMEX_API_KEY=<реальный>
+#   BITMEX_API_SECRET=<реальный>
+#   GINAREA_EMAIL=<реальный>
+#   GINAREA_PASSWORD=<реальный>
+#   GINAREA_TOTP_SECRET=<реальный>
+#   GINAREA_API_URL=https://app.ginarea.io/api
+#   ADVISOR_DEPO_TOTAL=15145
+#   ENABLE_TELEGRAM=1
+
+# 5. После — УДАЛИ bot7_secrets_*.txt с обеих машин!
+shred -u ~/Downloads/bot7_secrets_*.txt  # mac
+# На Win:
+#   Remove-Item C:\bot7-transfer\bot7_secrets_*.txt -Force
+```
+
+### Smoke test после переноса
+
+```bash
+cd ~/code/bot7
+source .venv/bin/activate
+
+# Проверка что state читается
+python -c "
+import json
+from pathlib import Path
+
+print('=== State sanity check ===')
+print('paper_trades:', sum(1 for _ in Path('state/paper_trades.jsonl').open()) if Path('state/paper_trades.jsonl').exists() else 'missing')
+print('setups:', sum(1 for _ in Path('state/setups.jsonl').open()) if Path('state/setups.jsonl').exists() else 'missing')
+print('cascade_accuracy:', sum(1 for _ in Path('state/cascade_accuracy.jsonl').open()) if Path('state/cascade_accuracy.jsonl').exists() else 'missing')
+print('p15_equity:', sum(1 for _ in Path('state/p15_equity.jsonl').open()) if Path('state/p15_equity.jsonl').exists() else 'missing')
+
+# Live data
+import csv
+print()
+print('=== Live data sanity ===')
+with Path('ginarea_live/snapshots.csv').open() as f:
+    n = sum(1 for _ in f) - 1
+print('ginarea snapshots rows:', n)
+with Path('market_live/market_1m.csv').open() as f:
+    n = sum(1 for _ in f) - 1
+print('market_1m candles:', n)
+with Path('market_live/liquidations.csv').open() as f:
+    n = sum(1 for _ in f) - 1
+print('liquidations rows:', n)
+"
+```
+
+## Шаг 5: На Mac — launchd для 4 main процессов
 
 Используем готовые шаблоны из `docs/launchd_templates/`:
 
@@ -178,7 +306,7 @@ launchctl list | grep com.bot7
 
 Должны прийти TG-стартапы **в реальные чаты с Mac**. С Win-dev-бота — в тестовый чат.
 
-## Шаг 5: Проверка что нет двойных алертов
+## Шаг 6: Проверка что нет двойных алертов
 
 Через 1-2 часа:
 
