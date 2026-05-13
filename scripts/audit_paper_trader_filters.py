@@ -89,6 +89,9 @@ def _simulate_streak_block(trades: list[dict], max_streak: int = MAX_LOSS_STREAK
             continue
         action = close.get("action")
         if action == "SL":
+            pnl = close.get("realized_pnl_usd") or 0.0
+            if pnl >= 0:
+                continue  # break-even SL — не считаем как реальный убыток
             streak += 1
             last_sl_ts = _parse_ts(close.get("ts", ""))
         elif action in ("TP1", "TP2"):

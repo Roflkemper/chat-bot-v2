@@ -66,15 +66,16 @@ def open_paper_trade(setup: Setup) -> Optional[dict]:
     if setup.tp1_price is None and setup.tp2_price is None:
         return None
 
-    paused, streak, pause_reason = should_pause()
+    pair = getattr(setup, "pair", "BTCUSDT") or "BTCUSDT"
+
+    paused, streak, pause_reason = should_pause(pair=pair)
     if paused:
         logger.info(
-            "paper_trader.entry_blocked_by_streak type=%s %s",
-            setup.setup_type.value, pause_reason,
+            "paper_trader.entry_blocked_by_streak pair=%s type=%s %s",
+            pair, setup.setup_type.value, pause_reason,
         )
         return None
 
-    pair = getattr(setup, "pair", "BTCUSDT") or "BTCUSDT"
     blocked, recent_vol = should_block_entry(side, pair=pair)
     if blocked:
         logger.info(

@@ -18,7 +18,12 @@ def _write_journal(path: Path, events: list[dict]) -> None:
 
 
 def _mk(action: str, ts: datetime, tid: str = "t1") -> dict:
-    return {"ts": ts.isoformat(), "trade_id": tid, "action": action}
+    rec = {"ts": ts.isoformat(), "trade_id": tid, "action": action}
+    if action == "SL":
+        rec["realized_pnl_usd"] = -100.0
+    elif action in ("TP1", "TP2"):
+        rec["realized_pnl_usd"] = 100.0
+    return rec
 
 
 def test_notifies_on_pause_activation(tmp_path: Path, monkeypatch) -> None:

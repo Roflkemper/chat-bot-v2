@@ -81,6 +81,9 @@ def _simulate_streak(trades: list[dict]) -> set[str]:
             continue
         a = close.get("action")
         if a == "SL":
+            pnl = close.get("realized_pnl_usd") or 0.0
+            if pnl >= 0:
+                continue  # break-even SL — не считаем как реальный убыток
             streak += 1
             last_sl_ts = _parse_ts(close.get("ts", ""))
         elif a in ("TP1", "TP2"):

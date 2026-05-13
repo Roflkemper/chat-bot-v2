@@ -1830,6 +1830,22 @@ class TelegramBotApp:
                 return
             self.bot.send_message(chat_id, text, parse_mode='Markdown')
 
+        @self.bot.message_handler(commands=['portfolio_summary', 'portfolio'])
+        def handle_portfolio_summary(message) -> None:
+            """Сводка по активным GinArea live-ботам + прогноз rebate."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            try:
+                from services.ginarea_api.portfolio_summary import build_portfolio_summary
+                text = build_portfolio_summary()
+            except Exception as exc:
+                logger.exception('handle_portfolio_summary.failed')
+                self.bot.send_message(chat_id, f'❌ /portfolio_summary failed: {exc}')
+                return
+            self.bot.send_message(chat_id, text, parse_mode='Markdown')
+
         @self.bot.message_handler(commands=['filter_dashboard'])
         def handle_filter_dashboard(message) -> None:
             """Накопительная статистика фильтров paper_trader по дням.

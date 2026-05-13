@@ -15,8 +15,17 @@ def _write_journal(path: Path, events: list[dict]) -> None:
             f.write(json.dumps(e) + "\n")
 
 
-def _mk(action: str, ts: datetime, tid: str = "t1") -> dict:
-    return {"ts": ts.isoformat(), "trade_id": tid, "action": action}
+def _mk(action: str, ts: datetime, tid: str = "t1", pnl: float | None = None) -> dict:
+    rec = {"ts": ts.isoformat(), "trade_id": tid, "action": action}
+    # Default pnl: -100 for real SL, +100 for TP. Tests can override with pnl=0
+    # to simulate break-even / mis-classified close events.
+    if pnl is not None:
+        rec["realized_pnl_usd"] = pnl
+    elif action == "SL":
+        rec["realized_pnl_usd"] = -100.0
+    elif action in ("TP1", "TP2"):
+        rec["realized_pnl_usd"] = 100.0
+    return rec
 
 
 def test_empty_journal_returns_zero(tmp_path: Path) -> None:
@@ -81,6 +90,67 @@ def test_pause_lifts_after_timeout(tmp_path: Path) -> None:
     paused, _, reason = should_pause(now=now, max_streak=3, pause_hours=6, path=p)
     assert paused is False
     assert "авто-разблок" in reason
+
+
+def test_per_pair_streak_filter(tmp_path: Path) -> None:
+    """XRP-streak не блокирует BTC paper-входы."""
+    now = datetime(2026, 5, 12, 20, 0, tzinfo=timezone.utc)
+    p = tmp_path / "j.jsonl"
+    # 6 SL для XRPUSDT + 1 SL для BTCUSDT
+    events = []
+    for h in range(6, 0, -1):
+        events.append({
+            "ts": (now - timedelta(hours=h)).isoformat(),
+            "trade_id": f"xrp-{h}",
+            "action": "OPEN",
+            "pair": "XRPUSDT",
+        })
+        events.append({
+            "ts": (now - timedelta(hours=h, minutes=-1)).isoformat(),
+            "trade_id": f"xrp-{h}",
+            "action": "SL",
+            "realized_pnl_usd": -50.0,
+        })
+    # один BTC-SL
+    events.append({
+        "ts": (now - timedelta(hours=2)).isoformat(),
+        "trade_id": "btc-1",
+        "action": "OPEN",
+        "pair": "BTCUSDT",
+    })
+    events.append({
+        "ts": (now - timedelta(hours=1, minutes=59)).isoformat(),
+        "trade_id": "btc-1",
+        "action": "SL",
+        "realized_pnl_usd": -100.0,
+    })
+    _write_journal(p, events)
+
+    # XRP-streak = 6 → пауза
+    streak_xrp, _ = recent_loss_streak(path=p, pair="XRPUSDT")
+    assert streak_xrp == 6
+
+    # BTC-streak = 1 → пауза НЕ активна
+    streak_btc, _ = recent_loss_streak(path=p, pair="BTCUSDT")
+    assert streak_btc == 1
+
+    # Глобальный streak = 7 (но пауза вызывается per-pair)
+    streak_all, _ = recent_loss_streak(path=p)
+    assert streak_all == 7
+
+
+def test_zero_pnl_sl_does_not_count(tmp_path: Path) -> None:
+    """SL с pnl=0 — это break-even / mis-classified close. Не учитываем."""
+    now = datetime(2026, 5, 12, 20, 0, tzinfo=timezone.utc)
+    p = tmp_path / "j.jsonl"
+    _write_journal(p, [
+        _mk("SL", now - timedelta(hours=5), "t1", pnl=0),
+        _mk("SL", now - timedelta(hours=4), "t2", pnl=0),
+        _mk("SL", now - timedelta(hours=3), "t3", pnl=0),
+        _mk("SL", now - timedelta(hours=2), "t4", pnl=-50.0),  # реальный SL
+    ])
+    streak, _ = recent_loss_streak(path=p)
+    assert streak == 1  # только один с pnl<0
 
 
 def test_no_pause_below_threshold(tmp_path: Path) -> None:

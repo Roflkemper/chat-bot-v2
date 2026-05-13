@@ -141,6 +141,26 @@ async def _run_paper_journal(stop_event: asyncio.Event) -> None:
     await paper_journal_loop(stop_event=stop_event)
 
 
+async def _run_weekly_audit(stop_event: asyncio.Event) -> None:
+    """Weekly paper_trader filter audit (Mon 10:00 UTC). См. weekly_audit_loop.py.
+
+    Использует scripts/done.py для TG-доставки — это уже отлаженный канал.
+    """
+    import subprocess
+    from services.paper_trader.weekly_audit_loop import weekly_audit_loop
+
+    def _send(text: str) -> None:
+        try:
+            subprocess.run(
+                ["python", "scripts/done.py", text],
+                check=False, timeout=10,
+            )
+        except Exception:
+            logger.exception("weekly_audit.done_py_failed")
+
+    await weekly_audit_loop(stop_event=stop_event, send_fn=_send)
+
+
 async def _run_decision_log(stop_event: asyncio.Event) -> None:
     from services.decision_log import decision_log_loop
 
@@ -176,27 +196,59 @@ async def _run_setup_detector(stop_event: asyncio.Event, *, telegram_app=None) -
 
     send_fn = None
     if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
-        chat_ids = list(telegram_app.allowed_chat_ids)
+        from services.telegram.channel_router import get_routine_chat_ids
+        from services.telegram.severity_prefix import classify_severity, with_prefix
+        primary_chat_ids = list(telegram_app.allowed_chat_ids)
+        routine_chat_ids = get_routine_chat_ids() or primary_chat_ids
         bot = telegram_app.bot
 
         def _send(card_text: str, setup=None) -> None:
-            """Push a setup card to Telegram. Filters:
+            """Push a setup card to Telegram. Filters + channel routing:
               - priority types (LONG_DIV_BOS_*) → always push
               - other types → only if confidence_pct >= SETUP_PUSH_MIN_CONFIDENCE
               - skip GRID_* and DEFENSIVE_* (operator already sees those in /advise)
+              - p15_* lifecycle:
+                  OPEN/CLOSE → PRIMARY chat (operator must see cycle boundaries)
+                  REENTRY/HARVEST → ROUTINE chat (low-signal layer events)
             """
-            if setup is None:
-                # Legacy call shape — push without filter.
-                pass
-            else:
+            stype = ""
+            conf = 0.0
+            stage = ""
+            if setup is not None:
                 stype = setup.setup_type.value if hasattr(setup, "setup_type") else ""
                 conf = float(getattr(setup, "confidence_pct", 0))
-                # Skip noisy categories — operator handles these in /advise.
                 if stype.startswith("grid_") or stype.startswith("def_"):
                     return
                 if stype not in PRIORITY_TYPES and conf < SETUP_PUSH_MIN_CONFIDENCE:
-                    return
-            for cid in chat_ids:
+                    # P-15 lifecycle events have no confidence — let them through
+                    if not stype.startswith("p15_"):
+                        return
+                # Decode p15 stage from basis
+                if stype.startswith("p15_"):
+                    for b in getattr(setup, "basis", []) or []:
+                        if getattr(b, "label", "") == "stage":
+                            stage = str(getattr(b, "value", ""))
+                            break
+
+            # Pick channel
+            if stype.startswith("p15_"):
+                if stage in {"REENTRY", "HARVEST"}:
+                    emitter = "P15_REENTRY" if stage == "REENTRY" else "P15_HARVEST"
+                    target_chat_ids = routine_chat_ids
+                else:
+                    emitter = "P15_OPEN" if stage == "OPEN" else "P15_CLOSE"
+                    target_chat_ids = primary_chat_ids
+            else:
+                emitter = "SETUP_ON"
+                target_chat_ids = primary_chat_ids
+
+            try:
+                sev = classify_severity(emitter, card_text, {"confidence": conf})
+                card_text = with_prefix(sev, card_text)
+            except Exception:
+                logger.exception("setup_detector.prefix_failed emitter=%s", emitter)
+
+            for cid in target_chat_ids:
                 try:
                     bot.send_message(cid, card_text)
                 except Exception:
@@ -457,21 +509,9 @@ async def _run_cascade_alert(stop_event: asyncio.Event, *, telegram_app=None) ->
     cascade ≥5 BTC за 5 мин → push в Telegram с историческими цифрами edge.
     """
     from services.cascade_alert import cascade_alert_loop
+    from services.telegram.channel_router import build_send_fn
 
-    send_fn = None
-    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
-        chat_ids = list(telegram_app.allowed_chat_ids)
-        bot = telegram_app.bot
-
-        def _send(text: str) -> None:
-            for cid in chat_ids:
-                try:
-                    bot.send_message(cid, text)
-                except Exception:
-                    logger.exception("cascade_alert.telegram_send_failed cid=%s", cid)
-
-        send_fn = _send
-
+    send_fn = build_send_fn(telegram_app, "LIQ_CASCADE")
     await cascade_alert_loop(stop_event=stop_event, send_fn=send_fn)
 
 
@@ -483,21 +523,9 @@ async def _run_spike_alert(stop_event: asyncio.Event, *, telegram_app=None) -> N
     Goal: prevent $4-7k drawdown when 3 SHORT bots take a +3% spike together.
     """
     from services.spike_alert import spike_alert_loop
+    from services.telegram.channel_router import build_send_fn
 
-    send_fn = None
-    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
-        chat_ids = list(telegram_app.allowed_chat_ids)
-        bot = telegram_app.bot
-
-        def _send(text: str) -> None:
-            for cid in chat_ids:
-                try:
-                    bot.send_message(cid, text)
-                except Exception:
-                    logger.exception("spike_alert.telegram_send_failed cid=%s", cid)
-
-        send_fn = _send
-
+    send_fn = build_send_fn(telegram_app, "GRID_EXHAUSTION")
     await spike_alert_loop(stop_event=stop_event, send_fn=send_fn)
 
 
@@ -510,21 +538,9 @@ async def _run_grid_coordinator(stop_event: asyncio.Event, *, telegram_app=None)
     заканчивается, закрыть SHORT-сетку наверху, перезайти на откате».
     """
     from services.grid_coordinator import grid_coordinator_loop
+    from services.telegram.channel_router import build_send_fn
 
-    send_fn = None
-    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
-        chat_ids = list(telegram_app.allowed_chat_ids)
-        bot = telegram_app.bot
-
-        def _send(text: str) -> None:
-            for cid in chat_ids:
-                try:
-                    bot.send_message(cid, text)
-                except Exception:
-                    logger.exception("grid_coordinator.telegram_send_failed cid=%s", cid)
-
-        send_fn = _send
-
+    send_fn = build_send_fn(telegram_app, "GRID_EXHAUSTION")
     await grid_coordinator_loop(stop_event=stop_event, send_fn=send_fn)
 
 
@@ -537,20 +553,9 @@ async def _run_grid_coordinator_intraday(stop_event: asyncio.Event, *, telegram_
     """
     from services.grid_coordinator.loop import grid_coordinator_intraday_loop
 
-    send_fn = None
-    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
-        chat_ids = list(telegram_app.allowed_chat_ids)
-        bot = telegram_app.bot
+    from services.telegram.channel_router import build_send_fn
 
-        def _send(text: str) -> None:
-            for cid in chat_ids:
-                try:
-                    bot.send_message(cid, text)
-                except Exception:
-                    logger.exception("grid_coordinator_intraday.tg_send_failed cid=%s", cid)
-
-        send_fn = _send
-
+    send_fn = build_send_fn(telegram_app, "GRID_EXHAUSTION")
     await grid_coordinator_intraday_loop(stop_event=stop_event, send_fn=send_fn)
 
 
@@ -561,21 +566,9 @@ async def _run_pre_cascade_alert(stop_event: asyncio.Event, *, telegram_app=None
     crowding signature. TG-only, no trading.
     """
     from services.pre_cascade_alert import pre_cascade_alert_loop
+    from services.telegram.channel_router import build_send_fn
 
-    send_fn = None
-    if telegram_app is not None and getattr(telegram_app, "allowed_chat_ids", None):
-        chat_ids = list(telegram_app.allowed_chat_ids)
-        bot = telegram_app.bot
-
-        def _send(text: str) -> None:
-            for cid in chat_ids:
-                try:
-                    bot.send_message(cid, text)
-                except Exception:
-                    logger.exception("pre_cascade.telegram_send_failed cid=%s", cid)
-
-        send_fn = _send
-
+    send_fn = build_send_fn(telegram_app, "LIQ_CLUSTER_BUILD")
     await pre_cascade_alert_loop(stop_event=stop_event, send_fn=send_fn)
 
 
@@ -706,6 +699,7 @@ async def main(
     boundary_expand_task = asyncio.create_task(_run_boundary_expand(stop_event), name="boundary_expand")
     adaptive_grid_task = asyncio.create_task(_run_adaptive_grid(stop_event), name="adaptive_grid")
     paper_journal_task = asyncio.create_task(_run_paper_journal(stop_event), name="paper_journal")
+    weekly_audit_task = asyncio.create_task(_run_weekly_audit(stop_event), name="weekly_audit")
     decision_log_task = asyncio.create_task(_run_decision_log(stop_event), name="decision_log")
     dashboard_task = asyncio.create_task(_run_dashboard(stop_event), name="dashboard")
     dashboard_http_task = asyncio.create_task(_run_dashboard_http(stop_event), name="dashboard_http")
@@ -738,6 +732,7 @@ async def main(
     all_tasks = {
         polling_task, orchestrator_task, protection_task, counter_long_task,
         boundary_expand_task, adaptive_grid_task, paper_journal_task,
+        weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
         market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
