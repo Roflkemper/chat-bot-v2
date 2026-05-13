@@ -526,6 +526,7 @@ async def _run_cliff_monitor(stop_event: asyncio.Event, *, telegram_app=None) ->
     """Cliff monitor: каждые 5 мин проверяет SHORT-T2 боты + bag aggregate.
     Per-bot пороги: WARNING −$1500, DANGER −$3000. Bag: суммы по всем SHORT."""
     import csv as _csv
+    from pathlib import Path as _Path
     from services.ginarea_api.cliff_monitor import (
         check_short_t2_bots,
         check_short_bag_aggregate,
@@ -534,7 +535,7 @@ async def _run_cliff_monitor(stop_event: asyncio.Event, *, telegram_app=None) ->
 
     send_fn = build_send_fn(telegram_app, "MARGIN_ALERT") if telegram_app else None
 
-    snapshots_csv = Path("ginarea_live/snapshots.csv")
+    snapshots_csv = _Path("ginarea_live/snapshots.csv")
     interval_sec = 300  # 5 min
 
     def _latest_bots() -> list[dict]:
