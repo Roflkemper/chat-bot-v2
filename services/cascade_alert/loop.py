@@ -147,7 +147,15 @@ def _liquidation_window_sums(now_utc: datetime, window_min: int) -> tuple[float,
 
 def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float | None) -> str:
     info = EDGE_TEXT.get((side, threshold)) or EDGE_TEXT.get((side, 5.0))
-    lines = [info["title"]]
+    lines: list[str] = []
+    try:
+        from services.cascade_alert.edge_drift_guard import is_drifted
+        if is_drifted(side, threshold):
+            lines.append("⚠️ EDGE DRIFTED — историческая статистика ниже не подтверждается на live-данных. Не торговать как сетап.")
+            lines.append("")
+    except Exception:
+        logger.exception("cascade_alert.drift_check_failed")
+    lines.append(info["title"])
     lines.append("")
     lines.append(f"Ликвидировано: {qty_btc:.2f} BTC за {WINDOW_MINUTES} мин")
     if last_price:
@@ -193,17 +201,34 @@ def _price_at(target: datetime) -> float | None:
 
 
 async def cascade_accuracy_eval_loop(stop_event: asyncio.Event,
-                                     interval_sec: int = EVAL_INTERVAL_SEC) -> None:
-    """Background tick: evaluates pending cascade prognoses every hour."""
-    from services.cascade_alert.accuracy_tracker import evaluate_pending
+                                     interval_sec: int = EVAL_INTERVAL_SEC,
+                                     drift_send_fn=None) -> None:
+    """Background tick: evaluates pending cascade prognoses every hour.
+    Each 24th tick also runs edge-drift evaluation.
+    """
+    from services.cascade_alert.accuracy_tracker import evaluate_pending, summary
+    from services.cascade_alert.edge_drift_guard import evaluate_drift
     logger.info("cascade_accuracy_eval.start interval=%ds", interval_sec)
+    tick = 0
     while not stop_event.is_set():
         try:
             n = evaluate_pending(get_price_fn=_price_at)
             if n > 0:
                 logger.info("cascade_accuracy_eval.filled n=%d", n)
+            # Drift check raz в сутки (24 tick × 1h = 24h)
+            if tick % 24 == 0:
+                try:
+                    statuses = evaluate_drift(summary_fn=summary, send_fn=drift_send_fn)
+                    drifted = [s for s in statuses if s.drifted]
+                    if drifted:
+                        logger.warning("cascade_edge_drift.detected count=%d", len(drifted))
+                    else:
+                        logger.info("cascade_edge_drift.healthy entries=%d", len(statuses))
+                except Exception:
+                    logger.exception("cascade_edge_drift.eval_failed")
         except Exception:
             logger.exception("cascade_accuracy_eval.tick_failed")
+        tick += 1
         try:
             await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
         except asyncio.TimeoutError:

@@ -515,11 +515,43 @@ async def _run_cascade_alert(stop_event: asyncio.Event, *, telegram_app=None) ->
     await cascade_alert_loop(stop_event=stop_event, send_fn=send_fn)
 
 
-async def _run_cascade_accuracy_eval(stop_event: asyncio.Event) -> None:
+async def _run_cascade_accuracy_eval(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """KPI feedback-loop: каждый час evaluate_pending заполняет realized_pct
-    для прогнозов где прошло >=4/12/24h. Логи: cascade_accuracy_eval.filled n=N."""
+    для прогнозов где прошло >=4/12/24h. Раз в сутки evaluate_drift —
+    если accuracy <60% при n>=10, шлёт TG-warning + помечает edge stale."""
     from services.cascade_alert.loop import cascade_accuracy_eval_loop
-    await cascade_accuracy_eval_loop(stop_event=stop_event)
+    from services.telegram.channel_router import build_send_fn
+    drift_send_fn = build_send_fn(telegram_app, "ENGINE_ALERT") if telegram_app else None
+    await cascade_accuracy_eval_loop(stop_event=stop_event, drift_send_fn=drift_send_fn)
+
+
+async def _run_weekly_self_report(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Weekly self-report (вс 18:00 UTC): cascade KPI + edge drift + risk-limit violations."""
+    from services.reports.weekly_self_report import maybe_send_weekly
+    from services.cascade_alert.accuracy_tracker import summary as kpi_summary
+    from services.cascade_alert.edge_drift_guard import get_status_summary as drift_summary
+    from services.telegram.channel_router import build_send_fn
+
+    send_fn = build_send_fn(telegram_app, "ENGINE_ALERT") if telegram_app else None
+    interval_sec = 600  # 10 min poll; actual send happens once/week
+    logger.info("weekly_self_report.start interval=%ds", interval_sec)
+    while not stop_event.is_set():
+        try:
+            if send_fn is not None:
+                sent = maybe_send_weekly(
+                    send_fn=send_fn,
+                    summary_fn=kpi_summary,
+                    drift_summary_fn=drift_summary,
+                )
+                if sent:
+                    logger.info("weekly_self_report.sent")
+        except Exception:
+            logger.exception("weekly_self_report.tick_failed")
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            continue
+    logger.info("weekly_self_report.stopped")
 
 
 async def _run_cliff_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
@@ -782,8 +814,9 @@ async def main(
     deriv_live_task = asyncio.create_task(_run_deriv_live(stop_event), name="deriv_live")
     bitmex_account_task = asyncio.create_task(_run_bitmex_account(stop_event), name="bitmex_account")
     cascade_alert_task = asyncio.create_task(_run_cascade_alert(stop_event, telegram_app=app), name="cascade_alert")
-    cascade_accuracy_task = asyncio.create_task(_run_cascade_accuracy_eval(stop_event), name="cascade_accuracy_eval")
+    cascade_accuracy_task = asyncio.create_task(_run_cascade_accuracy_eval(stop_event, telegram_app=app), name="cascade_accuracy_eval")
     cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
+    weekly_report_task = asyncio.create_task(_run_weekly_self_report(stop_event, telegram_app=app), name="weekly_self_report")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
     regime_shadow_task = asyncio.create_task(_run_regime_shadow(stop_event), name="regime_shadow")
@@ -804,7 +837,7 @@ async def main(
         weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
