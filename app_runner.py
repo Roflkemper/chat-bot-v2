@@ -525,6 +525,16 @@ async def _run_cascade_accuracy_eval(stop_event: asyncio.Event, *, telegram_app=
     await cascade_accuracy_eval_loop(stop_event=stop_event, drift_send_fn=drift_send_fn)
 
 
+async def _run_liq_pre_cascade(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Phase-1 pre-cascade signal по кластеризации мелких liq (R&D 2026-05-13).
+    Если >=0.3 BTC liq на одной стороне за 5 мин (и нет уже >=5 BTC) — TG-alert
+    'возможен каскад через 10-20 мин'. Cooldown 30 мин/сторона."""
+    from services.pre_cascade_alert.liq_clustering import liq_pre_cascade_loop
+    from services.telegram.channel_router import build_send_fn
+    send_fn = build_send_fn(telegram_app, "LIQ_CLUSTER_BUILD") if telegram_app else None
+    await liq_pre_cascade_loop(stop_event=stop_event, send_fn=send_fn)
+
+
 async def _run_weekly_self_report(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Weekly self-report (вс 18:00 UTC): cascade KPI + edge drift + risk-limit violations."""
     from services.reports.weekly_self_report import maybe_send_weekly
@@ -817,6 +827,7 @@ async def main(
     cascade_accuracy_task = asyncio.create_task(_run_cascade_accuracy_eval(stop_event, telegram_app=app), name="cascade_accuracy_eval")
     cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
     weekly_report_task = asyncio.create_task(_run_weekly_self_report(stop_event, telegram_app=app), name="weekly_self_report")
+    liq_pre_cascade_task = asyncio.create_task(_run_liq_pre_cascade(stop_event, telegram_app=app), name="liq_pre_cascade")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
     regime_shadow_task = asyncio.create_task(_run_regime_shadow(stop_event), name="regime_shadow")
@@ -837,7 +848,7 @@ async def main(
         weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
