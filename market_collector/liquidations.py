@@ -1,4 +1,8 @@
-"""WebSocket liquidation streams — Bybit + Binance BTCUSDT."""
+"""WebSocket liquidation streams — Bybit + Binance + OKX, multi-symbol.
+
+2026-05-13: расширено на ETH/XRP. Каждый символ пишется в свой CSV
+(liquidations.csv = BTC legacy, liquidations_ETHUSDT.csv etc.).
+"""
 from __future__ import annotations
 
 import csv
@@ -13,29 +17,42 @@ from market_collector.config import (
     BINANCE_WS_URL,
     BYBIT_WS_URL,
     LIQUIDATIONS_CSV,
+    LIQ_SYMBOLS,
+    OKX_INST_MAP,
     OKX_WS_URL,
     WS_RECONNECT_BASE_SEC,
     WS_RECONNECT_MAX_SEC,
+    liq_csv_for,
 )
 
 logger = logging.getLogger(__name__)
 LIQ_HEADERS = ["ts_utc", "exchange", "side", "qty", "price"]
 _lock = threading.Lock()
 
-# OKX BTC-USDT-SWAP contract size = 0.01 BTC per contract (OKX docs).
-# Bybit BTCUSDT linear delivers qty already in BTC — no scaling needed there.
-OKX_CONTRACT_SIZE_BTC = 0.01
+# OKX *-USDT-SWAP contract sizes (per OKX docs).
+# Native qty = contracts × contract_size.
+OKX_CONTRACT_SIZE = {
+    "BTC-USDT-SWAP": 0.01,
+    "ETH-USDT-SWAP": 0.1,
+    "XRP-USDT-SWAP": 100.0,
+}
+OKX_INST_REVERSE = {v: k for k, v in OKX_INST_MAP.items()}
+
+# Legacy var kept for downstream compat (cascade_filter probably reads it)
+OKX_CONTRACT_SIZE_BTC = OKX_CONTRACT_SIZE["BTC-USDT-SWAP"]
 
 
 def _ts_utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def _write_liq(row: dict) -> None:
-    LIQUIDATIONS_CSV.parent.mkdir(parents=True, exist_ok=True)
+def _write_liq(symbol: str, row: dict) -> None:
+    """Append liq row to per-symbol CSV. BTCUSDT keeps legacy file path."""
+    csv_path = liq_csv_for(symbol)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
     with _lock:
-        is_new = not LIQUIDATIONS_CSV.exists()
-        with LIQUIDATIONS_CSV.open("a", newline="", encoding="utf-8") as fh:
+        is_new = not csv_path.exists()
+        with csv_path.open("a", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=LIQ_HEADERS, extrasaction="ignore")
             if is_new:
                 writer.writeheader()
@@ -55,7 +72,8 @@ def _run_bybit_ws(stop_event: threading.Event) -> None:
             # Read timeout — без него recv() блокируется навсегда, idle connection
             # закрывается сервером и наша сторона не узнаёт.
             ws.settimeout(30)
-            ws.send(json.dumps({"op": "subscribe", "args": ["allLiquidation.BTCUSDT"]}))
+            sub_args = [f"allLiquidation.{s}" for s in LIQ_SYMBOLS]
+            ws.send(json.dumps({"op": "subscribe", "args": sub_args}))
             backoff = WS_RECONNECT_BASE_SEC
             last_ping = time.time()
             logger.info("bybit_ws.connected")
@@ -81,26 +99,22 @@ def _run_bybit_ws(stop_event: threading.Event) -> None:
                     # Pong от Bybit на наш ping — пропускаем тихо.
                     if data.get("op") == "pong" or data.get("ret_msg") == "pong":
                         continue
-                    if data.get("topic") == "allLiquidation.BTCUSDT":
-                        # 2026-05-07: Bybit allLiquidation.* отдаёт `data` как
-                        # СПИСОК objects, не один object. Был баг — `liq.get()`
-                        # падал на list. Теперь iterate.
+                    topic = data.get("topic", "")
+                    if topic.startswith("allLiquidation."):
+                        symbol = topic.split(".", 1)[1]
+                        if symbol not in LIQ_SYMBOLS:
+                            continue
                         liq_data = data.get("data", [])
                         if isinstance(liq_data, dict):
                             liq_data = [liq_data]
                         for liq in liq_data:
                             if not isinstance(liq, dict):
                                 continue
-                            # Bybit V5 allLiquidation использует короткие имена:
-                            #   s = symbol, S = side ('Buy'/'Sell'), v = size, p = price, T = ts
-                            # Старые длинные имена (side/size/price) — fallback
-                            # на случай legacy формата.
                             raw_side = liq.get("S") or liq.get("side", "")
-                            # 'Sell' = liquidated LONG position
                             side = "long" if str(raw_side).lower() == "sell" else "short"
                             qty = liq.get("v") or liq.get("size", "")
                             price = liq.get("p") or liq.get("price", "")
-                            _write_liq({
+                            _write_liq(symbol, {
                                 "ts_utc": _ts_utc_now(),
                                 "exchange": "bybit",
                                 "side": side,
@@ -154,13 +168,11 @@ def _run_binance_ws(stop_event: threading.Event) -> None:
                 try:
                     data = json.loads(frame_data)
                     order = data.get("o", {})
-                    # 2026-05-12: switched to all-market !forceOrder@arr stream.
-                    # Server now sends events for every futures symbol; keep only
-                    # BTCUSDT to match historical CSV schema (single-symbol file).
-                    if order.get("s") != "BTCUSDT":
+                    symbol = order.get("s")
+                    if symbol not in LIQ_SYMBOLS:
                         continue
                     side = "long" if order.get("S") == "SELL" else "short"
-                    _write_liq({
+                    _write_liq(symbol, {
                         "ts_utc": _ts_utc_now(),
                         "exchange": "binance",
                         "side": side,
@@ -248,30 +260,26 @@ def _run_okx_ws(stop_event: threading.Event) -> None:
                 # data[] contains one or more events; each event has details[]
                 for event in data.get("data", []) or []:
                     inst_id = event.get("instId") or event.get("instFamily")
-                    # Filter only BTC-USDT-SWAP. OKX may use instId at root
-                    # or in details — defensive check.
-                    if inst_id and inst_id != "BTC-USDT-SWAP":
+                    if inst_id and inst_id not in OKX_CONTRACT_SIZE:
                         continue
                     for d in event.get("details", []) or []:
-                        # Per-detail instId fallback
                         d_inst = d.get("instId") or inst_id
-                        if d_inst and d_inst != "BTC-USDT-SWAP":
+                        if not d_inst or d_inst not in OKX_CONTRACT_SIZE:
+                            continue
+                        symbol = OKX_INST_REVERSE.get(d_inst)
+                        if symbol not in LIQ_SYMBOLS:
                             continue
                         try:
                             side_raw = d.get("side", "")
-                            # sell-side liquidation = long got liquidated
                             side = "long" if side_raw == "sell" else "short"
-                            # OKX BTC-USDT-SWAP `sz` is in contracts (1 contract = 0.01 BTC).
-                            # Normalize to BTC at write time so downstream consumers
-                            # (cascade_alert, cascade_filter) get consistent units across
-                            # exchanges. Without this, threshold-based alerts mis-fire by 100x.
                             sz_raw = d.get("sz", "")
+                            contract_size = OKX_CONTRACT_SIZE[d_inst]
                             try:
-                                qty_btc = float(sz_raw) * OKX_CONTRACT_SIZE_BTC
-                                qty_out = f"{qty_btc:.6f}"
+                                qty_native = float(sz_raw) * contract_size
+                                qty_out = f"{qty_native:.6f}"
                             except (TypeError, ValueError):
                                 qty_out = sz_raw
-                            _write_liq({
+                            _write_liq(symbol, {
                                 "ts_utc": _ts_utc_now(),
                                 "exchange": "okx",
                                 "side": side,

@@ -8,13 +8,40 @@ SIGNALS_CSV: Path = MARKET_LIVE_DIR / "signals.csv"
 OHLCV_1M_CSV: Path = MARKET_LIVE_DIR / "market_1m.csv"
 OHLCV_15M_CSV: Path = MARKET_LIVE_DIR / "market_15m.csv"
 OHLCV_1H_CSV: Path = MARKET_LIVE_DIR / "market_1h.csv"
-LIQUIDATIONS_CSV: Path = MARKET_LIVE_DIR / "liquidations.csv"
+LIQUIDATIONS_CSV: Path = MARKET_LIVE_DIR / "liquidations.csv"  # legacy: BTCUSDT only
 PID_DIR: Path = _ROOT / "market_collector" / "run"
 
 SYMBOL = "BTCUSDT"
+# 2026-05-13: multi-asset liq collection. Каждый символ в отдельном CSV
+# (liquidations.csv остаётся BTCUSDT для backwards-compat). Доп. символы —
+# liquidations_ETHUSDT.csv, liquidations_XRPUSDT.csv и т.д.
+LIQ_SYMBOLS: tuple[str, ...] = ("BTCUSDT", "ETHUSDT", "XRPUSDT")
+# OKX uses different naming convention (dashes + -SWAP suffix).
+OKX_INST_MAP = {
+    "BTCUSDT": "BTC-USDT-SWAP",
+    "ETHUSDT": "ETH-USDT-SWAP",
+    "XRPUSDT": "XRP-USDT-SWAP",
+}
+
+
+def liq_csv_for(symbol: str) -> Path:
+    """Per-symbol liquidations CSV. BTCUSDT keeps the legacy name."""
+    if symbol == "BTCUSDT":
+        return LIQUIDATIONS_CSV
+    return MARKET_LIVE_DIR / f"liquidations_{symbol}.csv"
 BYBIT_KLINE_URL = "https://api.bybit.com/v5/market/kline"
 BYBIT_WS_URL = "wss://stream.bybit.com/v5/public/linear"
-BINANCE_WS_URL = "wss://fstream.binance.com/ws/btcusdt@forceOrder"
+# 2026-05-12: switched from per-symbol `btcusdt@forceOrder` to all-market
+# `!forceOrder@arr`. Per-symbol stream is too quiet (~0 msgs/45s in tests).
+# All-market delivers thousands of events per hour across all pairs;
+# liquidations._run_binance_ws filters symbol=BTCUSDT client-side.
+# Historical evidence: bybit_ws populated 2195 rows over 24h, binance_ws 0 rows.
+BINANCE_WS_URL = "wss://fstream.binance.com/ws/!forceOrder@arr"
+
+# 2026-05-12 (Phase 1.1b): OKX public WebSocket for liquidation orders.
+# Subscribe to liquidation-orders channel with instType=SWAP, filter
+# instId="BTC-USDT-SWAP" client-side.
+OKX_WS_URL = "wss://ws.okx.com:8443/ws/v5/public"
 
 # (label, bybit_interval_str, cycle_sec, csv_path)
 OHLCV_INTERVALS = [

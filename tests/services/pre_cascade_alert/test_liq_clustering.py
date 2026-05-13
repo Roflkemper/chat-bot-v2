@@ -98,8 +98,8 @@ def test_independent_cooldown_per_side(tmp_path: Path) -> None:
     jp = tmp_path / "j.jsonl"
     now = datetime(2026, 5, 13, 16, 30, tzinfo=timezone.utc)
     _write_liqs(liq, [
-        (now - timedelta(minutes=2), "long", 0.5),
-        (now - timedelta(minutes=1), "short", 0.4),
+        (now - timedelta(minutes=2), "long", 0.6),
+        (now - timedelta(minutes=1), "short", 0.55),
     ])
     send = MagicMock()
     fired = check_and_alert(send_fn=send, now=now, state_path=sp, journal_path=jp, liq_csv=liq)

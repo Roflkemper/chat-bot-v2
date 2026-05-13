@@ -166,6 +166,15 @@ def build_report(*,
             lines.append("(snapshots не найдены)")
     lines.append("")
 
+    # 4. Liq-cluster auto-tune
+    try:
+        from services.pre_cascade_alert.score_autotune import analyze, format_report_section
+        autotune = analyze(now=now, window_days=7)
+        lines.append(format_report_section(autotune))
+    except Exception:
+        logger.exception("weekly_report.autotune_failed")
+    lines.append("")
+
     lines.append("— конец отчёта —")
     return "\n".join(lines)
 

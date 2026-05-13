@@ -34,7 +34,10 @@ JOURNAL_PATH = ROOT / "state" / "liq_pre_cascade_fires.jsonl"
 
 # Tunables (можно править в env позже)
 WINDOW_MINUTES = 5
-LIQ_CLUSTER_THRESHOLD_BTC = 0.3       # Phase-1 conservative (R&D mean 0.44)
+# 2026-05-13: после retro-validation (см. LIQ_CLUSTER_HITRATE_VALIDATION.md)
+# поднят с 0.3 до 0.5 BTC: −15% шума (87→75 fires/неделя), recall 78→70%,
+# hit rate 24→25%. См. таблицу threshold sensitivity в doc.
+LIQ_CLUSTER_THRESHOLD_BTC = 0.5
 CASCADE_SUPPRESS_THRESHOLD_BTC = 5.0   # если >=5 BTC уже было — каскад уже идёт
 COOLDOWN_SEC = 1800                    # 30 min per (side)
 POLL_INTERVAL_SEC = 60
