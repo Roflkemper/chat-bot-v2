@@ -493,9 +493,24 @@ class SignalAlertWorker(threading.Thread):
         """Return True if signal should be sent, False if deduplicated.
 
         Two filters apply in order:
-          1. P3 regulation-relevance filter (opt-in via env, default OFF)
-          2. anti-spam dedup (existing behavior)
+          1. Raw-duplicate suppression: LIQ_CASCADE и RSI_EXTREME из triggers.py
+             уже выдают форматированные алерты через cascade_alert/loop (LIQ)
+             либо вообще не нужны оператору (RSI). Подавляем чтобы не дублировать.
+             Включается env SIGNAL_ALERT_SUPPRESS_RAW=1 (default ON 2026-05-13).
+          2. P3 regulation-relevance filter (opt-in via env, default OFF)
+          3. anti-spam dedup (existing behavior)
         """
+        # Raw-duplicate suppression (default ON; override via env).
+        suppress_raw = os.environ.get("SIGNAL_ALERT_SUPPRESS_RAW", "1") == "1"
+        if suppress_raw:
+            sig = row.get("signal_type", "")
+            if sig in ("LIQ_CASCADE", "RSI_EXTREME"):
+                if self._log_deduped:
+                    logger.info(
+                        "signal_alert.raw_suppressed signal_type=%s (use cascade_alert/loop instead)",
+                        sig,
+                    )
+                return False
         # P3 regulation-relevance filter: when enabled, suppress events that
         # do not change admissible action set or affect cleanup state.
         if _REGULATION_FILTER_ENABLED:

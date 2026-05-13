@@ -44,9 +44,9 @@ def test_evaluate_no_signals_in_flat_market():
     eth = _make_flat_df()
     deriv = {"BTCUSDT": {"oi_change_1h_pct": 0.1, "funding_rate_8h": 0.00001}}
     ev = gc.evaluate_exhaustion(btc, eth, deriv)
-    # Во флете не должно быть истощения
-    assert ev["upside_score"] <= 1
-    assert ev["downside_score"] <= 1
+    # Во флете не должно быть истощения (после калибровки 2026-05 noise floor ~2)
+    assert ev["upside_score"] <= 2
+    assert ev["downside_score"] <= 2
 
 
 def test_evaluate_thin_data():
@@ -80,7 +80,7 @@ def test_format_card_upside():
     }
     card = gc._format_card("up", 3, details)
     assert "ВЕРХ ИСТОЩАЕТСЯ" in card
-    assert "3/5" in card
+    assert "3/6" in card
     assert "SHORT" in card
     assert "rsi_high_falling" in card
     assert "78.0" in card
@@ -97,7 +97,7 @@ def test_format_card_downside():
     }
     card = gc._format_card("down", 4, details)
     assert "НИЗ ИСТОЩАЕТСЯ" in card
-    assert "4/5" in card
+    assert "4/6" in card
     assert "LONG" in card
 
 

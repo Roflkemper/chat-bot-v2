@@ -318,30 +318,30 @@ async def grid_coordinator_loop(stop_event: asyncio.Event, *, send_fn=None,
             dedup = _load_dedup()
             fired = False
 
-            if up >= 3 and _check_cooldown("up", dedup, now):
-                text = _format_card("up", up, details)
-                logger.info("grid_coordinator.UPSIDE_EXHAUSTION score=%d", up)
+            # Score-escalation: повторный alert на том же уровне игнорируется
+            # на cooldown'е; если score вырос (3→4→5) — alert даже на cooldown.
+            # Если score упал ниже threshold — reset last_score.
+            for direction, score in (("up", up), ("down", down)):
+                last_score = int(dedup.get(f"{direction}_score") or 0)
+                if score < 3:
+                    if last_score > 0:
+                        dedup[f"{direction}_score"] = 0
+                    continue
+                on_cd = not _check_cooldown(direction, dedup, now)
+                if on_cd and score <= last_score:
+                    continue
+                text = _format_card(direction, score, details)
+                logger.info("grid_coordinator.%s_EXHAUSTION score=%d (prev=%d)",
+                            direction.upper(), score, last_score)
                 if send_fn:
                     try:
                         send_fn(text)
                     except Exception:
                         logger.exception("grid_coordinator.send_failed")
-                dedup["up"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+                dedup[direction] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+                dedup[f"{direction}_score"] = score
                 _journal({"ts": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                          "direction": "up", "score": up, "details": details})
-                fired = True
-
-            if down >= 3 and _check_cooldown("down", dedup, now):
-                text = _format_card("down", down, details)
-                logger.info("grid_coordinator.DOWNSIDE_EXHAUSTION score=%d", down)
-                if send_fn:
-                    try:
-                        send_fn(text)
-                    except Exception:
-                        logger.exception("grid_coordinator.send_failed")
-                dedup["down"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-                _journal({"ts": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                          "direction": "down", "score": down, "details": details})
+                          "direction": direction, "score": score, "details": details})
                 fired = True
 
             if fired:
@@ -364,7 +364,11 @@ async def grid_coordinator_loop(stop_event: asyncio.Event, *, send_fn=None,
 # 15m grid_coordinator parallel to 1h, but ONLY emit downside score>=4 alerts.
 INTRADAY_DEDUP_PATH = ROOT / "state" / "grid_coordinator_intraday_dedup.json"
 INTRADAY_INTERVAL_SEC = 60   # check every 1 min on 15m TF
-INTRADAY_COOLDOWN_SEC = 900  # 15 min cooldown between alerts (shorter than 1h's 30)
+# 2026-05-13: было 15min cooldown — в живом логе оператора было 17 алертов
+# 🔻 НИЗ ИСТОЩАЕТСЯ за 6 часов (≈1 каждые 21 мин). Поднял до 30 мин и
+# добавил score-escalation: повторный alert только если счётчик ВЫРОС
+# (4→5 или 5→6), а не повторяется на одном уровне.
+INTRADAY_COOLDOWN_SEC = 1800
 INTRADAY_DOWNSIDE_THRESHOLD = 4
 
 
@@ -413,6 +417,7 @@ async def grid_coordinator_intraday_loop(stop_event, *, send_fn=None,
 
             dedup = _load_intraday_dedup()
             last = dedup.get("down")
+            last_score = int(dedup.get("down_score") or 0)
             on_cooldown = False
             if last:
                 try:
@@ -421,15 +426,26 @@ async def grid_coordinator_intraday_loop(stop_event, *, send_fn=None,
                 except (ValueError, AttributeError):
                     pass
 
-            if down >= INTRADAY_DOWNSIDE_THRESHOLD and not on_cooldown:
+            # Score-escalation: на cooldown игнорируем если score не вырос
+            # vs прошлого alert. Если down упал ниже threshold — reset last_score.
+            if down < INTRADAY_DOWNSIDE_THRESHOLD:
+                if last_score > 0:
+                    dedup["down_score"] = 0
+                    _save_intraday_dedup(dedup)
+            should_fire = (down >= INTRADAY_DOWNSIDE_THRESHOLD
+                           and (not on_cooldown or down > last_score))
+
+            if should_fire:
                 text = "⚡ 15m " + _format_card("down", down, details)
-                logger.info("grid_coordinator.intraday.DOWNSIDE_FLUSH score=%d", down)
+                logger.info("grid_coordinator.intraday.DOWNSIDE_FLUSH score=%d (prev=%d)",
+                            down, last_score)
                 if send_fn:
                     try:
                         send_fn(text)
                     except Exception:
                         logger.exception("grid_coordinator.intraday.send_failed")
                 dedup["down"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+                dedup["down_score"] = down
                 _save_intraday_dedup(dedup)
                 _journal({"ts": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
                           "tf": "15m", "direction": "down", "score": down,
