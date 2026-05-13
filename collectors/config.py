@@ -5,8 +5,11 @@ import os
 from pathlib import Path
 
 # ── Output path ───────────────────────────────────────────────────────────────
+# Default = <repo_root>/market_live (cross-platform). Override via env on
+# Windows-only deployments where repo lives elsewhere.
 
-LIVE_PATH = Path(os.environ.get("BOT7_LIVE_PATH", "C:/bot7/market_live"))
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+LIVE_PATH = Path(os.environ.get("BOT7_LIVE_PATH", str(_REPO_ROOT / "market_live")))
 
 # ── Symbols ───────────────────────────────────────────────────────────────────
 

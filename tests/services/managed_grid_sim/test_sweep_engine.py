@@ -5,9 +5,12 @@ from services.managed_grid_sim.sweep_engine import SweepEngine
 
 from .conftest import fake_engine_loader
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+P15_SWEEP_YAML = _REPO_ROOT / "configs" / "sweep" / "p15_sweep.yaml"
+
 
 def test_expand_simple_sweep_to_correct_count(sample_bars):
-    engine = SweepEngine(sample_bars[:5], None, Path("C:/bot7/configs/sweep/p15_sweep.yaml"), parallelism=1, runner=ManagedGridSimRunner(engine_loader=fake_engine_loader))
+    engine = SweepEngine(sample_bars[:5], None, P15_SWEEP_YAML, parallelism=1, runner=ManagedGridSimRunner(engine_loader=fake_engine_loader))
     runs = engine.expand_to_runs()
     assert len(runs) == 32
 
@@ -24,7 +27,7 @@ def test_expand_yaml_with_no_ranges_returns_single_run(tmp_path, sample_bars):
 
 
 def test_execute_all_returns_results_for_each_config(sample_bars):
-    engine = SweepEngine(sample_bars[:5], None, Path("C:/bot7/configs/sweep/p15_sweep.yaml"), parallelism=1, runner=ManagedGridSimRunner(engine_loader=fake_engine_loader))
+    engine = SweepEngine(sample_bars[:5], None, P15_SWEEP_YAML, parallelism=1, runner=ManagedGridSimRunner(engine_loader=fake_engine_loader))
     runs = engine.expand_to_runs()[:2]
     results = engine.execute_all(runs)
     assert len(results) == 2

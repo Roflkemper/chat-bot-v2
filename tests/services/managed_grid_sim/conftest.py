@@ -176,4 +176,4 @@ def sample_snapshot() -> MarketSnapshot:
 
 @pytest.fixture
 def sweep_fixture_path() -> Path:
-    return Path("C:/bot7/tests/services/managed_grid_sim/fixtures/synthetic_ohlcv_case.json")
+    return Path(__file__).resolve().parent / "fixtures" / "synthetic_ohlcv_case.json"
