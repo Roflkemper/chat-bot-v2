@@ -143,6 +143,28 @@ state/test3_tpflat_b_state.json
 state/p15_paper_trades.jsonl
 state/pre_cascade_fires.jsonl
 state/app_runner_starts.jsonl
+# 2026-05-13: новые runtime от Claude фич
+state/cascade_accuracy.jsonl
+state/cascade_edge_drift.json
+state/liq_pre_cascade_fires.jsonl
+state/liq_pre_cascade_state.json
+state/short_t2_cliff_alerts.json
+state/exit_advisor_prev_snapshot.json
+state/paper_trader_streak_notify.json
+state/weekly_report_state.json
+# R&D backtest results (могут быть commited если важны, но обычно large)
+state/cascade_ginarea_v3_results.csv
+state/cascade_ginarea_v4_results.csv
+state/cascade_grid_results.csv
+state/cascade_grid_v2_results.csv
+state/confluence_results.csv
+state/confluence_signal_timeline.parquet
+state/cross_asset_lead_results.csv
+state/funding_extremes_results.csv
+state/funding_flip_results.csv
+state/session_breakout_results.csv
+state/volume_climax_results.csv
+state/volume_profile_results.csv
 state/mega_setup_backtest.csv
 state/mega_short_v2_gc.csv
 state/mega_short_backtest.csv
