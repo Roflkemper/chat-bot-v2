@@ -39,6 +39,10 @@ class SetupType(Enum):
     P15_SHORT_HARVEST = "p15_short_harvest"
     P15_SHORT_REENTRY = "p15_short_reentry"
     P15_SHORT_CLOSE = "p15_short_close"
+    # 2026-05-11: Session breakout — backtest PF 1.52 (all transitions) / 2.09
+    # (ny_pm_to_asia). See docs/STRATEGIES/SESSION_BREAKOUT_BACKTEST.md.
+    LONG_SESSION_BREAKOUT = "long_session_breakout"
+    SHORT_SESSION_BREAKOUT = "short_session_breakout"
     GRID_RAISE_BOUNDARY = "grid_raise_boundary"
     GRID_PAUSE_ENTRIES = "grid_pause_entries"
     GRID_BOOSTER_ACTIVATE = "grid_booster"

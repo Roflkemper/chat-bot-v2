@@ -548,6 +548,41 @@ def _run_detectors_once(
             })
             setup = mtf_adjusted
 
+        # 2026-05-12: Confluence boost. If 2+ other detectors fired in same
+        # direction within last 6h → bump confidence. Backtest shows K>=4
+        # alignment gives PF 2-7 (rare, ~15 events/2y). K=2-3 still adds
+        # signal quality.
+        try:
+            from services.setup_detector.confluence_score import (
+                apply_boost, get_tracker,
+            )
+            tracker = get_tracker()
+            side_for_conf = (
+                "long" if "long" in setup.setup_type.value.lower() else "short"
+            )
+            # First record this setup so future setups in window see it...
+            tracker.record(now_utc, setup.setup_type.value, side_for_conf)
+            # ...then ask boost factor *excluding* ourselves.
+            n_others = tracker.count_distinct(
+                now_utc, side_for_conf,
+                exclude_detector=setup.setup_type.value,
+            )
+            if n_others >= 2:
+                boosted_conf = apply_boost(
+                    now_utc, setup.confidence_pct, side_for_conf,
+                    own_detector=setup.setup_type.value,
+                )
+                if boosted_conf > setup.confidence_pct:
+                    logger.info(
+                        "setup_detector.confluence_boost type=%s conf %.0f -> %.0f "
+                        "(N_other=%d in 6h)",
+                        setup.setup_type.value, setup.confidence_pct,
+                        boosted_conf, n_others,
+                    )
+                    setup = dataclasses.replace(setup, confidence_pct=boosted_conf)
+        except Exception:
+            logger.exception("setup_detector.confluence_boost_failed")
+
         emit_iso = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
         dedup[setup.semantic_signature] = emit_iso
         type_pair_dedup[f"{setup.setup_type.value}|{setup.pair}"] = emit_iso

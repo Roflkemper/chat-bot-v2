@@ -19,7 +19,9 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# The 14 ICT columns exposed to setup_detector (subset of full ict_levels schema)
+# ICT columns exposed to setup_detector. Extended 2026-05-11 (session_breakout detector)
+# to include per-session high/low fields — needed for "break of prior session high/low"
+# trigger logic.
 ICT_CONTEXT_COLS: tuple[str, ...] = (
     "session_active",
     "time_in_session_min",
@@ -36,6 +38,12 @@ ICT_CONTEXT_COLS: tuple[str, ...] = (
     "nearest_unmitigated_low_below",
     "nearest_unmitigated_low_below_age_h",
     "unmitigated_count_7d",
+    # 2026-05-11: per-session OHLC needed for session_breakout detector.
+    "asia_high", "asia_low",
+    "london_high", "london_low",
+    "ny_am_high", "ny_am_low",
+    "ny_lunch_high", "ny_lunch_low",
+    "ny_pm_high", "ny_pm_low",
 )
 
 _LOOKUP_TOLERANCE_NS = int(5 * 60 * 1e9)  # 5 minutes in nanoseconds

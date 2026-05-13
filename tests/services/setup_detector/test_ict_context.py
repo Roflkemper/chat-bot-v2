@@ -122,7 +122,7 @@ def test_ict_context_nearest_bar_tolerance(tmp_path: Path) -> None:
 # ─────────────────────────────── Test 2: persistence in storage ───────────────
 
 def test_ict_context_persistence(tmp_path: Path) -> None:
-    """Setup with ict_context → stored JSONL record contains all 14 ICT columns."""
+    """Setup with ict_context → stored JSONL record contains all ICT columns."""
     ict = {
         "session_active": "ny_am",
         "time_in_session_min": 5,
@@ -139,6 +139,12 @@ def test_ict_context_persistence(tmp_path: Path) -> None:
         "nearest_unmitigated_low_below": 79040.0,
         "nearest_unmitigated_low_below_age_h": 6.0,
         "unmitigated_count_7d": 8,
+        # 2026-05-11: per-session OHLC added for session_breakout detector
+        "asia_high": 80300.0, "asia_low": 80000.0,
+        "london_high": 80450.0, "london_low": 80100.0,
+        "ny_am_high": 80500.0, "ny_am_low": 80200.0,
+        "ny_lunch_high": 80480.0, "ny_lunch_low": 80250.0,
+        "ny_pm_high": 80550.0, "ny_pm_low": 80300.0,
     }
     setup = _minimal_setup(ict=ict)
 

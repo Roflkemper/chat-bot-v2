@@ -21,7 +21,7 @@ from .outcome_tracker import OutcomeTracker
 from .position_state import ScenarioClass, build_position_state
 from .strategy_ranker import StrategyRanker
 from .telegram_renderer import format_advisory_alert
-from .honest_renderer import format_honest_advisory
+from .honest_renderer import format_compact_advisory, format_honest_advisory
 
 logger = logging.getLogger(__name__)
 
@@ -207,19 +207,20 @@ def _tick(
     )
 
     # 6. Format and send.
-    # 2026-05-07: переключено с format_advisory_alert (fake EV, опасные советы)
-    # на format_honest_advisory (факты + playbook). Старый renderer оставлен
-    # в коде для совместимости с outcome_tracker, но не используется live.
-    # См. docs/ANALYSIS/EXIT_ADVISOR_AUDIT_2026-05-07.md.
-    card = format_honest_advisory(state)
+    # 2026-05-12: switched to compact renderer + dedup. Operator feedback:
+    # 30-line message every hour with identical playbook = visual spam.
+    # Compact renderer skips if no material change since last hour (uPnL ±$50,
+    # DD age ≥1h, liq_dist ≥1% drop). Critical conditions (liq≤10%, DD≥8h,
+    # margin<70%) always fire. Full playbook moved to /playbook on-demand.
+    card, is_critical = format_compact_advisory(state)
     if card and send_fn is not None:
         try:
             if callable(send_fn):
                 send_fn(card)
             dedup_cache[sc_key] = now
             logger.info(
-                "exit_advisor.alert_sent scenario=%s severity=%d (honest renderer)",
-                sc_key, current_severity,
+                "exit_advisor.alert_sent scenario=%s severity=%d critical=%s",
+                sc_key, current_severity, is_critical,
             )
         except Exception:
             logger.exception("exit_advisor.send_failed")

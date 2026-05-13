@@ -7,6 +7,7 @@ import pytest
 
 from services.telegram.alert_router import (
     PRIMARY,
+    ROUTINE,
     VERBOSE,
     VerboseSubscriptionRegistry,
     channel_for,
@@ -18,11 +19,19 @@ from services.telegram.alert_router import (
 # ── channel_for ─────────────────────────────────────────────────────────────
 
 def test_channel_for_primary_emitters() -> None:
+    # LEVEL_BREAK переехал в ROUTINE (2026-05-11): рутинные пробои отделены
+    # в отдельный TG-чат чтобы не засорять основной канал critical-алертами.
     for emitter in ("LIQ_CASCADE", "BOUNDARY_BREACH", "PNL_EVENT", "PNL_EXTREME",
                     "POSITION_CHANGE", "PARAM_CHANGE", "BOT_STATE_CHANGE",
                     "REGIME_CHANGE", "MARGIN_ALERT", "ENGINE_ALERT",
-                    "LIQ_CLUSTER_BUILD", "SETUP_ON", "SETUP_OFF", "LEVEL_BREAK"):
+                    "LIQ_CLUSTER_BUILD", "SETUP_ON", "SETUP_OFF",
+                    "GRID_EXHAUSTION", "P15_OPEN", "P15_CLOSE"):
         assert channel_for(emitter) == PRIMARY, f"{emitter} should be PRIMARY"
+
+
+def test_channel_for_routine_emitters() -> None:
+    for emitter in ("P15_REENTRY", "P15_HARVEST", "LEVEL_BREAK", "PAPER_TRADE"):
+        assert channel_for(emitter) == ROUTINE, f"{emitter} should be ROUTINE"
 
 
 def test_channel_for_verbose_emitters() -> None:

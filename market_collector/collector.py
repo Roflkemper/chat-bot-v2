@@ -40,19 +40,46 @@ def _acquire_pid_lock() -> object | None:
         os.write(fd, str(os.getpid()).encode())
         return fd
     except ImportError:
-        # Windows fallback
+        # Windows fallback.
+        # 2026-05-12 bug fix: was using os.kill(pid, 0) to test liveness, but
+        # on Windows PIDs get recycled quickly — another unrelated process
+        # may now own the recorded PID, making the collector falsely conclude
+        # "already running" and exit. Symptom: watchdog restart-loop every
+        # 2-4 minutes, "collector.already_running — exiting" in collector.log.
+        # Fix: also verify the process command line contains 'market_collector'.
         try:
             existing = pid_path.read_text().strip() if pid_path.exists() else ""
             if existing:
                 try:
-                    os.kill(int(existing), 0)
-                    return None
-                except (ProcessLookupError, ValueError, PermissionError):
+                    existing_pid = int(existing)
+                    if _process_is_our_collector(existing_pid):
+                        return None
+                    # PID exists but is not our process — stale lock, clean up
+                except (ValueError, PermissionError):
                     pass
             pid_path.write_text(str(os.getpid()))
             return pid_path
         except Exception:
             return None
+
+
+def _process_is_our_collector(pid: int) -> bool:
+    """Return True iff `pid` is alive AND its cmdline includes 'market_collector'.
+
+    Prevents PID-reuse false-positives on Windows where the recorded PID
+    may now belong to an unrelated process (PowerShell, browser, etc.).
+    """
+    try:
+        import psutil
+        proc = psutil.Process(pid)
+        if not proc.is_running():
+            return False
+        cmdline = " ".join(proc.cmdline() or [])
+        return "market_collector" in cmdline
+    except (psutil.NoSuchProcess, psutil.AccessDenied, ImportError):
+        return False
+    except Exception:
+        return False
 
 
 def _release_pid_lock(handle: object) -> None:

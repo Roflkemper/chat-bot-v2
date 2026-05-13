@@ -60,8 +60,15 @@ logger = logging.getLogger(__name__)
 
 # ── Validated parameters from backtest_p15_full.py 2026-05-08 ─────────────────
 P15_R_PCT = 0.3        # retrace from extreme to harvest
-P15_K_PCT = 1.0        # reentry offset above/below harvest exit
+# 2026-05-11 fix: was 1.0 → 0.5. Live diagnosis P15_LIVE_VS_BACKTEST_DIAGNOSIS.md
+# showed K=1.0% causes avg_entry drift +3-4% by layer 6 → forced close on dd_cap.
+# Smaller K keeps reentry closer to exit, less drift. Backtest expectation:
+# stable profile, ~$30-45k/2y instead of crashes.
+P15_K_PCT = 0.5        # reentry offset above/below harvest exit
 P15_DD_CAP_PCT = 3.0   # emergency hard close
+# 2026-05-11 fix: harvest_pct was hardcoded 0.5 → 0.3. Position de-leverages
+# more gradually, less aggressive layer growth.
+P15_HARVEST_PCT = 0.3  # fraction of position closed on each harvest
 # 2026-05-10 TZ#8: time-stop if position held >MAX_HOLD_HOURS with cum_dd>1%
 # AND no HARVEST event. Prevents stuck positions in slow grinds.
 P15_MAX_HOLD_HOURS = 48.0
@@ -127,7 +134,11 @@ def _count_same_direction_open_legs(state: dict, direction: str,
     return n
 
 
-P15_MAX_LAYERS = 10
+# 2026-05-11 fix: was 10 → 6 (1 initial + 5 reentries). Live P-15 paper-trade
+# was −$926/mo because by layer 6-7 avg_entry drifted +3-4% from entry → dd_cap
+# fired with $50-67 loss each time. Backtest P15_REENTRY_SWEEP.md shows
+# max_re=5 keeps total_qty controlled and PnL realistic.
+P15_MAX_LAYERS = 6
 
 P15_STATE_PATH = Path("state/p15_state.json")
 # 2026-05-10 TZ#2: equity curve writer. Each CLOSE/HARVEST event appends
@@ -248,15 +259,46 @@ def _ema(values: list[float], n: int) -> float:
     return e
 
 
-def _trend_gate(closes_1h: list[float], direction: str) -> bool:
-    if len(closes_1h) < 200:
+# 2026-05-12 P-15 fix: trend gate hysteresis.
+# Was: single-bar instant check. Symptom: whipsaw in sideways markets,
+# 14 cycles/day on BTC where each cycle costs $30-50 on entry/exit transitions.
+# Live evidence 2026-05-12 KPI: P-15 24h PnL = -$765, almost all from
+# trend-gate flips.
+# Fix: require condition to hold for 3 consecutive 1h bars to enter trend.
+# To exit (close current position), use single-bar flip — exits should be
+# responsive when trend actually breaks, only entries get the hysteresis.
+P15_TREND_GATE_CONFIRM_BARS = 3
+
+
+def _trend_gate(closes_1h: list[float], direction: str,
+                require_confirm_bars: int = P15_TREND_GATE_CONFIRM_BARS) -> bool:
+    """Hysteresis gate. Requires condition over N consecutive bars."""
+    needed = 200 + require_confirm_bars
+    if len(closes_1h) < needed:
         return False
-    e50 = _ema(closes_1h[-220:], 50)
-    e200 = _ema(closes_1h[-220:], 200)
-    last = closes_1h[-1]
-    if direction == "long":
-        return e50 > e200 and last > e50
-    return e50 < e200 and last < e50
+    # Compute EMA for each of the last `require_confirm_bars` bars.
+    # We use incremental EMA: prime once from the long window, then extend.
+    for offset in range(require_confirm_bars):
+        # End index from the right: 0 = latest bar, 1 = 1 bar back, etc.
+        end_excl = len(closes_1h) - offset
+        slice_for_emas = closes_1h[max(0, end_excl - 220):end_excl]
+        if len(slice_for_emas) < 200:
+            return False
+        e50 = _ema(slice_for_emas, 50)
+        e200 = _ema(slice_for_emas, 200)
+        last = closes_1h[end_excl - 1]
+        if direction == "long":
+            if not (e50 > e200 and last > e50):
+                return False
+        else:
+            if not (e50 < e200 and last < e50):
+                return False
+    return True
+
+
+def _trend_gate_single(closes_1h: list[float], direction: str) -> bool:
+    """Single-bar gate — used for EXIT decisions (responsive close on flip)."""
+    return _trend_gate(closes_1h, direction, require_confirm_bars=1)
 
 
 def _build_setup(
@@ -364,11 +406,14 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
     high_now = float(bars_15m["high"].iloc[-1])
     low_now = float(bars_15m["low"].iloc[-1])
 
-    gate = _trend_gate(closes_1h, direction)
+    # 2026-05-12 hysteresis: для OPEN требуем 3 bar confirmation (антишум),
+    # для CLOSE используем single-bar flip (быстрая реакция на реальный break).
+    gate_strict = _trend_gate(closes_1h, direction)        # 3-bar confirmation
+    gate_single = _trend_gate_single(closes_1h, direction)  # 1-bar (for close)
 
-    # IDLE → check for OPEN trigger
+    # IDLE → check for OPEN trigger (strict gate only — anti-whipsaw)
     if not leg.in_pos:
-        if gate:
+        if gate_strict:
             # 2026-05-10 TZ-1: cross-asset correlation cap. Refuse OPEN if
             # ≥MAX_SAME_DIRECTION_LEGS already open in this direction across
             # other pairs — BTC/ETH/XRP are highly correlated, 3 same-side
@@ -441,7 +486,8 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
     close_reason: Optional[str] = None
     if leg.cum_dd_pct >= P15_DD_CAP_PCT:
         close_reason = f"dd_cap {P15_DD_CAP_PCT}% breached"
-    elif not gate:
+    elif not gate_single:
+        # Use single-bar gate for close — exit fast when trend really breaks.
         close_reason = f"trend gate flipped (EMA50{'<' if is_long else '>'}EMA200)"
     elif leg.opened_at_ts and leg.last_emitted_stage in ("OPEN", "REENTRY"):
         # Stuck check: position held > MAX_HOLD_HOURS AND in drawdown but
@@ -502,7 +548,7 @@ def _detect_one_direction(ctx: DetectionContext, leg: _LegState,
     # in the "growing" phase, not the "just harvested, waiting for next cycle" phase.
     if retrace_pct >= P15_R_PCT and leg.last_emitted_stage in ("OPEN", "REENTRY"):
         if leg.layers < P15_MAX_LAYERS:
-            harvest_size = leg.total_size_usd * 0.5
+            harvest_size = leg.total_size_usd * P15_HARVEST_PCT
             harvest_pnl_pct = ((exit_price - avg) / avg) if is_long else ((avg - exit_price) / avg)
             harvest_pnl_usd = harvest_size * harvest_pnl_pct
             stype = SetupType.P15_LONG_HARVEST if is_long else SetupType.P15_SHORT_HARVEST

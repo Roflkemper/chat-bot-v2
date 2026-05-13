@@ -1,89 +1,38 @@
-# Daily change log — 2026-05-11
+# Daily change log — 2026-05-13
 
-_Auto-generated 10:48 UTC covering last 24h_
+_Auto-generated 07:30 UTC covering last 24h_
 
-## Commits (54)
+## Commits (6)
 
-- `3cbf9f7` feat: per-regime precision + /inspect TG + long_dump_reversal noise note
-- `c21724d` feat(tg): /histogram (alias /pipeline7d) вЂ” 7-day pipeline daily breakdown
-- `0ceb7d4` feat(precision): per-pair breakdown + /precision TG + 7d pipeline histogram
-- `5dba004` feat(tg): /disable, /enable runtime commands + pipeline section in /status
-- `93280af` feat(observability): /pipeline TG command + pipeline_analyzer.py
-- `6b2e430` feat(infra): TODO-8 classify restarts operator-triggered vs autonomous
-- `5c7f993` feat(infra): ICT refresh + env validation
-- `c8a878a` feat(tg): /changelog command вЂ” last 24h summary from CHANGELOG_DAILY.md
-- `ec46e30` feat(observability): daily change log + expectancy coverage
-- `78b312c` feat(tg): /ginarea command вЂ” readonly GinArea bot summary
-- `cbeb936` feat(observability): setup_detector loop heartbeat every ~1h
-- `11ba81a` test+config: TZ-#12 daily KPI alerts coverage + disable DEGRADED detector
-- `3e2e9a7` chore: cleanup batch вЂ” test3 deletion, help update, compact script, rotation
-- `2fe4049` fix(dedup): _is_duplicate_recent window relative to event.ts, not now()
-- `32292d1` fix(tests): unblock decision_log + regulation_filter test collection
-- `ef86bb0` feat+chore: close TODO backlog вЂ” forward-invalidation, holdout, retire test3
-- `b1fd1ec` feat(precision): TZ-B2 backtest expectancy from config/ вЂ” single source
-- `f5a78b8` docs: TZ-B10 add test3_tpflat simulators to backlog for decision
-- `9377ac5` fix(paper_trader): TZ-B5 skip P-15 trades in update_open_trades loop
-- `9afc3e9` feat(observability): TZ-B7 /p15 TG command + TZ-B8 KPI alerts section
-- `e13b63a` feat(infra): TZ-B6 watchdog structured audit log
-- `9f6cc72` feat(infra): TZ-B3+B4 rotation for growing jsonl state journals
-- `bc68ea3` test(p15): TZ-B1 regression coverage for REENTRY UnboundLocalError
-- `a176053` docs: TZ-N8 single source of truth for open TODOs
-- `b2980db` docs: TZ-N7 P-15 multi-asset PnL projection with pair-factor scaling
-- `3246dd6` feat(gc): TZ-N2+N3 backfill rerun + shadow mode
-- `b9e0bb5` feat(kpi)+fix(p15): TZ-N6 P-15 daily section + production bug found
-- `bdd5756` feat(setup_detector): TZ-N5 runtime kill switch via DISABLED_DETECTORS env
-- `05f2b2d` feat(tg): TZ-N4 /status command вЂ” on-demand health snapshot
-- `419d458` docs+chore: TZ-4 scope doc + stats_aggregator audit note
-- `e50a974` feat(research): TZ-3.1 deriv 2y backfill script
-- `690e679` fix(test): update M-4 dashboard test for 2026-05-09 safety override
-- `791be76` chore+feat: gitignore runtime + pipeline_metrics rotation + precision cron
-- `0a7ac6b` feat(p15): TZ-1 per-pair sizing + cross-asset correlation cap
-- `81780d5` chore: TZ-6 reject liq_cluster_detector вЂ” kill, not wire
-- `c2be4ee` feat(precision): TZ-5 bootstrap CI + status classification
-- `379ebf9` refactor: TZ-4 centralize RSI/multiplier constants + add .env.example
-- `aba6ac9` feat(research): TZ-3 GC score historical backtest (20d window)
-- `5c669e4` feat(observability): TZ-2 pipeline metrics + daily KPI report
-- `f54120f` fix(combo_filter): exempt P-15 lifecycle types from strength gate
-- `ce0c1e0` fix(precision/coverage): non-trade skip + correct threshold semantics
-- `b373e95` fix(setup_detector): type+pair time dedup for short_pdh_rejection storm
-- `fd330ae` feat: setup precision tracker + watchdog TG alert on persistent failure
-- `c23f649` chore: gitignore runtime files + lock mega-pair fixed params
-- `cf9ad3e` fix(gc-coverage): use live 1m CSV + lower threshold + remove emoji
-- `8a93732` feat: 5-task batch вЂ” equity writer + 14-detector pipeline + H10 disabled
-- `5f451aa` feat: mega adaptive REJECTED + pre_cascade relaxed + edge tracker
-- `50fcea7` feat(stability): heartbeat + restart audit + hourly restart-frequency check
-- `33c31d4` feat: 6-task batch вЂ” P-15 deep analysis + mega 815d + H10/PDH validation
-- `8fb8b50` feat: 10-task batch вЂ” backtests + P-15 enhancements + TG rate limit
-- `19343c3` feat: 5-task batch вЂ” SHORT mega/quad/XRP/15m intraday/overbought verdicts
-- `d922b56` feat: mega-triple backtest STABLE + liq_map live CSV bridge + narrator log throttle
-- `68d2d35` fix(stability): watchdog freshness 5min->15min + mega_setup UTF-8 fix + killswitch noise
-- `c84f0b4` feat: H10 wire + MTF disagreement + smart-pause + 5m P-15 verdict + 4 final decisions
+- `998f930` docs(v5): sub-grid sweep plan after GPT cross-review
+- `db69ef3` feat(scorer): SHORT configs + top-5 LONG/SHORT + tuning suggestions
+- `7f15deb` feat: filter dashboard + multi-objective scorer + real walk-forward T2-MEGA
+- `bde8989` feat(paper_trader): OKX normalize + streak notify + cache + regime filter + per-pair + /audit_filters
+- `b1fe81e` feat(paper_trader): streak_guard + СЃРёРјРјРµС‚СЂРёС‡РЅС‹Р№ cascade filter + audit script
+- `5247a02` feat(paper_trader): Р±Р»РѕРє LONG-РІС…РѕРґРѕРІ РїРѕСЃР»Рµ РєСЂСѓРїРЅРѕРіРѕ РєР°СЃРєР°РґР° Р»РёРєРІРёРґР°С†РёР№
 
-## Pipeline (2372 events, 98 setups emitted)
+## Pipeline (3254 events, 58 setups emitted)
 
-- combo_blocked: 945
-- type_pair_dedup_skip: 713
-- env_disabled: 400
-- detector_failed: 132
-- emitted: 98
-- semantic_dedup_skip: 37
-- mtf_conflict: 13
-- gc_neutral: 13
-- gc_aligned: 9
-- mtf_neutral: 9
-- gc_blocked: 3
+- env_disabled: 2583
+- combo_blocked: 224
+- type_pair_dedup_skip: 150
+- semantic_dedup_skip: 147
+- emitted: 58
+- gc_shadow: 46
+- mtf_conflict: 34
+- mtf_neutral: 12
 
-## app_runner restarts: 283
+## app_runner restarts: 260
 
 [WARN] elevated restart count — check watchdog audit
 
 ## P-15 lifecycle
 
-- realized PnL: $-464.88
-- OPEN: 36, HARVEST: 91, CLOSE: 35
+- realized PnL: $-43.87
+- OPEN: 8, HARVEST: 12, CLOSE: 8
 
 ## GC decisions
 
-- pass-through: 16
-- boost +15.0%: 12
-- hard-block: 3
+- pass-through: 27
+- boost +15.0%: 14
+- penalty -30.0%: 5

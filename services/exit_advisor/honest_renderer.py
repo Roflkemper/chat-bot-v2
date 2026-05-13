@@ -14,6 +14,9 @@
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from .position_state import PositionStateSnapshot, ScenarioClass
 
 
@@ -275,11 +278,11 @@ def _format_balance_block(state: PositionStateSnapshot) -> str:
 
 
 def format_honest_advisory(state: PositionStateSnapshot) -> str:
-    """Format honest advisory: facts + playbook context, NO fake EV.
+    """Verbose (full playbook + balance) — kept for /playbook on-demand command.
 
-    Когда применять (caller responsibility):
-    - state.has_active_position == True
-    - state.scenario_class != ScenarioClass.MONITORING
+    Live hourly worker should call format_compact_advisory() instead — it
+    dedup'ит и сокращает до 5-7 строк когда метрики не сильно меняются.
+    Operator feedback 2026-05-12: full message was 30 lines × 5/night = visual spam.
     """
     if not state.has_active_position:
         return ""
@@ -312,3 +315,157 @@ def format_honest_advisory(state: PositionStateSnapshot) -> str:
         _format_balance_block(state),
     ])
     return "\n".join(parts)
+
+
+# ── Compact mode (2026-05-12, operator request to reduce spam) ────────────
+
+_PREV_SNAPSHOT_PATH = Path("state/exit_advisor_prev_snapshot.json")
+
+
+def _read_prev_snapshot() -> dict:
+    try:
+        if _PREV_SNAPSHOT_PATH.exists():
+            return json.loads(_PREV_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        pass
+    return {}
+
+
+def _write_prev_snapshot(data: dict) -> None:
+    try:
+        _PREV_SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _PREV_SNAPSHOT_PATH.write_text(json.dumps(data), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _is_critical(state: PositionStateSnapshot) -> bool:
+    """Critical conditions force a full alert with playbook:
+    - distance_to_liq <= 10%
+    - duration in DD >= 8h (very stuck)
+    - free_margin_pct < 70%
+    """
+    if state.worst_bot:
+        if state.worst_bot.distance_to_liq_pct <= 10.0:
+            return True
+        if state.worst_bot.duration_in_dd_h >= 8.0:
+            return True
+    if state.free_margin_pct < 70.0:
+        return True
+    return False
+
+
+def _significant_change(state: PositionStateSnapshot, prev: dict) -> bool:
+    """Skip duplicate alerts if nothing material changed since last hour."""
+    if not prev:
+        return True
+    # uPnL changed > $50
+    cur_upnl = state.total_unrealized_usd
+    prev_upnl = prev.get("upnl", 0.0)
+    if abs(cur_upnl - prev_upnl) > 50.0:
+        return True
+    # DD age increased ≥ 1h
+    cur_dd = state.worst_bot.duration_in_dd_h if state.worst_bot else 0.0
+    prev_dd = prev.get("dd_h", 0.0)
+    if cur_dd - prev_dd >= 1.0:
+        return True
+    # Distance to liq dropped ≥ 1%
+    cur_liq = state.worst_bot.distance_to_liq_pct if state.worst_bot else 100.0
+    prev_liq = prev.get("liq_dist", 100.0)
+    if prev_liq - cur_liq >= 1.0:
+        return True
+    return False
+
+
+def format_compact_advisory(state: PositionStateSnapshot) -> tuple[str, bool]:
+    """Return (text, is_critical). Text is empty if no material change since last
+    snapshot (caller should suppress). is_critical flag tells caller to route to
+    PRIMARY channel (with 🔴) vs ROUTINE channel (with ⚪).
+
+    Format (4-7 lines):
+        ⚠️ POS @ HH:MM UTC | DD=Xh | liq=Y%
+        BTC $price | uPnL ±$N (Δ vs 1h)
+        SHORT N bots × pos | LONG N bots × $pos
+        Net exp: -X BTC (SHORT-tilt Y×)
+        ⚠ flags if any
+    """
+    if not state.has_active_position:
+        return ("", False)
+    if state.scenario_class == ScenarioClass.MONITORING:
+        return ("", False)
+
+    prev = _read_prev_snapshot()
+    critical = _is_critical(state)
+
+    if not critical and not _significant_change(state, prev):
+        # Stale — caller should suppress
+        return ("", False)
+
+    ts = state.captured_at.strftime("%H:%M UTC")
+    wb = state.worst_bot
+    dd_h = wb.duration_in_dd_h if wb else 0.0
+    liq_dist = wb.distance_to_liq_pct if wb else 100.0
+
+    upnl = state.total_unrealized_usd
+    prev_upnl = prev.get("upnl")
+    upnl_delta = ""
+    if prev_upnl is not None:
+        delta = upnl - prev_upnl
+        if abs(delta) >= 10:
+            upnl_delta = f" (Δ {delta:+,.0f}$)"
+
+    lines = []
+    flag = "🔴" if critical else "⚠️"
+    lines.append(f"{flag} POS @ {ts} | DD={dd_h:.0f}h | liq={liq_dist:.1f}%")
+    lines.append(
+        f"BTC ${state.current_price:,.0f} | uPnL {upnl:+,.0f}${upnl_delta}"
+    )
+
+    s_btc = state.short_side.total_position_btc
+    l_usd = state.long_side.total_position_btc  # for LONG-linear stored as USD
+    pos_line = []
+    if state.short_side.bot_count > 0:
+        pos_line.append(
+            f"SHORT {state.short_side.bot_count}b × {s_btc:+.2f}BTC ({state.short_side.total_unrealized_usd:+.0f}$)"
+        )
+    if state.long_side.bot_count > 0:
+        pos_line.append(
+            f"LONG {state.long_side.bot_count}b × ${l_usd:,.0f} ({state.long_side.total_unrealized_usd:+.0f}$)"
+        )
+    if pos_line:
+        lines.append(" | ".join(pos_line))
+
+    # Net exposure
+    if state.short_side.bot_count and state.long_side.bot_count:
+        net_btc = s_btc + (l_usd / state.current_price if state.current_price else 0)
+        sl_ratio = (
+            abs(s_btc * state.current_price) / max(l_usd, 1)
+            if l_usd > 0 else float("inf")
+        )
+        sl_str = f"{sl_ratio:.1f}×" if sl_ratio != float("inf") else "∞"
+        lines.append(f"Net: {net_btc:+.2f}BTC | SHORT-tilt {sl_str}")
+        if sl_ratio > 1.5:
+            lines.append("⚠ SHORT-перевес — рассмотреть балансировку")
+
+    # Margin warning if critical
+    margin = _read_margin_override()
+    if margin and margin.get("distance_to_liquidation_pct") is not None:
+        dist = margin["distance_to_liquidation_pct"]
+        if dist <= 10:
+            lines.append(f"💀 dist_liq {dist:.1f}% (operator margin)")
+
+    # Quick pointer for full playbook
+    if critical:
+        lines.append("📋 /playbook — полный плейбук")
+
+    text = "\n".join(lines)
+
+    # Save snapshot for next-hour delta
+    _write_prev_snapshot({
+        "upnl": upnl,
+        "dd_h": dd_h,
+        "liq_dist": liq_dist,
+        "ts": state.captured_at.isoformat(),
+    })
+
+    return (text, critical)

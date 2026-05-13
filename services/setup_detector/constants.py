@@ -47,9 +47,12 @@ MIN_CONFIDENCE_STRONG = 75.0  # used by mega-pair, p15, double-pattern
 MIN_CONFIDENCE_VERY_STRONG = 85.0
 
 # ─── Strength threshold ─────────────────────────────────────────────────────
-# Below this, combo_filter blocks the setup. Data-driven from year backtest:
-# strength=8 → 24.6% WR / +$384 (near-zero PnL); strength=9 → 38.4% WR / +$17k.
-MIN_ALLOWED_STRENGTH = 9
+# NOTE: MIN_ALLOWED_STRENGTH lives in combo_filter.py — this file is left
+# as a doc reference only. Data-driven from year backtest 2025-05-01..2026-04-29:
+#   strength=7: 1,149 setups, 49.1% WR, +$2,449   (high WR, small N)
+#   strength=8: 10,368 setups, 24.6% WR, +$384    (noise — blocked)
+#   strength=9:  7,195 setups, 38.4% WR, +$17,404 (current threshold, main edge)
+# Update both this comment and combo_filter.py MIN_ALLOWED_STRENGTH together.
 
 # ─── Entry / stop multipliers (LONG side) ───────────────────────────────────
 # Premium added to current_price for limit entries (so we don't enter at the

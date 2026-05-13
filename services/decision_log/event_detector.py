@@ -36,11 +36,31 @@ _DEDUP_WINDOW_MINUTES = 5
 
 
 def _read_csv_latest_by_bot(path: Path) -> dict[str, dict[str, str]]:
+    """Robust CSV reader for the live params.csv. Handles NUL bytes that
+    occasionally appear when a writer is killed mid-write (observed
+    2026-05-11 errors.log: '_csv.Error: line contains NUL').
+
+    Strips \\x00 bytes before parsing; logs once per call if any seen.
+    """
     if not path.exists():
         return {}
     latest: dict[str, dict[str, str]] = {}
-    with path.open("r", encoding="utf-8", newline="") as fh:
-        reader = csv.DictReader(fh)
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return {}
+    if not raw:
+        return {}
+    had_nul = b"\x00" in raw
+    if had_nul:
+        raw = raw.replace(b"\x00", b"")
+    try:
+        text = raw.decode("utf-8", errors="replace")
+    except UnicodeDecodeError:
+        return {}
+    import io
+    try:
+        reader = csv.DictReader(io.StringIO(text))
         for row in reader:
             bot_id = str(row.get("bot_id", "")).strip()
             ts = str(row.get("ts_utc", ""))
@@ -49,6 +69,13 @@ def _read_csv_latest_by_bot(path: Path) -> dict[str, dict[str, str]]:
             prev = latest.get(bot_id)
             if prev is None or ts >= str(prev.get("ts_utc", "")):
                 latest[bot_id] = dict(row)
+    except csv.Error as exc:
+        # Parser still unhappy after NUL-stripping — log and bail out cleanly.
+        import logging
+        logging.getLogger(__name__).warning(
+            "params.csv parse failed (had_nul=%s): %s", had_nul, exc,
+        )
+        return latest
     return latest
 
 

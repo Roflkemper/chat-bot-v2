@@ -39,6 +39,7 @@ _VERBOSE_SUBS_PATH = _ROOT / "data" / "telegram" / "verbose_subs.json"
 
 PRIMARY = "PRIMARY"
 VERBOSE = "VERBOSE"
+ROUTINE = "ROUTINE"   # 2026-05-11: low-signal grid/layer events, sent to a separate TG chat
 
 # Emitter → channel mapping. Per TELEGRAM_EMITTERS_INVENTORY §5 + TZ brief.
 # Unlisted emitters default to PRIMARY (conservative — operator opts out via
@@ -58,8 +59,15 @@ _EMITTER_CHANNEL: dict[str, str] = {
     "LIQ_CLUSTER_BUILD":  PRIMARY,
     "SETUP_ON":           PRIMARY,    # setup_detector primary edge events
     "SETUP_OFF":          PRIMARY,
-    "LEVEL_BREAK":        PRIMARY,    # filtered upstream by proximity to critical levels
-    # VERBOSE (low-signal, opt-in)
+    "GRID_EXHAUSTION":    PRIMARY,    # ВЕРХ/НИЗ ИСТОЩАЕТСЯ — operator decision input
+    "P15_OPEN":           PRIMARY,    # начало цикла P-15 — оператор должен видеть
+    "P15_CLOSE":          PRIMARY,    # завершение цикла P-15
+    # ROUTINE (low-signal noise, separate chat by default)
+    "P15_REENTRY":        ROUTINE,    # повторное открытие слоя после harvest
+    "P15_HARVEST":        ROUTINE,    # частичное закрытие 50%
+    "LEVEL_BREAK":        ROUTINE,    # пробой уровня без other context
+    "PAPER_TRADE":        ROUTINE,    # confirmation paper-trade entry
+    # VERBOSE (low-signal, opt-in via /verbose)
     "RSI_EXTREME":        VERBOSE,
     "AUTO_EDGE_ALERT":    VERBOSE,    # auto_edge_alerts SETUP_ON/SETUP_OFF (#4)
     "SETUP_DETECTOR_DEEP": VERBOSE,   # cluster / deep-context events (#5)

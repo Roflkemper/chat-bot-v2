@@ -86,6 +86,19 @@ COMPONENTS = {
         "freshness_file": None,
         "freshness_max_min": None,
     },
+    # 2026-05-12 Phase 3.1/3.2: async supervisor for orderbook L2 + trade ticks
+    # + 5-exchange liquidations (Binance/Bybit/OKX/BitMEX/Hyperliquid).
+    # Last writes show orderbook dead since 2026-05-03 — likely never auto-started.
+    # Writes to market_live/{liquidations,orderbook,trades}/<exchange>/<symbol>/.
+    # logs/current/collectors.log is set up by collectors.main via
+    # src.utils.logging_config.setup_logging("collectors").
+    "collectors_supervisor": {
+        "cmd": [str(PYTHON), "-m", "collectors.main"],
+        "cmdline_must_contain": "collectors.main",
+        "freshness_file": ROOT / "logs" / "current" / "collectors.log",
+        "freshness_max_min": 15,
+        "stale_pid_files": [ROOT / "run" / "collectors_lock.pid"],
+    },
 }
 
 
@@ -355,5 +368,30 @@ def _extract_int(text: str, prefix: str) -> int | None:
     return int(digits) if digits else None
 
 
+def _install_self_timeout(seconds: int = 90) -> None:
+    """Spawn a daemon thread that force-exits the watchdog if main() takes
+    too long. Protects against psutil.process_iter hanging on zombie/AccessDenied
+    processes — observed gap 2026-05-11 22:02 to 00:00 (2 hours of silent stalls).
+
+    Uses os._exit to bypass cleanup (we don't want zombie pid lock files etc.).
+    Task Scheduler's MultipleInstances=Parallel + ExecutionTimeLimit=PT2M is a
+    second line of defence.
+    """
+    import threading
+
+    def _killer() -> None:
+        time.sleep(seconds)
+        _log(f"SELF_TIMEOUT — watchdog exceeded {seconds}s, force-exit")
+        try:
+            _audit("self_timeout", seconds=seconds)
+        except Exception:
+            pass
+        os._exit(2)
+
+    t = threading.Thread(target=_killer, daemon=True, name="watchdog-self-timeout")
+    t.start()
+
+
 if __name__ == "__main__":
+    _install_self_timeout(90)
     sys.exit(main())

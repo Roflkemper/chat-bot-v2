@@ -48,10 +48,17 @@ def test_grid_multipliers():
     assert C.GRID_BOUNDARY_PREMIUM > C.GRID_BOUNDARY_TRIGGER
 
 
-def test_min_strength_matches_combo_filter():
-    """combo_filter.MIN_ALLOWED_STRENGTH must match constants — single source of truth."""
+def test_min_strength_lives_in_combo_filter_only():
+    """2026-05-12: MIN_ALLOWED_STRENGTH was duplicated in constants.py — moved
+    to single source of truth (combo_filter.py). Verify constants.py no longer
+    exports it (so future readers know where to look)."""
+    assert not hasattr(C, "MIN_ALLOWED_STRENGTH"), (
+        "MIN_ALLOWED_STRENGTH should live ONLY in combo_filter.py"
+    )
+    # Sanity: combo_filter version exists and is sane.
     from services.setup_detector.combo_filter import MIN_ALLOWED_STRENGTH
-    assert C.MIN_ALLOWED_STRENGTH == MIN_ALLOWED_STRENGTH
+    assert isinstance(MIN_ALLOWED_STRENGTH, int)
+    assert 5 <= MIN_ALLOWED_STRENGTH <= 10
 
 
 def test_confidence_floors_ordered():
