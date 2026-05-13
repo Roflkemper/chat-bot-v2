@@ -99,18 +99,35 @@ def _liq_window_sums(now_utc: datetime, window_min: int,
     return long_btc, short_btc
 
 
-def _format_alert(side: str, qty_btc: float) -> str:
+def _format_alert(side: str, qty_btc: float,
+                  long_btc: float = 0.0, short_btc: float = 0.0,
+                  now: Optional[datetime] = None) -> str:
     direction_word = "LONG" if side == "long" else "SHORT"
-    return (
-        f"🔍 PRE-CASCADE liq cluster: {direction_word}\n"
-        f"За последние {WINDOW_MINUTES} мин: {qty_btc:.2f} BTC liq на стороне {side}\n"
-        f"(baseline ~0.01 BTC за 5 мин)\n"
-        f"\n"
-        f"R&D-сигнал: возможен каскад >=5 BTC через 10-20 мин в эту же сторону.\n"
-        f"Совет: не открывать новые {direction_word}-позиции в ближайшие 20 мин.\n"
-        f"\n"
-        f"Phase-1 conservative threshold (см. PRE_CASCADE_SIGNAL_R&D.md)."
-    )
+    lines = [
+        f"🔍 PRE-CASCADE liq cluster: {direction_word}",
+        f"За последние {WINDOW_MINUTES} мин: {qty_btc:.2f} BTC liq на стороне {side}",
+        f"(baseline ~0.01 BTC за 5 мин)",
+        "",
+    ]
+    # Phase-2: weighted multi-feature score
+    try:
+        from services.pre_cascade_alert.multi_feature_score import (
+            compute_score, is_high_confidence,
+        )
+        score = compute_score(
+            liq_long_5min=long_btc, liq_short_5min=short_btc, now=now,
+        )
+        conf = "HIGH" if is_high_confidence(score) else "MED"
+        lines.append(f"📊 Score: {score.total:.2f} [{conf}]  ({score.components_text})")
+        lines.append("")
+    except Exception:
+        logger.exception("liq_pre_cascade.score_failed")
+
+    lines.append(f"R&D-сигнал: возможен каскад >=5 BTC через 10-20 мин в эту же сторону.")
+    lines.append(f"Совет: не открывать новые {direction_word}-позиции в ближайшие 20 мин.")
+    lines.append("")
+    lines.append(f"Phase-2 score (liq+oi+funding+ls). См. PRE_CASCADE_SIGNAL_R&D.md.")
+    return "\n".join(lines)
 
 
 def check_and_alert(
@@ -152,7 +169,7 @@ def check_and_alert(
             except ValueError:
                 pass
 
-        text = _format_alert(side, qty)
+        text = _format_alert(side, qty, long_btc=long_btc, short_btc=short_btc, now=now)
         try:
             send_fn(text)
         except Exception:
