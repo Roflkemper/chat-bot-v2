@@ -38,7 +38,9 @@ DEDUP_PATH = ROOT / "state" / "grid_coordinator_dedup.json"
 JOURNAL_PATH = ROOT / "state" / "grid_coordinator_fires.jsonl"
 
 POLL_INTERVAL_SEC = 300        # 5 min
-COOLDOWN_SEC = 1800             # 30 min между алертами одного направления
+COOLDOWN_SEC = 3600             # 60 min между алертами одного направления
+# 2026-05-13: было 30min, но 08:00 и 08:30 на 13.05 прислали оба → одно событие
+# (3/6 сигналов с теми же значениями). 60min убирает этот класс дубликатов.
 
 # Пороги
 RSI_OVERBOUGHT = 65.0           # was 75 — operator pointed to extrema where RSI was 68.5; 65 catches them

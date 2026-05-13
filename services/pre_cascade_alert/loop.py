@@ -35,7 +35,10 @@ FUNDING_EXTREME = 0.0001       # was 0.0006 (current funding median -0.003%)
 LS_LONG_CROWDED = 1.05         # was 1.30 (current LS max 1.08)
 LS_SHORT_CROWDED = 0.60        # was 0.77 (current LS min 0.48)
 
-COOLDOWN_SEC = 3600            # 1h between alerts per (symbol, direction)
+COOLDOWN_SEC = 14400           # 4h between alerts per (symbol, direction)
+# 2026-05-13: было 1h, но 06:24 и 09:30 на XRPUSDT прислали оба сигнала
+# с одинаковой картиной (LS, funding, OI почти не менялись). 4h убирает
+# повтор при «стабильном» extreme funding-окне.
 
 
 def _load_dedup() -> dict:

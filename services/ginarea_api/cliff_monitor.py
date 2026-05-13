@@ -123,6 +123,70 @@ def check_short_t2_bots(
     return new_alerts
 
 
+def check_short_bag_aggregate(
+    bots: list[dict],
+    *,
+    send_fn: Callable[[str], None] | None = None,
+    state_path: Path = STATE_PATH,
+    bag_key: str = "short_bag",
+) -> CliffAlert | None:
+    """Aggregated alert когда **суммарный** unrealized всех SHORT-ботов
+    превышает пороги.
+
+    Мотивация (13.05): 4 SHORT-ботов × −$700 = −$2 800 суммарно. Каждый
+    отдельный не достигает порога −$1 500 (per-bot), но bag в danger-зоне.
+
+    Идемпотентность: state[bag_key] хранит последнюю отправленную severity.
+    """
+    state = _read_state(state_path)
+    short_bots = [b for b in bots if float(b.get("position_btc", 0.0)) < 0]
+    if not short_bots:
+        if bag_key in state:
+            state.pop(bag_key, None)
+            _write_state(state, state_path)
+        return None
+    total_unreal = sum(float(b.get("unrealized_usd", 0.0)) for b in short_bots)
+    sev = _severity_for(total_unreal)
+    if sev is None:
+        if bag_key in state:
+            state.pop(bag_key, None)
+            _write_state(state, state_path)
+        return None
+    prev_sev = state.get(bag_key, {}).get("severity")
+    escalated = prev_sev is None or (prev_sev == "warning" and sev == "danger")
+    if not escalated:
+        return None
+    now = datetime.now(timezone.utc).isoformat()
+    msg = _format_bag_alert(short_bots, sev, total_unreal)
+    if send_fn is not None:
+        try:
+            send_fn(msg)
+        except Exception:
+            logger.exception("cliff_monitor.bag_send_failed")
+    state[bag_key] = {"severity": sev, "ts": now, "total_unrealized_usd": total_unreal}
+    _write_state(state, state_path)
+    return CliffAlert(bot_id=bag_key, severity=sev, unrealized_usd=total_unreal, ts=now)
+
+
+def _format_bag_alert(bots: list[dict], severity: str, total_unreal: float) -> str:
+    """Сводный alert по всем SHORT-ботам."""
+    lines = []
+    total_pos = sum(float(b.get("position_btc", 0.0)) for b in bots)
+    n = len(bots)
+    if severity == "danger":
+        lines.append(f"🚨 SHORT-BAG CLIFF DANGER")
+        lines.append(f"Суммарный unrealized: ${total_unreal:,.0f} (< ${CLIFF_DANGER_USD:,.0f})")
+        lines.append(f"Σ position: {total_pos:.3f} BTC across {n} bots")
+        lines.append("⚠️ Известный cliff-обвал SHORT-T2 на ~−$6 300. Уже половина пути.")
+        lines.append("Рекомендация: рассмотреть закрытие части позиции вручную.")
+    else:
+        lines.append("⚠️ SHORT-bag cliff warning")
+        lines.append(f"Суммарный unrealized: ${total_unreal:,.0f} (< ${CLIFF_WARNING_USD:,.0f})")
+        lines.append(f"Σ position: {total_pos:.3f} BTC across {n} bots")
+        lines.append("Известный cliff-обвал был −$6 300. Смотри руками.")
+    return "\n".join(lines)
+
+
 def _format_alert(bot: dict, severity: str, unreal: float) -> str:
     bot_id = bot.get("bot_id", "?")
     alias = bot.get("alias", "")

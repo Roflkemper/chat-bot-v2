@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import date, datetime, time, timezone
+from pathlib import Path
 from typing import Any
 
+from core.orchestrator.anti_flipflop import record_change, should_suppress
 from core.orchestrator.command_dispatcher import dispatch_orchestrator_decisions
 from core.orchestrator.killswitch_triggers import check_all_killswitch_triggers
 from core.orchestrator.portfolio_state import PortfolioStore
@@ -20,13 +23,38 @@ class OrchestratorLoop:
     It checks regime state, killswitch triggers, applies actions, and emits alerts.
     """
 
+    _DAILY_REPORT_STATE_PATH = Path("state/orchestrator_last_daily_report.json")
+
     def __init__(self, config: dict[str, Any]):
         self.config = dict(config or {})
         self.interval_sec = int(self.config.get("ORCHESTRATOR_LOOP_INTERVAL_SEC", 300))
         self.daily_report_time = str(self.config.get("ORCHESTRATOR_DAILY_REPORT_TIME", "09:00"))
         self.enable_auto_alerts = bool(self.config.get("ORCHESTRATOR_ENABLE_AUTO_ALERTS", True))
         self._running = False
-        self._last_daily_report_date: date | None = None
+        self._last_daily_report_date: date | None = self._read_last_report_date()
+
+    @classmethod
+    def _read_last_report_date(cls) -> date | None:
+        p = cls._DAILY_REPORT_STATE_PATH
+        if not p.exists():
+            return None
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            d = data.get("date")
+            if d:
+                return date.fromisoformat(d)
+        except (OSError, json.JSONDecodeError, ValueError):
+            pass
+        return None
+
+    @classmethod
+    def _write_last_report_date(cls, d: date) -> None:
+        p = cls._DAILY_REPORT_STATE_PATH
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps({"date": d.isoformat()}), encoding="utf-8")
+        except OSError:
+            logger.exception("orchestrator.daily_report.state_write_failed")
 
     async def start(self) -> None:
         logger.info("[ORCHESTRATOR LOOP] Starting")
@@ -56,7 +84,22 @@ class OrchestratorLoop:
 
         if self.enable_auto_alerts:
             for change in list(result.changed or []):
+                cat_key = getattr(change, "category_key", "?")
+                suppress, elapsed = should_suppress(cat_key)
+                if suppress:
+                    logger.info(
+                        "[ORCHESTRATOR] flip-flop suppressed cat=%s elapsed=%.0fs %s→%s",
+                        cat_key, elapsed,
+                        getattr(change, "from_action", "?"),
+                        getattr(change, "to_action", "?"),
+                    )
+                    continue
                 await send_telegram_alert(self._format_change_alert(change, regime))
+                record_change(
+                    cat_key,
+                    getattr(change, "from_action", ""),
+                    getattr(change, "to_action", ""),
+                )
             for alert in list(result.alerts or []):
                 await send_telegram_alert(str(alert.text))
 
@@ -101,3 +144,4 @@ class OrchestratorLoop:
 
         await send_daily_report(today)
         self._last_daily_report_date = today
+        self._write_last_report_date(today)
