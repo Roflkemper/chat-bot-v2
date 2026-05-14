@@ -315,16 +315,20 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--output", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--resume", type=Path, default=None)
+    ap.add_argument("--data", type=Path, default=DATA_PATH,
+                    help="CSV с OHLCV (default: BTCUSDT_1h_2y.csv). Для GA по альтам "
+                         "указать backtests/frozen/<SYMBOL>_1h_2y.csv")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
 
-    if not DATA_PATH.exists():
-        print(f"ERR: {DATA_PATH} not found", file=sys.stderr)
+    data_path = args.data
+    if not data_path.exists():
+        print(f"ERR: {data_path} not found", file=sys.stderr)
         return 1
 
-    print(f"[ga] loading {DATA_PATH}...")
-    df = pd.read_csv(DATA_PATH).reset_index(drop=True)
+    print(f"[ga] loading {data_path}...")
+    df = pd.read_csv(data_path).reset_index(drop=True)
     print(f"[ga] loaded {len(df)} 1h bars")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

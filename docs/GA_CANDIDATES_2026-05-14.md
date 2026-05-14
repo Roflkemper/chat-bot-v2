@@ -81,6 +81,68 @@
 
 Ни один из текущих не использует комбинацию `MACD-hist threshold + volume z-score` как primary trigger. Существующие используют RSI/MFI/CMF дивергенции (контр-тренд) или PDL/PDH bounce. Champion — **новый класс** trend-following.
 
+## Multi-asset результаты (добавлено вечер 2026-05-14)
+
+После champion-кандидата для BTC прогнали тот же GA отдельно для ETH и XRP
+(одинаковые параметры: 50 popul × 100 gen, seed 42, 4 fold walk-forward).
+
+### ETH champion — MARGINAL
+
+**Технический ID:** `short_macd_oversold_breakdown`  
+**Русское имя:** «Пробой вниз на дне MACD-импульса (SHORT)» (ETH-only)
+
+| Параметр | Значение |
+|----------|----------|
+| direction | SHORT |
+| primary | MACD-hist < 20.1 (медвежий импульс) |
+| EMA gate | True (быстрая под медленной) |
+| volume filter | True (z-score > порог) |
+| SL / RR / hold | 0.77% / 4.0 / 24h |
+
+**Метрики:** PF 1.59, N=179, 2/4 fold positive → **MARGINAL** (на грани).
+
+**Не STABLE** — не дотягивает до production. Возможно, ETH-структура не
+поддерживает чистого momentum-edge'а на 1h.
+
+### XRP champion — STABLE
+
+**Технический ID:** `short_rsi_overbought_xrp`  
+**Русское имя:** «Шорт от лёгкой перекупленности на тренде (SHORT, XRP)»
+
+| Параметр | Значение |
+|----------|----------|
+| direction | SHORT |
+| primary | RSI > 53.2 (мягкая перекупленность) |
+| EMA gate | True |
+| volume filter | False |
+| SL / RR / hold | 0.77% / 3.53 / 24h |
+
+**Метрики:** PF 1.64, N=151, 3/4 fold positive → **STABLE**.
+
+**Условия простыми словами для XRP:**
+> Когда XRP в долгосрочном тренде (по EMA), RSI поднимается выше 53
+> (даже мягкая перекупленность), бот **открывает SHORT** со стопом 0.77%
+> и большой целью 3.53× от стопа. Удерживает до 24 часов.
+>
+> Объёмный фильтр **не нужен** — XRP реагирует на сам уровень RSI без
+> подтверждения объёма.
+
+### Сравнительная картина по парам
+
+| Пара | Champion | Direction | Primary | EMA gate | Vol filter | PF | Verdict |
+|------|----------|-----------|---------|----------|------------|-----|---------|
+| BTC | macd_momentum | **LONG** | MACD>75 | ✅ | ✅ | 2.53 | STABLE |
+| ETH | macd_oversold | SHORT | MACD<20 | ✅ | ✅ | 1.59 | MARGINAL |
+| XRP | rsi_overbought | SHORT | RSI>53 | ✅ | ❌ | 1.64 | STABLE |
+
+**Главный вывод:** edge на каждой паре свой. Универсального детектора нет.
+- BTC реагирует на сильный buy-momentum (long)
+- XRP — на лёгкую overbought (short)
+- ETH — нет надёжного edge в этом параметрическом пространстве
+
+Это подтверждает гипотезу из p7-аудита (per-pair performance):
+**multi-asset REGULATION требует par-specific конфигов**, а не общих порогов.
+
 ## Дальнейшие шаги (отдельный TZ)
 
 1. **TZ-070-GA-CANDIDATE-WIRE:** добавить `long_macd_momentum_breakout` в

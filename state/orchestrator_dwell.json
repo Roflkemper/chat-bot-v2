@@ -3,5 +3,10 @@
     "ts": "2026-05-14T17:24:37.015592+00:00",
     "from_action": "PAUSE",
     "to_action": "RUN"
+  },
+  "btc_short": {
+    "ts": "2026-05-14T21:41:41.155257+00:00",
+    "from_action": "RUN",
+    "to_action": "REDUCE"
   }
 }

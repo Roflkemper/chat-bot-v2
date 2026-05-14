@@ -1,17 +1,21 @@
-"""Скачать BTCUSDT 1h kline за 2 года с Binance API.
+"""Скачать SYMBOL 1h kline за 2 года с Binance API.
 
 Готовит данные для GA-поиска (Stage E1). На Mac после миграции
-файла backtests/frozen/BTCUSDT_1h_2y.csv не было — этот скрипт
+файла backtests/frozen/<SYMBOL>_1h_2y.csv не было — этот скрипт
 его восстанавливает.
 
 Binance API: один запрос отдаёт max 1000 свечей. 2 года × 8760ч = 17520
 свечей → ~18 запросов. Время: ~30 секунд + сеть.
 
-Запуск: python scripts/fetch_btc_1h_2y.py
+Запуск:
+    python scripts/fetch_btc_1h_2y.py              # default BTCUSDT
+    python scripts/fetch_btc_1h_2y.py ETHUSDT
+    python scripts/fetch_btc_1h_2y.py XRPUSDT
 """
 from __future__ import annotations
 
 import csv
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,12 +23,13 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "backtests" / "frozen" / "BTCUSDT_1h_2y.csv"
 
-SYMBOL = "BTCUSDT"
+SYMBOL = sys.argv[1] if len(sys.argv) > 1 else "BTCUSDT"
 INTERVAL = "1h"
 DAYS = 730
 LIMIT = 1000  # Binance max per request
+
+OUT = ROOT / "backtests" / "frozen" / f"{SYMBOL}_1h_2y.csv"
 
 
 def fetch_chunk(start_ms: int, end_ms: int) -> list[list]:

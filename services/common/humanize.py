@@ -30,6 +30,10 @@ SETUP_TYPE_NAMES: dict[str, str] = {
     "long_multi_divergence": "Множественная дивергенция (LONG)",
     # GA-найден 2026-05-14, см. docs/GA_CANDIDATES_2026-05-14.md
     "long_macd_momentum_breakout": "Пробой вверх на пике MACD-импульса (LONG)",
+    # GA-найден 2026-05-14 на ETH (MARGINAL, пока shadow-only)
+    "short_macd_oversold_breakdown": "Пробой вниз на дне MACD-импульса (SHORT, ETH)",
+    # GA-найден 2026-05-14 на XRP (STABLE)
+    "short_rsi_overbought_xrp": "Шорт от лёгкой перекупленности на тренде (SHORT, XRP)",
     "long_div_bos_confirmed": "Дивергенция + слом структуры (LONG, 1h)",
     "long_div_bos_15m": "Дивергенция + слом структуры (LONG, 15m)",
     "short_div_bos_15m": "Дивергенция + слом структуры (SHORT, 15m)",
