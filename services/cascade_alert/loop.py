@@ -36,6 +36,7 @@ PREDICTED_PCT_12H = {
 }
 
 # Backtest results (POST_LIQUIDATION_CASCADE_2026-05-07.md, n=103/102)
+# entry_plan: signed % offsets from last_price. None = no concrete plan (weak/asymmetric edge).
 EDGE_TEXT = {
     ("long", 5.0): {
         "title": "⚡ КАСКАД LONG-ликвидаций (>=5 BTC за 5 мин)",
@@ -44,15 +45,15 @@ EDGE_TEXT = {
                  "  +12ч: 73% случаев выше, средний +1.14%\n"
                  "  +24ч: 64%, средний +1.50%",
         "play": "СЕТАП: BUY на стабилизации после каскада\n"
-                "Цель: +1.14% (12ч)\n"
-                "Стоп: -0.5%\n"
                 "EV после комиссий: ~+0.5% за сделку",
+        "entry_plan": {"dir": "LONG", "tp1_pct": +0.46, "tp2_pct": +1.14, "stop_pct": -0.50},
     },
     ("long", 2.0): {
         "title": "⚡ Каскад LONG-ликвидаций (>=2 BTC, среднее)",
         "stats": "Исторически (n=297):\n"
                  "  +12ч: 63% случаев выше, средний +0.68%",
         "play": "Слабее основного сетапа — рассматривай как контекст.",
+        "entry_plan": {"dir": "LONG", "tp1_pct": +0.35, "tp2_pct": +0.68, "stop_pct": -0.50, "note": "weak edge — половинный размер"},
     },
     ("short", 5.0): {
         "title": "⚡ КАСКАД SHORT-ликвидаций (>=5 BTC за 5 мин)",
@@ -62,12 +63,14 @@ EDGE_TEXT = {
         "play": "Тренд продолжается вверх обычно.\n"
                 "Если есть SHORT-позиция — НЕ агрессивно докидывать.\n"
                 "Sell pressure высокая, но реверс маловероятен.",
+        "entry_plan": None,
     },
     ("short", 2.0): {
         "title": "⚡ Каскад SHORT-ликвидаций (>=2 BTC, среднее)",
         "stats": "Исторически (n=296):\n"
                  "  +24ч: 61% выше, средний +1.06%",
         "play": "Контекст для оценки давления на шортов.",
+        "entry_plan": None,
     },
     ("long", 10.0): {
         "title": "🌋 МЕГА-СПАЙК LONG-ликвидаций (>=10 BTC за 1 мин)",
@@ -76,16 +79,40 @@ EDGE_TEXT = {
         "play": "СЕТАП: следить за стабилизацией ниже current\n"
                 "Через 6-12ч обычно отскок 1.5-3%\n"
                 "БУДЬ ОСТОРОЖЕН — может быть продолжение каскада",
+        "entry_plan": {"dir": "LONG", "tp1_pct": +1.00, "tp2_pct": +2.50, "stop_pct": -0.80, "note": "после стабилизации (2-3 свечи без новых ликвидаций)"},
     },
     ("short", 10.0): {
         "title": "🌋 МЕГА-СПАЙК SHORT-ликвидаций (>=10 BTC за 1 мин)",
         "stats": "Очень редкое — local high индикатор.\n"
                  "Часто перед коррекцией 2-5%.",
-        "play": "СЕТАП: SHORT с tight stop на стабилизации\n"
-                "Цель: -2% за 12-24ч\n"
-                "Стоп: +0.8%",
+        "play": "СЕТАП: SHORT с tight stop на стабилизации",
+        "entry_plan": {"dir": "SHORT", "tp1_pct": -1.00, "tp2_pct": -2.00, "stop_pct": +0.80, "note": "после стабилизации (2-3 свечи без новых ликвидаций)"},
     },
 }
+
+
+def _format_entry_plan(plan: dict | None, last_price: float | None) -> list[str]:
+    """Build concrete entry/SL/TP block from plan + live price. Empty list if not applicable."""
+    if not plan or not last_price or last_price <= 0:
+        return []
+    direction = plan["dir"]
+    tp1 = last_price * (1 + plan["tp1_pct"] / 100)
+    tp2 = last_price * (1 + plan["tp2_pct"] / 100)
+    stop = last_price * (1 + plan["stop_pct"] / 100)
+    risk = abs(plan["stop_pct"])
+    rr1 = abs(plan["tp1_pct"]) / risk if risk else 0
+    rr2 = abs(plan["tp2_pct"]) / risk if risk else 0
+    out = [
+        "💰 ПЛАН ВХОДА",
+        f"  Направление: {direction}",
+        f"  Entry:  ~${last_price:,.0f}",
+        f"  Stop:   ${stop:,.0f}   ({plan['stop_pct']:+.2f}%)",
+        f"  TP1:    ${tp1:,.0f}   ({plan['tp1_pct']:+.2f}%, R:R 1:{rr1:.1f})",
+        f"  TP2:    ${tp2:,.0f}   ({plan['tp2_pct']:+.2f}%, R:R 1:{rr2:.1f})",
+    ]
+    if plan.get("note"):
+        out.append(f"  ⚠ {plan['note']}")
+    return out
 
 
 def _load_dedup() -> dict:
@@ -148,9 +175,11 @@ def _liquidation_window_sums(now_utc: datetime, window_min: int) -> tuple[float,
 def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float | None) -> str:
     info = EDGE_TEXT.get((side, threshold)) or EDGE_TEXT.get((side, 5.0))
     lines: list[str] = []
+    drifted = False
     try:
         from services.cascade_alert.edge_drift_guard import is_drifted
-        if is_drifted(side, threshold):
+        drifted = is_drifted(side, threshold)
+        if drifted:
             lines.append("⚠️ EDGE DRIFTED — историческая статистика ниже не подтверждается на live-данных. Не торговать как сетап.")
             lines.append("")
     except Exception:
@@ -164,6 +193,11 @@ def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float
     lines.append(info["stats"])
     lines.append("")
     lines.append(info["play"])
+    if not drifted:
+        plan_lines = _format_entry_plan(info.get("entry_plan"), last_price)
+        if plan_lines:
+            lines.append("")
+            lines.extend(plan_lines)
     return "\n".join(lines)
 
 
