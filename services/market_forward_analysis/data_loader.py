@@ -22,6 +22,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 _OHLCV_1M = {
     "BTCUSDT": _ROOT / "backtests" / "frozen" / "BTCUSDT_1m_2y.csv",
+    "ETHUSDT": _ROOT / "backtests" / "frozen" / "ETHUSDT_1m_2y.csv",
     "XRPUSDT": _ROOT / "backtests" / "frozen" / "XRPUSDT_1m_2y.csv",
 }
 _DERIV_DIR = _ROOT / "backtests" / "frozen" / "derivatives_1y"

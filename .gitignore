@@ -63,8 +63,8 @@ TZ-*_delivery.zip
 state_snapshot.zip
 *.tmp
 
-# Runtime reports
-reports/
+# Runtime reports (top-level only; services/reports/ stays tracked)
+/reports/
 
 # Critical docs must NEVER be excluded by gitignore rules (TZ-055)
 !docs/MASTER.md
