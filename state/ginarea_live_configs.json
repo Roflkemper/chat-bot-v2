@@ -1,0 +1,19 @@
+[
+  {
+    "bot_id": "T2-mild-2026-05-13",
+    "name": "T2-mild (LONG лидер пачки #22)",
+    "side": "long",
+    "gs": 0.04,
+    "thresh": 1.5,
+    "td": 0.85,
+    "mult": 1.2,
+    "tp": "off",
+    "max_size": "100/300",
+    "started_at": "2026-05-13T11:06:41.003955+00:00",
+    "expected_profit_3mo_usd": 22387.0,
+    "expected_vol_3mo_musd": 4.5,
+    "expected_peak_usd": 70000.0,
+    "note": "Запущен 2026-05-13 после sub-grid пачки #22. backtest gs=0.04 t=1.5 TD=0.85 mult=1.2 TP=off max=300 → +22 387$ / 3мес.",
+    "stopped_at": null
+  }
+]

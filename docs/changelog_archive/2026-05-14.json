@@ -1,0 +1,11 @@
+{
+  "commits": 0,
+  "pipeline_total": 9438,
+  "pipeline_emitted": 49,
+  "restarts": 37,
+  "p15_pnl": -75.44999999999999,
+  "p15_trades": 12,
+  "paper_pnl": 307.0799999999999,
+  "paper_trades": 7,
+  "gc_total": 41
+}

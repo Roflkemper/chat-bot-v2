@@ -1,0 +1,13 @@
+V5.9 — FAST MOVE INTELLIGENCE + LIVE ALERTS
+
+Что добавлено:
+- Усилен core/fast_move_interpreter.py: добавлены acceptance_state и tactical_plan
+- Сильнее различаются: EARLY_FAKE_*, WEAK_CONTINUATION_*, POST_LIQUIDATION_EXHAUSTION
+- Улучшен core/live_alert_policy.py: приоритет и cooldown теперь зависят от режима движения и acceptance
+- Улучшен storage/transition_alerts.py: alerts лучше различают weak/failed acceptance и early fake risk
+- Команда ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС теперь показывает отдельный блок РЕЖИМ ДВИЖЕНИЯ и ПРОЕКЦИЯ ДВИЖЕНИЯ
+
+Цель релиза:
+- лучше понимать: ложный вынос, continuation, выдох импульса
+- получать более полезные transition/live-alert сообщения
+- быстрее видеть tactical plan без лишнего шума

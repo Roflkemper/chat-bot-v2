@@ -1,0 +1,8 @@
+FINAL PRO BUILD
+
+Что усилено:
+- soft bias: если score почти равны, бот пытается поднять слабый directional bias из текстового сценария, локации и ginarea
+- BTC ANALYSIS теперь показывает BIAS блок и не держит верхний слой слепо в нейтрали, если есть слабый уклон
+- GINAREA ACTIONABLE RANGE PLAN синхронизирован с no-edge режимом: reduced watch / prepare вместо ложного разрешения на старт
+- BEST TRADE / EXECUTION ADVISOR больше не рисует мусорную зону вроде 33500-66999; теперь даёт диапазон по range или пишет нет валидной зоны
+- проект прогнан через compileall

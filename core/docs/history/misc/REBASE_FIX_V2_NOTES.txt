@@ -1,0 +1,4 @@
+Updated PUSH_UPDATE.bat
+- removed problematic command/quoting fragments
+- keeps only plain cmd-safe commands
+- handles stale rebase-merge and rebase-apply directories

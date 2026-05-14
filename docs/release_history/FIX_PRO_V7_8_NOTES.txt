@@ -1,0 +1,8 @@
+FIX PRO V7.8
+
+Что исправлено:
+- добавлен consistency-guard для confidence / forecast / edge
+- confidence в выводе теперь режется при NO_EDGE и отсутствии trade authorization
+- forecast confidence синхронизирован с реальным execution-контекстом
+- trade flow больше не показывает HOLD STRONG, когда контекст уже требует закрытия/сокращения риска
+- версия обновлена до V7.8

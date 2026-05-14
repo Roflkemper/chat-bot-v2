@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bot7.restart-check</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/USERNAME/bot7/.venv/bin/python</string>
+        <string>/Users/USERNAME/bot7/scripts/check_restart_frequency.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/USERNAME/bot7</string>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/USERNAME/bot7/logs/launchd_restart_check.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/USERNAME/bot7/logs/launchd_restart_check.err</string>
+</dict>
+</plist>

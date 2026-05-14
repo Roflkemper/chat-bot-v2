@@ -1,0 +1,446 @@
+{
+  "captured_at": "2026-05-03T08:56:21.712013+00:00",
+  "captured_at_local": "2026-05-03T10:56:21.712013",
+  "captured_by": "scripts/handoff_verify.py snapshot",
+  "git": {
+    "current_branch": "tz-diagnose-pre-cleanup",
+    "main_log_top10": [
+      "1816111 merge add-trading-skills: 5 new trading-research skills (18→23)",
+      "27c0f90 feat: add 5 trading-research skills (calibration drift / OOS / leak / multi-year / dataset provenance)",
+      "27cd87f merge tz-engine-fix-calibration-outstop: Out Stop Group in sim (research)",
+      "4bbe7bf merge tz-engine-fix-calibration-instop: instop Semant A + indicator gate in sim (research)",
+      "adba0ee merge tz-engine-fix-resolution: 1s OHLCV reconcile v3 (research)",
+      "35d5faf merge perf-h10-backtest-speedup: 870x speedup of backtest_h10",
+      "c841954 perf: H10 backtest 870x speedup (62h → 6 min for 2y window)",
+      "5c71ec6 research: TZ-ENGINE-FIX-CALIBRATION-OUTSTOP — Out Stop Group in sim",
+      "33366ec research: TZ-ENGINE-FIX-CALIBRATION-INSTOP — instop Semant A + indicator gate in sim",
+      "a37e30f research: TZ-ENGINE-FIX-RESOLUTION reconcile v3 — resolution sensitivity probe"
+    ],
+    "main_head": "18161115dc",
+    "branches": {
+      "add-trading-skills": {
+        "commit": "27c0f9072f",
+        "timestamp": "2026-05-02T17:03:06+02:00",
+        "subject": "feat: add 5 trading-research skills (calibration drift / OOS / leak / multi-year",
+        "merged_to_main": true
+      },
+      "feature/tracker-v2": {
+        "commit": "e1a3394891",
+        "timestamp": "2026-04-24T00:19:01+02:00",
+        "subject": "feat(TZ-014): ginarea_tracker v2 — 24/7 бот-трекер",
+        "merged_to_main": true
+      },
+      "feature/tz-015-portfolio-command": {
+        "commit": "7ba8ffd934",
+        "timestamp": "2026-04-28T10:13:02+02:00",
+        "subject": "feat(TZ-028): unified logging + supervisor daemon",
+        "merged_to_main": true
+      },
+      "feature/tz-042-fix-tests-fixtures": {
+        "commit": "1199729d8e",
+        "timestamp": "2026-04-28T23:22:45+02:00",
+        "subject": "TZ-042 fix tests.fixtures collection error",
+        "merged_to_main": false
+      },
+      "feature/tz-043-features-coverage-extension": {
+        "commit": "a70a79d215",
+        "timestamp": "2026-04-28T23:56:12+02:00",
+        "subject": "fix: restore full TZ-046 daemon.py (memory snapshot thread was lost after git st",
+        "merged_to_main": false
+      },
+      "live_edge_step_1": {
+        "commit": "51f0f48950",
+        "timestamp": "2026-05-02T23:15:52+02:00",
+        "subject": "live_edge Step 1: data_loader + event_parser + inventory",
+        "merged_to_main": false
+      },
+      "live_edge_step_2": {
+        "commit": "727ef821d7",
+        "timestamp": "2026-05-02T23:18:59+02:00",
+        "subject": "live_edge Step 2: performance_attribution",
+        "merged_to_main": false
+      },
+      "live_edge_step_3": {
+        "commit": "2adb21aeb7",
+        "timestamp": "2026-05-02T23:21:35+02:00",
+        "subject": "live_edge Step 3: intervention_impact",
+        "merged_to_main": false
+      },
+      "live_edge_step_4": {
+        "commit": "617de01760",
+        "timestamp": "2026-05-02T23:24:30+02:00",
+        "subject": "live_edge Step 4: edge_finder",
+        "merged_to_main": false
+      },
+      "live_edge_step_5": {
+        "commit": "9ea987dc26",
+        "timestamp": "2026-05-02T23:27:23+02:00",
+        "subject": "live_edge Step 5: real_cycle_death validation",
+        "merged_to_main": false
+      },
+      "live_edge_step_6": {
+        "commit": "438c1bf65f",
+        "timestamp": "2026-05-02T23:30:54+02:00",
+        "subject": "live_edge Step 6: operator_algo_comparison",
+        "merged_to_main": false
+      },
+      "live_edge_step_7": {
+        "commit": "41bd8027eb",
+        "timestamp": "2026-05-02T23:33:43+02:00",
+        "subject": "live_edge Step 7: predictive_features",
+        "merged_to_main": false
+      },
+      "live_edge_step_8": {
+        "commit": "2ce6275bfa",
+        "timestamp": "2026-05-02T23:35:49+02:00",
+        "subject": "live_edge Step 8: LIVE_EDGES_REPORT synthesis",
+        "merged_to_main": false
+      },
+      "live_edge_step_9": {
+        "commit": "818bccea1a",
+        "timestamp": "2026-05-02T23:36:46+02:00",
+        "subject": "live_edge Step 9: tests + validation summary",
+        "merged_to_main": false
+      },
+      "main": {
+        "commit": "18161115dc",
+        "timestamp": "2026-05-02T17:03:19+02:00",
+        "subject": "merge add-trading-skills: 5 new trading-research skills (18→23)",
+        "merged_to_main": true
+      },
+      "perf-h10-backtest-speedup": {
+        "commit": "c841954c7c",
+        "timestamp": "2026-05-02T16:30:28+02:00",
+        "subject": "perf: H10 backtest 870x speedup (62h → 6 min for 2y window)",
+        "merged_to_main": true
+      },
+      "tz-calibrate-k-per-regime": {
+        "commit": "148d0e196b",
+        "timestamp": "2026-05-02T21:11:39+02:00",
+        "subject": "calib: TZ-CALIBRATE-K-PER-REGIME — 4 buckets populated, all CV>30% (NOT producti",
+        "merged_to_main": false
+      },
+      "tz-calibrate-k-per-regime-v2": {
+        "commit": "1c31a8583d",
+        "timestamp": "2026-05-02T21:25:01+02:00",
+        "subject": "calib: TZ-CALIBRATE-K-PER-REGIME-v2 — 4/12 buckets populated, all invalid (NOT p",
+        "merged_to_main": false
+      },
+      "tz-close-gap-05-instop-semantics-a": {
+        "commit": "f7fd13adc5",
+        "timestamp": "2026-05-02T11:41:50+02:00",
+        "subject": "feat: ohlcv_ingest --resolution/--interval support (1s + 1m)",
+        "merged_to_main": true
+      },
+      "tz-countertrend-etap-1-scenarios": {
+        "commit": "61c45ec7a8",
+        "timestamp": "2026-05-02T21:49:43+02:00",
+        "subject": "research: TZ-COUNTERTREND-EXIT-RESEARCH ETAP 1 — scenario inventory + classifica",
+        "merged_to_main": false
+      },
+      "tz-countertrend-etap-2-interventions-expanded": {
+        "commit": "0ba83c0013",
+        "timestamp": "2026-05-02T22:06:00+02:00",
+        "subject": "research: TZ-COUNTERTREND ETAP 2 — intervention grid + playbook v1",
+        "merged_to_main": false
+      },
+      "tz-countertrend-etap-2b-expand-families": {
+        "commit": "d2cb24de2f",
+        "timestamp": "2026-05-02T22:15:08+02:00",
+        "subject": "research: TZ-COUNTERTREND ETAP 2b — families C/D/F + size spectrum",
+        "merged_to_main": false
+      },
+      "tz-countertrend-validate-vs-operator-past-actions": {
+        "commit": "1cfb58bf58",
+        "timestamp": "2026-05-02T23:05:09+02:00",
+        "subject": "research: TZ-COUNTERTREND-VALIDATE-VS-OPERATOR — playbook vs real actions",
+        "merged_to_main": false
+      },
+      "tz-debt-04-a-import-surface": {
+        "commit": "18161115dc",
+        "timestamp": "2026-05-02T17:03:19+02:00",
+        "subject": "merge add-trading-skills: 5 new trading-research skills (18→23)",
+        "merged_to_main": true
+      },
+      "tz-deploy-setup-detector-strength-9-live": {
+        "commit": "0c5f9e57c5",
+        "timestamp": "2026-05-03T01:18:59+02:00",
+        "subject": "feat: TZ-DEPLOY-SETUP-DETECTOR-STRENGTH-9-LIVE",
+        "merged_to_main": false
+      },
+      "tz-diagnose-long-sign-flip": {
+        "commit": "982abb9c0a",
+        "timestamp": "2026-05-02T20:23:52+02:00",
+        "subject": "audit: TZ-DIAGNOSE-LONG-SIGN-FLIP PART 1.5 — SHORT validation, LONG-specific con",
+        "merged_to_main": false
+      },
+      "tz-diagnose-pre-cleanup": {
+        "commit": "e49492b876",
+        "timestamp": "2026-05-03T10:51:37+02:00",
+        "subject": "feat(handoff): machine-verifiable snapshot + Step 0 mandatory verify",
+        "merged_to_main": false
+      },
+      "tz-diagnose-short-vs-long-accumulation-pattern": {
+        "commit": "9a5b103bb1",
+        "timestamp": "2026-05-02T20:29:56+02:00",
+        "subject": "audit: TZ-DIAGNOSE-SHORT-VS-LONG-ACCUMULATION-PATTERN — 6/6 SHORT match GA, LONG",
+        "merged_to_main": false
+      },
+      "tz-engine-fix-out-stop-group-cycle-timing": {
+        "commit": "8a66cf1477",
+        "timestamp": "2026-05-02T20:02:37+02:00",
+        "subject": "fix: TZ-ENGINE-FIX-OUT-STOP-GROUP-CYCLE-TIMING — INSUFFICIENT, gap 16.7x -> 15.6",
+        "merged_to_main": false
+      },
+      "tz-exit-strategies-full-exposure-telegram": {
+        "commit": "884ec3c6e8",
+        "timestamp": "2026-05-03T02:04:59+02:00",
+        "subject": "feat(TZ-EXIT-STRATEGIES): exit_advisor module — real-time Telegram advisory for ",
+        "merged_to_main": false
+      },
+      "tz-formalize-missing-skills": {
+        "commit": "684b9bdcb1",
+        "timestamp": "2026-05-02T11:47:37+02:00",
+        "subject": "feat: TZ-FORMALIZE-MISSING-SKILLS — formalize trader_first_filter + phase_aware_",
+        "merged_to_main": true
+      },
+      "tz-ginarea-vs-sim-reconcile": {
+        "commit": "e67c227976",
+        "timestamp": "2026-05-02T18:31:17+02:00",
+        "subject": "audit: TZ-GINAREA-VS-OUR-BACKTEST-RECONCILE — fee model identified, K_realized w",
+        "merged_to_main": false
+      },
+      "tz-h10-kill-and-audit": {
+        "commit": "3dc0fb2ce7",
+        "timestamp": "2026-05-02T18:05:57+02:00",
+        "subject": "audit: TZ-H10-KILL-AND-AUDIT — H10 REJECTED, engine clean (6/6 PASS)",
+        "merged_to_main": false
+      },
+      "tz-h10-verify-costs-model": {
+        "commit": "c9c69a87dc",
+        "timestamp": "2026-05-02T18:22:42+02:00",
+        "subject": "chore: gitignore large data dirs to prevent .git bloat",
+        "merged_to_main": false
+      },
+      "tz-handoff-augmentation-2026-05-03": {
+        "commit": "392efc63d9",
+        "timestamp": "2026-05-03T10:20:32+02:00",
+        "subject": "skills: augment session_handoff_protocol with parts G-J + connect inventory_firs",
+        "merged_to_main": false
+      },
+      "tz-implement-ga-trail-sell": {
+        "commit": "ef97ccf5dc",
+        "timestamp": "2026-05-02T20:53:05+02:00",
+        "subject": "stop: TZ-IMPLEMENT-GA-TRAIL-SELL — semantics undocumented, operator clarificatio",
+        "merged_to_main": false
+      },
+      "tz-ingest-1y-1s-ohlcv": {
+        "commit": "2891799f83",
+        "timestamp": "2026-05-02T16:13:25+02:00",
+        "subject": "research: TZ-INGEST-1Y-1S-OHLCV — Code-side smoke + validator (operator handoff)",
+        "merged_to_main": false
+      },
+      "tz-inventory-what-exists": {
+        "commit": "3c96fb790c",
+        "timestamp": "2026-05-03T01:42:34+02:00",
+        "subject": "docs: TZ-INVENTORY-WHAT-EXISTS — exit strategies + market reading inventory",
+        "merged_to_main": false
+      },
+      "tz-investigate-long-sign-flip-universal": {
+        "commit": "e5cf6335c5",
+        "timestamp": "2026-05-02T21:00:14+02:00",
+        "subject": "audit: TZ-INVESTIGATE-LONG-SIGN-FLIP-UNIVERSAL — H_v1-H_v4 rejected, H_v5 confir",
+        "merged_to_main": false
+      },
+      "tz-market-intelligence-mtf-patterns": {
+        "commit": "4fac9765d2",
+        "timestamp": "2026-05-03T02:12:17+02:00",
+        "subject": "feat(TZ-MTF): market_intelligence module — ICT patterns + MTF confluence + live ",
+        "merged_to_main": false
+      },
+      "tz-operator-gap-1-booster-activation-patterns": {
+        "commit": "9a7adc8d7d",
+        "timestamp": "2026-05-02T23:10:30+02:00",
+        "subject": "research: TZ-OPERATOR-GAP-1 — Booster activation pattern analysis",
+        "merged_to_main": false
+      },
+      "tz-playbook-add-p13": {
+        "commit": "18161115dc",
+        "timestamp": "2026-05-02T17:03:19+02:00",
+        "subject": "merge add-trading-skills: 5 new trading-research skills (18→23)",
+        "merged_to_main": true
+      },
+      "tz-session-handoff-2026-05-03": {
+        "commit": "61757a6bc4",
+        "timestamp": "2026-05-03T09:50:47+02:00",
+        "subject": "docs(TZ-SESSION-HANDOFF-2026-05-03): canonical state + handoff for next session",
+        "merged_to_main": false
+      },
+      "tz-state-current-update-02-05": {
+        "commit": "e1abc7a6ec",
+        "timestamp": "2026-05-02T19:41:41+02:00",
+        "subject": "docs: TZ-STATE-CURRENT-UPDATE-02-05 — sync state after calibration deep-dive",
+        "merged_to_main": false
+      },
+      "tz-validate-ci-precommit": {
+        "commit": "1605426034",
+        "timestamp": "2026-05-02T12:08:49+02:00",
+        "subject": "feat: TZ-VALIDATE-TZ-CI-PRECOMMIT — git pre-commit hook for TZ validation",
+        "merged_to_main": true
+      },
+      "tz-validate-sim-indicator-on-3m": {
+        "commit": "65b639fe74",
+        "timestamp": "2026-05-02T20:47:57+02:00",
+        "subject": "audit: TZ-VALIDATE-SIM-INDICATOR-ON-3M — LONG persists 1/5, SHORT regression 3/5",
+        "merged_to_main": false
+      },
+      "tz-validate-skills-applied-section": {
+        "commit": "042b478605",
+        "timestamp": "2026-05-02T11:58:13+02:00",
+        "subject": "feat: ohlcv_ingest --resolution/--interval support (1s + 1m)",
+        "merged_to_main": true
+      },
+      "tz-volume-mismatch-diagnostic": {
+        "commit": "c517abf282",
+        "timestamp": "2026-05-02T19:19:23+02:00",
+        "subject": "audit: TZ-VOLUME-MISMATCH-DIAGNOSTIC — H4 out_stop_group explains 71.8% of 16.7x",
+        "merged_to_main": false
+      },
+      "whatif_v3_step_1": {
+        "commit": "3b6855fe42",
+        "timestamp": "2026-05-02T22:55:10+02:00",
+        "subject": "whatif_v3 Step 1: data preparation + feature enrichment",
+        "merged_to_main": false
+      }
+    }
+  },
+  "untracked": {
+    "total": 7511,
+    "by_top_level": {
+      "_recovery": 3765,
+      "market_live": 3575,
+      "services": 39,
+      "market_live_profiler": 21,
+      "data": 17,
+      "features_out": 12,
+      "src": 12,
+      "tests": 12,
+      "backtests": 8,
+      "state": 8,
+      "docs": 7,
+      "run": 6,
+      "\"_recovery": 4,
+      "market_live_dev": 4,
+      "tools": 4,
+      "config": 3,
+      ".claude": 2,
+      "_baseline_errors.txt": 1,
+      "_baseline_errors2.txt": 1,
+      "_collect_full.txt": 1,
+      "_collect_now.txt": 1,
+      "_collect_tz044_clean.txt": 1,
+      "_tz044_errors.txt": 1,
+      "_tz044_errors_clean.txt": 1,
+      "core": 1,
+      "features": 1,
+      "ginarea_tracker": 1,
+      "market_collector": 1,
+      "scripts": 1
+    },
+    "critical_count": 60,
+    "critical_files": [
+      "services/adaptive_grid_manager.py",
+      "services/boundary_expand_manager.py",
+      "services/calibration/__init__.py",
+      "services/calibration/models.py",
+      "services/calibration/runner.py",
+      "services/coordinated_grid/__init__.py",
+      "services/coordinated_grid/grid_search.py",
+      "services/coordinated_grid/models.py",
+      "services/coordinated_grid/runner.py",
+      "services/coordinated_grid/simulator.py",
+      "services/cost_model/__init__.py",
+      "services/cost_model/fees.py",
+      "services/cost_model/funding.py",
+      "services/cost_model/integration.py",
+      "services/cost_model/opportunity_report.py",
+      "services/cost_model/slippage.py",
+      "services/counter_long_manager.py",
+      "services/dashboard/http_server.py",
+      "services/defensive_actions_research/__init__.py",
+      "services/defensive_actions_research/runner.py",
+      "services/defensive_actions_research/v2_real.py",
+      "services/defensive_actions_research/v3_aggressive_widen.py",
+      "services/defensive_actions_research/v3_correct.py",
+      "services/defensive_actions_research/v3_cross_check.py",
+      "services/defensive_actions_research/v4_disable_in.py",
+      "services/exhaustion_management_research/__init__.py",
+      "services/exhaustion_management_research/runner.py",
+      "services/operator_journal/__init__.py",
+      "services/operator_journal/runner.py",
+      "services/operator_journal/snapshot_diff.py",
+      "services/regime_red_green/__init__.py",
+      "services/regime_red_green/features.py",
+      "services/regime_red_green/resampler.py",
+      "services/regime_red_green/rules.py",
+      "services/regime_red_green/runner.py",
+      "services/regime_red_green/validate.py",
+      "src/__init__.py",
+      "src/advisor/__init__.py",
+      "src/advisor/v2/__init__.py",
+      "src/advisor/v2/cascade.py",
+      "src/advisor/v2/dedup.py",
+      "src/advisor/v2/feature_writer.py",
+      "src/advisor/v2/loader.py",
+      "src/advisor/v2/portfolio.py",
+      "src/advisor/v2/size_mode.py",
+      "src/advisor/v2/telemetry.py",
+      "src/features/__init__.py",
+      "src/whatif/tests/test_cost_integration.py",
+      "tests/services/calibration/__init__.py",
+      "tests/services/calibration/test_calibration_sim.py",
+      "tests/services/coordinated_grid/__init__.py",
+      "tests/services/coordinated_grid/test_coordinated_grid.py",
+      "tests/services/cost_model/test_cost_model.py",
+      "tests/services/dashboard/test_http_server.py",
+      "tests/services/defensive_actions_research/test_v3_correct.py",
+      "tests/services/exhaustion_management_research/test_runner.py",
+      "tests/services/operator_journal/test_snapshot_diff.py",
+      "tests/services/regime_red_green/__init__.py",
+      "tests/services/regime_red_green/test_regime_features.py",
+      "tests/supervisor/test_supervisor_pid_fallback.py"
+    ]
+  },
+  "processes": {
+    "app_runner": false,
+    "supervisor": false,
+    "tracker": false,
+    "collectors": false,
+    "watchdog": false,
+    "market_collector": false
+  },
+  "loops": {
+    "exit_advisor_loop": "2026-05-03 10:39:00",
+    "market_intelligence_loop": "2026-05-03 10:39:02",
+    "setup_detector_loop": "2026-05-03 10:38:55",
+    "log_path_exists": true
+  },
+  "tests": {
+    "test_file_count": 175
+  },
+  "canonical_docs": {
+    "docs/MASTER.md": "5bcbe5b51bddfbaa",
+    "docs/PLAYBOOK.md": "c2ee370a81e00650",
+    "docs/SESSION_LOG.md": "b3eff8c617ed20be",
+    "docs/CONTEXT/STATE_CURRENT.md": "93e9a07f3bc2d816",
+    "docs/STATE/QUEUE.md": "b83f765426ec88e5"
+  },
+  "claims": {
+    "p15_in_main": false,
+    "p13_in_main": true,
+    "p14_in_main": true,
+    "exit_advisor_in_main": false,
+    "market_intelligence_in_main": false,
+    "setup_detector_combo_ev_in_main": false
+  }
+}

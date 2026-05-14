@@ -1,0 +1,302 @@
+{
+  "ts": "2026-04-29T192514Z",
+  "data_sources": [
+    {
+      "type": "liquidations",
+      "exchange": "bybit",
+      "path": "market_live/liquidations/bybit/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "qty", "price", "value_usd", "source_rate_limited"],
+      "first_ts": "2026-04-28T23:01",
+      "last_ts": "2026-04-29T18:50",
+      "rows": 418,
+      "valid_files": 5,
+      "corrupt_open_files": 5,
+      "freshness_minutes": 30,
+      "active_collector": true,
+      "status": "stale_for_backtest",
+      "notes": "Active; schema clean; 4-day coverage insufficient for H10 2-year window"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "okx",
+      "symbols": ["BTCUSDT", "ETHUSDT", "XRPUSDT"],
+      "path": "market_live/liquidations/okx/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "qty", "price", "value_usd", "source_rate_limited"],
+      "first_ts": "2026-04-28T22:30",
+      "last_ts": "2026-04-29T19:21",
+      "rows": 308,
+      "valid_files": 15,
+      "corrupt_open_files": 14,
+      "freshness_minutes": 28,
+      "active_collector": true,
+      "status": "stale_for_backtest",
+      "notes": "Active; 3 symbols; schema clean"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "bitmex",
+      "symbols": ["BTCUSDT"],
+      "path": "market_live/liquidations/bitmex/BTCUSDT/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "qty", "price", "value_usd", "source_rate_limited"],
+      "first_ts": "2026-04-28T22:50",
+      "last_ts": "2026-04-29T19:05",
+      "rows": 9,
+      "valid_files": 4,
+      "corrupt_open_files": 2,
+      "freshness_minutes": 53,
+      "active_collector": true,
+      "status": "stale_for_backtest",
+      "notes": "Active but very low frequency (BitMEX XBTUSD mapped to BTCUSDT)"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "binance",
+      "path": "market_live/liquidations/binance/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "qty", "price", "value_usd", "source_rate_limited"],
+      "first_ts": null,
+      "last_ts": null,
+      "rows": 0,
+      "valid_files": 0,
+      "freshness_minutes": null,
+      "active_collector": false,
+      "status": "needs_fix",
+      "notes": "Collector code exists; output directory missing; last data in _recovery ~1117 min ago; source_rate_limited=True"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "hyperliquid",
+      "path": "market_live/liquidations/hyperliquid/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "qty", "price", "value_usd", "source_rate_limited"],
+      "first_ts": null,
+      "last_ts": null,
+      "rows": 0,
+      "valid_files": 0,
+      "freshness_minutes": null,
+      "active_collector": false,
+      "status": "needs_ingestion",
+      "notes": "Collector code exists (trades stream + liquidation field filter); no output; signal may be too sparse"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "binance",
+      "path": "_recovery/restored/market_live/liquidations/binance/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "qty", "price", "value_usd", "source_rate_limited"],
+      "first_ts": "2026-04-26",
+      "last_ts": "2026-04-27",
+      "rows": 1124,
+      "valid_files": 8,
+      "freshness_minutes": 1117,
+      "active_collector": false,
+      "status": "stale_for_backtest",
+      "notes": "Recovery data from TZ-049; not actively refreshed"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "bybit",
+      "path": "_recovery/restored/market_live/liquidations/bybit/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "qty", "price", "value_usd", "source_rate_limited"],
+      "first_ts": "2026-04-26",
+      "last_ts": "2026-04-28",
+      "rows": 3852,
+      "valid_files": 11,
+      "freshness_minutes": 1116,
+      "active_collector": false,
+      "status": "stale_for_backtest",
+      "notes": "Recovery data"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "okx",
+      "path": "_recovery/restored/market_live/liquidations/okx/",
+      "format": "parquet",
+      "first_ts": "2026-04-26",
+      "last_ts": "2026-04-28",
+      "rows": 1859,
+      "valid_files": 24,
+      "freshness_minutes": 1116,
+      "active_collector": false,
+      "status": "stale_for_backtest",
+      "notes": "Recovery data"
+    },
+    {
+      "type": "liquidations",
+      "exchange": "bitmex",
+      "path": "_recovery/restored/market_live/liquidations/bitmex/",
+      "format": "parquet",
+      "first_ts": "2026-04-26",
+      "last_ts": "2026-04-28",
+      "rows": 33,
+      "valid_files": 6,
+      "freshness_minutes": 1116,
+      "active_collector": false,
+      "status": "stale_for_backtest",
+      "notes": "Recovery data"
+    },
+    {
+      "type": "funding_rate",
+      "exchange": "binance",
+      "symbols": ["BTCUSDT", "ETHUSDT", "XRPUSDT"],
+      "path": "_recovery/restored/scripts/frozen/{SYMBOL}/_combined_fundingRate.parquet",
+      "format": "parquet",
+      "schema": ["calc_time", "funding_interval_hours", "last_funding_rate"],
+      "first_ts": "2025-03-01T00:00:00Z",
+      "last_ts": "2026-03-31T16:00:00Z",
+      "rows": 1188,
+      "freshness_minutes": 1117,
+      "active_collector": false,
+      "status": "stale",
+      "notes": "8h interval; missing April 2026 (~90 records); no live collection; pre-2025-03 missing"
+    },
+    {
+      "type": "orderbook_l2",
+      "exchange": "binance",
+      "symbols": ["BTCUSDT", "ETHUSDT", "XRPUSDT"],
+      "path": "market_live/orderbook/binance/",
+      "format": "parquet",
+      "schema": ["ts_ms", "exchange", "symbol", "side", "price", "qty", "level"],
+      "first_ts": null,
+      "last_ts": "2026-04-26",
+      "rows_estimate": "40M+",
+      "files": 205,
+      "freshness_minutes": 4166,
+      "active_collector": false,
+      "status": "stale",
+      "notes": "ob-binance task in collector likely failing; last write 69h ago"
+    },
+    {
+      "type": "trades",
+      "exchange": "binance",
+      "symbols": ["BTCUSDT", "ETHUSDT", "XRPUSDT"],
+      "path": "_recovery/restored/market_live/trades/binance/",
+      "format": "parquet",
+      "files": 8,
+      "freshness_minutes": 1116,
+      "active_collector": false,
+      "status": "stale",
+      "notes": "Recovery data only; no active trades collection"
+    },
+    {
+      "type": "open_interest",
+      "exchange": null,
+      "path": null,
+      "format": null,
+      "rows": 0,
+      "active_collector": false,
+      "status": "needs_ingestion",
+      "notes": "Code references exist (derivatives_context.py defaults to 0.0); no data files anywhere"
+    },
+    {
+      "type": "long_short_ratio",
+      "exchange": null,
+      "path": null,
+      "format": null,
+      "rows": 0,
+      "active_collector": false,
+      "status": "needs_ingestion",
+      "notes": "Code references exist (pipeline.py:73-74, context_consensus_filter.py defaults to 1.0); no data files"
+    },
+    {
+      "type": "whale_alerts",
+      "exchange": null,
+      "path": null,
+      "rows": 0,
+      "active_collector": false,
+      "status": "needs_ingestion",
+      "notes": "No code, no data"
+    }
+  ],
+  "collectors": [
+    {
+      "path": "collectors/main.py",
+      "type": "new_multi_exchange",
+      "exchanges": ["binance", "bybit", "hyperliquid", "bitmex", "okx"],
+      "data_types": ["liquidations", "orderbook_l2", "trades"],
+      "symbols": ["BTCUSDT", "ETHUSDT", "XRPUSDT"],
+      "running": true,
+      "pid_stale": true,
+      "pid_files": ["run/collectors.pid (3968 dead)", "run/collectors_lock.pid (18540 dead)"],
+      "evidence": "collectors.log heartbeat at 2026-04-29T19:23:41Z; bybit/okx files written <30 min ago",
+      "tasks_active": ["liq-bybit", "liq-okx", "liq-bitmex"],
+      "tasks_failing": ["liq-binance", "liq-hyperliquid", "ob-binance-*", "trades-binance-*"],
+      "last_run": "2026-04-29T19:23:41Z",
+      "notes": "TZ-048 rotation + TZ-049 recovery. PID files stale but process running."
+    },
+    {
+      "path": "market_collector/collector.py",
+      "type": "legacy",
+      "exchanges": ["binance", "bybit"],
+      "data_types": ["liquidations_csv", "ohlcv"],
+      "symbols": ["BTCUSDT"],
+      "running": false,
+      "output": "market_live/liquidations.csv",
+      "last_run": "unknown (output file absent)",
+      "notes": "Legacy collector; superseded by collectors/main.py"
+    }
+  ],
+  "recommendations": [
+    {
+      "data_type": "liquidations",
+      "verdict": "stale_for_backtest",
+      "reason": "4 days data (Apr 26-29); H10 window needs 2 years (2024-04-28 to 2026-04-24)",
+      "action": "TZ-LIQ-INGESTION: historical ingest via exchange REST API or Coinglass",
+      "blocker_for": "counterfactual_analysis"
+    },
+    {
+      "data_type": "liquidations_binance",
+      "verdict": "needs_fix",
+      "reason": "liq-binance task silently failing; missing output directory",
+      "action": "TZ-LIQ-FIX-BINANCE: debug binance collector task; create output dir",
+      "blocker_for": "live_collection_completeness"
+    },
+    {
+      "data_type": "liquidations_hyperliquid",
+      "verdict": "needs_investigation",
+      "reason": "Collector uses trades stream + liquidation field detection; sparse signal expected",
+      "action": "TZ-LIQ-FIX-HL: evaluate HL viability; may need REST API",
+      "blocker_for": "live_collection_completeness"
+    },
+    {
+      "data_type": "funding_rate",
+      "verdict": "stale",
+      "reason": "Static frozen data ends 2026-03-31; no live collection; missing Apr 2026 + all pre-2025-03",
+      "action": "TZ-FUNDING-INGEST: REST fetch April 2026 gap + add live WS task to collectors/main.py",
+      "blocker_for": "regime_modifiers"
+    },
+    {
+      "data_type": "open_interest",
+      "verdict": "needs_ingestion",
+      "reason": "No data files anywhere; code always defaults to 0.0",
+      "action": "TZ-OI-INGEST: Binance /openInterest REST endpoint + WS stream",
+      "blocker_for": "regime_modifiers"
+    },
+    {
+      "data_type": "long_short_ratio",
+      "verdict": "needs_ingestion",
+      "reason": "No data files; code defaults to 1.0",
+      "action": "Include in TZ-OI-INGEST or separate TZ-LS-INGEST",
+      "blocker_for": "regime_modifiers"
+    },
+    {
+      "data_type": "orderbook_l2",
+      "verdict": "stale",
+      "reason": "Last write 69h ago; ob-binance tasks failing in current collector",
+      "action": "Investigate ob-binance task failure; restart or fix",
+      "blocker_for": "order_flow_analysis"
+    }
+  ],
+  "live_data_gap_vs_backtest_window": {
+    "backtest_start": "2024-04-28",
+    "backtest_end": "2026-04-24",
+    "live_data_start": "2026-04-26",
+    "gap_days": 729,
+    "gap_pct": 99.7,
+    "conclusion": "Live collection alone insufficient; historical ingestion required for all data types"
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "data_window": {
+    "start": "2025-05-01 00:00:00+00:00",
+    "end": "2026-05-01 00:00:00+00:00",
+    "n_samples": 8761
+  },
+  "by_confluence_score": {
+    "-5": {
+      "n": 3,
+      "mean_move_pct": -1.165,
+      "median_move_pct": -1.14,
+      "pct_up": 33.3,
+      "pct_strong_up": 33.3,
+      "pct_strong_down": 66.7
+    },
+    "-4": {
+      "n": 51,
+      "mean_move_pct": -0.135,
+      "median_move_pct": -0.083,
+      "pct_up": 43.1,
+      "pct_strong_up": 41.2,
+      "pct_strong_down": 41.2
+    },
+    "-3": {
+      "n": 547,
+      "mean_move_pct": -0.01,
+      "median_move_pct": 0.006,
+      "pct_up": 50.6,
+      "pct_strong_up": 32.9,
+      "pct_strong_down": 32.7
+    },
+    "-2": {
+      "n": 2278,
+      "mean_move_pct": -0.052,
+      "median_move_pct": 0.001,
+      "pct_up": 50.0,
+      "pct_strong_up": 30.4,
+      "pct_strong_down": 32.0
+    },
+    "-1": {
+      "n": 2447,
+      "mean_move_pct": 0.024,
+      "median_move_pct": 0.031,
+      "pct_up": 51.5,
+      "pct_strong_up": 31.6,
+      "pct_strong_down": 27.5
+    },
+    "0": {
+      "n": 2401,
+      "mean_move_pct": 0.0,
+      "median_move_pct": -0.017,
+      "pct_up": 48.1,
+      "pct_strong_up": 28.4,
+      "pct_strong_down": 28.1
+    },
+    "1": {
+      "n": 753,
+      "mean_move_pct": 0.046,
+      "median_move_pct": 0.006,
+      "pct_up": 50.3,
+      "pct_strong_up": 29.2,
+      "pct_strong_down": 23.8
+    },
+    "2": {
+      "n": 236,
+      "mean_move_pct": -0.025,
+      "median_move_pct": -0.029,
+      "pct_up": 48.7,
+      "pct_strong_up": 21.6,
+      "pct_strong_down": 23.7
+    },
+    "3": {
+      "n": 42,
+      "mean_move_pct": 0.042,
+      "median_move_pct": -0.08,
+      "pct_up": 38.1,
+      "pct_strong_up": 23.8,
+      "pct_strong_down": 23.8
+    },
+    "4": {
+      "n": 3,
+      "mean_move_pct": 0.756,
+      "median_move_pct": 0.646,
+      "pct_up": 100.0,
+      "pct_strong_up": 66.7,
+      "pct_strong_down": 0.0
+    }
+  },
+  "strong_confluence": {
+    "long_n": 45,
+    "long_mean_move_pct": 0.09,
+    "long_pct_up": 42.2,
+    "long_pct_strong_up": 26.7,
+    "short_n": 601,
+    "short_mean_move_pct": -0.026,
+    "short_pct_down": 49.9,
+    "short_pct_strong_down": 33.6
+  }
+}

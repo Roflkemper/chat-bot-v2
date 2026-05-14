@@ -1,0 +1,17 @@
+V16.9.0 — GRID ACTION AUTHORITY
+
+Что изменено:
+- единый runtime authority для long-grid / short-grid
+- FINAL DECISION / SUMMARY / FORECAST / TRADE MANAGER / GINAREA / BOTS STATUS синхронизированы по одному runtime
+- BTC ANALYSIS и ⚡ ЧТО ДЕЛАТЬ теперь тоже показывают authority + runtime сеток
+- mid range => long PAUSE | short PAUSE
+- upper range => long REDUCE | short RUN
+- lower range => long RUN | short REDUCE
+- range break risk => PAUSE / WAIT RECLAIM либо REDUCE до reclaim
+- accepted break вверх/вниз => EXIT по слабой стороне grid
+- reclaim / divergence / fake move участвуют в authority и runtime
+
+Принцип:
+- ничего нового вне decision -> manager -> grid
+- без новых индикаторов
+- без возврата к аналитическому языку как основному действию

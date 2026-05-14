@@ -1,0 +1,7 @@
+V13.4 DECISION FORCE
+- V13 shadow core: stronger history impact on edge
+- fallback fake-move heuristic near range edges when detector is silent
+- fallback liquidity proxy from range position when live liquidation state is missing
+- ginarea can move to READY_L1 earlier, including neutral upper/lower range cases
+- action text for PROBE now explicitly allows small probe at working zone
+- range bot statuses reflect READY_L1 for neutral upper/lower range positioning

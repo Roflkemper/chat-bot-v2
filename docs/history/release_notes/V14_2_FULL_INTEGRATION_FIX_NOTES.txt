@@ -1,0 +1,17 @@
+V14.2 FULL INTEGRATION FIX
+
+Что сделано:
+- синхронизированы основные handler-команды с новым V14 output:
+  SUMMARY / FORECAST / FINAL DECISION / GINAREA / ACTION NOW / BEST TRADE / BOTS STATUS / TRADE MANAGER
+- основные команды теперь используют единый V14 formatter вместо старых разрозненных V13/V12 блоков
+- окончательно отключён shadow append из core/ux_mode.py
+- добавлен alias/нормализация для команды "⚡ ЧТО ДЕЛАТЬ"
+- основной action-first вывод теперь строится из action_output + impulse_character + fake_move + liquidity_decision
+- summary/forecast/decision/ginarea приведены к одному короткому V14 формату
+
+Что проверено:
+- py_compile для изменённых модулей проходит
+
+Что ещё не прогнано здесь:
+- полный live Telegram runtime на твоём окружении
+- живые websocket-потоки Binance/Bybit в этой среде

@@ -1,0 +1,35 @@
+FIX PRO V5.6
+
+Что сделано:
+1. Исправлен краш команды «ФИНАЛЬНОЕ РЕШЕНИЕ».
+   Причина: renderer ожидал dict и падал на AnalysisSnapshot.
+   Фикс: безопасная работа через to_dict().
+
+2. Усилен FAST MOVE / LIVE-движение.
+   Теперь fast_move_context учитывает real liquidation feed:
+   - recent_liquidation_events
+   - recent_liquidation_notional_usd
+   - price_oi_regime
+   - magnet_side / liquidity_state из liquidation_context
+
+3. Усилена логика боевых сценариев:
+   - CONTINUATION_UP при реальном потоке ликвидаций + UP_OI_UP
+   - CONTINUATION_DOWN при реальном потоке ликвидаций + DOWN_OI_UP
+   - LIKELY_FAKE_UP при выносе вверх без подтверждения OI
+   - LIKELY_FAKE_DOWN при проливе вниз без подтверждения OI
+
+4. В «⚡ ЧТО ДЕЛАТЬ СЕЙЧАС» добавлены live-поля:
+   - events 15m
+   - notional 15m
+   - price/OI режим
+
+5. Стабилизация exchange liquidity engine:
+   - websocket timeout/reconnect ошибки больше не спамят full traceback каждую минуту
+   - лог теперь throttled warning + состояние продолжает обновляться
+
+Измененные файлы:
+- renderers/telegram_renderers.py
+- core/fast_move_interpreter.py
+- services/analysis_service.py
+- handlers/command_actions.py
+- core/exchange_liquidity_engine.py

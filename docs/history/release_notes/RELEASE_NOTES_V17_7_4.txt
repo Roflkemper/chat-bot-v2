@@ -1,0 +1,6 @@
+V17.7.4 - PATTERN SUPPRESSION + NON-MATERIAL FLIP FILTER
+
+- suppress pattern directional rendering in PAUSE + MID RANGE
+- convert unstable pattern flips to context-only output
+- keep master decision and execution blocks unchanged
+- no new data sources, no ML, no hedge layer in this release

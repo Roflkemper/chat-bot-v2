@@ -1,0 +1,504 @@
+{
+  "generated_at": "2026-05-06T11:16:40.624546+00:00",
+  "data_sources": {
+    "full_features_1y": "data\\forecast_features\\full_features_1y.parquet",
+    "regime_features_1h": "data\\regime\\BTCUSDT_features_1h.parquet",
+    "market_live_1m": "market_live\\market_1m.csv",
+    "analog_json": "docs\\ANALYSIS\\_uptrend_analog_search.json"
+  },
+  "availability": {
+    "price": true,
+    "volume": true,
+    "funding": true,
+    "open_interest": true,
+    "liquidations_full_year": false,
+    "live_orderbook_recent_days": true,
+    "high_low_full_year": true
+  },
+  "analog_count": 406,
+  "factor_tables": {
+    "volume_trend": [
+      {
+        "group": "стабильный",
+        "n": 217,
+        "down_to_anchor_pct": 23.0,
+        "up_extension_pct": 17.5,
+        "pullback_continuation_pct": 39.2,
+        "sideways_pct": 20.3
+      },
+      {
+        "group": "растёт",
+        "n": 121,
+        "down_to_anchor_pct": 5.8,
+        "up_extension_pct": 44.6,
+        "pullback_continuation_pct": 25.6,
+        "sideways_pct": 24.0
+      },
+      {
+        "group": "падает",
+        "n": 68,
+        "down_to_anchor_pct": 1.5,
+        "up_extension_pct": 13.2,
+        "pullback_continuation_pct": 72.1,
+        "sideways_pct": 13.2
+      }
+    ],
+    "funding_trend": [
+      {
+        "group": "funding_positive",
+        "n": 229,
+        "down_to_anchor_pct": 21.4,
+        "up_extension_pct": 18.3,
+        "pullback_continuation_pct": 29.7,
+        "sideways_pct": 30.6
+      },
+      {
+        "group": "funding_near_zero",
+        "n": 135,
+        "down_to_anchor_pct": 6.7,
+        "up_extension_pct": 25.2,
+        "pullback_continuation_pct": 59.3,
+        "sideways_pct": 8.9
+      },
+      {
+        "group": "funding_negative",
+        "n": 42,
+        "down_to_anchor_pct": 0.0,
+        "up_extension_pct": 59.5,
+        "pullback_continuation_pct": 40.5,
+        "sideways_pct": 0.0
+      }
+    ],
+    "volatility_trend": [
+      {
+        "group": "сжимается",
+        "n": 159,
+        "down_to_anchor_pct": 8.8,
+        "up_extension_pct": 17.6,
+        "pullback_continuation_pct": 46.5,
+        "sideways_pct": 27.0
+      },
+      {
+        "group": "расширяется",
+        "n": 125,
+        "down_to_anchor_pct": 3.2,
+        "up_extension_pct": 47.2,
+        "pullback_continuation_pct": 25.6,
+        "sideways_pct": 24.0
+      },
+      {
+        "group": "стабильная",
+        "n": 122,
+        "down_to_anchor_pct": 32.8,
+        "up_extension_pct": 11.5,
+        "pullback_continuation_pct": 48.4,
+        "sideways_pct": 7.4
+      }
+    ],
+    "volume_bucket": [
+      {
+        "group": "volume_mid",
+        "n": 252,
+        "down_to_anchor_pct": 5.2,
+        "up_extension_pct": 31.7,
+        "pullback_continuation_pct": 48.4,
+        "sideways_pct": 14.7
+      },
+      {
+        "group": "volume<0.8x",
+        "n": 82,
+        "down_to_anchor_pct": 0.0,
+        "up_extension_pct": 18.3,
+        "pullback_continuation_pct": 39.0,
+        "sideways_pct": 42.7
+      },
+      {
+        "group": "volume>1.2x",
+        "n": 72,
+        "down_to_anchor_pct": 62.5,
+        "up_extension_pct": 8.3,
+        "pullback_continuation_pct": 15.3,
+        "sideways_pct": 13.9
+      }
+    ],
+    "impulse_bucket": [
+      {
+        "group": "impulse_weak",
+        "n": 288,
+        "down_to_anchor_pct": 13.5,
+        "up_extension_pct": 17.7,
+        "pullback_continuation_pct": 43.1,
+        "sideways_pct": 25.7
+      },
+      {
+        "group": "impulse_mid",
+        "n": 79,
+        "down_to_anchor_pct": 17.7,
+        "up_extension_pct": 49.4,
+        "pullback_continuation_pct": 26.6,
+        "sideways_pct": 6.3
+      },
+      {
+        "group": "impulse_strong",
+        "n": 39,
+        "down_to_anchor_pct": 12.8,
+        "up_extension_pct": 28.2,
+        "pullback_continuation_pct": 51.3,
+        "sideways_pct": 7.7
+      }
+    ]
+  },
+  "factor_combos": [
+    {
+      "combo": "падает / funding_near_zero / сжимается",
+      "n": 47,
+      "pullback_or_anchor_pct": 87.2,
+      "up_extension_pct": 0.0,
+      "sideways_pct": 12.8
+    },
+    {
+      "combo": "стабильный / funding_positive / стабильная",
+      "n": 63,
+      "pullback_or_anchor_pct": 84.1,
+      "up_extension_pct": 4.8,
+      "sideways_pct": 11.1
+    },
+    {
+      "combo": "падает / funding_positive / сжимается",
+      "n": 12,
+      "pullback_or_anchor_pct": 75.0,
+      "up_extension_pct": 0.0,
+      "sideways_pct": 25.0
+    },
+    {
+      "combo": "растёт / funding_near_zero / расширяется",
+      "n": 23,
+      "pullback_or_anchor_pct": 17.4,
+      "up_extension_pct": 82.6,
+      "sideways_pct": 0.0
+    },
+    {
+      "combo": "стабильный / funding_positive / расширяется",
+      "n": 14,
+      "pullback_or_anchor_pct": 71.4,
+      "up_extension_pct": 7.1,
+      "sideways_pct": 21.4
+    }
+  ],
+  "current_profile": {
+    "price": 82300.0,
+    "anchor": 75200.0,
+    "rise_pct": 9.44,
+    "volume_ratio_30d": 4.315,
+    "volume_trend": "растёт",
+    "volatility_ratio_30d": 0.961,
+    "volatility_trend": "сжимается",
+    "final_impulse_12h_pct": 1.96,
+    "higher_highs": 24,
+    "max_internal_pullback_pct": 1.94,
+    "funding_sign": "negative"
+  },
+  "nearest_groups": [
+    {
+      "group": "стабильный / стабильная / funding_near_zero",
+      "n": 38,
+      "distance": 4.023,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 21.1,
+      "pullback_continuation_pct": 78.9,
+      "sideways_pct": 0.0
+    },
+    {
+      "group": "стабильный / сжимается / funding_positive",
+      "n": 51,
+      "distance": 4.436,
+      "down_to_anchor_pct": 15.7,
+      "up_extension_pct": 7.8,
+      "pullback_continuation_pct": 19.6,
+      "sideways_pct": 56.9
+    },
+    {
+      "group": "растёт / расширяется / funding_positive",
+      "n": 83,
+      "distance": 4.808,
+      "down_to_anchor_pct": 0.0,
+      "up_extension_pct": 41.0,
+      "pullback_continuation_pct": 26.5,
+      "sideways_pct": 32.5
+    }
+  ],
+  "primary_group": {
+    "name": "стабильный / стабильная / funding_near_zero",
+    "n": 38
+  },
+  "exit_options": {
+    "stop_levels": [
+      {
+        "level": 82400.0,
+        "loss_usd": 4763.0,
+        "reached_pct": 94.6,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 78.9,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      },
+      {
+        "level": 83000.0,
+        "loss_usd": 5613.0,
+        "reached_pct": 83.7,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 72.1,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      },
+      {
+        "level": 84000.0,
+        "loss_usd": 7029.0,
+        "reached_pct": 74.9,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 51.3,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      },
+      {
+        "level": 85000.0,
+        "loss_usd": 8445.0,
+        "reached_pct": 47.5,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 46.6,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      }
+    ],
+    "pullback_levels": [
+      {
+        "level": 80000.0,
+        "pnl_usd": -1365.0,
+        "reached_pct": 64.3,
+        "reversed_up_pct": 93.5,
+        "sample_dates": [
+          "2025-05-13",
+          "2025-05-23"
+        ]
+      },
+      {
+        "level": 79036.0,
+        "pnl_usd": 0.0,
+        "reached_pct": 56.4,
+        "reversed_up_pct": 92.6,
+        "sample_dates": [
+          "2025-05-23",
+          "2025-05-23"
+        ]
+      },
+      {
+        "level": 78000.0,
+        "pnl_usd": 1467.0,
+        "reached_pct": 48.8,
+        "reversed_up_pct": 91.4,
+        "sample_dates": [
+          "2025-05-23",
+          "2025-05-23"
+        ]
+      },
+      {
+        "level": 77000.0,
+        "pnl_usd": 2883.0,
+        "reached_pct": 35.2,
+        "reversed_up_pct": 90.9,
+        "sample_dates": [
+          "2025-05-23",
+          "2025-05-23"
+        ]
+      }
+    ],
+    "trailing": {
+      "scheme": "30% @81k / 30% @79,036 / 40% @77k",
+      "expected_pnl_usd": -12828.0,
+      "p25_pnl_usd": -27049.0,
+      "median_pnl_usd": 319.0,
+      "p75_pnl_usd": 319.0,
+      "full_fill_pct": 35.2,
+      "partial_fill_pct": 50.5,
+      "zero_fill_pct": 14.3
+    },
+    "hold_anchor": {
+      "level": 75200.0,
+      "pnl_usd": 5432.0,
+      "overall_reached_pct": 14.3,
+      "negative_funding_reached_pct": 0.0
+    },
+    "pyramid": {
+      "add_level": 83000.0,
+      "success_count": 163,
+      "fail_count": 177,
+      "success_pct_after_add": 47.9,
+      "median_added_pnl_success_usd": 3964.0,
+      "median_added_loss_fail_usd": 24970.0
+    },
+    "funding_flip": {
+      "negative_setup_count": 81,
+      "flip_count": 81,
+      "flip_pct": 100.0,
+      "down_to_anchor_pct_after_flip": 0.0,
+      "up_extension_pct_after_flip": 53.1,
+      "pullback_continuation_pct_after_flip": 46.9,
+      "sideways_pct_after_flip": 0.0,
+      "sample_dates": [
+        "2025-06-28",
+        "2025-06-28"
+      ]
+    }
+  },
+  "exit_options_primary_group": {
+    "stop_levels": [
+      {
+        "level": 82400.0,
+        "loss_usd": 4763.0,
+        "reached_pct": 100.0,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 100.0,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      },
+      {
+        "level": 83000.0,
+        "loss_usd": 5613.0,
+        "reached_pct": 100.0,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 71.1,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      },
+      {
+        "level": 84000.0,
+        "loss_usd": 7029.0,
+        "reached_pct": 100.0,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 28.9,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      },
+      {
+        "level": 85000.0,
+        "loss_usd": 8445.0,
+        "reached_pct": 50.0,
+        "false_break_pct": 100.0,
+        "further_growth_pct": 31.6,
+        "sample_dates": [
+          "2025-05-10",
+          "2025-05-10"
+        ]
+      }
+    ],
+    "pullback_levels": [
+      {
+        "level": 80000.0,
+        "pnl_usd": -1365.0,
+        "reached_pct": 84.2,
+        "reversed_up_pct": 100.0,
+        "sample_dates": [
+          "2025-10-21",
+          "2025-11-27"
+        ]
+      },
+      {
+        "level": 79036.0,
+        "pnl_usd": 0.0,
+        "reached_pct": 78.9,
+        "reversed_up_pct": 100.0,
+        "sample_dates": [
+          "2025-10-21",
+          "2025-11-27"
+        ]
+      },
+      {
+        "level": 78000.0,
+        "pnl_usd": 1467.0,
+        "reached_pct": 71.1,
+        "reversed_up_pct": 100.0,
+        "sample_dates": [
+          "2025-10-21",
+          "2025-11-27"
+        ]
+      },
+      {
+        "level": 77000.0,
+        "pnl_usd": 2883.0,
+        "reached_pct": 55.3,
+        "reversed_up_pct": 100.0,
+        "sample_dates": [
+          "2025-11-27",
+          "2025-11-27"
+        ]
+      }
+    ],
+    "trailing": {
+      "scheme": "30% @81k / 30% @79,036 / 40% @77k",
+      "expected_pnl_usd": -4219.0,
+      "p25_pnl_usd": 319.0,
+      "median_pnl_usd": 319.0,
+      "p75_pnl_usd": 319.0,
+      "full_fill_pct": 55.3,
+      "partial_fill_pct": 36.8,
+      "zero_fill_pct": 7.9
+    },
+    "hold_anchor": {
+      "level": 75200.0,
+      "pnl_usd": 5432.0,
+      "overall_reached_pct": 0.0
+    },
+    "pyramid": {
+      "add_level": 83000.0,
+      "success_count": 30,
+      "fail_count": 8,
+      "success_pct_after_add": 78.9,
+      "median_added_pnl_success_usd": 3964.0,
+      "median_added_loss_fail_usd": 20567.0
+    },
+    "funding_flip": {
+      "negative_setup_count": 7,
+      "flip_count": 7,
+      "flip_pct": 100.0,
+      "down_to_anchor_pct_after_flip": 0.0,
+      "up_extension_pct_after_flip": 85.7,
+      "pullback_continuation_pct_after_flip": 14.3,
+      "sideways_pct_after_flip": 0.0,
+      "sample_dates": [
+        "2025-11-28",
+        "2026-03-13"
+      ]
+    }
+  },
+  "sample_case_dates": {
+    "up_extension": [
+      "2025-05-11T22:00:00+00:00",
+      "2025-05-12T02:00:00+00:00",
+      "2025-05-12T11:00:00+00:00"
+    ],
+    "down_to_anchor": [
+      "2025-08-11T04:00:00+00:00",
+      "2025-08-11T05:00:00+00:00",
+      "2025-08-11T06:00:00+00:00"
+    ],
+    "pullback_continuation": [
+      "2025-05-10T13:00:00+00:00",
+      "2025-05-10T14:00:00+00:00",
+      "2025-05-10T16:00:00+00:00"
+    ]
+  }
+}

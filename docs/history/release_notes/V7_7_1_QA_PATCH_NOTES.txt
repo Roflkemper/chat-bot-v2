@@ -1,0 +1,12 @@
+FIX PRO V7.7.1 QA PATCH
+
+Что исправлено:
+- ограничен раздув final confidence при NO_EDGE / NOT AUTHORIZED
+- manager_action принудительно уходит в WAIT при неавторизованной сделке
+- range bot near edge теперь может переходить в READY_REDUCED вместо OFF
+- location_state берется из более надежных источников, включая liquidity_lite
+- NEXTGEN ACTION LAYER читает реальные поля V7.7
+- analysis_service синхронизирует nextgen поля обратно в merged snapshot
+
+Ключевая цель патча:
+- убрать противоречия между bias / execution / bot mode / render

@@ -1,0 +1,12 @@
+V6.4 — LIQUIDITY / OI / FUNDING EDGE PRO
+
+Что усилено:
+- расширен derivatives_context: OI state, crowding risk, trap bias, derivative edge
+- feed quality теперь прокидывается из exchange/coinglass context в derivatives block
+- добавлен блок LIQUIDITY / DERIVATIVES V6.4 в Telegram renderer
+- в анализе теперь видны funding / OI / squeeze / recent liquidation events / feed stale
+
+Цель релиза:
+- лучше отличать подтвержденное давление от простого unwind
+- видеть crowding / squeeze / trap риск до входа и во время удержания
+- понимать качество данных: live / snapshot / degraded

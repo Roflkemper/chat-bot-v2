@@ -1,0 +1,17 @@
+V17.4 — SIGNAL DEBOUNCE + EDGE HYSTERESIS
+
+Что сделано:
+- авто-сигналы теперь подтверждаются только после удержания нового состояния
+- добавлен debounce по циклам/времени для setup on/off
+- добавлен hysteresis на переходах mid ↔ edge
+- 15m больше не шлёт боевые Telegram-сигналы и не переопределяет master 1h
+- убран шум от STATE_CHANGED; в Telegram остаются только подтверждённые setup on/off
+- повторные сигналы дополнительно ограничены cooldown
+
+Ключевая логика:
+- CONFIRM_CYCLES = 2
+- CONFIRM_SECONDS = 120
+- EDGE_ENTER_UPPER = 0.72
+- EDGE_EXIT_UPPER  = 0.65
+- EDGE_ENTER_LOWER = 0.28
+- EDGE_EXIT_LOWER  = 0.35

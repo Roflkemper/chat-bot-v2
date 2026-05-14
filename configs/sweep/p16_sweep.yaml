@@ -1,0 +1,35 @@
+sweep_id: p16_booster_first_run
+description: |
+  P-16 post-impulse booster.
+base_bot_configs:
+  - bot_id: short_main
+    alias: short_main
+    side: short
+    contract_type: linear
+    order_size: 0.003
+    order_count: 800
+    grid_step_pct: 0.03
+    target_profit_pct: 0.21
+    min_stop_pct: 0.01
+    max_stop_pct: 0.04
+    instop_pct: 0.01
+    boundaries_lower: 10000
+    boundaries_upper: 999999
+intervention_rules:
+  - rule_type: ActivateBoosterOnImpulseExhaustion
+    affected_bots: [short_main]
+    params:
+      impulse_min_pct:
+        _range: [2.0, 3.0]
+      exhaustion_atr_drop_pct:
+        _range: [0.5, 1.0]
+      liq_cluster_distance_pct:
+        _range: [0.5, 1.0]
+      booster_border_top_offset_pct:
+        _range: [0.3, 0.5]
+      booster_qty_factor:
+        _range: [0.5, 1.0]
+regime_classifier_params:
+  atr_window: 14
+  trend_window_bars: 30
+  compression_atr_threshold: 0.4

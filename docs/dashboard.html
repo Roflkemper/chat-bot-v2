@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grid Orchestrator Dashboard</title>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<div id="offline-banner">
+  ⚠ Dashboard offline — не удалось загрузить данные.<br>
+  Запустите <code>python -m http.server 8000</code> в папке <code>C:\bot7\docs\</code>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="dot" id="freshness-dot"></div>
+  <div>
+    <h1>📊 Grid Orchestrator Dashboard</h1>
+    <div id="header-ts" style="color:var(--muted);font-size:11px">Загрузка...</div>
+  </div>
+  <div class="header-price">
+    <div class="stat-label">BTC mark</div>
+    <div id="btc-price" style="font-size:16px;font-weight:700">—</div>
+  </div>
+</div>
+
+<!-- Freshness banner (TZ-DASHBOARD-LIVE-FRESHNESS) -->
+<div id="freshness-banner" style="display:none"></div>
+
+<!-- §0 Регим + Прогноз + Виртуальная торговля (P4 wire-in 2026-05-05) -->
+<h2>🧭 Регим</h2>
+<div class="card" id="regime-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<h2>📋 Регламент — что разрешено сейчас</h2>
+<div class="card" id="regulation-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<h2>📉 Прогноз — retired</h2>
+<div class="card" id="forecast-card">
+  <span class="muted">Forecast model retired — see FORECAST_CALIBRATION_DIAGNOSTIC v1</span>
+</div>
+
+<h2>🤖 Виртуальная торговля — 7 дней</h2>
+<div class="card" id="virtual-trader-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<!-- §1 Позиции -->
+<h2>🎯 Позиции</h2>
+<div class="card">
+  <div class="grid3">
+    <div id="pos-shorts"></div>
+    <div id="pos-longs"></div>
+    <div id="pos-margin"></div>
+  </div>
+</div>
+
+<!-- §2 Конкурс GinArea -->
+<h2>🏆 Конкурс GinArea</h2>
+<div class="card" id="competition-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<!-- §3 Phase 1 Paper Journal -->
+<h2>📓 Phase 1 — Paper Journal</h2>
+<div class="card" id="phase1-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<!-- §4 Engine Status -->
+<h2>⚙️ Status Engine</h2>
+<div class="card" id="engine-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<!-- §5 4 Боли -->
+<h2>🩹 4 Боли</h2>
+<div class="card" id="boli-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<!-- §6 Последние решения -->
+<h2>📋 Последние решения</h2>
+<div class="card" id="decisions-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<!-- §7 Кластеры ликвидаций -->
+<h2>📍 Активные кластеры ликвидаций</h2>
+<div class="card" id="clusters-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<!-- §8 Оповещения 24ч -->
+<h2>🚨 Оповещения за 24ч</h2>
+<div class="card" id="alerts-card">
+  <span class="muted">Загрузка...</span>
+</div>
+
+<div style="color:var(--muted);font-size:11px;text-align:center;margin-top:16px">
+  Данные: docs/STATE/dashboard_state.json • Обновление каждые 5 мин (backend) / 60 сек (браузер)
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

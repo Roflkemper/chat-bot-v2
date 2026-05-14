@@ -1,0 +1,9 @@
+V16.9.2 — MARKET TARGET + IMPULSE STATE
+
+Сделано:
+- во все ключевые экраны добавлена строка «цель движения»
+- добавлена строка «impulse state» с коротким русским пояснением
+- market target теперь показывает, куда ожидается ротация: к mid, к удержанию break или к reclaim
+- impulse state теперь различает: живой импульс, слабый/неподтверждённый импульс, затухание, fake-up/fake-down, confirmed break
+- BTC ANALYSIS, FINAL DECISION, SUMMARY, FORECAST, TRADE MANAGER, GINAREA и BOTS STATUS синхронизированы по новым строкам
+- сохранён master runtime authority lock из V16.9.1

@@ -1,0 +1,15 @@
+V16.8.5 — ACTION AUTHORITY + FUSION CLEANUP
+
+Changes:
+- fixed fusion confidence mapping to use long_prob/short_prob when available
+- action block now prefers explicit action bans/conditions:
+  * NO_MID_ENTRY
+  * WAIT_EDGE_SHORT
+  * WAIT_EDGE_LONG
+  * GRID_EDGE_ONLY
+- fusion trigger now becomes more directional and edge-specific
+- grid output strengthened when PREFER_GRID is active:
+  * arm only at edge
+  * no mid-range activation
+  * low aggression
+- action block now prints explicit mid-range ban when relevant

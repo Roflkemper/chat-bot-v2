@@ -1,0 +1,11 @@
+V17.10.46.4.4 frozen tuning
+
+Changes applied:
+- MIN_CONFIDENCE_TO_TRADE: 55.0 -> 60.0
+- DEFAULT_TP2_ATR_MULT: 1.9 -> 1.6
+- DEFAULT_BE_TRIGGER_TO_TP1: 1.0 -> 1.1
+
+Intent:
+- cut weaker entries
+- convert more runners into TP_HIT instead of extended BE/timeout behavior
+- keep break-even protection slightly later so trades have more room before BE activation

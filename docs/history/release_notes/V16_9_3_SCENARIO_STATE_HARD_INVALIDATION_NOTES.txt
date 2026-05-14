@@ -1,0 +1,14 @@
+V16.9.3 — SCENARIO STATE + HARD INVALIDATION
+
+Что добавлено:
+- scenario state во все ключевые экраны
+- hard invalidation / слом сценария во все ключевые экраны
+- BOT STATUS синхронизирован с scenario state и hard invalidation
+- усилена русификация подписей: импульс / слом сценария
+
+Логика:
+- INVALID при подтверждённом accepted breakout above/below
+- FAILING при RANGE BREAK RISK и режиме WAIT RECLAIM
+- WEAK при edge-runtime без сильного импульсного подтверждения
+- ACTIVE при рабочей ведущей стороне и живом диапазоне
+- hard invalidation привязан к range high / range low и reclaim

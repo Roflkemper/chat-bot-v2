@@ -1,0 +1,26 @@
+enabled: true
+dry_run: true   # день 1: алерты в лог, не в Telegram
+
+btc_fast_move:
+  warning_pct: 1.5
+  critical_pct: 2.5
+  extreme_pct: 4.0
+  debounce_min: 30
+
+position_stress:
+  warning_usd: -150
+  critical_usd: -300
+  extreme_usd: -500
+  min_position_usd: 2000   # не алертить на мизерных позициях (ниже этого — только CRITICAL/EXTREME)
+  debounce_min: 15
+
+liq_danger:
+  critical_pct: 15
+  emergency_pct: 10
+  debounce_min: 5
+
+data:
+  ohlcv_1h_csv: "market_live/market_1h.csv"
+  ohlcv_1m_csv: "market_live/market_1m.csv"
+  snapshots_dir: "ginarea_tracker/ginarea_live"
+  signals_csv: "market_live/signals.csv"

@@ -1,0 +1,4 @@
+V16.8.9
+- added reclaim context, divergence context, and range quality
+- synced bot runtime decisions with range quality/reclaim
+- formatter and main analysis now show the new contexts when available

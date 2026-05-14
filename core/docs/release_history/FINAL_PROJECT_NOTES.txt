@@ -1,0 +1,21 @@
+CHAT BOT VERSION 2 — FINAL PROJECT
+
+Сборка основана на релизе FIX 63.
+В проект включены ключевые доработки FIX 50–63:
+- normalized final direction
+- edge score system
+- edge score telegram render
+- edge activation filter
+- manager action by activation state
+- position-aware manager
+- partial / BE / invalidation manager
+- stateful trade lifecycle
+- auto runner manager
+- lifecycle transition alerts
+- auto journal learning from closed trades
+- learning-weighted bot ranking
+
+Дополнительно в этой финальной сборке:
+- очищен config.py
+- удалены __pycache__ и *.pyc
+- проект перепакован как ready-to-run archive

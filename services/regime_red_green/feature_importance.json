@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-05-01T20:34:26+00:00",
+  "feature_importances": {
+    "price_band_height_pct_24h": 0.454539523864814,
+    "pivot_density_24h": 0.2205573146191288,
+    "vol_cumulative_4h_vs_avg": 0.12870817363750417,
+    "roc_24h_pct": 0.07230859308053579,
+    "atr_inside_band_ratio": 0.05774034024989178,
+    "price_band_height_pct_48h": 0.04189812198391475,
+    "roc_12h_pct": 0.024247932564210713,
+    "time_inside_band_24h_pct": 0.0,
+    "body_to_range_max_4h": 0.0,
+    "single_bar_roc_max_pct_4h": 0.0,
+    "displacement_count_4h": 0.0,
+    "closed_outside_band_24h": 0.0,
+    "vol_z_score_4h": 0.0,
+    "roc_4h_pct": 0.0,
+    "consec_higher_highs_4h": 0.0,
+    "consec_lower_lows_4h": 0.0,
+    "atr_14h": 0.0
+  }
+}

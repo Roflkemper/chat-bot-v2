@@ -1,0 +1,7 @@
+V16.9.7
+- action_now переведён на единый V16 output
+- best_trade переведён на единый V16 output
+- bots_status переведён на единый V16 output
+- убраны legacy WAIT/FLAT/NO_CHASE/NONE (0.0/100) в ключевых экранах
+- BOT CONTROL ADVISOR заменён на русский центр управления сетками
+- обновлена русификация зон: низ / середина / верх

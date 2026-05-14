@@ -1,0 +1,39 @@
+{
+  "tz": "TZ-RECONCILE-01",
+  "status": "STOPPED",
+  "ts": "2026-04-29T16:58:00Z",
+  "blockers": [
+    {
+      "id": "BLOCKER-1",
+      "severity": "CRITICAL",
+      "description": "Bot parameters missing from state_latest.json — all bots have config={}",
+      "evidence": "docs/STATE/state_latest.json bots[*].config = {} for all 16 bots",
+      "resolution_tz": "TZ-ADD-BOT-PARAMS-TO-STATE"
+    },
+    {
+      "id": "BLOCKER-2",
+      "severity": "CRITICAL",
+      "description": "OHLCV frozen data ends 2026-04-24 21:50 UTC — TEST_2 window (Apr 24-28) not covered",
+      "evidence": "backtests/frozen/BTCUSDT_1m_2y.csv last row = 2026-04-24 21:50 UTC",
+      "resolution_tz": "TZ-062 then TZ-067"
+    }
+  ],
+  "preflight_checks": {
+    "engine_b1_exists": true,
+    "canonical_baseline_exists": true,
+    "backtest_state_isolation": true,
+    "ginarea_mechanics_v1_3": true,
+    "ohlcv_test1_covered": true,
+    "ohlcv_test2_covered": false,
+    "bot_params_in_state": false,
+    "state_baseline_dir_exists": false
+  },
+  "engine_path": "C:\\Users\\Kemper\\Documents\\Codex\\2026-04-20-new-chat\\src\\backtest_lab\\engine_v2",
+  "canonical_path": "C:\\Users\\Kemper\\Documents\\Codex\\2026-04-20-new-chat\\backtests\\canonical\\v2_1",
+  "ohlcv_last_ts": "2026-04-24T21:50:00Z",
+  "ohlcv_gap_days": 4.09,
+  "test_windows": {
+    "TEST_1": {"bot": "BTC-SHORT-C", "start": "2026-04-18", "end": "2026-04-23", "ohlcv_ok": true},
+    "TEST_2": {"bot": "BTC-SHORT-C", "start": "2026-04-24", "end": "2026-04-28", "ohlcv_ok": false}
+  }
+}

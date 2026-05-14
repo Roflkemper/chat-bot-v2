@@ -1,0 +1,20 @@
+V17.7.1 — GITHUB INTEGRATION PACK
+
+Цель:
+подготовить проект «чат бот версия 2» к работе через private GitHub repo без изменения торговой логики.
+
+Что сделано:
+- очищен релиз от __pycache__ и .pyc
+- обновлён README.md под текущую архитектуру и V17.7
+- добавлен CHANGELOG.md
+- добавлен docs/github/GITHUB_SETUP.md
+- усилен .gitignore
+- добавлен .gitattributes
+- подготовлены пустые runtime-директории logs / state / exports через .gitkeep
+
+Что НЕ менялось:
+- decision layer
+- signal model V17.7
+- execution advisor
+- telegram formatter
+- торговая логика и сценарии

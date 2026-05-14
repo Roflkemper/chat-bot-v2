@@ -1,0 +1,6 @@
+V16.8.4 Pattern × Volume Fusion
+- companion BTC ANALYSIS now computes a fusion scenario from pattern + volume + location
+- generic WATCH/WAIT output is overridden in analysis text when fusion has a better read
+- added fusion block with scenario / context / grid mode / risk
+- action block now uses fusion summary and trigger instead of raw fallback summary when available
+- grid section now mirrors fusion logic instead of old watch-only wording

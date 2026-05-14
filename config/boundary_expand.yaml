@@ -1,0 +1,18 @@
+enabled: true
+mode: dry_run                  # dry_run первые 3 дня → live после ревью
+applicability:
+  side: short                  # только SHORT боты
+  target_min: 0.18             # gap.tog >= 0.18  (range_volume preset)
+  target_max: 0.30             # gap.tog <= 0.30
+trigger:
+  gap_pct: 0.50                # цена >= border_top + 0.5%
+  dwell_min: 30                # держится >= 30 минут
+action:
+  offset_pct: 0.50             # new_top = current_high_5m * 1.005
+  cooldown_min: 60             # после расширения — пауза 60 мин для этого бота
+guard:
+  max_expansions_per_24h: 4    # защита от бесконтрольного раздвигания (per bot)
+  max_total_offset_pct: 5.0    # суммарно не более +5% от исходного border_top за сессию
+notify:
+  telegram_chat: ${CHAT_ID}
+log_file: logs/boundary_expand_events.jsonl

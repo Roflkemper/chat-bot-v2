@@ -1,0 +1,14 @@
+FIX PRO V7.8.3
+
+Changes:
+- renderers/telegram_renderers.py
+  - full 1h renderer now uses effective trade confidence instead of raw bias confidence
+  - MARKET STATE confidence in verbose blocks is aligned to effective trade confidence
+  - manager action no longer shows entry-style action when trade is not authorized and edge/setup/execution are zero
+- core/btc_plan.py
+  - BTC GINAREA renderer now initializes decision safely from analysis/payload and no longer crashes on undefined decision
+
+Goal:
+- remove false 100% confidence in verbose full render
+- remove false "Manager action: ВХОДИТЬ" in no-trade context
+- recover BTC GINAREA main block from fallback mode

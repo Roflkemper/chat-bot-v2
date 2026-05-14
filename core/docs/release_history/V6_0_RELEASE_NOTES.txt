@@ -1,0 +1,19 @@
+V6.0 — TRADE MANAGEMENT PRO
+
+Что добавлено:
+- усилен BTC TRADE MANAGER: сверху теперь есть боевой блок действий по ведению позиции
+- введён явный этап ведения: HOLD / HOLD CAREFUL / REDUCE / PROTECT / RUNNER / EXIT / WAIT
+- главное действие теперь сильнее учитывает continuation state и management state из TRADE FLOW
+- добавлен отдельный запрет "Нельзя сейчас", чтобы не усредняться и не догонять в плохом контексте
+- в блок ведения добавлен partial size now
+- trade manager теперь лучше различает:
+  - держать
+  - держать аккуратно
+  - частично фиксировать
+  - переносить в BE
+  - тянуть остаток
+  - закрывать
+
+Проверка:
+- py_compile: OK
+- tools/health_check.py: HEALTH CHECK OK

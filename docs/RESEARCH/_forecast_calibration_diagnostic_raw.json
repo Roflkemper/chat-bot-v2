@@ -1,0 +1,377 @@
+{
+  "generated_at_utc": "2026-05-05T18:36:40.724847+00:00",
+  "n_bars": 105117,
+  "horizons": {
+    "1h": {
+      "n_valid": 105105,
+      "brier_overall": 0.2568639206861092,
+      "brier_by_regime": {
+        "MARKUP": {
+          "n": 14085,
+          "brier": 0.2563614823075553,
+          "prob_up_mean": 0.5361334940252379,
+          "actual_up_rate": 0.473340433084842
+        },
+        "MARKDOWN": {
+          "n": 15593,
+          "brier": 0.27693274198903556,
+          "prob_up_mean": 0.37339397106574723,
+          "actual_up_rate": 0.5317129481177452
+        },
+        "RANGE": {
+          "n": 75427,
+          "brier": 0.2528089233242283,
+          "prob_up_mean": 0.4932943962637423,
+          "actual_up_rate": 0.4998740504063532
+        }
+      },
+      "base_rate_up": 0.5010418153275296,
+      "uncertainty_term": 0.24999891462082333,
+      "reliability_term": 0.00635052272835259,
+      "resolution_term": 5.695305561662759e-05,
+      "ece": 0.06256020254315252,
+      "reliability_bins": [
+        {
+          "bin": 0,
+          "center": 0.05,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": 1,
+          "center": 0.15000000000000002,
+          "n": 254,
+          "predicted_mean": 0.18397083315381255,
+          "observed_freq": 0.562992125984252
+        },
+        {
+          "bin": 2,
+          "center": 0.25,
+          "n": 1124,
+          "predicted_mean": 0.26543566117710066,
+          "observed_freq": 0.4893238434163701
+        },
+        {
+          "bin": 3,
+          "center": 0.35000000000000003,
+          "n": 17861,
+          "predicted_mean": 0.3620747937567985,
+          "observed_freq": 0.5090420469178657
+        },
+        {
+          "bin": 4,
+          "center": 0.45,
+          "n": 38448,
+          "predicted_mean": 0.46153124298679116,
+          "observed_freq": 0.49677486475239285
+        },
+        {
+          "bin": 5,
+          "center": 0.55,
+          "n": 41765,
+          "predicted_mean": 0.5376211646235562,
+          "observed_freq": 0.49926972345265175
+        },
+        {
+          "bin": 6,
+          "center": 0.6500000000000001,
+          "n": 5464,
+          "predicted_mean": 0.628518643592014,
+          "observed_freq": 0.5203147877013177
+        },
+        {
+          "bin": 7,
+          "center": 0.75,
+          "n": 189,
+          "predicted_mean": 0.7220406118460726,
+          "observed_freq": 0.43386243386243384
+        },
+        {
+          "bin": 8,
+          "center": 0.8500000000000001,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": 9,
+          "center": 0.95,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        }
+      ],
+      "test_split_chronological": {
+        "n_train": 84084,
+        "n_test": 21021,
+        "test_brier_uncalibrated": 0.25727349001312566,
+        "test_brier_baseline_constant_baserate": 0.25001719260440125,
+        "platt": {
+          "available": true,
+          "test_brier": 0.25006291093702926,
+          "train_n": 84084,
+          "test_n": 21021
+        },
+        "isotonic": {
+          "available": true,
+          "test_brier": 0.2508052243697375,
+          "train_n": 84084,
+          "test_n": 21021
+        }
+      }
+    },
+    "4h": {
+      "n_valid": 105069,
+      "brier_overall": 0.2570281849835407,
+      "brier_by_regime": {
+        "MARKUP": {
+          "n": 14085,
+          "brier": 0.25676535159039177,
+          "prob_up_mean": 0.5452606084791206,
+          "actual_up_rate": 0.45878594249201277
+        },
+        "MARKDOWN": {
+          "n": 15593,
+          "brier": 0.2830784474040467,
+          "prob_up_mean": 0.354257035168127,
+          "actual_up_rate": 0.5375489001475021
+        },
+        "RANGE": {
+          "n": 75391,
+          "brier": 0.2516893549696074,
+          "prob_up_mean": 0.4961840070484801,
+          "actual_up_rate": 0.503879773447759
+        }
+      },
+      "base_rate_up": 0.5028314726513053,
+      "uncertainty_term": 0.2499919827626249,
+      "reliability_term": 0.006719839688185952,
+      "resolution_term": 0.00013528194991716355,
+      "ece": 0.05986453791948975,
+      "reliability_bins": [
+        {
+          "bin": 0,
+          "center": 0.05,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": 1,
+          "center": 0.15000000000000002,
+          "n": 71,
+          "predicted_mean": 0.1965977770777754,
+          "observed_freq": 0.352112676056338
+        },
+        {
+          "bin": 2,
+          "center": 0.25,
+          "n": 1226,
+          "predicted_mean": 0.2626060193095614,
+          "observed_freq": 0.5367047308319739
+        },
+        {
+          "bin": 3,
+          "center": 0.35000000000000003,
+          "n": 16992,
+          "predicted_mean": 0.35302345483919456,
+          "observed_freq": 0.5170080037664784
+        },
+        {
+          "bin": 4,
+          "center": 0.45,
+          "n": 36840,
+          "predicted_mean": 0.46578245151447933,
+          "observed_freq": 0.4962269272529859
+        },
+        {
+          "bin": 5,
+          "center": 0.55,
+          "n": 46415,
+          "predicted_mean": 0.5366123470118381,
+          "observed_freq": 0.5022083378218248
+        },
+        {
+          "bin": 6,
+          "center": 0.6500000000000001,
+          "n": 3422,
+          "predicted_mean": 0.6244371649142108,
+          "observed_freq": 0.5102279368790181
+        },
+        {
+          "bin": 7,
+          "center": 0.75,
+          "n": 103,
+          "predicted_mean": 0.7197529130002782,
+          "observed_freq": 0.2621359223300971
+        },
+        {
+          "bin": 8,
+          "center": 0.8500000000000001,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": 9,
+          "center": 0.95,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        }
+      ],
+      "test_split_chronological": {
+        "n_train": 84055,
+        "n_test": 21014,
+        "test_brier_uncalibrated": 0.2550999306207791,
+        "test_brier_baseline_constant_baserate": 0.2500608361809038,
+        "platt": {
+          "available": true,
+          "test_brier": 0.2502493904006318,
+          "train_n": 84055,
+          "test_n": 21014
+        },
+        "isotonic": {
+          "available": true,
+          "test_brier": 0.25015331728290374,
+          "train_n": 84055,
+          "test_n": 21014
+        }
+      }
+    },
+    "1d": {
+      "n_valid": 104829,
+      "brier_overall": 0.2586271200479455,
+      "brier_by_regime": {
+        "MARKUP": {
+          "n": 14085,
+          "brier": 0.2646123985455211,
+          "prob_up_mean": 0.5833417823224001,
+          "actual_up_rate": 0.4604898828541001
+        },
+        "MARKDOWN": {
+          "n": 15593,
+          "brier": 0.2802363160303936,
+          "prob_up_mean": 0.32942110777156813,
+          "actual_up_rate": 0.4990700955556981
+        },
+        "RANGE": {
+          "n": 75151,
+          "brier": 0.2530216744704727,
+          "prob_up_mean": 0.49605877936812487,
+          "actual_up_rate": 0.511995848358638
+        }
+      },
+      "base_rate_up": 0.5031527535319424,
+      "uncertainty_term": 0.24999006014516684,
+      "reliability_term": 0.008070055261994075,
+      "resolution_term": 0.00011127981356751025,
+      "ece": 0.06348775175600468,
+      "reliability_bins": [
+        {
+          "bin": 0,
+          "center": 0.05,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": 1,
+          "center": 0.15000000000000002,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": 2,
+          "center": 0.25,
+          "n": 1679,
+          "predicted_mean": 0.27362398940511196,
+          "observed_freq": 0.5306730196545563
+        },
+        {
+          "bin": 3,
+          "center": 0.35000000000000003,
+          "n": 17048,
+          "predicted_mean": 0.3379482937360569,
+          "observed_freq": 0.5156030032848428
+        },
+        {
+          "bin": 4,
+          "center": 0.45,
+          "n": 34772,
+          "predicted_mean": 0.4695800321711412,
+          "observed_freq": 0.49614632462901187
+        },
+        {
+          "bin": 5,
+          "center": 0.55,
+          "n": 46231,
+          "predicted_mean": 0.5383348074905736,
+          "observed_freq": 0.5064567065389025
+        },
+        {
+          "bin": 6,
+          "center": 0.6500000000000001,
+          "n": 5043,
+          "predicted_mean": 0.625741194021197,
+          "observed_freq": 0.47055324211778704
+        },
+        {
+          "bin": 7,
+          "center": 0.75,
+          "n": 56,
+          "predicted_mean": 0.7139691207681136,
+          "observed_freq": 0.44642857142857145
+        },
+        {
+          "bin": 8,
+          "center": 0.8500000000000001,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": 9,
+          "center": 0.95,
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        }
+      ],
+      "test_split_chronological": {
+        "n_train": 83863,
+        "n_test": 20966,
+        "test_brier_uncalibrated": 0.2607822551004793,
+        "test_brier_baseline_constant_baserate": 0.2500009173797823,
+        "platt": {
+          "available": true,
+          "test_brier": 0.24989949113092838,
+          "train_n": 83863,
+          "test_n": 20966
+        },
+        "isotonic": {
+          "available": true,
+          "test_brier": 0.25176381807314857,
+          "train_n": 83863,
+          "test_n": 20966
+        }
+      }
+    }
+  },
+  "verdict": "FUNDAMENTALLY WEAK \u2014 calibration insufficient; forecast lacks resolution",
+  "verdict_basis": {
+    "anchor_horizon": "1h",
+    "best_test_brier_after_calibration": 0.25006291093702926,
+    "no_skill_baseline": 0.25,
+    "operator_actionable_threshold": 0.22,
+    "thresholds_used": {
+      "actionable": 0.22,
+      "marginal_upper": 0.245,
+      "fundamentally_weak_upper": 0.255
+    }
+  },
+  "reliability_diagram_png": "C:\\bot7\\docs\\RESEARCH\\_forecast_calibration_diagnostic_reliability.png",
+  "compute_seconds": 7.641746
+}

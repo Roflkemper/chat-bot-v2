@@ -1,0 +1,19 @@
+FIX 81–87
+
+Что исправлено:
+- FIX 81: единый execution_verdict в decision_engine
+- FIX 82: синхронизация FINAL DECISION / GINAREA / BOT MATRIX через execution_verdict
+- FIX 83: soft-edge и soft-range теперь доходят до execution authority
+- FIX 84: mid-range small/reduced mode синхронизирован по статусу и size multiplier
+- FIX 85: pattern overlay оставлен overlay-фактором, без ломки логики входа
+- FIX 86: восстановлен BTC FORECAST renderer (_synced_forecast_strength)
+- FIX 87: learning layer показывается честнее через имеющиеся поля closed/win/loss без фиктивного "боевого" статуса
+
+Изменённые файлы:
+- core/decision_engine.py
+- core/ginarea_advisor.py
+- core/btc_plan.py
+- renderers/telegram_renderers.py
+
+Проверка:
+- python -m py_compile core/decision_engine.py core/ginarea_advisor.py core/btc_plan.py renderers/telegram_renderers.py handlers/command_actions.py

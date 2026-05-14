@@ -1,0 +1,11 @@
+{
+  "description": "LONG fill then TP1 hit: bar1 low dips to entry, bar2 high reaches tp1",
+  "detected_at": "2026-01-01T10:00:00Z",
+  "setup": {"side": "long", "entry": 100.0, "stop": 95.0, "tp1": 110.0, "window_minutes": 120},
+  "bars": [
+    {"open": 101.0, "high": 101.0, "low": 99.0,  "close": 100.0},
+    {"open": 100.0, "high": 112.0, "low": 100.0, "close": 111.0}
+  ],
+  "expected_status": "tp1_hit",
+  "note": "low=99 <= entry=100 fills; next bar high=112 >= tp1=110"
+}

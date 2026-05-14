@@ -1,0 +1,13 @@
+FIX 69
+
+Что исправлено:
+- pattern forecast и history pattern теперь сохраняются в AnalysisSnapshot
+- эти поля теперь проходят дальше в renderer и Telegram вывод
+- возвращены верхние строки:
+  • куда вероятнее пойдёт рынок
+  • сила прогноза
+- возвращён расширенный блок pattern forecast / history summary
+
+Ключевой фикс:
+Раньше signal_engine считал pattern/history поля, но AnalysisSnapshot не пробрасывал их обратно в snapshot.to_dict(), поэтому renderer их не видел.
+Теперь поля проходят весь pipeline.

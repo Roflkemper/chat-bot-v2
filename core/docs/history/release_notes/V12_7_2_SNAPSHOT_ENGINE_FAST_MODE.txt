@@ -1,0 +1,7 @@
+V12.7.2 SNAPSHOT ENGINE (FAST MODE)
+
+Изменения:
+- добавлен короткий global analysis snapshot cache на 8 секунд для burst-серий кнопок
+- добавлен per-chat bundle cache на 8 секунд для snapshots/journal/position
+- повторные команды из одной серии теперь используют один и тот же bundle вместо повторной сборки
+- mutating handlers инвалидируют bundle cache сразу после команды

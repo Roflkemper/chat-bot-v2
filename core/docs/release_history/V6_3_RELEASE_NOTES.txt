@@ -1,0 +1,12 @@
+V6.3 — XGBOOST REAL
+
+Что сделано:
+- live feature vector теперь совпадает с FEATURE_COLUMNS из training pipeline
+- safe_ml_v2 возвращает расширенный ML context: probability, edge_strength, model_status, follow-through, reversal, setup_quality
+- decision confidence мягко усиливается/ослабляется ML-слоем
+- в BTC ANALYSIS добавлен новый блок ML V6.3
+- training script сохраняет JSON report и поддерживает --min-rows
+
+Смысл релиза:
+- trained xgboost weights теперь можно реально подключить без shape mismatch
+- rule fallback сохранён: бот не падает без обученных моделей

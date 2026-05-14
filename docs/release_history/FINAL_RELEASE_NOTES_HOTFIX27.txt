@@ -1,0 +1,18 @@
+CHAT BOT VERSION 2 - HOTFIX 27
+
+Included changes:
+- Learning-aware execution hints for the 4 personal bots.
+- Personal learning now softly nudges:
+  * plan_state
+  * management_action
+  * entry_instruction
+  * exit_instruction
+- Added execution-learning summaries to BTC GINAREA.
+- Included stable runners:
+  * RUN_BOT.bat
+  * RUN_BOT_DEBUG.bat
+
+Important:
+- Market logic remains primary.
+- Personal learning only adds a small capped adjustment.
+- This release is intended as the current full project snapshot.

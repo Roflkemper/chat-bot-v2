@@ -1,0 +1,267 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets & local config
+.env
+.env.local
+bot_local_config.json
+*.pem
+*.key
+# Unknown / legacy
+.sixth/
+
+# GinArea tracker output
+ginarea_live/
+ginarea_tracker/.env
+
+# Cleanup artifacts
+cleanup.log
+CLEANUP_*.bat.bak
+
+# Live state
+state/regime_state.json
+state/bot_manager_state.json
+state/personal_bot_learning.json
+state/transition_alert_state.json
+state/grid_portfolio.json
+state/calibration/
+
+# Logs
+logs/
+*.log
+.sixth/
+# Backtest reports
+backtests/backtest_*_report.json
+backtests/freeze_data_*.json
+
+# Delivery / temp
+TZ-*_delivery.zip
+state_snapshot.zip
+*.tmp
+
+# Runtime reports
+reports/
+
+# Critical docs must NEVER be excluded by gitignore rules (TZ-055)
+!docs/MASTER.md
+!docs/PLAYBOOK.md
+!docs/OPPORTUNITY_MAP_v1.md
+!docs/GINAREA_MECHANICS.md
+!docs/SESSION_LOG.md
+
+# TZ-068: state snapshot artifacts (generated, not committed)
+docs/STATE/CURRENT_STATE_*.md
+docs/STATE/state_latest.json
+docs/STATE/dashboard_state.json
+docs/state_inline.js
+state/runtime_state_snapshot.lock
+
+# TZ-LIQ-INGESTION-90D: historical liquidation data (fetched, not committed)
+market_data/liquidations_historical/
+
+# TZ-PROJECT-MEMORY-DEFENSE: project map (generated, not committed)
+docs/STATE/project_map.json
+docs/STATE/PROJECT_MAP.md
+
+# TZ-CONFLICTS-TRIAGE: machine-readable triage (generated, not committed)
+docs/STATE/conflicts_triage_*.json
+
+# TZ-SIGNAL-LOGGER / TZ-GITIGNORE-ADVISE-RUNTIME: runtime JSONL logs (not committed)
+state/advise_signals.jsonl
+state/advise_null_signals.jsonl
+state/advise_action_match.jsonl
+state/advise_followup.jsonl
+
+# Runtime state generated 2026-05-08+
+state/proposals.jsonl
+state/watchlist.json
+state/snp_feed_cache.json
+state/decision_log/_telegram_last_seen.json
+state/_reports_last_sent.json
+
+# Daily/weekly auto-reports — generated, kept locally only
+docs/reports/
+
+# Backtest harness outputs (not committed)
+tools/backtest_signals_out*.csv
+
+# Runtime live-state files (machine-generated, change every few seconds — never commit)
+state/deriv_live.json
+state/deriv_live_history.jsonl
+state/regime_v2_state.json
+state/decision_state.json
+state/setups.jsonl
+state/setups_active.json
+state/setup_outcomes.jsonl
+state/paper_trades.jsonl
+state/paper_trader_dedup.json
+state/paper_trader_pending.json
+state/cascade_alert_dedup.json
+state/telegram_sent_dedup.json
+state/telegram_rate_limit.json
+state/grid_coordinator_intraday_dedup.json
+state/grid_coordinator_dedup.json
+state/grid_coordinator_fires.jsonl
+state/p15_equity.jsonl
+state/watchdog_alert_state.json
+state/watchdog_audit.jsonl
+state/disabled_detectors.json
+state/setup_precision_prev_status.json
+state/pipeline_growth_log.jsonl
+data/backtest_archive/
+state/paper_trades.jsonl.bak_TZ
+state/paper_trades.jsonl.bak_*
+state/setup_precision_outcomes.jsonl
+state/setup_detector_type_pair_dedup.json
+state/pipeline_metrics.jsonl
+state/test3_tpflat_state.json
+state/test3_tpflat_b_state.json
+state/p15_paper_trades.jsonl
+state/pre_cascade_fires.jsonl
+state/app_runner_starts.jsonl
+# 2026-05-13: новые runtime от Claude фич
+state/cascade_accuracy.jsonl
+state/cascade_edge_drift.json
+state/liq_pre_cascade_fires.jsonl
+state/liq_pre_cascade_state.json
+state/short_t2_cliff_alerts.json
+state/exit_advisor_prev_snapshot.json
+state/paper_trader_streak_notify.json
+state/weekly_report_state.json
+# R&D backtest results (могут быть commited если важны, но обычно large)
+state/cascade_ginarea_v3_results.csv
+state/cascade_ginarea_v4_results.csv
+state/cascade_grid_results.csv
+state/cascade_grid_v2_results.csv
+state/confluence_results.csv
+state/confluence_signal_timeline.parquet
+state/cross_asset_lead_results.csv
+state/funding_extremes_results.csv
+state/funding_flip_results.csv
+state/session_breakout_results.csv
+state/volume_climax_results.csv
+state/volume_profile_results.csv
+state/mega_setup_backtest.csv
+state/mega_short_v2_gc.csv
+state/mega_short_backtest.csv
+state/mega_quad_exploration.csv
+state/grid_intraday_signals.csv
+state/stale_monitor_state.json
+state/signal_alert_last_sent.json
+state/advise_audit.jsonl
+state/advise_backtest_*.jsonl
+state/advise_backtest_*.summary.json
+state/margin_automated.jsonl
+state/manual_overrides/
+state/decision_log/
+state/_archive/
+storage/market_state.json
+data/exit_advisor/dd_onset_cache.json
+data/forecast_features/latest_forecast.json
+data/regime/switcher_state.json
+docs/STATE/ohlcv_ingest_log.jsonl
+
+# 2026-05-10: live state files added by recent sessions
+state/p15_state.json
+state/phase_state.json
+state/regime_shadow.jsonl
+state/setup_detector_semantic_dedup.json
+state/pre_cascade_dedup.json
+state/spike_alert_dedup.json
+state/test3_tpflat_*.jsonl
+state/test3_tpflat_*_state.json
+state/test3_tpflat_compare.jsonl
+state/leaderboard_history.jsonl
+state/p15_tuner_history.jsonl
+state/gc_confirmation_audit.jsonl
+state/.regime_narrator_warned.txt
+
+# Research outputs (regenerable from tools/)
+state/setup_research_*.csv
+state/detectors_honest_runs.csv
+state/grid_coordinator_retro_signals.csv
+state/grid_coordinator_vs_detectors.csv
+state/gc_confirmation_simulation.csv
+state/combined_all_bots_v2.csv
+state/combined_all_bots_v3_adaptive.csv
+state/a2_tick_edge_runs.csv
+state/ga_*.jsonl
+
+# Binance derivative history (re-fetchable via tools/_download_binance_history.py)
+data/historical/binance_*.csv
+data/historical/binance_*.parquet
+
+# Local Claude Code settings (operator-specific permissions)
+.claude/settings.json
+.claude/scheduled_tasks.lock
+
+# Diagnostic / collection dumps (one-off, never commit)
+_baseline_errors*.txt
+_collect_*.txt
+_tz044_*.txt
+
+# Disaster-recovery snapshots (kept on disk, not in repo — see _recovery/incident_report_docs.md)
+_recovery/
+
+# Frozen OHLCV market data (large CSVs — fetched per session, not committed)
+backtests/frozen/*.csv
+backtests/frozen/*.csv.bak*
+backtests/frozen/1y_ingest/
+
+# Regime calibration snapshots (high-frequency diagnostic dumps, ~80/day)
+data/calibration/regime_markdown_*.json
+data/calibration/regime_markup_*.json
+data/calibration/regime_range_*.json
+
+# Runtime collector output (PIDs, logs, CSV streams from live collectors)
+run/
+ginarea_tracker/run/
+market_collector/run/
+market_live/
+market_live_dev/
+market_live_profiler/
+features_out/
+
+# Research scripts archive — kept on disk, not in repo
+scripts/research_archive/
+
+# Large data artifacts (parquet/research dirs — fetched/computed, not committed)
+data/countertrend_research/
+data/historical_setups_y1_*.parquet
+data/ict_levels/
+data/live_edge_mining/
+data/operator_journal/
+data/regime/*.parquet
+data/regime_truth/
+data/smoke_strength_filter.parquet
+data/telegram/
+data/whatif_v3/
+data/exit_advisor/dedup_cache.json
+
+# 2026-05-14: страховка от случайного коммита бэкапов секретов
+.env*.bak*
+*.env.bak*

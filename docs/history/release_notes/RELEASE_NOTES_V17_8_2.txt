@@ -1,0 +1,15 @@
+V17.8.2 - HEDGE ACTION REFINEMENT
+
+Что добавлено:
+- отдельный hedge action refinement слой
+- effective delta и grid stress
+- режимы защиты: OFF / WATCH / ARM / READY / REDUCE / EXIT
+- hedge type: lock / partial defense / trailing defense / cross-hedge advisory
+- отдельный Telegram блок "ХЕДЖ / ЗАЩИТА"
+- связка hedge layer с consensus filter и execution advisor
+
+Что улучшено:
+- бот раньше запрещает ухудшающий добор
+- защита теперь не смешивается с directional entry
+- partial defense ставится раньше full hedge там, где это логичнее
+- ETH/XRP/BTC получают разную логику защитного advisory

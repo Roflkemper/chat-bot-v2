@@ -1,0 +1,13 @@
+FIX PRO V5.5
+
+Что добито:
+- real-liq feed health/stale/restart counters
+- деградация feed теперь видна в СТАТУС СИСТЕМЫ и ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС
+- второй decision pass после nextgen enrichment, чтобы real-liq/derivatives сильнее влияли на решение
+- action_now получает bias от real-liq magnet even without CoinGlass API
+- smart alerts сообщают о деградации feed
+- добавлен tools/train_xgboost_models.py для подготовки xgb_trend/countertrend/range joblib
+
+Что нужно пользователю:
+- живой прогон и проверка ws feed в Windows
+- накопить/подготовить journal rows с features + result_pct/label для обучения xgboost

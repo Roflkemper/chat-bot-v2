@@ -1,0 +1,14 @@
+chat_bot_version_2_FIX_PRO_V7_2
+
+Изменённые файлы:
+- core/tactical_edge.py
+- handlers/command_actions.py
+- core/trade_manager.py
+- VERSION.txt
+- V7_2_RELEASE_NOTES.txt
+- RELEASE_MANIFEST_V7_2.txt
+- FINAL_LAUNCH_CHECKLIST_V7_2.txt
+
+Цель релиза:
+- сделать ответы короче и боевее
+- жёстче различать fake / continuation / exhaustion / no-chase

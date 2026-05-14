@@ -1,0 +1,16 @@
+FIX PRO V8.4 — EXECUTION UNLOCK + PROBE STATE
+
+Что изменено:
+- core/ux_mode.py
+  - добавлен execution state: WAIT / WATCH / PROBE / READY
+  - compact/wait-блоки больше не застревают в вечном WAIT, если range-volume уже разрешает мягкий probe
+  - trigger в short wait-режиме больше не сводится к "подход к уровню": теперь нужен price behavior
+    (ложный вынос / возврат под уровень / reclaim)
+- FINAL DECISION / BTC FORECAST / BTC SUMMARY / WHAT TO DO NOW
+  - при мягком range-сценарии могут показывать PROBE вместо WAIT
+  - reason/trigger текст синхронизирован с execution unlock логикой
+
+Ожидаемый эффект:
+- если ginarea/range-volume уже в READY_SMALL, верхние быстрые блоки перестают говорить только WAIT
+- вместо абстрактного "подход к уровню" показывается более прикладной trigger по поведению цены
+- probe разрешается только малым размером и только у края диапазона

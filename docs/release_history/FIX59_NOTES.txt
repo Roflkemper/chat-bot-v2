@@ -1,0 +1,20 @@
+FIX 59 — STATEFUL TRADE LIFECYCLE
+
+Что добавлено:
+- lifecycle_state в trade_journal_state
+- lifecycle_history c последними переходами
+- runner_active flag
+- state machine: NO_TRADE -> ENTRY -> TP1 -> PARTIAL_DONE -> BE_MOVED -> HOLD_RUNNER -> EXIT
+
+Что изменено:
+- OPEN LONG / OPEN SHORT инициализируют lifecycle_state=ENTRY
+- MARK TP1 переводит lifecycle_state в TP1
+- PARTIAL DONE переводит в PARTIAL_DONE
+- MOVE BE переводит в BE_MOVED, а если partial уже был — сразу в HOLD_RUNNER
+- MARK TP2 также может перевести в HOLD_RUNNER
+- FINAL CLOSE переводит в EXIT и пишет событие в history
+- BTC LIFECYCLE теперь показывает lifecycle_state и последние переходы
+
+Зачем это нужно:
+- менеджер и journal теперь работают не только через отдельные флаги, но и через единый stateful lifecycle
+- легче понимать текущую фазу сделки и где находится runner

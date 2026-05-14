@@ -1,0 +1,224 @@
+{
+  "generated_at": "2026-05-06T11:54:36.230808+00:00",
+  "source": {
+    "extended_parquet": "data\\whatif_v3\\btc_1m_enriched_2y.parquet",
+    "one_year_parquet": "data\\forecast_features\\full_features_1y.parquet",
+    "output_json": "docs\\ANALYSIS\\_extended_analog_search.json",
+    "extended_coverage_start_1h": "2024-04-25T00:00:00+00:00",
+    "extended_coverage_end_1h": "2026-04-29T17:00:00+00:00",
+    "extended_bar_count_1h": 17634,
+    "one_year_coverage_start_1h": "2025-05-01T00:00:00+00:00",
+    "one_year_coverage_end_1h": "2026-05-01T00:00:00+00:00",
+    "one_year_bar_count_1h": 8761
+  },
+  "criteria": {
+    "price_only": true,
+    "lookback_hours": [
+      96,
+      120,
+      144,
+      168,
+      192
+    ],
+    "future_hours": 240,
+    "rise_pct_window": [
+      7.0,
+      12.0
+    ],
+    "max_internal_pullback_pct": 5.0,
+    "current_bar_must_be_local_high": true,
+    "same_reconciled_funding_oi_extension_possible": false,
+    "gap": "2y price data exists, but older funding/open_interest are not available in the same dataset, so reconciled fund_neg bucket cannot be extended before 2025-05-01."
+  },
+  "reference_setup": {
+    "setup_price": 82300.0,
+    "anchor_price": 75200.0,
+    "rise_pct": 9.44
+  },
+  "extended_search": {
+    "analog_count": 401,
+    "distribution_outcomes": [
+      {
+        "outcome": "down_to_anchor",
+        "count": 78,
+        "pct": 19.5
+      },
+      {
+        "outcome": "up_extension",
+        "count": 154,
+        "pct": 38.4
+      },
+      {
+        "outcome": "pullback_continuation",
+        "count": 133,
+        "pct": 33.2
+      },
+      {
+        "outcome": "sideways",
+        "count": 36,
+        "pct": 9.0
+      }
+    ],
+    "sample_recent_analogs": [
+      {
+        "ts": "2026-04-10T20:00:00+00:00",
+        "setup_price": 73361.68,
+        "anchor_price": 66783.58,
+        "lookback_h": 144,
+        "rise_pct": 9.85,
+        "max_internal_pullback_pct": 3.01,
+        "outcome": "up_extension",
+        "min_future": 70680.7,
+        "max_future": 77886.77,
+        "bottom_ts": "2026-04-13T08:00:00+00:00",
+        "top_ts": "2026-04-17T14:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-11T18:00:00+00:00",
+        "setup_price": 73547.89,
+        "anchor_price": 67361.01,
+        "lookback_h": 144,
+        "rise_pct": 9.18,
+        "max_internal_pullback_pct": 3.01,
+        "outcome": "up_extension",
+        "min_future": 70680.7,
+        "max_future": 77886.77,
+        "bottom_ts": "2026-04-13T08:00:00+00:00",
+        "top_ts": "2026-04-17T14:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-11T19:00:00+00:00",
+        "setup_price": 73687.15,
+        "anchor_price": 67553.43,
+        "lookback_h": 144,
+        "rise_pct": 9.08,
+        "max_internal_pullback_pct": 3.01,
+        "outcome": "up_extension",
+        "min_future": 70680.7,
+        "max_future": 77886.77,
+        "bottom_ts": "2026-04-13T08:00:00+00:00",
+        "top_ts": "2026-04-17T14:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-13T22:00:00+00:00",
+        "setup_price": 74627.04,
+        "anchor_price": 67860.48,
+        "lookback_h": 168,
+        "rise_pct": 9.97,
+        "max_internal_pullback_pct": 4.08,
+        "outcome": "up_extension",
+        "min_future": 73730.43,
+        "max_future": 79272.9,
+        "bottom_ts": "2026-04-15T07:00:00+00:00",
+        "top_ts": "2026-04-22T15:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-14T08:00:00+00:00",
+        "setup_price": 74750.0,
+        "anchor_price": 67860.48,
+        "lookback_h": 168,
+        "rise_pct": 10.15,
+        "max_internal_pullback_pct": 4.08,
+        "outcome": "up_extension",
+        "min_future": 73730.43,
+        "max_future": 79272.9,
+        "bottom_ts": "2026-04-15T07:00:00+00:00",
+        "top_ts": "2026-04-22T15:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-14T13:00:00+00:00",
+        "setup_price": 75525.94,
+        "anchor_price": 67860.48,
+        "lookback_h": 168,
+        "rise_pct": 11.3,
+        "max_internal_pullback_pct": 4.08,
+        "outcome": "pullback_continuation",
+        "min_future": 73730.43,
+        "max_future": 79272.9,
+        "bottom_ts": "2026-04-15T07:00:00+00:00",
+        "top_ts": "2026-04-22T15:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-17T08:00:00+00:00",
+        "setup_price": 75780.38,
+        "anchor_price": 70680.7,
+        "lookback_h": 144,
+        "rise_pct": 7.22,
+        "max_internal_pullback_pct": 4.08,
+        "outcome": "pullback_continuation",
+        "min_future": 73801.79,
+        "max_future": 79308.6,
+        "bottom_ts": "2026-04-19T23:00:00+00:00",
+        "top_ts": "2026-04-27T00:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-17T12:00:00+00:00",
+        "setup_price": 76233.05,
+        "anchor_price": 70680.7,
+        "lookback_h": 144,
+        "rise_pct": 7.86,
+        "max_internal_pullback_pct": 4.08,
+        "outcome": "pullback_continuation",
+        "min_future": 73801.79,
+        "max_future": 79308.6,
+        "bottom_ts": "2026-04-19T23:00:00+00:00",
+        "top_ts": "2026-04-27T00:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-17T13:00:00+00:00",
+        "setup_price": 77340.12,
+        "anchor_price": 70680.7,
+        "lookback_h": 144,
+        "rise_pct": 9.42,
+        "max_internal_pullback_pct": 4.08,
+        "outcome": "pullback_continuation",
+        "min_future": 73801.79,
+        "max_future": 79308.6,
+        "bottom_ts": "2026-04-19T23:00:00+00:00",
+        "top_ts": "2026-04-27T00:00:00+00:00"
+      },
+      {
+        "ts": "2026-04-17T14:00:00+00:00",
+        "setup_price": 77886.77,
+        "anchor_price": 70680.7,
+        "lookback_h": 144,
+        "rise_pct": 10.2,
+        "max_internal_pullback_pct": 4.08,
+        "outcome": "pullback_continuation",
+        "min_future": 73801.79,
+        "max_future": 79308.6,
+        "bottom_ts": "2026-04-19T23:00:00+00:00",
+        "top_ts": "2026-04-27T00:00:00+00:00"
+      }
+    ]
+  },
+  "one_year_same_criterion": {
+    "analog_count": 154,
+    "distribution_outcomes": [
+      {
+        "outcome": "down_to_anchor",
+        "count": 30,
+        "pct": 19.5
+      },
+      {
+        "outcome": "up_extension",
+        "count": 40,
+        "pct": 26.0
+      },
+      {
+        "outcome": "pullback_continuation",
+        "count": 71,
+        "pct": 46.1
+      },
+      {
+        "outcome": "sideways",
+        "count": 13,
+        "pct": 8.4
+      }
+    ]
+  },
+  "delta_vs_one_year": {
+    "added_analogs": 247,
+    "ratio_vs_one_year": 2.6
+  }
+}

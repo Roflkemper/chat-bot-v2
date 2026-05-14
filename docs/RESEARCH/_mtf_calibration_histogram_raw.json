@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-05-05T21:48:08.023401+00:00",
+  "ohlcv_source": "backtests\\frozen\\BTCUSDT_1m_2y.csv",
+  "tail_days": 365,
+  "lookback_bars": 60,
+  "thresholds": {
+    "transition": 0.65,
+    "stable": 0.8,
+    "no_signal_below": 0.5
+  },
+  "per_tf_stats": {
+    "15m": {
+      "n": 4373,
+      "median_confidence": 0.5793967104043696,
+      "mean_confidence": 0.5784967086491133,
+      "p10": 0.550456550007402,
+      "p25": 0.5670389244280603,
+      "p75": 0.5885023282334992,
+      "p90": 0.6275338876197875,
+      "min": 0.3,
+      "max": 0.6961295902835961,
+      "pct_ge_065": 2.9499199634118454,
+      "pct_ge_080": 0.0,
+      "pct_lt_050": 2.058083695403613,
+      "label_distribution": {
+        "accumulation": 285,
+        "markdown": 9,
+        "transition": 26,
+        "markup": 16,
+        "range": 3678,
+        "distribution": 359
+      }
+    },
+    "1h": {
+      "n": 4351,
+      "median_confidence": 0.5511906192763889,
+      "mean_confidence": 0.5271049447585829,
+      "p10": 0.4,
+      "p25": 0.5257176563746793,
+      "p75": 0.5701503389690985,
+      "p90": 0.6182871790969408,
+      "min": 0.3,
+      "max": 0.6964061941863118,
+      "pct_ge_065": 2.1144564467938403,
+      "pct_ge_080": 0.0,
+      "pct_lt_050": 20.822799356469776,
+      "label_distribution": {
+        "accumulation": 315,
+        "markdown": 229,
+        "transition": 346,
+        "markup": 159,
+        "range": 2967,
+        "distribution": 335
+      }
+    },
+    "4h": {
+      "n": 2131,
+      "median_confidence": 0.45,
+      "mean_confidence": 0.4252605785637144,
+      "p10": 0.3,
+      "p25": 0.3,
+      "p75": 0.45,
+      "p90": 0.5445751821312976,
+      "min": 0.3,
+      "max": 0.6795555911134948,
+      "pct_ge_065": 0.328484279680901,
+      "pct_ge_080": 0.0,
+      "pct_lt_050": 76.39605818864383,
+      "label_distribution": {
+        "accumulation": 106,
+        "markdown": 473,
+        "transition": 637,
+        "markup": 409,
+        "range": 379,
+        "distribution": 127
+      }
+    },
+    "1d": {
+      "n": 306,
+      "median_confidence": 0.45,
+      "mean_confidence": 0.3948770353833707,
+      "p10": 0.3,
+      "p25": 0.3,
+      "p75": 0.45,
+      "p90": 0.45,
+      "min": 0.3,
+      "max": 0.5996899768809787,
+      "pct_ge_065": 0.0,
+      "pct_ge_080": 0.0,
+      "pct_lt_050": 98.36601307189542,
+      "label_distribution": {
+        "accumulation": 25,
+        "markdown": 68,
+        "transition": 108,
+        "markup": 103,
+        "distribution": 2
+      }
+    }
+  }
+}

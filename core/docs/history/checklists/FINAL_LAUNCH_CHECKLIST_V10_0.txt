@@ -1,0 +1,6 @@
+1. Launch bot
+2. Trigger BTC 15m / 1h / FINAL DECISION / BTC GINAREA / STATUS
+3. In a NO TRADE case verify there is no READY_SMALL, no ENABLE SMALL SIZE, no SMALL ENTRY suggestion
+4. Verify RANGE SHORT shows observation wording when no position is open
+5. Verify manager title reads SCENARIO MAP in wait/no-trade contexts
+6. Verify BTC bot-control block no longer prints synthetic XRP zone copies

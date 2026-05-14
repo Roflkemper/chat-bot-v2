@@ -1,0 +1,17 @@
+V17.7 — FINAL SIGNAL MODEL (PROP LEVEL)
+
+Что усилено:
+- final signal state machine: QUIET / WATCH / ARMED / ACTIONABLE / MANAGE
+- signal debounce: подавление микросигналов и повторных setup on/off
+- edge hysteresis: меньше прыжков PAUSE ↔ ARM EDGE ↔ ACTION READY
+- signal alignment: локальные pattern/reversal больше не могут спорить с master decision
+- execution advisor: добавлены жёсткие блоки НЕ ВХОДИТЬ / НЕ ДОБИРАТЬ / ДЕРЖАТЬ ОСТАТОК / НЕ ДЕРЖАТЬ
+- action output: одно главное действие, меньше размытого текста, больше запретов и условий смены решения
+
+Изменённые файлы:
+- core/final_signal_model_v177.py
+- core/smart_alerts.py
+- core/execution_advisor.py
+- core/action_output.py
+- core/telegram_formatter.py
+- VERSION.txt

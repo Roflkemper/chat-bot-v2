@@ -1,0 +1,190 @@
+{
+  "generated_at": "2026-05-01T20:34:26+00:00",
+  "max_depth": 4,
+  "n_features": 17,
+  "feature_names": [
+    "price_band_height_pct_24h",
+    "price_band_height_pct_48h",
+    "time_inside_band_24h_pct",
+    "pivot_density_24h",
+    "body_to_range_max_4h",
+    "single_bar_roc_max_pct_4h",
+    "displacement_count_4h",
+    "closed_outside_band_24h",
+    "vol_z_score_4h",
+    "vol_cumulative_4h_vs_avg",
+    "roc_4h_pct",
+    "roc_12h_pct",
+    "roc_24h_pct",
+    "consec_higher_highs_4h",
+    "consec_lower_lows_4h",
+    "atr_14h",
+    "atr_inside_band_ratio"
+  ],
+  "train_accuracy": 0.7752873563218391,
+  "n_train_samples": 1740,
+  "tree": {
+    "node_id": 0,
+    "feature": "price_band_height_pct_24h",
+    "threshold": 4.973229885101318,
+    "left": {
+      "node_id": 1,
+      "feature": "pivot_density_24h",
+      "threshold": 11.5,
+      "left": {
+        "node_id": 2,
+        "feature": "pivot_density_24h",
+        "threshold": 10.5,
+        "left": {
+          "node_id": 3,
+          "feature": "atr_inside_band_ratio",
+          "threshold": 0.15717080980539322,
+          "left": {
+            "node_id": 4,
+            "leaf": true,
+            "values": [
+              0.7381174277725997,
+              0.26188257222739986
+            ]
+          },
+          "right": {
+            "node_id": 5,
+            "leaf": true,
+            "values": [
+              0.9914263920671246,
+              0.00857360793287568
+            ]
+          }
+        },
+        "right": {
+          "node_id": 6,
+          "feature": "atr_inside_band_ratio",
+          "threshold": 0.2291143536567688,
+          "left": {
+            "node_id": 7,
+            "leaf": true,
+            "values": [
+              0.6788571428571428,
+              0.3211428571428566
+            ]
+          },
+          "right": {
+            "node_id": 8,
+            "leaf": true,
+            "values": [
+              0.9079593842122502,
+              0.09204061578774965
+            ]
+          }
+        }
+      },
+      "right": {
+        "node_id": 9,
+        "feature": "vol_cumulative_4h_vs_avg",
+        "threshold": 0.5419440865516663,
+        "left": {
+          "node_id": 10,
+          "feature": "price_band_height_pct_48h",
+          "threshold": 5.451665639877319,
+          "left": {
+            "node_id": 11,
+            "leaf": true,
+            "values": [
+              0.8846942962659025,
+              0.11530570373409944
+            ]
+          },
+          "right": {
+            "node_id": 12,
+            "leaf": true,
+            "values": [
+              0.5229202037351439,
+              0.47707979626485575
+            ]
+          }
+        },
+        "right": {
+          "node_id": 13,
+          "feature": "roc_24h_pct",
+          "threshold": -0.25181739032268524,
+          "left": {
+            "node_id": 14,
+            "leaf": true,
+            "values": [
+              0.3137637979876923,
+              0.6862362020123048
+            ]
+          },
+          "right": {
+            "node_id": 15,
+            "leaf": true,
+            "values": [
+              0.5737721817244658,
+              0.42622781827553147
+            ]
+          }
+        }
+      }
+    },
+    "right": {
+      "node_id": 16,
+      "feature": "atr_inside_band_ratio",
+      "threshold": 0.2001793161034584,
+      "left": {
+        "node_id": 17,
+        "feature": "pivot_density_24h",
+        "threshold": 10.5,
+        "left": {
+          "node_id": 18,
+          "feature": "roc_12h_pct",
+          "threshold": 2.864755392074585,
+          "left": {
+            "node_id": 19,
+            "leaf": true,
+            "values": [
+              0.45507433742727804,
+              0.5449256625727211
+            ]
+          },
+          "right": {
+            "node_id": 20,
+            "leaf": true,
+            "values": [
+              0.03901203293223558,
+              0.9609879670677642
+            ]
+          }
+        },
+        "right": {
+          "node_id": 21,
+          "feature": "price_band_height_pct_48h",
+          "threshold": 5.652842283248901,
+          "left": {
+            "node_id": 22,
+            "leaf": true,
+            "values": [
+              0.40113663272555067,
+              0.5988633672744497
+            ]
+          },
+          "right": {
+            "node_id": 23,
+            "leaf": true,
+            "values": [
+              0.05947476828012368,
+              0.9405252317198757
+            ]
+          }
+        }
+      },
+      "right": {
+        "node_id": 24,
+        "leaf": true,
+        "values": [
+          0.6507581406910266,
+          0.34924185930897356
+        ]
+      }
+    }
+  }
+}

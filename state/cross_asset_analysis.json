@@ -1,0 +1,273 @@
+{
+  "generated_at": "2026-05-07T12:22:28+00:00",
+  "data_window": {
+    "start": "2024-04-25 00:00:00+00:00",
+    "end": "2026-05-07 10:00:00+00:00",
+    "bars": 17819
+  },
+  "correlation_windows": {
+    "30d": {
+      "n_bars": 721,
+      "BTC_ETH": 0.903,
+      "BTC_XRP": 0.847,
+      "ETH_XRP": 0.846
+    },
+    "90d": {
+      "n_bars": 2161,
+      "BTC_ETH": 0.905,
+      "BTC_XRP": 0.793,
+      "ETH_XRP": 0.793
+    },
+    "180d": {
+      "n_bars": 4321,
+      "BTC_ETH": 0.897,
+      "BTC_XRP": 0.802,
+      "ETH_XRP": 0.808
+    },
+    "365d": {
+      "n_bars": 8761,
+      "BTC_ETH": 0.834,
+      "BTC_XRP": 0.748,
+      "ETH_XRP": 0.762
+    },
+    "all": {
+      "n_bars": 17818,
+      "BTC_ETH": 0.813,
+      "BTC_XRP": 0.642,
+      "ETH_XRP": 0.667
+    }
+  },
+  "rolling_correlation_1w": {
+    "BTC_ETH": {
+      "min": 0.4388188019261269,
+      "max": 0.9467057172973781,
+      "mean": 0.8242714107525551,
+      "median": 0.8420387598290244
+    },
+    "BTC_XRP": {
+      "min": 0.07485576438987039,
+      "max": 0.9018320164700502,
+      "mean": 0.6984730634705926,
+      "median": 0.7390328337976679
+    },
+    "ETH_XRP": {
+      "min": 0.11205551727050182,
+      "max": 0.9101327122799366,
+      "mean": 0.7144315412006972,
+      "median": 0.7445865418562712
+    },
+    "current_BTC_ETH": 0.8853113891152674,
+    "current_BTC_XRP": 0.8575513136714825,
+    "current_ETH_XRP": 0.8757096568708523
+  },
+  "lead_lag": {
+    "BTCUSDT_ETHUSDT": {
+      "by_lag_hours": {
+        "-6": -0.0116,
+        "-5": 0.0107,
+        "-4": 0.0153,
+        "-3": 0.0031,
+        "-2": 0.0006,
+        "-1": -0.0054,
+        "0": 0.8126,
+        "1": -0.0022,
+        "2": 0.0024,
+        "3": 0.0028,
+        "4": 0.0134,
+        "5": 0.0068,
+        "6": -0.0057
+      },
+      "peak_lag_hours": 0,
+      "peak_corr": 0.8126,
+      "interpretation": "BTCUSDT and ETHUSDT synchronous (peak at lag=0, corr 0.813)"
+    },
+    "BTCUSDT_XRPUSDT": {
+      "by_lag_hours": {
+        "-6": -0.0074,
+        "-5": 0.0036,
+        "-4": 0.024,
+        "-3": -0.0081,
+        "-2": 0.0031,
+        "-1": -0.0005,
+        "0": 0.6423,
+        "1": -0.019,
+        "2": -0.0089,
+        "3": -0.0131,
+        "4": 0.0108,
+        "5": 0.0021,
+        "6": -0.0073
+      },
+      "peak_lag_hours": 0,
+      "peak_corr": 0.6423,
+      "interpretation": "BTCUSDT and XRPUSDT synchronous (peak at lag=0, corr 0.642)"
+    },
+    "ETHUSDT_XRPUSDT": {
+      "by_lag_hours": {
+        "-6": -0.0042,
+        "-5": 0.0006,
+        "-4": 0.0227,
+        "-3": -0.0029,
+        "-2": -0.0054,
+        "-1": 0.0155,
+        "0": 0.667,
+        "1": -0.0179,
+        "2": -0.0118,
+        "3": 0.0096,
+        "4": -0.0024,
+        "5": 0.0066,
+        "6": -0.0069
+      },
+      "peak_lag_hours": 0,
+      "peak_corr": 0.667,
+      "interpretation": "ETHUSDT and XRPUSDT synchronous (peak at lag=0, corr 0.667)"
+    }
+  },
+  "divergence_patterns": {
+    "pattern_A_btc_up_eth_flat": {
+      "criterion": "BTC 1h-return > +1.0% AND ETH 1h-return |<| 0.3%",
+      "outcome_4h_later": {
+        "n": 11,
+        "btc_mean_pct": 1.368,
+        "btc_median_pct": 1.136,
+        "btc_pct_up": 90.9,
+        "eth_mean_pct": 0.076,
+        "eth_pct_up": 45.5,
+        "xrp_mean_pct": 1.134
+      },
+      "outcome_24h_later": {
+        "n": 11,
+        "btc_mean_pct": 0.605,
+        "btc_median_pct": 0.727,
+        "btc_pct_up": 63.6,
+        "eth_mean_pct": -0.393,
+        "eth_pct_up": 54.5,
+        "xrp_mean_pct": -0.357
+      }
+    },
+    "pattern_A_btc_down_eth_flat": {
+      "criterion": "BTC 1h-return < -1.0% AND ETH 1h-return |<| 0.3%",
+      "outcome_4h_later": {
+        "n": 6,
+        "btc_mean_pct": -0.662,
+        "btc_median_pct": -0.599,
+        "btc_pct_up": 16.7,
+        "eth_mean_pct": 0.234,
+        "eth_pct_up": 50.0,
+        "xrp_mean_pct": 0.143
+      },
+      "outcome_24h_later": {
+        "n": 6,
+        "btc_mean_pct": -0.401,
+        "btc_median_pct": 0.312,
+        "btc_pct_up": 66.7,
+        "eth_mean_pct": -1.173,
+        "eth_pct_up": 50.0,
+        "xrp_mean_pct": -1.918
+      }
+    },
+    "pattern_B_xrp_solo_pump": {
+      "criterion": "XRP 1h > +2.0% AND BTC 1h |<| 0.5%",
+      "outcome_4h_later": {
+        "n": 140,
+        "btc_mean_pct": 0.016,
+        "btc_median_pct": 0.009,
+        "btc_pct_up": 52.1,
+        "eth_mean_pct": 0.126,
+        "eth_pct_up": 50.0,
+        "xrp_mean_pct": 3.504
+      },
+      "outcome_24h_later": {
+        "n": 140,
+        "btc_mean_pct": 0.162,
+        "btc_median_pct": -0.114,
+        "btc_pct_up": 47.9,
+        "eth_mean_pct": 0.258,
+        "eth_pct_up": 45.0,
+        "xrp_mean_pct": 6.007
+      }
+    },
+    "pattern_B_xrp_solo_dump": {
+      "criterion": "XRP 1h < -2.0% AND BTC 1h |<| 0.5%",
+      "outcome_4h_later": {
+        "n": 67,
+        "btc_mean_pct": 0.214,
+        "btc_median_pct": 0.105,
+        "btc_pct_up": 58.2,
+        "eth_mean_pct": 0.076,
+        "eth_pct_up": 53.7,
+        "xrp_mean_pct": -1.585
+      },
+      "outcome_24h_later": {
+        "n": 67,
+        "btc_mean_pct": 0.961,
+        "btc_median_pct": 0.424,
+        "btc_pct_up": 56.7,
+        "eth_mean_pct": 1.524,
+        "eth_pct_up": 56.7,
+        "xrp_mean_pct": 0.536
+      }
+    },
+    "pattern_C_eth_solo_up": {
+      "criterion": "ETH 1h > +1.5% AND BTC 1h |<| 0.5%",
+      "outcome_4h_later": {
+        "n": 84,
+        "btc_mean_pct": 0.143,
+        "btc_median_pct": 0.171,
+        "btc_pct_up": 61.9,
+        "eth_mean_pct": 2.017,
+        "eth_pct_up": 88.1,
+        "xrp_mean_pct": 1.207
+      },
+      "outcome_24h_later": {
+        "n": 84,
+        "btc_mean_pct": 0.683,
+        "btc_median_pct": 0.577,
+        "btc_pct_up": 60.7,
+        "eth_mean_pct": 2.605,
+        "eth_pct_up": 71.4,
+        "xrp_mean_pct": 1.905
+      }
+    },
+    "pattern_C_eth_solo_down": {
+      "criterion": "ETH 1h < -1.5% AND BTC 1h |<| 0.5%",
+      "outcome_4h_later": {
+        "n": 34,
+        "btc_mean_pct": -0.174,
+        "btc_median_pct": -0.25,
+        "btc_pct_up": 38.2,
+        "eth_mean_pct": -1.438,
+        "eth_pct_up": 14.7,
+        "xrp_mean_pct": -0.44
+      },
+      "outcome_24h_later": {
+        "n": 34,
+        "btc_mean_pct": -0.141,
+        "btc_median_pct": 0.135,
+        "btc_pct_up": 52.9,
+        "eth_mean_pct": -2.062,
+        "eth_pct_up": 32.4,
+        "xrp_mean_pct": 0.081
+      }
+    }
+  },
+  "beta_hedge_full": {
+    "ETHUSDT": {
+      "beta_full_period": 1.172,
+      "expected_move_for_btc_+1pct": "+1.17%",
+      "expected_move_for_btc_-3pct": "-3.52%"
+    },
+    "XRPUSDT": {
+      "beta_full_period": 1.158,
+      "expected_move_for_btc_+1pct": "+1.16%",
+      "expected_move_for_btc_-3pct": "-3.47%"
+    }
+  },
+  "beta_hedge_30d": {
+    "ETHUSDT": 1.21,
+    "XRPUSDT": 0.936
+  },
+  "beta_hedge_90d": {
+    "ETHUSDT": 1.155,
+    "XRPUSDT": 0.979
+  }
+}

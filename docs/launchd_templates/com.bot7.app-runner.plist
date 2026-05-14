@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bot7.app-runner</string>
+    <!-- caffeinate -di:
+         -d disable display sleep (нужно если ноут с закрытой крышкой работает на charger);
+         -i disable idle sleep (process активен — мак не уходит в idle).
+         Без caffeinate launchd-процесс приостанавливается когда мак спит. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/caffeinate</string>
+        <string>-di</string>
+        <string>%BOT7_PATH%/.venv/bin/python</string>
+        <string>app_runner.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>%BOT7_PATH%</string>
+    <!-- При загрузке (RunAtLoad=true) + автоматический рестарт при крэше (KeepAlive=true).
+         Successful exit treated as crash тоже — это правильно, app_runner должен крутиться вечно. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <!-- Перезапуск не чаще раза в 30s — защита от crash-loop spam'a -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>%BOT7_PATH%/logs/launchd_app_runner.log</string>
+    <key>StandardErrorPath</key>
+    <string>%BOT7_PATH%/logs/launchd_app_runner.err</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Mac homebrew Python путь. Если используешь pyenv — поправь. -->
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:%BOT7_PATH%/.venv/bin</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

@@ -1,0 +1,546 @@
+{
+  "ts_run": "2026-04-29T183424Z",
+  "window": {
+    "start": "2026-04-28T08:10:00+00:00",
+    "end": "2026-04-28T23:59:59+00:00"
+  },
+  "engine_sha": "7bdb118",
+  "ohlcv_path": "C:\\bot7\\backtests\\frozen\\BTCUSDT_1m_2y.csv",
+  "snaps_path": "C:\\bot7\\ginarea_live\\snapshots.csv",
+  "state_path": "C:\\bot7\\docs\\STATE\\state_latest.json",
+  "bot_results": {
+    "5196832375": {
+      "alias": "TEST_1",
+      "status": "ok",
+      "period": "2026-04-28T08:10:19 to 2026-04-28T23:59:33",
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-28T23:59:33+00:00",
+        "n_snaps": 970,
+        "delta_pnl": 9.585137999799827,
+        "delta_vol": 8608.521479999996,
+        "delta_in": 46,
+        "delta_out": 43,
+        "min_unrealized": 46.27584027069997,
+        "first_pos": -0.128,
+        "first_avg": 75154.98828124996,
+        "last_pos": -0.107
+      },
+      "sim": {
+        "delta_in": 4,
+        "delta_out": 50,
+        "delta_pnl": 5.842762637305292,
+        "delta_vol": 4123.424957769762,
+        "worst_upnl": -239.58089770991918,
+        "win_rate": 92.0,
+        "wins": 46,
+        "losses": 4
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 50,
+          "real": 43,
+          "delta_pct": 16.28,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 4123.424958,
+          "real": 8608.52148,
+          "delta_pct": 52.1,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": 5.842763,
+          "real": 9.585138,
+          "delta_pct": 39.04,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 92.0,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -239.580898,
+          "real": 46.27584,
+          "delta_pct": 617.72,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": []
+    },
+    "5017849873": {
+      "alias": "TEST_2",
+      "status": "ok",
+      "period": "2026-04-28T08:10:19 to 2026-04-28T23:59:33",
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-28T23:59:33+00:00",
+        "n_snaps": 972,
+        "delta_pnl": 6.276559999999961,
+        "delta_vol": 8228.846530000097,
+        "delta_in": 29,
+        "delta_out": 29,
+        "min_unrealized": 44.46717400569955,
+        "first_pos": -0.136,
+        "first_avg": 75167.96235294113,
+        "last_pos": -0.114
+      },
+      "sim": {
+        "delta_in": 3,
+        "delta_out": 2,
+        "delta_pnl": 0.7898300000000309,
+        "delta_vol": 845.65931,
+        "worst_upnl": -251.4664598577619,
+        "win_rate": 100.0,
+        "wins": 2,
+        "losses": 0
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 2,
+          "real": 29,
+          "delta_pct": 93.1,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 845.65931,
+          "real": 8228.84653,
+          "delta_pct": 89.72,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": 0.78983,
+          "real": 6.27656,
+          "delta_pct": 87.42,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 100.0,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -251.46646,
+          "real": 44.467174,
+          "delta_pct": 665.51,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 93.1% > 50%"
+      ]
+    },
+    "4524162672": {
+      "alias": "TEST_3",
+      "status": "ok",
+      "period": "2026-04-28T08:10:19 to 2026-04-28T23:59:33",
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-28T23:59:33+00:00",
+        "n_snaps": 973,
+        "delta_pnl": 9.868690000000072,
+        "delta_vol": 8915.989579999994,
+        "delta_in": 26,
+        "delta_out": 18,
+        "min_unrealized": 66.84652319030016,
+        "first_pos": -0.131,
+        "first_avg": 75223.97740458012,
+        "last_pos": -0.108
+      },
+      "sim": {
+        "delta_in": 2,
+        "delta_out": 43,
+        "delta_pnl": 6.745502820128866,
+        "delta_vol": 4737.39629,
+        "worst_upnl": -234.83525110619587,
+        "win_rate": 93.02325581395348,
+        "wins": 40,
+        "losses": 3
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 43,
+          "real": 18,
+          "delta_pct": 138.89,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 4737.39629,
+          "real": 8915.98958,
+          "delta_pct": 46.87,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": 6.745503,
+          "real": 9.86869,
+          "delta_pct": 31.65,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 93.02,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -234.835251,
+          "real": 66.846523,
+          "delta_pct": 451.31,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 138.9% > 50%"
+      ]
+    },
+    "6399265299": {
+      "alias": "SHORT_1.1pct",
+      "status": "ok",
+      "period": "2026-04-28T08:10:19 to 2026-04-28T23:59:33",
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-28T23:59:33+00:00",
+        "n_snaps": 973,
+        "delta_pnl": 44.69541299959985,
+        "delta_vol": 53293.16264999937,
+        "delta_in": 52,
+        "delta_out": 22,
+        "min_unrealized": 588.3417775651009,
+        "first_pos": -0.1,
+        "first_avg": 76645.47249999997,
+        "last_pos": -0.14
+      },
+      "sim": {
+        "delta_in": 0,
+        "delta_out": 0,
+        "delta_pnl": 0.0,
+        "delta_vol": 0.0,
+        "worst_upnl": -35.672441183529294,
+        "win_rate": NaN,
+        "wins": 0,
+        "losses": 0
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 0,
+          "real": 22,
+          "delta_pct": 100.0,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 0.0,
+          "real": 53293.16265,
+          "delta_pct": 100.0,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": 0.0,
+          "real": 44.695413,
+          "delta_pct": 100.0,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": null,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -35.672441,
+          "real": 588.341778,
+          "delta_pct": 106.06,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 100.0% > 50%"
+      ]
+    },
+    "5312167170": {
+      "alias": "LONG_C",
+      "status": "ok",
+      "period": "2026-04-28T08:10:19 to 2026-04-28T23:59:33",
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-28T23:59:33+00:00",
+        "n_snaps": 972,
+        "delta_pnl": 8.157480000000033e-05,
+        "delta_vol": 7600.0,
+        "delta_in": 30,
+        "delta_out": 12,
+        "min_unrealized": 0.002496955700000007,
+        "first_pos": 6300.0,
+        "first_avg": 77435.25714285714,
+        "last_pos": 8100.0
+      },
+      "sim": {
+        "delta_in": 51,
+        "delta_out": 33,
+        "delta_pnl": 0.0002823431568568252,
+        "delta_vol": 23900.0,
+        "worst_upnl": -0.002588454069517671,
+        "win_rate": 100.0,
+        "wins": 33,
+        "losses": 0
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 33,
+          "real": 12,
+          "delta_pct": 175.0,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 23900.0,
+          "real": 7600.0,
+          "delta_pct": 214.47,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": 21.554859,
+          "real": 6.227646,
+          "delta_pct": 246.12,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 100.0,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -197.609754,
+          "real": 190.624515,
+          "delta_pct": 203.66,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 175.0% > 50%",
+        "realized_pnl: 246.1% > 100%"
+      ]
+    },
+    "5154651487": {
+      "alias": "LONG_D",
+      "status": "ok",
+      "period": "2026-04-28T08:10:19 to 2026-04-28T23:59:33",
+      "real": {
+        "first_ts": "2026-04-28T08:10:19+00:00",
+        "last_ts": "2026-04-28T23:59:33+00:00",
+        "n_snaps": 973,
+        "delta_pnl": 7.657010000000034e-05,
+        "delta_vol": 9400.0,
+        "delta_in": 44,
+        "delta_out": 16,
+        "min_unrealized": -0.0015241522999999996,
+        "first_pos": 5800.0,
+        "first_avg": 77480.6051724138,
+        "last_pos": 8000.0
+      },
+      "sim": {
+        "delta_in": 56,
+        "delta_out": 39,
+        "delta_pnl": 0.00020315225494743803,
+        "delta_vol": 24600.0,
+        "worst_upnl": -0.0026103777237243345,
+        "win_rate": 92.3076923076923,
+        "wins": 36,
+        "losses": 3
+      },
+      "metrics": {
+        "trades_count": {
+          "sim": 39,
+          "real": 16,
+          "delta_pct": 143.75,
+          "within_tolerance": false
+        },
+        "volume_total": {
+          "sim": 24600.0,
+          "real": 9400.0,
+          "delta_pct": 161.7,
+          "within_tolerance": false
+        },
+        "realized_pnl": {
+          "sim": 15.509206,
+          "real": 5.845574,
+          "delta_pct": 165.32,
+          "within_tolerance": false
+        },
+        "win_rate": {
+          "sim": 92.31,
+          "real": null,
+          "delta_pct": null,
+          "within_tolerance": true,
+          "note": "real win_rate not computable from snapshot deltas"
+        },
+        "max_dd_unreal": {
+          "sim": -199.283466,
+          "real": -116.358008,
+          "delta_pct": 71.27,
+          "within_tolerance": false
+        }
+      },
+      "n_pass": 0,
+      "n_total": 4,
+      "bot_verdict": "fail",
+      "critical_flags": [
+        "trades_count: 143.8% > 50%",
+        "realized_pnl: 165.3% > 100%"
+      ]
+    },
+    "5427983401": {
+      "alias": "5427983401",
+      "status": "skipped",
+      "reason": "zero activity in window (vol_delta=0, no new orders)"
+    },
+    "6075975963": {
+      "alias": "6075975963",
+      "status": "skipped",
+      "reason": "zero activity in window (pos=0, flat bot)"
+    }
+  },
+  "aggregate": {
+    "bots_ok": 6,
+    "bots_pass": 0,
+    "engine_health": "red",
+    "rows_out_of_tol": 24,
+    "critical_mismatches": [
+      {
+        "bot": "TEST_2",
+        "issue": "trades_count: 93.1% > 50%"
+      },
+      {
+        "bot": "TEST_3",
+        "issue": "trades_count: 138.9% > 50%"
+      },
+      {
+        "bot": "SHORT_1.1pct",
+        "issue": "trades_count: 100.0% > 50%"
+      },
+      {
+        "bot": "LONG_C",
+        "issue": "trades_count: 175.0% > 50%"
+      },
+      {
+        "bot": "LONG_C",
+        "issue": "realized_pnl: 246.1% > 100%"
+      },
+      {
+        "bot": "LONG_D",
+        "issue": "trades_count: 143.8% > 50%"
+      },
+      {
+        "bot": "LONG_D",
+        "issue": "realized_pnl: 165.3% > 100%"
+      }
+    ]
+  },
+  "per_metric_summary": {
+    "trades_count": {
+      "avg_delta_pct": 111.17,
+      "max_delta_pct": 175.0,
+      "n_within": 0,
+      "n_total": 6
+    },
+    "volume_total": {
+      "avg_delta_pct": 110.81,
+      "max_delta_pct": 214.47,
+      "n_within": 0,
+      "n_total": 6
+    },
+    "realized_pnl": {
+      "avg_delta_pct": 111.59,
+      "max_delta_pct": 246.12,
+      "n_within": 0,
+      "n_total": 6
+    },
+    "max_dd_unreal": {
+      "avg_delta_pct": 352.59,
+      "max_delta_pct": 665.51,
+      "n_within": 0,
+      "n_total": 6
+    }
+  },
+  "mechanics_check": [
+    {
+      "param": "target_profit_pct",
+      "docs_semantics": "% distance from IN entry to trigger (stop-profit placed at min_stop_pct from trigger)",
+      "engine_impl": "trigger_price = entry * (1 - target/100) for SHORT. Stop placed at trigger * (1 + min_stop/100)",
+      "verdict": "consistent"
+    },
+    {
+      "param": "instop_pct / Semant A",
+      "docs_semantics": "delay before opening IN: wait for reversal >= instop_pct from local extremum",
+      "engine_impl": "InstopTracker tracks extremum, fires when price reverses instop_pct from extreme",
+      "verdict": "consistent — Semantics A confirmed for TEST_1/2/3"
+    },
+    {
+      "param": "instop_pct / Semant B (LONG_C/D)",
+      "docs_semantics": "OPEN: in some modes instop = stop distance for IN. Unclear which mode LONG_C/D use",
+      "engine_impl": "Engine uses Semantics A for all bots. If LONG bots use Semantics B, sim mismatch expected",
+      "verdict": "UNVERIFIED — recommend TZ-ENGINE-FIX-INSTOP-SEMANTICS-B"
+    },
+    {
+      "param": "grid_step_pct",
+      "docs_semantics": "step from LAST opened IN (not from first IN entry). Measured as % of last IN price",
+      "engine_impl": "last_in_price updated after each IN open; next level = last_in * (1 + step)",
+      "verdict": "consistent"
+    },
+    {
+      "param": "indicator Price% threshold",
+      "docs_semantics": "Price% close-to-close over period bars. SHORT: > threshold. LONG: < -threshold",
+      "engine_impl": "PricePercentIndicator: (close[-1]-close[0])/close[0]*100. SHORT: v>threshold, LONG: v<-threshold",
+      "verdict": "consistent"
+    },
+    {
+      "param": "Out Stop trailing max_stop_pct",
+      "docs_semantics": "combo trailing stop follows price, max deviation = max_stop_pct",
+      "engine_impl": "OutStopGroup.update_trailing() tracks extreme_price, stop = extreme*(1-max_stop) for SHORT",
+      "verdict": "consistent"
+    },
+    {
+      "param": "contract_type in state_latest.json",
+      "docs_semantics": "GINAREA_MECHANICS: SHORT bots=LINEAR BTCUSDT, LONG bots=INVERSE XBTUSD",
+      "engine_impl": "state_snapshot.py labels TEST_1/2/3 as 'inverse' and LONG_B/C/D as 'linear' — INVERTED",
+      "verdict": "BUG in state_snapshot.py — recommend TZ-FIX-CONTRACT-TYPE-LABEL"
+    },
+    {
+      "param": "order_size",
+      "docs_semantics": "SHORT=0.001 BTC per IN, LONG=100 USD per IN (from GINAREA_MECHANICS §1)",
+      "engine_impl": "Hardcoded in reconcile script (not in /params endpoint). state_latest.json: order_size=null",
+      "verdict": "UNKNOWN — /params endpoint does not expose order_size. TZ-ADD-ORDER-SIZE-TO-STATE recommended"
+    }
+  ],
+  "recommendation": "STOP optimize. Открыть TZ-ENGINE-FIX-* per расхождение. Optimize откладывается до фиксов.",
+  "anomalies": [
+    "TEST_1: trades_count semantics — real=out_group_events(43), sim=individual_orders_closed(50). Ratio may reflect avg group size, not true mismatch.",
+    "TEST_2: trades_count semantics — real=out_group_events(29), sim=individual_orders_closed(2). Ratio may reflect avg group size, not true mismatch.",
+    "TEST_3: trades_count semantics — real=out_group_events(18), sim=individual_orders_closed(43). Ratio may reflect avg group size, not true mismatch.",
+    "SHORT_1.1pct: trades_count semantics — real=out_group_events(22), sim=individual_orders_closed(0). Ratio may reflect avg group size, not true mismatch.",
+    "LONG_C: trades_count semantics — real=out_group_events(12), sim=individual_orders_closed(33). Ratio may reflect avg group size, not true mismatch.",
+    "LONG_D: trades_count semantics — real=out_group_events(16), sim=individual_orders_closed(39). Ratio may reflect avg group size, not true mismatch."
+  ]
+}

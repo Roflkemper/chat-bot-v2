@@ -1,0 +1,13 @@
+HOTFIX 25 - LEARNING WEIGHTED GINAREA
+
+What changed:
+- Personal bot learning now lightly adjusts bot scores instead of only being informational.
+- Adjustments are small and capped, so existing logic is not broken.
+- Matching context (regime/range position) can strengthen a bot.
+- Weak historic personal performance can slightly reduce a bot score.
+- BOT MATRIX now shows learning impact and reasons.
+
+Files changed:
+- storage/personal_bot_learning.py
+- core/ginarea_advisor.py
+- core/btc_plan.py

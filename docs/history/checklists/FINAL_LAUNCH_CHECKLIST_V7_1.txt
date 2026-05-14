@@ -1,0 +1,11 @@
+FINAL LAUNCH CHECKLIST V7.1
+
+1. Убедиться, что установлен Python
+2. Создать один из файлов:
+   - .env
+   - bot_local_config.json
+3. Заполнить BOT_TOKEN
+4. При необходимости заполнить CHAT_ID
+5. Запустить RUN_BOT.bat
+6. Если нужен лог запуска — RUN_BOT_DEBUG.bat
+7. Если нужно проверить структуру — python tools/health_check.py

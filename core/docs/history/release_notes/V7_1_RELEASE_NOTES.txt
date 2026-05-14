@@ -1,0 +1,14 @@
+V7.1 — CLEANUP REAL
+
+Что сделано:
+- реально удалены __pycache__, *.pyc и *.pyo
+- очищена папка logs от runtime-файлов
+- исторические notes вынесены из корня в docs/release_history
+- добавлен docs/runtime_examples/bot_local_config.example.json
+- README синхронизирован с фактической логикой config.py
+- обновлены release manifest и launch checklist
+
+Смысл релиза:
+- чище пакет
+- меньше путаницы при первом запуске
+- меньше визуального мусора в корне проекта

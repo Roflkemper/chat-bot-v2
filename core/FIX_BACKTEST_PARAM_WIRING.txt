@@ -1,0 +1,14 @@
+V17.10.46.4.4-param-wiring-fix
+
+Что исправлено:
+- backtest_engine больше не использует захардкоженные значения TP2/BE trigger и других backtest-параметров.
+- Теперь параметры читаются из config.py / environment.
+- Значения по умолчанию уже выставлены так:
+  MIN_CONFIDENCE_TO_TRADE=60.0
+  BACKTEST_BE_TRIGGER_TO_TP1=1.1
+  BACKTEST_TP2_ATR_MULT=1.6
+
+Что проверить:
+1) Запусти backtest снова.
+2) Если результат изменился — wiring починен.
+3) Для ручной настройки меняй config.py или env переменные.

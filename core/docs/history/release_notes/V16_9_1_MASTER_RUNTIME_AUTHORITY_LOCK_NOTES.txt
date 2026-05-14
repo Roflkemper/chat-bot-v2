@@ -1,0 +1,14 @@
+V16.9.1 — MASTER RUNTIME AUTHORITY LOCK
+
+Что сделано:
+- добавлен master runtime authority lock: все экраны могут брать единый runtime из master TF (1h)
+- младшие ТФ больше не должны ломать основной runtime управления сетками
+- усилен прогноз рынка: теперь в ключевых экранах есть явная строка «прогноз рынка»
+- добавлены русские пояснения рядом с authority и runtime состояниями
+- добавлены простые визуальные маркеры: 🟢 RUN, 🟡 REDUCE, ⏸ PAUSE, 🔴 EXIT, 🔵 ARM
+- обновлены BTC ANALYSIS, FINAL DECISION, SUMMARY, FORECAST, TRADE MANAGER, GINAREA, BOTS STATUS
+
+Цель релиза:
+- открываешь любой экран и видишь один главный runtime
+- отдельно читается: что делать с long-grid, что делать с short-grid
+- прогноз рынка стал короче и понятнее без возврата к старому аналитическому мусору

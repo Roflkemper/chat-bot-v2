@@ -1,0 +1,13 @@
+FIX 58 — partial / BE / invalidation manager
+
+Что добавлено:
+- manager_action теперь умеет переводить открытую позицию в PARTIAL_LONG / PARTIAL_SHORT
+- после partial умеет выдавать MOVE_BE_LONG / MOVE_BE_SHORT
+- при сломе структуры или level_break умеет выдавать INVALIDATE_LONG / INVALIDATE_SHORT
+- в Telegram добавлены manager note и workflow
+
+Базовая логика:
+- tp1_hit + partial еще не делали -> partial
+- partial_done + be еще не переносили -> move BE
+- structure_break / level_break или edge=no_trade -> invalidate
+- trap risk high при слабом quality -> partial вместо слепого hold

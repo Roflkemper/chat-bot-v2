@@ -1,0 +1,20 @@
+enabled: true
+mode: dry_run                  # dry_run | live (только dry_run в этой версии)
+trigger:
+  signal: LIQ_CASCADE
+  side: long
+  min_qty_btc: 15              # production детектор выдал 1 событие за 38ч при threshold=10
+                               # 15 — чуть выше, отсекает шум. Откалибровать в первую неделю.
+  max_qty_btc: null
+  window_sec: 60               # окно суммирования ликвидаций
+guard:
+  min_short_position_btc: 0.5  # не запускать если суммарный шорт < 0.5 BTC
+sim_params:
+  size_btc: 0.005
+  target_pct: 0.30             # подтверждено эталоном 0.31%
+  stoploss_pct: 0.80
+  timeout_min: 60
+notify:
+  telegram_chat: ${CHAT_ID}    # фактически используется send_telegram_alert из config.py
+  dual_alert: true             # немедленный алерт при триггере + финальный через timeout_min
+log_file: logs/counter_long_events.jsonl

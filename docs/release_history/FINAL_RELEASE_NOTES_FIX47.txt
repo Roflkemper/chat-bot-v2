@@ -1,0 +1,28 @@
+CHAT BOT VERSION 2 — FINAL RELEASE FIX47
+
+В релиз вошло:
+- fix39 neutral guard
+- fix40 no stale direction rebuild
+- fix41 возврат кнопки СОХРАНИТЬ КЕЙС
+- fix42 directional bias actions
+- fix43 delta situation shift
+- fix44 acceleration layer
+- fix45 scaling ladder для ginarea
+- fix46 unified bot matrix + pattern memory + S&P 500 overlay
+- fix47 size allocator
+
+Новые блоки в BTC GINAREA:
+- DEVIATION LADDER 60m
+- UNIFIED BOT MATRIX
+- OVERLAY COMMENTS
+- SIZE PLAN
+- PRIMARY BOT / SECONDARY BOT
+- AGGRESSION MODE
+
+Логика size allocator:
+- 25% = probe / defensive
+- 50% = small
+- 75% = add / confident
+- 100% = aggressive
+
+Этот релиз собран как итоговый финальный архив на базе fix45 c добавлением fix47.

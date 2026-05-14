@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-05-05T22:10:48.617767+00:00",
+  "ohlcv_source": "backtests\\frozen\\BTCUSDT_1m_2y.csv",
+  "tail_days": 365,
+  "comparison_cadence": "1h",
+  "comparison_tf_for_c": "1h",
+  "n_comparable_bars": 8511,
+  "warmup_skipped": 250,
+  "alignment_rule": {
+    "a": "TREND_UP|CASCADE_UP -> MARKUP, TREND_DOWN|CASCADE_DOWN -> MARKDOWN, RANGE|COMPRESSION -> RANGE",
+    "c": "MARKUP -> MARKUP, MARKDOWN -> MARKDOWN, RANGE|ACCUMULATION|DISTRIBUTION|TRANSITION -> RANGE"
+  },
+  "overall_agreement_rate": 0.6311831747150746,
+  "overall_disagreement_rate": 0.3688168252849254,
+  "opposite_direction_count": 87,
+  "opposite_direction_pct": 1.0222065562213607,
+  "confusion_matrix_a_vs_c": {
+    "MARKUP": {
+      "MARKUP": 88,
+      "MARKDOWN": 20,
+      "RANGE": 1288
+    },
+    "MARKDOWN": {
+      "MARKUP": 67,
+      "MARKDOWN": 234,
+      "RANGE": 1398
+    },
+    "RANGE": {
+      "MARKUP": 159,
+      "MARKDOWN": 207,
+      "RANGE": 5050
+    }
+  },
+  "per_a_label": {
+    "MARKUP": {
+      "n": 1396,
+      "disagreement_rate": 0.9369627507163324,
+      "c_label_distribution": {
+        "RANGE": 1288,
+        "MARKUP": 88,
+        "MARKDOWN": 20
+      }
+    },
+    "MARKDOWN": {
+      "n": 1699,
+      "disagreement_rate": 0.8622719246615657,
+      "c_label_distribution": {
+        "RANGE": 1398,
+        "MARKDOWN": 234,
+        "MARKUP": 67
+      }
+    },
+    "RANGE": {
+      "n": 5416,
+      "disagreement_rate": 0.06757754800590841,
+      "c_label_distribution": {
+        "RANGE": 5050,
+        "MARKDOWN": 207,
+        "MARKUP": 159
+      }
+    }
+  },
+  "a_raw_distribution": {
+    "RANGE": 3811,
+    "TREND_UP": 1391,
+    "COMPRESSION": 1605,
+    "TREND_DOWN": 1697,
+    "CASCADE_DOWN": 2,
+    "CASCADE_UP": 5
+  },
+  "c_raw_distribution": {
+    "range": 5815,
+    "accumulation": 593,
+    "distribution": 638,
+    "markdown": 461,
+    "transition": 690,
+    "markup": 314
+  }
+}

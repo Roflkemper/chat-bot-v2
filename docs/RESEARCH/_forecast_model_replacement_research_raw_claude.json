@@ -1,0 +1,116 @@
+{
+  "tz": "TZ-FORECAST-MODEL-REPLACEMENT-RESEARCH",
+  "worker_id": "claude",
+  "generated_at_utc": "2026-05-05T19:00:00Z",
+  "investigation_duration_minutes": 25,
+  "approaches": [
+    {"id":"Q1-A","question":"Q1","name":"Kim 2025 CNN-LSTM with macro variables","sources":["https://onlinelibrary.wiley.com/doi/10.1002/fut.70010"],"evidence_basis":"academic-peer-reviewed","applicability":"partial","note":"Does not report Brier; macro variables stale at 1h"},
+    {"id":"Q1-B","question":"Q1","name":"Omole-Enke 82.44% CNN-LSTM with on-chain","sources":["https://www.sciencedirect.com/science/article/abs/pii/S0952197625010875"],"evidence_basis":"academic-peer-reviewed-unreplicated","applicability":"flagged","anti_recommend":true,"note":"Single-paper claim 82% accuracy; no independent replication; suspect publication artifact"},
+    {"id":"Q1-C","question":"Q1","name":"PyQuantLab XGBoost walk-forward calibration","sources":["https://pyquantlab.medium.com/xgboost-for-short-term-bitcoin-prediction-walk-forward-analysis-and-thresholded-performance-b83dc2e677eb"],"evidence_basis":"community-reproducible","applicability":"directly-relevant","note":"Thresholded action pattern matches our cost-loss framework"},
+    {"id":"Q1-D","question":"Q1","name":"Adaptive Market Hypothesis crypto","sources":["https://www.nature.com/articles/s41598-023-31618-4","https://www.sciencedirect.com/science/article/pii/S1059056025001017","https://www.sciencedirect.com/science/article/abs/pii/S1057521919300821"],"evidence_basis":"academic-peer-reviewed","applicability":"context-anchor","note":"Crypto is time-varying-efficient; persistent skill expectation is unrealistic"},
+    {"id":"Q2-A","question":"Q2","name":"XGBoost / LightGBM / CatBoost tabular","sources":["https://arxiv.org/html/2407.11786v1","https://link.springer.com/chapter/10.1007/978-981-96-0924-6_8","https://arxiv.org/html/2506.05764v2","https://link.springer.com/article/10.1007/s44163-025-00519-y"],"evidence_basis":"academic-peer-reviewed","applicability":"strong-baseline","note":"Tree ensembles consistently match or beat deep learning on tabular crypto direction"},
+    {"id":"Q2-B","question":"Q2","name":"LSTM / GRU sequence models","sources":["https://arxiv.org/html/2405.11431v1","https://arxiv.org/html/2506.22055v1","https://www.mdpi.com/2073-8994/18/1/32"],"evidence_basis":"academic","applicability":"secondary","caveat":"RMSE wins do not translate to Brier"},
+    {"id":"Q2-C","question":"Q2","name":"Temporal Fusion Transformer / Transformers","sources":["https://www.mdpi.com/2079-8954/13/6/474","https://arxiv.org/pdf/2509.10542","https://arxiv.org/abs/2412.14529","https://www.sciencedirect.com/science/article/pii/S2405844024161737"],"evidence_basis":"academic-peer-reviewed-multiple-2024-2025","applicability":"medium-low","caveat":"Heavy overfitting risk on noisy crypto direction"},
+    {"id":"Q2-D","question":"Q2","name":"Hybrid LSTM+XGBoost","sources":["https://arxiv.org/html/2506.22055v1"],"evidence_basis":"academic-peer-reviewed","applicability":"promising-2nd-tier"},
+    {"id":"Q2-E","question":"Q2","name":"Deep RL (DQN/PPO/TD3)","sources":["https://arxiv.org/abs/2209.05559","https://github.com/berendgort/FinRL_Crypto","https://github.com/AI4Finance-Foundation/FinRL_Crypto"],"evidence_basis":"academic + anti-evidence on overfitting","applicability":"anti-recommend","note":"Earlier DRL crypto papers explicitly proved to contain backtest overfitting"},
+    {"id":"Q3-A","question":"Q3","name":"Order-flow / LOB features (LOAD-BEARING POSITIVE)","sources":["https://www.sciencedirect.com/science/article/pii/S1386418126000029","https://arxiv.org/html/2602.00776v1","https://arxiv.org/html/2506.05764v2","https://arxiv.org/pdf/2010.01241","https://dm13450.github.io/2022/02/02/Order-Flow-Imbalance.html","https://arxiv.org/html/2304.02472v2","https://arxiv.org/html/2312.16190v1"],"evidence_basis":"academic-peer-reviewed-multiple","applicability":"strongest-single-feature","caveats":["Requires raw L2/L3 LOB data","Effect dissipates at 1h+","2-second 71% accuracy doesn't transfer"]},
+    {"id":"Q3-B","question":"Q3","name":"On-chain features (whale netflows, exchange flows)","sources":["https://insights.glassnode.com/content/unlocking-bitcoin-market-trends-an-introduction-to-crypto-whale-tracking/","https://www.sciencedirect.com/science/article/pii/S0890838925000915","https://insights.glassnode.com/systematic-feature-discovery-for-digital-assets/"],"evidence_basis":"academic-daily-horizon","applicability":"weak-at-1h"},
+    {"id":"Q3-C","question":"Q3","name":"Funding rate / derivatives features","sources":["https://dm13450.github.io/2022/02/02/Order-Flow-Imbalance.html"],"evidence_basis":"academic+practitioner-small-effect","applicability":"adjunct-only"},
+    {"id":"Q3-D","question":"Q3","name":"Technical indicators","sources":["https://arxiv.org/html/2407.11786v1"],"evidence_basis":"mature-mostly-noise","applicability":"adjunct-only"},
+    {"id":"Q3-E","question":"Q3","name":"Sentiment features","sources":["—"],"evidence_basis":"over-claimed-replication-failures","applicability":"anti-recommend-as-primary"},
+    {"id":"Q4-A","question":"Q4","name":"HMM regime + per-regime forecast","sources":["https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/","https://pyquantlab.medium.com/regime-aware-trading-with-hidden-markov-models-hmms-and-macro-features-c75f6d357880"],"evidence_basis":"retail-deployed-weak-OOS","applicability":"already-failed-for-us","note":"This is what decommissioned model did; resolution=0"},
+    {"id":"Q4-B","question":"Q4","name":"Adaptive switching / online learning","sources":["https://arxiv.org/pdf/2509.10542"],"evidence_basis":"academic-recent","applicability":"infra-heavy"},
+    {"id":"Q4-C","question":"Q4","name":"FinRL-X regime rotation","sources":["https://github.com/AI4Finance-Foundation/FinRL-Trading","https://arxiv.org/html/2603.21330v1"],"evidence_basis":"academic-single-paper","applicability":"different-task-not-direction-forecast"},
+    {"id":"Q5-A","question":"Q5","name":"Walk-forward / rolling validation","sources":["https://arxiv.org/pdf/2006.14473","https://quantnomad.com/why-your-live-trading-is-so-much-worse-than-your-backtests/"],"evidence_basis":"universal-consensus","applicability":"mandatory"},
+    {"id":"Q5-B","question":"Q5","name":"Triple-barrier labels + purged + embargoed CV","sources":["https://en.wikipedia.org/wiki/Purged_cross-validation","https://towardsai.net/p/l/the-combinatorial-purged-cross-validation-method","https://www.newsletter.quantreo.com/p/the-triple-barrier-labeling-of-marco","https://reasonabledeviations.com/notes/adv_fin_ml/"],"evidence_basis":"mature-methodology","applicability":"mandatory"},
+    {"id":"Q5-C","question":"Q5","name":"Brier decomposition + reliability diagrams","sources":["—internal: FORECAST_CALIBRATION_DIAGNOSTIC_v1.md"],"evidence_basis":"textbook","applicability":"mandatory"},
+    {"id":"Q5-D","question":"Q5","name":"Survivorship & data-snooping bias correction","sources":["https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4287573","https://www.coinapi.io/blog/how-to-eliminate-survivorship-bias-in-crypto-backtesting","https://stratbase.ai/en/blog/survivorship-bias-crypto","https://arxiv.org/html/2512.02029v1"],"evidence_basis":"meta-research-consensus","applicability":"reality-check","quote":"Survivorship bias in crypto can inflate backtested returns by 200-400%."},
+    {"id":"Q6-A","question":"Q6","name":"Numerai Crypto tournament","sources":["https://docs.numer.ai/numerai-signals/signals-overview","https://forum.numer.ai/t/signal-miner-find-unique-alpha-beat-the-benchmark/7922","https://docs.numer.ai/numerai-tournament/scoring"],"evidence_basis":"live-money-production","applicability":"structural-validation-not-direct-Brier"},
+    {"id":"Q6-B","question":"Q6","name":"OSS repos with documented backtest results","sources":["https://github.com/jordantete/grid_trading_bot","https://github.com/AI4Finance-Foundation/FinRL_Crypto","https://github.com/berendgort/FinRL_Crypto","https://github.com/toma-x/exploring-order-book-predictability"],"evidence_basis":"open-source-reproducible","applicability":"benchmark-realism"},
+    {"id":"Q6-C","question":"Q6","name":"TrendSpider AI BTC Volatility Forecast Pro","sources":["https://trendspider.com/trading-tools-store/indicators/69523f-ai-bitcoin-volatility-forecast-pro-btcusdt-%C2%B7-1h/"],"evidence_basis":"commercial","applicability":"adjacent-task-volatility-not-direction"}
+  ],
+  "anti_recommendations": [
+    {"name":"Vision-LLM chart pattern recognition","note":"Already established anti-recommendation"},
+    {"name":"Unreplicated 80%+ accuracy claims","sources":["https://www.sciencedirect.com/science/article/abs/pii/S0952197625010875","https://link.springer.com/chapter/10.1007/978-981-96-0924-6_8"]},
+    {"name":"Deep RL as direction predictor","sources":["https://arxiv.org/abs/2209.05559"]},
+    {"name":"Sentiment features as primary"},
+    {"name":"On-chain at hourly horizon as primary","note":"Daily-to-weekly only"},
+    {"name":"Repeating regime-conditional weights approach","note":"This is what decommissioned model did; resolution=0"}
+  ],
+  "top_3_recommendations": [
+    {
+      "rank":1,
+      "name":"XGBoost + engineered features + triple-barrier labels + walk-forward + Brier decomposition diagnostic at every step",
+      "primary_sources":["Q2-A","Q5-B","Q5-C"],
+      "what_it_produces":"Realistic Brier 0.245-0.249 with non-zero resolution; usable under thresholded actions",
+      "implementation_path":[
+        "TZ-FORECAST-LABEL-DESIGN — implement triple-barrier labels",
+        "TZ-FORECAST-FEATURE-AUDIT — Boruta/SHAP feature selection",
+        "TZ-FORECAST-XGBOOST-V1 — train with purged+embargoed CV; weekly retrain",
+        "TZ-FORECAST-XGBOOST-V1-DIAGNOSTIC — reliability + Brier decomposition; HARD GATE: resolution>=0.005",
+        "If passed: TZ-FORECAST-XGBOOST-V1-DEPLOY"
+      ],
+      "data_acquisition":"none new for v1",
+      "timeline_weeks":"4-6",
+      "probability_brier_below_0_22":"5-15%"
+    },
+    {
+      "rank":2,
+      "name":"Order-flow / LOB feature pipeline as v2 layer if v1 passes gating",
+      "primary_sources":["Q3-A"],
+      "what_it_produces":"Plausible 1-3 percentage point lift in directional accuracy; Brier ~0.235-0.245",
+      "implementation_path":[
+        "Prereq: v1 must have positive resolution",
+        "TZ-FORECAST-LOB-COLLECTOR — live L2 from BitMEX",
+        "TZ-FORECAST-LOB-FEATURES-V2 — engineer order-flow features",
+        "TZ-FORECAST-XGBOOST-V2 — retrain with v2 features; diagnostic comparison"
+      ],
+      "data_acquisition":"live L2 LOB stream; ~50-100 GB/month storage",
+      "timeline_weeks":"8-12 (incl data collection)",
+      "probability_brier_below_0_22":"10-20% with v1+v2"
+    },
+    {
+      "rank":3,
+      "name":"LSTM+XGBoost hybrid v3 stretch goal if v1+v2 plateau",
+      "primary_sources":["Q2-D"],
+      "what_it_produces":"Marginal additional lift; Brier ~0.225-0.235",
+      "implementation_path":[
+        "Prereq: v1+v2 plateau",
+        "TZ-FORECAST-LSTM-EMBEDDING — train LSTM extract embeddings",
+        "TZ-FORECAST-HYBRID-V3 — XGBoost on embeddings+raw features"
+      ],
+      "data_acquisition":"none beyond v1+v2 (GPU compute helpful)",
+      "timeline_weeks":"4-8 added",
+      "probability_brier_below_0_22":"5-15% additional lift"
+    }
+  ],
+  "realistic_probability_assessment": {
+    "operator_target_brier":0.22,
+    "decommissioned_model_brier":0.2569,
+    "rigorous_literature_ceiling_brier":0.245,
+    "rigorous_literature_directional_accuracy_range_pct":[52,58],
+    "probability_outcomes_full_v1_v2_path": {
+      "brier_below_0_22":"10-20%",
+      "brier_0_220_to_0_244":"40-55%",
+      "brier_0_245_to_0_249":"30-40%",
+      "brier_above_0_250":"10-20%"
+    },
+    "headline":"Most likely outcome is Brier 0.245-0.249 — slight skill, marginally usable under thresholded actions. Hitting <0.22 would put us in top decile of rigorously-validated literature.",
+    "decommissioned_was_worse_than_baseline":"Brier 0.2569 was below the realistic baseline of ~0.249, which means previous attempt was buggy (sign-inversion in trend regimes per diagnostic), not just unsuccessful at hitting <0.22.",
+    "recommendation_to_operator":"The regulation works without a forecast. Adding a marginally-skillful forecast back would be a nice-to-have improvement at the margin, not a required dependency. Consider whether the 1-3 month investment is worth the marginal expected benefit vs leaving the forecast block decommissioned permanently."
+  },
+  "open_questions": [
+    "Public dataset of rigorously-validated Bitcoin 1h-Brier scores",
+    "Triple-barrier vs naive label Brier impact on our existing data",
+    "Pre-flight feature signal audit on 84-feature parquet",
+    "BitMEX L2 LOB stream operational stability",
+    "Numerai Crypto submission compatibility with our infrastructure"
+  ],
+  "stats": {
+    "approaches_total": 25,
+    "anti_recommendations_total": 6,
+    "questions_answered": 7,
+    "source_links_unique_approx": 50,
+    "investigation_minutes": 25
+  }
+}

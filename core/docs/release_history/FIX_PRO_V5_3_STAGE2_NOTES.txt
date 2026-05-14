@@ -1,0 +1,12 @@
+FIX PRO V5.3 STAGE 2
+
+Что усилено:
+- боевой блок ⚡ ЧТО ДЕЛАТЬ СЕЙЧАС стал более прикладным и на русском
+- execution advisor переведен в RU-режим для ключевых entry типов
+- smart alerts усилены под intraday / liquidity / soft-signal события
+- добавлена добивка action-layer поверх Stage 1
+
+Что осталось для финала:
+- проверить CoinGlass API с реальным ключом COINGLASS_API_KEY
+- обучить и положить xgb_*.joblib для полного XGBoost режима
+- финально прогнать UI тексты и snapshot sync в живом запуске

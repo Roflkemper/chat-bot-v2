@@ -1,0 +1,99 @@
+{
+  "worker_id": "codex",
+  "counts": {
+    "Q1": 5,
+    "Q2": 5,
+    "Q3": 5,
+    "Q4": 4,
+    "Q5": 4,
+    "Q6": 5,
+    "Q7": 4
+  },
+  "top_recommendations": [
+    {
+      "name": "Regime-conditional boosted trees with derivatives-first features",
+      "probability_of_success": "moderate",
+      "best_horizons": ["1h", "4h"],
+      "sources": [
+        "https://www.gresearch.com/news/wrapping-up-the-g-research-crypto-forecasting-competition/",
+        "https://www.sciencedirect.com/science/article/pii/S1544612318307918",
+        "https://link.springer.com/article/10.1007/s10614-026-11338-3"
+      ]
+    },
+    {
+      "name": "1h specialist model with order-flow / OFI / LOB enrichment",
+      "probability_of_success": "moderate for 1h, low for 1d",
+      "best_horizons": ["1h"],
+      "sources": [
+        "https://link.springer.com/article/10.1007/s10203-026-00570-z",
+        "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3900141",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC10040314/"
+      ]
+    },
+    {
+      "name": "4h/1d hybrid with on-chain + derivatives + cross-market features",
+      "probability_of_success": "low to moderate",
+      "best_horizons": ["4h", "1d"],
+      "sources": [
+        "https://www.sciencedirect.com/science/article/pii/S266682702500057X",
+        "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5053931",
+        "https://docs.glassnode.com/"
+      ]
+    }
+  ],
+  "anti_recommendations": [
+    "Pure OHLCV + generic technical indicators as core replacement",
+    "Generic deep net swap without feature/data redesign",
+    "Public HF crypto model cards as evidence of live viability",
+    "DRL as first replacement path",
+    "Vision / chart-image forecasting"
+  ],
+  "realistic_assessment": {
+    "1h": "moderate chance of meaningful improvement; sub-0.22 plausible but not likely without richer features",
+    "4h": "low to moderate chance",
+    "1d": "low chance",
+    "all_horizons_under_0_22": "low"
+  },
+  "sources": [
+    "https://link.springer.com/article/10.1186/s40854-024-00643-1",
+    "https://www.sciencedirect.com/science/article/pii/S266682702500057X",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5053931",
+    "https://docs.glassnode.com/",
+    "https://research.kaiko.com/insights/the-state-of-crypto-derivatives",
+    "https://www.kaiko.com/reports/perps-are-coming-to-america",
+    "https://insights.glassnode.com/",
+    "https://link.springer.com/article/10.1007/s10203-026-00570-z",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC10040314/",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3900141",
+    "https://www.gresearch.com/news/wrapping-up-the-g-research-crypto-forecasting-competition/",
+    "https://journals.sagepub.com/doi/10.3233/MAS-210530",
+    "https://www.sciencedirect.com/science/article/pii/S1544612318307918",
+    "https://www.sciencedirect.com/science/article/pii/S266682702200055X",
+    "https://www.mdpi.com/2504-3110/7/10/708",
+    "https://link.springer.com/article/10.1186/s40537-025-01291-7",
+    "https://link.springer.com/article/10.1007/s10614-023-10470-8",
+    "https://link.springer.com/article/10.1007/s10614-026-11338-3",
+    "https://www.scholars.northwestern.edu/en/publications/regime-switching-factor-investing-with-hidden-markov-models/",
+    "https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/",
+    "https://researchers.mq.edu.au/en/publications/a-hidden-markov-regime-switching-smooth-transition-model/",
+    "https://ore.exeter.ac.uk/repository/handle/10871/34847",
+    "https://www.researchgate.net/publication/253893961_Two_Extra_Components_in_the_Brier_Score_Decomposition",
+    "https://www.mdpi.com/1099-4300/17/8/5450",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2745220",
+    "https://papers.cool/arxiv/2512.12924",
+    "https://ai.finlab.tw/finlab_crypto/overfitting.html",
+    "https://www.cambridge.org/core/journals/judgment-and-decision-making/article/weighted-brier-score-decompositions-for-topically-heterogenous-forecasting-tournaments/8172E04F2DBC601DA5D953D4685CA346",
+    "https://pubsonline.informs.org/doi/pdf/10.1287/mnsc.29.4.447",
+    "https://docs.numer.ai/numerai-crypto/crypto-overview",
+    "https://docs.numer.ai/numerai-crypto/data",
+    "https://github.com/Globe-Research/deep-orderbook",
+    "https://github.com/toma-x/exploring-order-book-predictability",
+    "https://huggingface.co/lc2004/kronos_base_model_BTCUSDT_1h_finetune",
+    "https://huggingface.co/lc2004/kronos_base_model_BTCUSDT_4h_finetune",
+    "https://huggingface.co/Tasfiya025/Financial-Time-Series",
+    "https://ideas.repec.org/p/arx/papers/2209.05559.html",
+    "https://huggingface.co/papers/2507.14823",
+    "https://huggingface.co/papers/2505.18570",
+    "https://www.reddit.com/r/algotrading/comments/1f7bx7a"
+  ]
+}

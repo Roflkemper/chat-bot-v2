@@ -1,0 +1,957 @@
+{
+  "generated_at_utc": "2026-05-05T15:16:43.335020+00:00",
+  "compute_seconds": 1.371157,
+  "method": "M1 proportional allocation per REGIME_OVERLAY_v1",
+  "rebate_rate": 9.3e-05,
+  "rebate_rate_pct": "0.0093%",
+  "regime_index_window": {
+    "start": "2025-05-01 00:00:00+00:00",
+    "end": "2026-05-01 00:00:00+00:00",
+    "total_hours": 8761
+  },
+  "per_run": [
+    {
+      "run_id": "A1",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0/0/0",
+      "target": null,
+      "window_start": "2025-05-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 8884.0,
+      "unit": "USD",
+      "volume_usd": 13020000.0,
+      "coverage_pct": 98.65,
+      "covered_hours": 8665,
+      "nominal_hours": 8784,
+      "regime_hours": {
+        "MARKUP": 1119,
+        "MARKDOWN": 1309,
+        "RANGE": 6237
+      },
+      "regime_share_pct": {
+        "MARKUP": 12.91,
+        "MARKDOWN": 15.11,
+        "RANGE": 71.98
+      },
+      "regime_pnl": {
+        "MARKUP": 1147.281708,
+        "MARKDOWN": 1342.083785,
+        "RANGE": 6394.634507
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": 1210.86,
+      "post_rebate_pnl": 10094.86,
+      "post_rebate_pnl_per_regime": {
+        "MARKUP": 1303.652434,
+        "MARKDOWN": 1525.005394,
+        "RANGE": 7266.202172
+      },
+      "notes": ""
+    },
+    {
+      "run_id": "A2",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">0.3%",
+      "instop": "0/0/0",
+      "target": null,
+      "window_start": "2026-02-01",
+      "window_end": "2026-04-30",
+      "total_pnl": -478.0,
+      "unit": "USD",
+      "volume_usd": 3570000.0,
+      "coverage_pct": 100.0,
+      "covered_hours": 2136,
+      "nominal_hours": 2136,
+      "regime_hours": {
+        "MARKUP": 408,
+        "MARKDOWN": 437,
+        "RANGE": 1291
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.1,
+        "MARKDOWN": 20.46,
+        "RANGE": 60.44
+      },
+      "regime_pnl": {
+        "MARKUP": -91.303371,
+        "MARKDOWN": -97.793071,
+        "RANGE": -288.903558
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": 332.01,
+      "post_rebate_pnl": -145.99,
+      "post_rebate_pnl_per_regime": {
+        "MARKUP": -27.885731,
+        "MARKDOWN": -29.867804,
+        "RANGE": -88.236465
+      },
+      "notes": ""
+    },
+    {
+      "run_id": "A3",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.008/0.025",
+      "target": null,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "total_pnl": 8821.0,
+      "unit": "USD",
+      "volume_usd": 14890000.0,
+      "coverage_pct": 100.0,
+      "covered_hours": 8664,
+      "nominal_hours": 8664,
+      "regime_hours": {
+        "MARKUP": 1119,
+        "MARKDOWN": 1309,
+        "RANGE": 6236
+      },
+      "regime_share_pct": {
+        "MARKUP": 12.92,
+        "MARKDOWN": 15.11,
+        "RANGE": 71.98
+      },
+      "regime_pnl": {
+        "MARKUP": 1139.277355,
+        "MARKDOWN": 1332.720337,
+        "RANGE": 6349.002308
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": 1384.77,
+      "post_rebate_pnl": 10205.77,
+      "post_rebate_pnl_per_regime": {
+        "MARKUP": 1318.127497,
+        "MARKDOWN": 1541.938242,
+        "RANGE": 7345.704261
+      },
+      "notes": ""
+    },
+    {
+      "run_id": "A4",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">0.3%",
+      "instop": "0.018/0.008/0.025",
+      "target": null,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": -5046.0,
+      "unit": "USD",
+      "volume_usd": 3760000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": -991.399314,
+        "MARKDOWN": -944.425282,
+        "RANGE": -3110.175404
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": 349.68,
+      "post_rebate_pnl": -4696.32,
+      "post_rebate_pnl_per_regime": {
+        "MARKUP": -922.696874,
+        "MARKDOWN": -878.97807,
+        "RANGE": -2894.645056
+      },
+      "notes": ""
+    },
+    {
+      "run_id": "C1-clean",
+      "pack": "C",
+      "side": "LONG",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.01/0.03",
+      "target": 0.25,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "total_pnl": -0.1955,
+      "unit": "BTC",
+      "volume_usd": 16560000.0,
+      "coverage_pct": 100.0,
+      "covered_hours": 8664,
+      "nominal_hours": 8664,
+      "regime_hours": {
+        "MARKUP": 1119,
+        "MARKDOWN": 1309,
+        "RANGE": 6236
+      },
+      "regime_share_pct": {
+        "MARKUP": 12.92,
+        "MARKDOWN": 15.11,
+        "RANGE": 71.98
+      },
+      "regime_pnl": {
+        "MARKUP": -0.02525,
+        "MARKDOWN": -0.029537,
+        "RANGE": -0.140713
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "C2-clean",
+      "pack": "C",
+      "side": "LONG",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.01/0.03",
+      "target": 0.3,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "total_pnl": -0.0812,
+      "unit": "BTC",
+      "volume_usd": 14470000.0,
+      "coverage_pct": 100.0,
+      "covered_hours": 8664,
+      "nominal_hours": 8664,
+      "regime_hours": {
+        "MARKUP": 1119,
+        "MARKDOWN": 1309,
+        "RANGE": 6236
+      },
+      "regime_share_pct": {
+        "MARKUP": 12.92,
+        "MARKDOWN": 15.11,
+        "RANGE": 71.98
+      },
+      "regime_pnl": {
+        "MARKUP": -0.010487,
+        "MARKDOWN": -0.012268,
+        "RANGE": -0.058445
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "C3",
+      "pack": "C",
+      "side": "LONG",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.01/0.03",
+      "target": 0.4,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "total_pnl": -0.0641,
+      "unit": "BTC",
+      "volume_usd": 11480000.0,
+      "coverage_pct": 100.0,
+      "covered_hours": 8664,
+      "nominal_hours": 8664,
+      "regime_hours": {
+        "MARKUP": 1119,
+        "MARKDOWN": 1309,
+        "RANGE": 6236
+      },
+      "regime_share_pct": {
+        "MARKUP": 12.92,
+        "MARKDOWN": 15.11,
+        "RANGE": 71.98
+      },
+      "regime_pnl": {
+        "MARKUP": -0.008279,
+        "MARKDOWN": -0.009685,
+        "RANGE": -0.046137
+      },
+      "reconciliation_residual": 1e-06,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "D-NoStop",
+      "pack": "D",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">1%",
+      "instop": "0/0/0",
+      "target": null,
+      "window_start": "2026-02-01",
+      "window_end": "2026-04-30",
+      "total_pnl": -481.0,
+      "unit": "USD",
+      "volume_usd": 3560000.0,
+      "coverage_pct": 100.0,
+      "covered_hours": 2136,
+      "nominal_hours": 2136,
+      "regime_hours": {
+        "MARKUP": 408,
+        "MARKDOWN": 437,
+        "RANGE": 1291
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.1,
+        "MARKDOWN": 20.46,
+        "RANGE": 60.44
+      },
+      "regime_pnl": {
+        "MARKUP": -91.876404,
+        "MARKDOWN": -98.406835,
+        "RANGE": -290.71676
+      },
+      "reconciliation_residual": 1e-06,
+      "rebate_usd": 331.08,
+      "post_rebate_pnl": -149.92,
+      "post_rebate_pnl_per_regime": {
+        "MARKUP": -28.636404,
+        "MARKDOWN": -30.671835,
+        "RANGE": -90.61176
+      },
+      "notes": ""
+    },
+    {
+      "run_id": "D-WithStop",
+      "pack": "D",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">1%",
+      "instop": "0.018/0.008/0.025",
+      "target": null,
+      "window_start": "2026-02-01",
+      "window_end": "2026-04-30",
+      "total_pnl": -2604.0,
+      "unit": "USD",
+      "volume_usd": 4290000.0,
+      "coverage_pct": 100.0,
+      "covered_hours": 2136,
+      "nominal_hours": 2136,
+      "regime_hours": {
+        "MARKUP": 408,
+        "MARKDOWN": 437,
+        "RANGE": 1291
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.1,
+        "MARKDOWN": 20.46,
+        "RANGE": 60.44
+      },
+      "regime_pnl": {
+        "MARKUP": -497.393258,
+        "MARKDOWN": -532.747191,
+        "RANGE": -1573.859551
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": 398.97,
+      "post_rebate_pnl": -2205.03,
+      "post_rebate_pnl_per_regime": {
+        "MARKUP": -421.185505,
+        "MARKDOWN": -451.122711,
+        "RANGE": -1332.721784
+      },
+      "notes": ""
+    },
+    {
+      "run_id": "E-T0.25",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.25,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.0825,
+      "unit": "BTC",
+      "volume_usd": 5790000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.016209,
+        "MARKDOWN": 0.015441,
+        "RANGE": 0.05085
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "E-T0.30",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.3,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.0915,
+      "unit": "BTC",
+      "volume_usd": 5030000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.017977,
+        "MARKDOWN": 0.017125,
+        "RANGE": 0.056397
+      },
+      "reconciliation_residual": 1e-06,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "E-T0.40",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.4,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.1039,
+      "unit": "BTC",
+      "volume_usd": 4040000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.020413,
+        "MARKDOWN": 0.019446,
+        "RANGE": 0.06404
+      },
+      "reconciliation_residual": 1e-06,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "E-T0.50",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.5,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.1114,
+      "unit": "BTC",
+      "volume_usd": 3410000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.021887,
+        "MARKDOWN": 0.02085,
+        "RANGE": 0.068663
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "E-NoStop-T0.25",
+      "pack": "E-NoStop",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0/0/0",
+      "target": 0.25,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.0783,
+      "unit": "BTC",
+      "volume_usd": 4800000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.015384,
+        "MARKDOWN": 0.014655,
+        "RANGE": 0.048261
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": "NoStop variant"
+    },
+    {
+      "run_id": "E-NoStop-T0.30",
+      "pack": "E-NoStop",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0/0/0",
+      "target": 0.3,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.0828,
+      "unit": "BTC",
+      "volume_usd": 4150000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.016268,
+        "MARKDOWN": 0.015497,
+        "RANGE": 0.051035
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": "NoStop variant"
+    },
+    {
+      "run_id": "E-NoStop-T0.40",
+      "pack": "E-NoStop",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0/0/0",
+      "target": 0.4,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.0899,
+      "unit": "BTC",
+      "volume_usd": 3290000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.017663,
+        "MARKDOWN": 0.016826,
+        "RANGE": 0.055411
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": "NoStop variant"
+    },
+    {
+      "run_id": "E-NoStop-T0.50",
+      "pack": "E-NoStop",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0/0/0",
+      "target": 0.5,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "total_pnl": 0.0944,
+      "unit": "BTC",
+      "volume_usd": 2730000.0,
+      "coverage_pct": 94.49,
+      "covered_hours": 2041,
+      "nominal_hours": 2160,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.018547,
+        "MARKDOWN": 0.017668,
+        "RANGE": 0.058185
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": "NoStop variant"
+    },
+    {
+      "run_id": "BT-014",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.5,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "total_pnl": 0.07779,
+      "unit": "BTC",
+      "volume_usd": 2930000.0,
+      "coverage_pct": 97.75,
+      "covered_hours": 2041,
+      "nominal_hours": 2088,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.015284,
+        "MARKDOWN": 0.014559,
+        "RANGE": 0.047947
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "BT-015",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.4,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "total_pnl": 0.07054,
+      "unit": "BTC",
+      "volume_usd": 3440000.0,
+      "coverage_pct": 97.75,
+      "covered_hours": 2041,
+      "nominal_hours": 2088,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.013859,
+        "MARKDOWN": 0.013202,
+        "RANGE": 0.043478
+      },
+      "reconciliation_residual": 1e-06,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "BT-016",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.3,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "total_pnl": 0.0593,
+      "unit": "BTC",
+      "volume_usd": 4330000.0,
+      "coverage_pct": 97.75,
+      "covered_hours": 2041,
+      "nominal_hours": 2088,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.011651,
+        "MARKDOWN": 0.011099,
+        "RANGE": 0.03655
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    },
+    {
+      "run_id": "BT-017",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.25,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "total_pnl": 0.05022,
+      "unit": "BTC",
+      "volume_usd": 4990000.0,
+      "coverage_pct": 97.75,
+      "covered_hours": 2041,
+      "nominal_hours": 2088,
+      "regime_hours": {
+        "MARKUP": 401,
+        "MARKDOWN": 382,
+        "RANGE": 1258
+      },
+      "regime_share_pct": {
+        "MARKUP": 19.65,
+        "MARKDOWN": 18.72,
+        "RANGE": 61.64
+      },
+      "regime_pnl": {
+        "MARKUP": 0.009867,
+        "MARKDOWN": 0.009399,
+        "RANGE": 0.030954
+      },
+      "reconciliation_residual": 0.0,
+      "rebate_usd": null,
+      "post_rebate_pnl": null,
+      "post_rebate_pnl_per_regime": null,
+      "notes": ""
+    }
+  ],
+  "per_pack_aggregate": {
+    "A": {
+      "USD": {
+        "n_runs": 4,
+        "sum_total_pnl": 12181.0,
+        "sum_regime_pnl": {
+          "MARKUP": 1203.856378,
+          "MARKDOWN": 1632.585769,
+          "RANGE": 9344.557853
+        },
+        "sum_regime_hours": {
+          "MARKUP": 3047,
+          "MARKDOWN": 3437,
+          "RANGE": 15022
+        },
+        "covered_hours_total": 21506,
+        "pnl_per_hour_per_regime": {
+          "MARKUP": 0.395096,
+          "MARKDOWN": 0.475003,
+          "RANGE": 0.622058
+        },
+        "sum_post_rebate_pnl": 15458.32
+      }
+    },
+    "BT": {
+      "BTC": {
+        "n_runs": 4,
+        "sum_total_pnl": 0.25785,
+        "sum_regime_pnl": {
+          "MARKUP": 0.050661,
+          "MARKDOWN": 0.048259,
+          "RANGE": 0.158929
+        },
+        "sum_regime_hours": {
+          "MARKUP": 1604,
+          "MARKDOWN": 1528,
+          "RANGE": 5032
+        },
+        "covered_hours_total": 8164,
+        "pnl_per_hour_per_regime": {
+          "MARKUP": 3.2e-05,
+          "MARKDOWN": 3.2e-05,
+          "RANGE": 3.2e-05
+        },
+        "sum_post_rebate_pnl": null
+      }
+    },
+    "C": {
+      "BTC": {
+        "n_runs": 3,
+        "sum_total_pnl": -0.3408,
+        "sum_regime_pnl": {
+          "MARKUP": -0.044016,
+          "MARKDOWN": -0.05149,
+          "RANGE": -0.245295
+        },
+        "sum_regime_hours": {
+          "MARKUP": 3357,
+          "MARKDOWN": 3927,
+          "RANGE": 18708
+        },
+        "covered_hours_total": 25992,
+        "pnl_per_hour_per_regime": {
+          "MARKUP": -1.3e-05,
+          "MARKDOWN": -1.3e-05,
+          "RANGE": -1.3e-05
+        },
+        "sum_post_rebate_pnl": null
+      }
+    },
+    "D": {
+      "USD": {
+        "n_runs": 2,
+        "sum_total_pnl": -3085.0,
+        "sum_regime_pnl": {
+          "MARKUP": -589.269662,
+          "MARKDOWN": -631.154026,
+          "RANGE": -1864.576311
+        },
+        "sum_regime_hours": {
+          "MARKUP": 816,
+          "MARKDOWN": 874,
+          "RANGE": 2582
+        },
+        "covered_hours_total": 4272,
+        "pnl_per_hour_per_regime": {
+          "MARKUP": -0.722144,
+          "MARKDOWN": -0.722144,
+          "RANGE": -0.722144
+        },
+        "sum_post_rebate_pnl": -2354.95
+      }
+    },
+    "E": {
+      "BTC": {
+        "n_runs": 4,
+        "sum_total_pnl": 0.3893,
+        "sum_regime_pnl": {
+          "MARKUP": 0.076486,
+          "MARKDOWN": 0.072862,
+          "RANGE": 0.23995
+        },
+        "sum_regime_hours": {
+          "MARKUP": 1604,
+          "MARKDOWN": 1528,
+          "RANGE": 5032
+        },
+        "covered_hours_total": 8164,
+        "pnl_per_hour_per_regime": {
+          "MARKUP": 4.8e-05,
+          "MARKDOWN": 4.8e-05,
+          "RANGE": 4.8e-05
+        },
+        "sum_post_rebate_pnl": null
+      }
+    },
+    "E-NoStop": {
+      "BTC": {
+        "n_runs": 4,
+        "sum_total_pnl": 0.3454,
+        "sum_regime_pnl": {
+          "MARKUP": 0.067862,
+          "MARKDOWN": 0.064646,
+          "RANGE": 0.212892
+        },
+        "sum_regime_hours": {
+          "MARKUP": 1604,
+          "MARKDOWN": 1528,
+          "RANGE": 5032
+        },
+        "covered_hours_total": 8164,
+        "pnl_per_hour_per_regime": {
+          "MARKUP": 4.2e-05,
+          "MARKDOWN": 4.2e-05,
+          "RANGE": 4.2e-05
+        },
+        "sum_post_rebate_pnl": null
+      }
+    }
+  },
+  "n_runs_total": 21,
+  "n_runs_pending": 0
+}

@@ -1,0 +1,21 @@
+CHAT BOT VERSION 2 — FINAL RELEASE
+Date: 2026-04-01
+Base: phase7 + hotfix11
+
+Included key improvements:
+- decision / forecast separation
+- improved directional bias and reversal influence
+- 15m timeframe normalization fix
+- enhanced GINAREA matrix and recommendations
+- pattern memory scaffolding for BTC 1h / 4h / 1d
+- bot management actions (small entry / can add / aggressive / cautious exit / cancel)
+- bot state manager
+- manual bot control commands and status
+
+Recommended first checks after unpacking:
+1. Fill config / env values if needed.
+2. Run BTC 5m, BTC 15m, BTC 1h, BTC 4h.
+3. Run BTC GINAREA.
+4. Run BOTS STATUS and BOT HELP.
+
+Archive assembled from the latest available project snapshot in this conversation.

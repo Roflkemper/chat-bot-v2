@@ -1,0 +1,12 @@
+V11.0 FINAL BATTLE CORE
+
+Что включено в этой сборке:
+- Real Priority Engine: главный сценарий ранжируется и показывается как top priority.
+- Market Phase Engine: добавлена фаза рынка (RANGE / ROTATION / FAKE_EXPANSION / TREND_CONTINUATION / EXHAUSTION / MIXED).
+- Smart alerts: alerts стали change-only по main priority и market phase, плюс дедупликация событий.
+- Trade manager: в wait / no-trade контексте используется SCENARIO MAP вместо боевого trade plan.
+- Bias confidence: decision confidence в manager переименован в bias confidence.
+
+Best-effort ограничения:
+- Эта сборка усиливает decision/output/alerts слой, но не перестраивает весь execution pipeline с нуля.
+- Основной код ginarea/bot orchestration сохранён совместимым с предыдущей веткой архива.

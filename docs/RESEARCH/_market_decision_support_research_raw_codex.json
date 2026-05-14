@@ -1,0 +1,314 @@
+{
+  "worker_id": "codex",
+  "summary": {
+    "approach_counts": {
+      "Q1": 4,
+      "Q2": 4,
+      "Q3": 4,
+      "Q4": 4,
+      "Q5": 4,
+      "Q6": 4,
+      "Q7": 4
+    },
+    "top_recommendations": [
+      "Build a regulation-state decision layer above forecasts.",
+      "Use top-down multi-timeframe gating with disagreement-as-veto.",
+      "Convert Telegram into a state-change and severity-routed control channel."
+    ],
+    "anti_recommendations_count": 5,
+    "source_links_count": 39
+  },
+  "findings": {
+    "Q1": [
+      {
+        "approach": "Cost-loss / expected-value thresholding",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://www.cambridge.org/core/journals/meteorological-applications/article/decisionmaking-from-probability-forecasts-based-on-forecast-value/E0DAE4195878D32304DF2E2CB6012F67",
+          "https://www.cambridge.org/core/services/aop-cambridge-core/content/view/03BE0974B95CD792EDF5F3F93B1F6081/S1350482701002092a.pdf/a-skill-score-based-on-economic-value-for-probability-forecasts.pdf",
+          "https://academic.oup.com/jrsssa/article/175/3/661/7077615"
+        ]
+      },
+      {
+        "approach": "Abstention / no-edge band",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://www.sciencedirect.com/science/article/pii/S0020737378800108",
+          "https://www.sciencedirect.com/science/article/pii/S0022169425013241",
+          "https://www.mdpi.com/2571-9394/7/2/30"
+        ]
+      },
+      {
+        "approach": "Calibration gates before action",
+        "evidence_basis": "production-deployed",
+        "applicability": "partial",
+        "sources": [
+          "https://www.freqtrade.io/en/stable/",
+          "https://github.com/jesse-ai/jesse",
+          "https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/"
+        ]
+      },
+      {
+        "approach": "Brier as weak support unless tied to utility",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://www.cambridge.org/core/journals/meteorological-applications/article/decisionmaking-from-probability-forecasts-based-on-forecast-value/E0DAE4195878D32304DF2E2CB6012F67",
+          "https://academic.oup.com/jrsssa/article/175/3/661/7077615"
+        ]
+      }
+    ],
+    "Q2": [
+      {
+        "approach": "HTF admissibility plus LTF trigger",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://docs.freqtrade.io/en/2025.5/strategy-customization/",
+          "https://hummingbot.org/strategies/v2-strategies/candles/",
+          "https://github.com/jesse-ai/jesse",
+          "https://www.reddit.com/r/algotrading/comments/1sotx2j/what_time_frame_yall_using/"
+        ]
+      },
+      {
+        "approach": "MTF disagreement as veto",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://docs.freqtrade.io/en/2025.5/strategy-customization/",
+          "https://docs.jesse.trade/docs/research/ml/gathering-data",
+          "https://docs.jesse.trade/docs/research/ml/regression"
+        ]
+      },
+      {
+        "approach": "OSS MTF is plumbing, not decision-complete",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://hummingbot.org/strategies/v2-strategies/controllers/",
+          "https://hummingbot.org/strategies/scripts/",
+          "https://www.freqtrade.io/en/stable/"
+        ]
+      },
+      {
+        "approach": "Renko-first MTF has weak support here",
+        "evidence_basis": "community-anecdotal",
+        "applicability": "partial",
+        "sources": [
+          "https://www.nature.com/articles/s41598-018-29537-w",
+          "https://www.reddit.com/r/algotrading/comments/ptt9ec"
+        ]
+      }
+    ],
+    "Q3": [
+      {
+        "approach": "Regime as risk/activation filter",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/",
+          "https://www.mdpi.com/1911-8074/13/12/311",
+          "https://www.mdpi.com/2227-9091/3/4/455"
+        ]
+      },
+      {
+        "approach": "Confidence-weighted regime gating",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://link.springer.com/article/10.1007/s10489-024-05770-x",
+          "https://link.springer.com/article/10.1007/s41060-026-01066-0"
+        ]
+      },
+      {
+        "approach": "HMM regime overlay",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "partial",
+        "sources": [
+          "https://www.scholars.northwestern.edu/en/publications/regime-switching-factor-investing-with-hidden-markov-models/",
+          "https://researchers.mq.edu.au/en/publications/a-hidden-markov-regime-switching-smooth-transition-model/",
+          "https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/"
+        ]
+      },
+      {
+        "approach": "Regime plus raw structure combined",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://link.springer.com/article/10.1007/s10489-024-05770-x",
+          "https://docs.freqtrade.io/en/2025.5/strategy-customization/",
+          "https://hummingbot.org/strategies/v2-strategies/controllers/"
+        ]
+      }
+    ],
+    "Q4": [
+      {
+        "approach": "HITL review gates and oversight",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://www.mdpi.com/2079-9292/15/6/1155",
+          "https://pubmed.ncbi.nlm.nih.gov/27142394/"
+        ]
+      },
+      {
+        "approach": "Decision-ready summaries instead of metric dumps",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://journals.sagepub.com/doi/10.1177/0018720816644872",
+          "https://www.sciencedirect.com/science/article/abs/pii/S0957417416301919"
+        ]
+      },
+      {
+        "approach": "Solo-operator compression and prioritization",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://www.researchgate.net/publication/357854091_Flexible_Decision_Support_System_for_Algorithmic_Trading_Empirical_Application_on_Crude_Oil_Markets",
+          "https://link.springer.com/article/10.1007/s10489-024-05770-x"
+        ]
+      },
+      {
+        "approach": "Semi-automation rather than full autonomy",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://github.com/jesse-ai/jesse",
+          "https://www.freqtrade.io/en/stable/",
+          "https://hummingbot.org/strategies/scripts/"
+        ]
+      }
+    ],
+    "Q5": [
+      {
+        "approach": "Range-first grid activation",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://help.3commas.io/en/articles/7941367-grid-bot-how-it-works-and-why-use-it",
+          "https://help.3commas.io/en/articles/7931795-grid-bot-choosing-a-strategy-or-a-trading-pair",
+          "https://support.pionex.com/hc/en-us/articles/45085712163225-Grid-Trading-Bot"
+        ]
+      },
+      {
+        "approach": "Trend-specific grid variants as separate roles",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://help.3commas.io/en/articles/7932030-grid-bots-main-settings-and-options",
+          "https://pionexus.zendesk.com/hc/en-us/articles/19926174007833-Infinity-Grid",
+          "https://support.pionex.com/hc/en-us/articles/45343668185113-Futures-Grid-Bot"
+        ]
+      },
+      {
+        "approach": "Position caps and out-of-range controls",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://help.3commas.io/en/articles/7936273-grid-bots-faq",
+          "https://help.3commas.io/en/articles/7936262-grid-bots-bots-management",
+          "https://support.pionex.com/hc/en-us/articles/45085712163225-Grid-Trading-Bot"
+        ]
+      },
+      {
+        "approach": "Manual/structured cleanup over autonomous self-healing",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://help.3commas.io/en/articles/7936262-grid-bots-bots-management",
+          "https://help.3commas.io/en/articles/11388471-grid-bot-statistics-page",
+          "https://support.pionex.com/hc/en-us/articles/45085712163225-Grid-Trading-Bot"
+        ]
+      }
+    ],
+    "Q6": [
+      {
+        "approach": "State-change-only alerts",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://link.springer.com/article/10.1186/1472-6947-11-35",
+          "https://bmcmedinformdecismak.biomedcentral.com/articles/10.1186/s12911-017-0430-8",
+          "https://link.springer.com/article/10.1186/1472-6947-13-111"
+        ]
+      },
+      {
+        "approach": "Severity hierarchy and context prioritization",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "yes",
+        "sources": [
+          "https://pubmed.ncbi.nlm.nih.gov/27782288/",
+          "https://pubmed.ncbi.nlm.nih.gov/27142394/"
+        ]
+      },
+      {
+        "approach": "Entropy-based dedup and alert aggregation",
+        "evidence_basis": "academic-peer-reviewed",
+        "applicability": "partial",
+        "sources": [
+          "https://www.mdpi.com/1099-4300/22/3/324",
+          "https://www.nber.org/papers/w14159"
+        ]
+      },
+      {
+        "approach": "Stale-data invalidation",
+        "evidence_basis": "production-deployed",
+        "applicability": "yes",
+        "sources": [
+          "https://www.freqtrade.io/en/stable/",
+          "https://github.com/jesse-ai/jesse",
+          "https://pubmed.ncbi.nlm.nih.gov/27142394/"
+        ]
+      }
+    ],
+    "Q7": [
+      {
+        "approach": "Chart-VLMs for chart understanding are improving but limited",
+        "evidence_basis": "preprint",
+        "applicability": "partial",
+        "sources": [
+          "https://huggingface.co/papers/2507.14823",
+          "https://huggingface.co/papers/2305.14761",
+          "https://www.polyu.edu.hk/lst/research/publications/others/2025/1101-stockgenchar/?sc_lang=en"
+        ]
+      },
+      {
+        "approach": "Vision-based forecasting is promising but immature for minute-bar decision support",
+        "evidence_basis": "preprint",
+        "applicability": "partial",
+        "sources": [
+          "https://huggingface.co/papers/2505.18570",
+          "https://www.sciencedirect.com/science/article/pii/S1544612326001169"
+        ]
+      },
+      {
+        "approach": "Best near-term use is explanation/captioning for HITL review",
+        "evidence_basis": "preprint",
+        "applicability": "partial",
+        "sources": [
+          "https://www.researchgate.net/publication/395810749_StockGenChaR_A_Study_on_the_Evaluation_of_Large_Vision-Language_Models_on_Stock_Chart_Captioning",
+          "https://www.researchgate.net/publication/393889577_FinChart-Bench_Benchmarking_Financial_Chart_Comprehension_in_Vision-Language_Models",
+          "https://www.mdpi.com/2079-9292/15/6/1155"
+        ]
+      },
+      {
+        "approach": "Do not use chart-VLMs as first-line signal engine",
+        "evidence_basis": "preprint",
+        "applicability": "no",
+        "sources": [
+          "https://huggingface.co/papers/2507.14823",
+          "https://www.researchgate.net/publication/392106223_VISTA_Vision-Language_Inference_for_Training-Free_Stock_Time-Series_Analysis"
+        ]
+      }
+    ]
+  },
+  "research_gaps": [
+    "No strong finance-specific universal Brier-to-action cutoff found.",
+    "Renko-first MTF evidence for operator decision support is weak.",
+    "Solo-operator crypto grid UI/UX literature is sparse.",
+    "Production-grade chart-VLM trading-support evidence remains early and mixed."
+  ]
+}

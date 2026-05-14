@@ -1,0 +1,6 @@
+V16.8.7 - GRID REGIME MANAGER
+- FINAL DECISION / FORECAST / SUMMARY / MANAGER / GINAREA / BOTS STATUS synced to one command core
+- mid range => НЕ ВХОДИТЬ ИЗ СЕРЕДИНЫ
+- edge only regime => ARM ONLY AT EDGE across bot screens
+- removed legacy SETUP 0.0 / NONE / liquidity path dash style noise from synced screens
+- bots status cleaned and aligned with range/grid regime

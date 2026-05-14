@@ -1,0 +1,6 @@
+FIX 95-100
+- BOTS STATUS now re-syncs from latest analysis decision payload before rendering.
+- BEST TRADE command registered and rendered.
+- Final decision separates trade authority and bot authority.
+- Bot manager remaps passive cancel states to watchlist-style status when appropriate.
+- Added operational bot edge fields inside execution verdict.

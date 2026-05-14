@@ -1,0 +1,6 @@
+core/ux_mode.py
+renderers/telegram_renderers.py
+core/btc_plan.py
+handlers/command_actions.py
+core/trade_manager.py
+V7_6_RELEASE_NOTES.txt

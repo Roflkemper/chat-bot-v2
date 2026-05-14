@@ -1,0 +1,5 @@
+FIX PRO V8.4.1 SYNTAX HOTFIX
+
+- fixed syntax error in core/ux_mode.py that prevented bot startup
+- corrected malformed f-strings in ultra wait block rendering for FINAL DECISION and WHAT TO DO NOW style outputs
+- package rebuilt as launchable replacement for broken V8.4 archive

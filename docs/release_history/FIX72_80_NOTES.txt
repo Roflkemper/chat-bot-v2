@@ -1,0 +1,12 @@
+FIX 72–80
+
+Сделано в этом архиве:
+- FIX 72: soft edge — ослаблены пороги NO_EDGE/WEAK/WORKABLE, weak edge теперь может давать scalp/range execution.
+- FIX 73: mid-range mode — range volume bot может стартовать small и в MID при затухшем импульсе и нормальной ротации.
+- FIX 74: breakout risk high больше не выключает range-бот полностью; вместо этого даётся reduced size и запрет adds.
+- FIX 75: pre-activation layer — BOT A имеет PREPARE от 0.5% и START SMALL от 0.8% отклонения.
+- FIX 76: actionable output — добавлен блок "ЧТО ДЕЛАТЬ ПРЯМО СЕЙЧАС" / actionable range plan.
+- FIX 77: pattern overlay — pattern-memory теперь мягко участвует в edge alignment.
+- FIX 78: trade journal уже содержит поля exit_price/result_pct/result_rr/holding_time_minutes/close_context_snapshot; изменений схемы не потребовалось.
+- FIX 79: частично сжат практический вывод через actionable блоки, без удаления старых диагностических секций.
+- FIX 80: range volume engine — size multiplier и reduced-size логика для работы в диапазоне.

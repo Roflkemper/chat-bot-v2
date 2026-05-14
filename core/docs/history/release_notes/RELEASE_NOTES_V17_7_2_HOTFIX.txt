@@ -1,0 +1,4 @@
+V17.7.2 HOTFIX
+- BAT files converted to ASCII-only for Windows cmd compatibility
+- fixed commit message reading from VERSION.txt
+- safer remote detection and push flow

@@ -1,0 +1,7 @@
+FIX: RANGE VOLUME LAUNCH MATRIX
+
+Что добавлено:
+- launch matrix для объёмных range-ботов
+- статусы: OFF / WATCH / ARMING / READY_SMALL / READY_ADD
+- отдельные поля: range detected, location state, post-impulse fade, breakout risk, rotation quality
+- логика добавления только после повторного удержания зоны

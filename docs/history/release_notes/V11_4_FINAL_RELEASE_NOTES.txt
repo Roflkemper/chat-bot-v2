@@ -1,0 +1,13 @@
+V11.4 FINAL — HARD EXECUTION LOCK + PREPARE/CONFIRM FLOW
+
+Что изменено:
+- добавлен hard execution lock: при слабом edge или confirmation=0 новый вход блокируется
+- PREPARE теперь отделён от ENTRY: ARMING/PREPARE больше не означает разрешённый вход
+- bot matrix больше не показывает ложные SMALL ENTRY / ENABLE SMALL SIZE при no-trade контексте
+- unified strategy matrix синхронизирован с plan_state / management_action
+- UX execution probe больше не включается, если truth-lock активен или confirm_ready = 0
+- arming logic понижает статус до WATCH, если нет confirmation trigger или edge слишком слабый
+
+Цель релиза:
+- убрать конфликт NO TRADE vs READY/SMALL ENTRY
+- оставить только честные состояния: WAIT / PREPARE / CONFIRMED ENTRY

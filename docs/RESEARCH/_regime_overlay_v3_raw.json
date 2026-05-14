@@ -1,0 +1,1431 @@
+{
+  "generated_at_utc": "2026-05-05T12:24:56.021757+00:00",
+  "compute_seconds": 1.367452,
+  "feasibility_verdict": "PARTIAL \u2014 see methodology note",
+  "feasibility_note": "Sub-window split with hours-proportional allocation is mathematically equivalent to direct M1 year-level allocation. The split surfaces regime-mix variation across calendar quarters/months but cannot validate within-pack regime sensitivity, because per-sub-window PnL is NOT in the source data. True M2 validation requires hourly trade logs (entry/exit timestamps + PnL per fill) from GinArea, which are not available in this environment.",
+  "split_mode_rule": "1y runs \u2192 quarterly (90d). 3M runs \u2192 monthly (calendar).",
+  "dominant_threshold_pct": 50.0,
+  "per_run": [
+    {
+      "run_id": "A1",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0/0/0",
+      "target": null,
+      "window_start": "2025-05-05",
+      "window_end": "2026-05-05",
+      "unit": "USD",
+      "volume_usd": 13020000.0,
+      "total_pnl": 8884.0,
+      "split_mode": "quarter",
+      "n_subwindows": 5,
+      "subwindows": [
+        {
+          "sub_start": "2025-05-05",
+          "sub_end_excl": "2025-08-03",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 263,
+            "MARKDOWN": 174,
+            "RANGE": 1723
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2214.592037,
+          "m1_per_hour": 1.025274091
+        },
+        {
+          "sub_start": "2025-08-03",
+          "sub_end_excl": "2025-11-01",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 228,
+            "MARKDOWN": 284,
+            "RANGE": 1648
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2214.592037,
+          "m1_per_hour": 1.025274091
+        },
+        {
+          "sub_start": "2025-11-01",
+          "sub_end_excl": "2026-01-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 218,
+            "MARKDOWN": 388,
+            "RANGE": 1554
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2214.592037,
+          "m1_per_hour": 1.025274091
+        },
+        {
+          "sub_start": "2026-01-30",
+          "sub_end_excl": "2026-04-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 410,
+            "MARKDOWN": 463,
+            "RANGE": 1287
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2214.592037,
+          "m1_per_hour": 1.025274091
+        },
+        {
+          "sub_start": "2026-04-30",
+          "sub_end_excl": "2026-05-06",
+          "covered_hours": 25,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 25
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 25.631852,
+          "m1_per_hour": 1.025274091
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 5,
+          "sum_hours": 8665,
+          "sum_m1_pnl": 8884.0,
+          "per_hour": 1.025274091
+        }
+      },
+      "covered_hours_total": 8665
+    },
+    {
+      "run_id": "A2",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">0.3%",
+      "instop": "0/0/0",
+      "target": null,
+      "window_start": "2026-02-01",
+      "window_end": "2026-04-30",
+      "unit": "USD",
+      "volume_usd": 3570000.0,
+      "total_pnl": -478.0,
+      "split_mode": "month",
+      "n_subwindows": 3,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-01",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 672,
+          "regime_hours": {
+            "MARKUP": 112,
+            "MARKDOWN": 222,
+            "RANGE": 338
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -150.382022,
+          "m1_per_hour": -0.223782772
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -166.494382,
+          "m1_per_hour": -0.223782772
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -161.123596,
+          "m1_per_hour": -0.223782772
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 3,
+          "sum_hours": 2136,
+          "sum_m1_pnl": -478.0,
+          "per_hour": -0.223782772
+        }
+      },
+      "covered_hours_total": 2136
+    },
+    {
+      "run_id": "A3",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.008/0.025",
+      "target": null,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "unit": "USD",
+      "volume_usd": 14890000.0,
+      "total_pnl": 8821.0,
+      "split_mode": "quarter",
+      "n_subwindows": 5,
+      "subwindows": [
+        {
+          "sub_start": "2025-05-05",
+          "sub_end_excl": "2025-08-03",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 263,
+            "MARKDOWN": 174,
+            "RANGE": 1723
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2199.141274,
+          "m1_per_hour": 1.01812096
+        },
+        {
+          "sub_start": "2025-08-03",
+          "sub_end_excl": "2025-11-01",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 228,
+            "MARKDOWN": 284,
+            "RANGE": 1648
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2199.141274,
+          "m1_per_hour": 1.01812096
+        },
+        {
+          "sub_start": "2025-11-01",
+          "sub_end_excl": "2026-01-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 218,
+            "MARKDOWN": 388,
+            "RANGE": 1554
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2199.141274,
+          "m1_per_hour": 1.01812096
+        },
+        {
+          "sub_start": "2026-01-30",
+          "sub_end_excl": "2026-04-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 410,
+            "MARKDOWN": 463,
+            "RANGE": 1287
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2199.141274,
+          "m1_per_hour": 1.01812096
+        },
+        {
+          "sub_start": "2026-04-30",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 24,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 24
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 24.434903,
+          "m1_per_hour": 1.01812096
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 5,
+          "sum_hours": 8664,
+          "sum_m1_pnl": 8820.999999,
+          "per_hour": 1.01812096
+        }
+      },
+      "covered_hours_total": 8664
+    },
+    {
+      "run_id": "A4",
+      "pack": "A",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">0.3%",
+      "instop": "0.018/0.008/0.025",
+      "target": null,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "unit": "USD",
+      "volume_usd": 3760000.0,
+      "total_pnl": -5046.0,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -1424.054875,
+          "m1_per_hour": -2.472317491
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -1839.404214,
+          "m1_per_hour": -2.472317491
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -1780.068594,
+          "m1_per_hour": -2.472317491
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-06",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -2.472317,
+          "m1_per_hour": -2.472317491
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": -5046.0,
+          "per_hour": -2.472317491
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "C1-clean",
+      "pack": "C",
+      "side": "LONG",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.01/0.03",
+      "target": 0.25,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "unit": "BTC",
+      "volume_usd": 16560000.0,
+      "total_pnl": -0.1955,
+      "split_mode": "quarter",
+      "n_subwindows": 5,
+      "subwindows": [
+        {
+          "sub_start": "2025-05-05",
+          "sub_end_excl": "2025-08-03",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 263,
+            "MARKDOWN": 174,
+            "RANGE": 1723
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.04874,
+          "m1_per_hour": -2.2565e-05
+        },
+        {
+          "sub_start": "2025-08-03",
+          "sub_end_excl": "2025-11-01",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 228,
+            "MARKDOWN": 284,
+            "RANGE": 1648
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.04874,
+          "m1_per_hour": -2.2565e-05
+        },
+        {
+          "sub_start": "2025-11-01",
+          "sub_end_excl": "2026-01-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 218,
+            "MARKDOWN": 388,
+            "RANGE": 1554
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.04874,
+          "m1_per_hour": -2.2565e-05
+        },
+        {
+          "sub_start": "2026-01-30",
+          "sub_end_excl": "2026-04-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 410,
+            "MARKDOWN": 463,
+            "RANGE": 1287
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.04874,
+          "m1_per_hour": -2.2565e-05
+        },
+        {
+          "sub_start": "2026-04-30",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 24,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 24
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.000542,
+          "m1_per_hour": -2.2565e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 5,
+          "sum_hours": 8664,
+          "sum_m1_pnl": -0.195502,
+          "per_hour": -2.2565e-05
+        }
+      },
+      "covered_hours_total": 8664
+    },
+    {
+      "run_id": "C2-clean",
+      "pack": "C",
+      "side": "LONG",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.01/0.03",
+      "target": 0.3,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "unit": "BTC",
+      "volume_usd": 14470000.0,
+      "total_pnl": -0.0812,
+      "split_mode": "quarter",
+      "n_subwindows": 5,
+      "subwindows": [
+        {
+          "sub_start": "2025-05-05",
+          "sub_end_excl": "2025-08-03",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 263,
+            "MARKDOWN": 174,
+            "RANGE": 1723
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.020244,
+          "m1_per_hour": -9.372e-06
+        },
+        {
+          "sub_start": "2025-08-03",
+          "sub_end_excl": "2025-11-01",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 228,
+            "MARKDOWN": 284,
+            "RANGE": 1648
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.020244,
+          "m1_per_hour": -9.372e-06
+        },
+        {
+          "sub_start": "2025-11-01",
+          "sub_end_excl": "2026-01-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 218,
+            "MARKDOWN": 388,
+            "RANGE": 1554
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.020244,
+          "m1_per_hour": -9.372e-06
+        },
+        {
+          "sub_start": "2026-01-30",
+          "sub_end_excl": "2026-04-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 410,
+            "MARKDOWN": 463,
+            "RANGE": 1287
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.020244,
+          "m1_per_hour": -9.372e-06
+        },
+        {
+          "sub_start": "2026-04-30",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 24,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 24
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.000225,
+          "m1_per_hour": -9.372e-06
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 5,
+          "sum_hours": 8664,
+          "sum_m1_pnl": -0.081201,
+          "per_hour": -9.372e-06
+        }
+      },
+      "covered_hours_total": 8664
+    },
+    {
+      "run_id": "C3",
+      "pack": "C",
+      "side": "LONG",
+      "strategy": "DEFAULT",
+      "indicator": null,
+      "instop": "0.018/0.01/0.03",
+      "target": 0.4,
+      "window_start": "2025-05-05",
+      "window_end": "2026-04-30",
+      "unit": "BTC",
+      "volume_usd": 11480000.0,
+      "total_pnl": -0.0641,
+      "split_mode": "quarter",
+      "n_subwindows": 5,
+      "subwindows": [
+        {
+          "sub_start": "2025-05-05",
+          "sub_end_excl": "2025-08-03",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 263,
+            "MARKDOWN": 174,
+            "RANGE": 1723
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.015981,
+          "m1_per_hour": -7.398e-06
+        },
+        {
+          "sub_start": "2025-08-03",
+          "sub_end_excl": "2025-11-01",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 228,
+            "MARKDOWN": 284,
+            "RANGE": 1648
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.015981,
+          "m1_per_hour": -7.398e-06
+        },
+        {
+          "sub_start": "2025-11-01",
+          "sub_end_excl": "2026-01-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 218,
+            "MARKDOWN": 388,
+            "RANGE": 1554
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.015981,
+          "m1_per_hour": -7.398e-06
+        },
+        {
+          "sub_start": "2026-01-30",
+          "sub_end_excl": "2026-04-30",
+          "covered_hours": 2160,
+          "regime_hours": {
+            "MARKUP": 410,
+            "MARKDOWN": 463,
+            "RANGE": 1287
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.015981,
+          "m1_per_hour": -7.398e-06
+        },
+        {
+          "sub_start": "2026-04-30",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 24,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 24
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -0.000178,
+          "m1_per_hour": -7.398e-06
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 5,
+          "sum_hours": 8664,
+          "sum_m1_pnl": -0.064102,
+          "per_hour": -7.399e-06
+        }
+      },
+      "covered_hours_total": 8664
+    },
+    {
+      "run_id": "D-NoStop",
+      "pack": "D",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">1%",
+      "instop": "0/0/0",
+      "target": null,
+      "window_start": "2026-02-01",
+      "window_end": "2026-04-30",
+      "unit": "USD",
+      "volume_usd": 3560000.0,
+      "total_pnl": -481.0,
+      "split_mode": "month",
+      "n_subwindows": 3,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-01",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 672,
+          "regime_hours": {
+            "MARKUP": 112,
+            "MARKDOWN": 222,
+            "RANGE": 338
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -151.325843,
+          "m1_per_hour": -0.225187266
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -167.539326,
+          "m1_per_hour": -0.225187266
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -162.134831,
+          "m1_per_hour": -0.225187266
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 3,
+          "sum_hours": 2136,
+          "sum_m1_pnl": -481.0,
+          "per_hour": -0.225187266
+        }
+      },
+      "covered_hours_total": 2136
+    },
+    {
+      "run_id": "D-WithStop",
+      "pack": "D",
+      "side": "SHORT",
+      "strategy": "INDICATOR",
+      "indicator": ">1%",
+      "instop": "0.018/0.008/0.025",
+      "target": null,
+      "window_start": "2026-02-01",
+      "window_end": "2026-04-30",
+      "unit": "USD",
+      "volume_usd": 4290000.0,
+      "total_pnl": -2604.0,
+      "split_mode": "month",
+      "n_subwindows": 3,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-01",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 672,
+          "regime_hours": {
+            "MARKUP": 112,
+            "MARKDOWN": 222,
+            "RANGE": 338
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -819.235955,
+          "m1_per_hour": -1.219101124
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -907.011236,
+          "m1_per_hour": -1.219101124
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": -877.752809,
+          "m1_per_hour": -1.219101124
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 3,
+          "sum_hours": 2136,
+          "sum_m1_pnl": -2604.0,
+          "per_hour": -1.219101124
+        }
+      },
+      "covered_hours_total": 2136
+    },
+    {
+      "run_id": "E-T0.25",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.25,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "unit": "BTC",
+      "volume_usd": 5790000.0,
+      "total_pnl": 0.0825,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.023283,
+          "m1_per_hour": 4.0421e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.030073,
+          "m1_per_hour": 4.0421e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.029103,
+          "m1_per_hour": 4.0421e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-06",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 4e-05,
+          "m1_per_hour": 4.0421e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.082499,
+          "per_hour": 4.0421e-05
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "E-T0.30",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.3,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "unit": "BTC",
+      "volume_usd": 5030000.0,
+      "total_pnl": 0.0915,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.025823,
+          "m1_per_hour": 4.4831e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.033354,
+          "m1_per_hour": 4.4831e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.032278,
+          "m1_per_hour": 4.4831e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-06",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 4.5e-05,
+          "m1_per_hour": 4.4831e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.0915,
+          "per_hour": 4.4831e-05
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "E-T0.40",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.4,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "unit": "BTC",
+      "volume_usd": 4040000.0,
+      "total_pnl": 0.1039,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.029322,
+          "m1_per_hour": 5.0906e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.037874,
+          "m1_per_hour": 5.0906e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.036653,
+          "m1_per_hour": 5.0906e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-06",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 5.1e-05,
+          "m1_per_hour": 5.0906e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.1039,
+          "per_hour": 5.0906e-05
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "E-T0.50",
+      "pack": "E",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-0.3%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.5,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-05",
+      "unit": "BTC",
+      "volume_usd": 3410000.0,
+      "total_pnl": 0.1114,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.031439,
+          "m1_per_hour": 5.4581e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.040608,
+          "m1_per_hour": 5.4581e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.039298,
+          "m1_per_hour": 5.4581e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-06",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 5.5e-05,
+          "m1_per_hour": 5.4581e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.1114,
+          "per_hour": 5.4581e-05
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "BT-014",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.5,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "unit": "BTC",
+      "volume_usd": 2930000.0,
+      "total_pnl": 0.07779,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.021953,
+          "m1_per_hour": 3.8114e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.028357,
+          "m1_per_hour": 3.8114e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.027442,
+          "m1_per_hour": 3.8114e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-03",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 3.8e-05,
+          "m1_per_hour": 3.8114e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.07779,
+          "per_hour": 3.8114e-05
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "BT-015",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.4,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "unit": "BTC",
+      "volume_usd": 3440000.0,
+      "total_pnl": 0.07054,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.019907,
+          "m1_per_hour": 3.4561e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.025714,
+          "m1_per_hour": 3.4561e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.024884,
+          "m1_per_hour": 3.4561e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-03",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 3.5e-05,
+          "m1_per_hour": 3.4561e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.07054,
+          "per_hour": 3.4561e-05
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "BT-016",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.3,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "unit": "BTC",
+      "volume_usd": 4330000.0,
+      "total_pnl": 0.0593,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.016735,
+          "m1_per_hour": 2.9054e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.021616,
+          "m1_per_hour": 2.9054e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.020919,
+          "m1_per_hour": 2.9054e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-03",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2.9e-05,
+          "m1_per_hour": 2.9054e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.059299,
+          "per_hour": 2.9054e-05
+        }
+      },
+      "covered_hours_total": 2041
+    },
+    {
+      "run_id": "BT-017",
+      "pack": "BT",
+      "side": "LONG",
+      "strategy": "INDICATOR",
+      "indicator": "<-1%",
+      "instop": "0.018/0.01/0.03",
+      "target": 0.25,
+      "window_start": "2026-02-05",
+      "window_end": "2026-05-02",
+      "unit": "BTC",
+      "volume_usd": 4990000.0,
+      "total_pnl": 0.05022,
+      "split_mode": "month",
+      "n_subwindows": 4,
+      "subwindows": [
+        {
+          "sub_start": "2026-02-05",
+          "sub_end_excl": "2026-03-01",
+          "covered_hours": 576,
+          "regime_hours": {
+            "MARKUP": 105,
+            "MARKDOWN": 167,
+            "RANGE": 304
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.014173,
+          "m1_per_hour": 2.4606e-05
+        },
+        {
+          "sub_start": "2026-03-01",
+          "sub_end_excl": "2026-04-01",
+          "covered_hours": 744,
+          "regime_hours": {
+            "MARKUP": 163,
+            "MARKDOWN": 159,
+            "RANGE": 422
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.018307,
+          "m1_per_hour": 2.4606e-05
+        },
+        {
+          "sub_start": "2026-04-01",
+          "sub_end_excl": "2026-05-01",
+          "covered_hours": 720,
+          "regime_hours": {
+            "MARKUP": 133,
+            "MARKDOWN": 56,
+            "RANGE": 531
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 0.017716,
+          "m1_per_hour": 2.4606e-05
+        },
+        {
+          "sub_start": "2026-05-01",
+          "sub_end_excl": "2026-05-03",
+          "covered_hours": 1,
+          "regime_hours": {
+            "MARKUP": 0,
+            "MARKDOWN": 0,
+            "RANGE": 1
+          },
+          "dominant": "RANGE_DOMINANT",
+          "m1_subwindow_pnl": 2.5e-05,
+          "m1_per_hour": 2.4606e-05
+        }
+      ],
+      "by_dominant_class": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 4,
+          "sum_hours": 2041,
+          "sum_m1_pnl": 0.050221,
+          "per_hour": 2.4606e-05
+        }
+      },
+      "covered_hours_total": 2041
+    }
+  ],
+  "pack_synthesis": {
+    "A": {
+      "USD": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 17,
+          "sum_hours": 21506,
+          "sum_m1_pnl": 12180.999999,
+          "per_hour": 0.566400074
+        }
+      }
+    },
+    "BT": {
+      "BTC": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 16,
+          "sum_hours": 8164,
+          "sum_m1_pnl": 0.25785,
+          "per_hour": 3.1584e-05
+        }
+      }
+    },
+    "C": {
+      "BTC": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 15,
+          "sum_hours": 25992,
+          "sum_m1_pnl": -0.340805,
+          "per_hour": -1.3112e-05
+        }
+      }
+    },
+    "D": {
+      "USD": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 6,
+          "sum_hours": 4272,
+          "sum_m1_pnl": -3085.0,
+          "per_hour": -0.722144195
+        }
+      }
+    },
+    "E": {
+      "BTC": {
+        "RANGE_DOMINANT": {
+          "n_subwindows": 16,
+          "sum_hours": 8164,
+          "sum_m1_pnl": 0.389299,
+          "per_hour": 4.7685e-05
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+Modified files:
+- storage/bot_manager_state.py
+- advisors/bot_control_advisor.py
+- core/btc_plan.py
+- core/bot_control_center.py
+- core/action_output.py
+- core/ginarea_advisor.py
+- renderers/telegram_renderers.py
+- VERSION.txt
+- V10_0_RELEASE_NOTES.txt

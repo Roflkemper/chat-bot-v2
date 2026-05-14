@@ -1,0 +1,31 @@
+V7.5 — LIVE EDGE / ALERT QUALITY
+
+Что изменено:
+- усилен core/live_alert_policy.py
+- усилен core/smart_alerts.py
+- усилен storage/transition_alerts.py
+- live alerts теперь разделяются по семействам:
+  - fake_breakout
+  - continuation_confirmed
+  - exhaustion_alert
+  - reclaim_failed
+  - trap_risk
+  - bot_activation
+- добавлены поля:
+  - event_family
+  - should_alert
+  - suppress_secondary
+  - reclaim_state
+  - trap_bias
+  - top_permission
+- добавлены более жёсткие заголовки и причины алертов
+- в алертах теперь видно:
+  - почему это важно сейчас
+  - что изменит взгляд
+  - следующую зону
+  - инвалидацию
+- второстепенные low-value апдейты теперь сильнее режутся антиспам-политикой
+
+Проверка:
+- python -m py_compile core/live_alert_policy.py core/smart_alerts.py storage/transition_alerts.py
+- python tools/health_check.py

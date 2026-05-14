@@ -1,0 +1,20 @@
+V14 WORKING RELEASE (MVP)
+
+Что сделано:
+- добавлен новый модуль core/impulse_character_engine.py
+- старый core/impulse_tracker.py переведён на новый V14-движок импульса
+- добавлен core/fake_move_engine_v14.py со state machine для fake move
+- core/fake_move_detector.py переведён на новый V14 state output
+- добавлен core/liquidity_decision_engine.py
+- core/exchange_liquidity_engine.py усилен: OI delta, funding state, price/OI regime, burst logic, squeeze risk, liq side pressure
+- services/analysis_service.py теперь строит impulse_character и liquidity_decision до fake_move
+- core/action_output.py сокращён и переведён на action-first формат
+
+Что проверено:
+- touched файлы проходят py_compile
+- smoke test новых модулей проходит
+
+Что ещё НЕ гарантируется этим релизом:
+- полный live runtime тест со всеми командами Telegram не выполнялся в этой среде
+- websocket feed Binance/Bybit не прогонялся здесь в реальном времени
+- финальная чистка всех renderers и всех старых V13 overlay-блоков ещё может потребовать отдельный следующий пакет

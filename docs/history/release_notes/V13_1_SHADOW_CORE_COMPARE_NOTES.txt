@@ -1,0 +1,5 @@
+V13.1 SHADOW CORE COMPARE
+- added parallel V13 CORE shadow engine for side-by-side comparison in Telegram outputs
+- old engine kept untouched for direct comparison
+- new V13 CORE shows separate edge / execution / scenario / ginarea early-arm view
+- BTC ANALYSIS / FINAL DECISION / BTC SUMMARY / BTC FORECAST / ACTION NOW / BEST TRADE / TRADE MANAGER / BTC GINAREA / BOTS STATUS append a NEW ENGINE block
