@@ -1592,6 +1592,53 @@ class TelegramBotApp:
                     chat_id, f"'{token}' was already disabled — no change."
                 )
 
+        @self.bot.message_handler(commands=['levels'])
+        def handle_levels(message) -> None:
+            """/levels — показать текущие уровни VPVR.
+            /levels BTCUSD poc=81500 vah=82200 val=80800 [hvn=...] [lvn=...] — обновить.
+            /levels clear BTCUSD — очистить.
+            Источник: оператор смотрит TV → копирует POC/VAH/VAL → шлёт боту.
+            Range Hunter и cascade_alert будут читать эти уровни для snap."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            from services.manual_levels import (
+                parse_levels_text, update_levels, clear_symbol,
+                format_levels_summary, get_levels,
+            )
+            text = str(message.text or '').strip()
+            # /levels (no args) → show
+            args = text.split(maxsplit=2)
+            if len(args) < 2:
+                self.bot.send_message(chat_id, format_levels_summary("BTCUSD"))
+                return
+            # /levels clear SYMBOL
+            if args[1].lower() == 'clear':
+                sym = args[2].upper() if len(args) > 2 else "BTCUSD"
+                if clear_symbol(sym):
+                    self.bot.send_message(chat_id, f"✓ Уровни {sym} очищены.")
+                else:
+                    self.bot.send_message(chat_id, f"⚠ {sym} уже отсутствовал.")
+                return
+            # /levels BTCUSD poc=... vah=... val=...
+            body = text.split(maxsplit=1)[1]
+            sym, levels = parse_levels_text(body)
+            if not levels:
+                self.bot.send_message(
+                    chat_id,
+                    "❌ Не нашёл уровней в команде. Пример:\n"
+                    "  /levels BTCUSD poc=81500 vah=82200 val=80800 hvn=82100,81100"
+                )
+                return
+            sym = sym or "BTCUSD"
+            entry = update_levels(sym, levels, source="tg_manual")
+            self.bot.send_message(
+                chat_id,
+                f"✓ Сохранено {sym}: {len(levels)} уровн{'я' if len(levels)<5 else 'ей'}.\n\n"
+                + format_levels_summary(sym)
+            )
+
         @self.bot.message_handler(commands=['enable'])
         def handle_enable(message) -> None:
             """`/enable <token>` removes from runtime disable list. Does NOT
@@ -2429,6 +2476,27 @@ class TelegramBotApp:
                 if result is not None:
                     self.bot.send_message(chat_id, result.get("message", "Причина сохранена."))
                     return
+            # TV-bridge: если сообщение похоже на TradingView alert с уровнями
+            # ("LEVELS BTCUSD poc=... vah=... val=..."), парсим и сохраняем.
+            # Регистр-нечувствительно, без команды-префикса.
+            text_upper = text.upper()
+            if text_upper.startswith("LEVELS ") or text_upper.startswith("TV:LEVELS") or text_upper.startswith("VPVR "):
+                try:
+                    from services.manual_levels import (
+                        parse_levels_text, update_levels, format_levels_summary,
+                    )
+                    sym, levels = parse_levels_text(text)
+                    if levels:
+                        sym = sym or "BTCUSD"
+                        update_levels(sym, levels, source="tv_tg_bridge")
+                        self.bot.send_message(
+                            chat_id,
+                            f"📊 TV LEVELS получены ({sym}, {len(levels)} полей):\n\n"
+                            + format_levels_summary(sym)
+                        )
+                        return
+                except Exception:
+                    logger.exception("tv_levels_bridge.parse_failed")
             self._dispatch(chat_id, text)
 
     def run(self) -> None:

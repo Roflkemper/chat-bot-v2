@@ -125,11 +125,37 @@ def compute_signal(window: pd.DataFrame, params: RangeHunterParams = DEFAULT_PAR
     mid = float(tail["close"].iloc[-1])
     if mid <= 0:
         return None
+
+    # Default: симметричные уровни ±width% от mid
     buy_level = mid * (1.0 - params.width_pct / 100.0)
     sell_level = mid * (1.0 + params.width_pct / 100.0)
+    levels_source = "mid_symmetric"
+
+    # TV VPVR override: если оператор закинул свежие VAL/VAH через /levels
+    # И они находятся в "разумной близости" от mid (max 2× ширины grid от mid)
+    # — используем их вместо симметричных, fill rate должен подняться.
+    try:
+        from services.manual_levels import get_levels
+        lv = get_levels("BTCUSD")
+        if lv:
+            max_offset = mid * params.width_pct * 2 / 100.0  # 2× width до VAL/VAH
+            val = lv.get("val")
+            vah = lv.get("vah")
+            new_buy = buy_level
+            new_sell = sell_level
+            if val and abs(mid - val) <= max_offset and val < mid:
+                new_buy = float(val)
+            if vah and abs(vah - mid) <= max_offset and vah > mid:
+                new_sell = float(vah)
+            if new_buy != buy_level or new_sell != sell_level:
+                buy_level = new_buy
+                sell_level = new_sell
+                levels_source = "vpvr_snap"
+    except Exception:
+        pass  # graceful fallback
+
     size_btc = params.size_usd / mid
 
-    # Используем индекс последнего бара, если есть timestamp; иначе now
     last_ts = tail.index[-1]
     if isinstance(last_ts, (pd.Timestamp, datetime)):
         ts_iso = pd.Timestamp(last_ts).tz_localize("UTC").isoformat() \
@@ -137,7 +163,7 @@ def compute_signal(window: pd.DataFrame, params: RangeHunterParams = DEFAULT_PAR
     else:
         ts_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    return RangeHunterSignal(
+    sig = RangeHunterSignal(
         ts=ts_iso,
         mid=round(mid, 2),
         buy_level=round(buy_level, 2),
@@ -151,6 +177,9 @@ def compute_signal(window: pd.DataFrame, params: RangeHunterParams = DEFAULT_PAR
         trend_pct_per_h=round(trend, 4),
         size_btc=round(size_btc, 6),
     )
+    # Прикрепляем источник уровней (динамическое поле, не ломает dataclass)
+    object.__setattr__(sig, "levels_source", levels_source)
+    return sig
 
 
 def format_tg_card(sig: RangeHunterSignal, *, expected_pair_win: float = 0.685,
