@@ -535,6 +535,41 @@ async def _run_liq_pre_cascade(stop_event: asyncio.Event, *, telegram_app=None) 
     await liq_pre_cascade_loop(stop_event=stop_event, send_fn=send_fn)
 
 
+async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Range Hunter — TG-эмиттер semi-manual mean-revert стратегии.
+    Раз в минуту проверяет: range_4h <= 0.70%, ATR_1m <= 0.10%, trend <= 0.10%/ч.
+    При прохождении — шлёт карточку с BUY/SELL уровнями + inline кнопки.
+    Cooldown 2h. Walk-forward 2y: WR 66-70%, 4/4 folds positive."""
+    from services.range_hunter.loop import range_hunter_signal_loop
+    from services.telegram.channel_router import build_send_fn
+
+    raw_send = build_send_fn(telegram_app, "SETUP_ON") if telegram_app else None
+
+    def _send_with_kb(text, reply_markup=None, **kwargs):
+        # build_send_fn возвращает функцию (text, meta) — она не поддерживает
+        # reply_markup. Шлём через прямой bot.send_message в allowed_chat_ids
+        # если есть keyboard, иначе через стандартный raw_send.
+        if telegram_app is None or raw_send is None:
+            return
+        if reply_markup is None:
+            raw_send(text)
+            return
+        try:
+            for cid in telegram_app.allowed_chat_ids:
+                telegram_app.bot.send_message(cid, text, reply_markup=reply_markup)
+        except Exception:
+            logger.exception("range_hunter.send_with_kb_failed")
+
+    await range_hunter_signal_loop(stop_event=stop_event, send_fn=_send_with_kb)
+
+
+async def _run_range_hunter_outcome(stop_event: asyncio.Event) -> None:
+    """Outcome tracker: следит за placed signals, симулирует fill BUY/SELL/SL/timeout
+    на свежих 1m данных, пишет результат в journal."""
+    from services.range_hunter.loop import range_hunter_outcome_loop
+    await range_hunter_outcome_loop(stop_event=stop_event)
+
+
 async def _run_weekly_self_report(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Weekly self-report (вс 18:00 UTC): cascade KPI + edge drift + risk-limit violations."""
     from services.reports.weekly_self_report import maybe_send_weekly
@@ -828,6 +863,8 @@ async def main(
     cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
     weekly_report_task = asyncio.create_task(_run_weekly_self_report(stop_event, telegram_app=app), name="weekly_self_report")
     liq_pre_cascade_task = asyncio.create_task(_run_liq_pre_cascade(stop_event, telegram_app=app), name="liq_pre_cascade")
+    range_hunter_signal_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app), name="range_hunter_signal")
+    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event), name="range_hunter_outcome")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
     regime_shadow_task = asyncio.create_task(_run_regime_shadow(stop_event), name="regime_shadow")
@@ -848,7 +885,7 @@ async def main(
         weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, liq_pre_cascade_task, range_hunter_signal_task, range_hunter_outcome_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0

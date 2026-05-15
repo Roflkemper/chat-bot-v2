@@ -152,6 +152,9 @@ state/short_t2_cliff_alerts.json
 state/exit_advisor_prev_snapshot.json
 state/paper_trader_streak_notify.json
 state/weekly_report_state.json
+# Range Hunter live journal
+state/range_hunter_signals.jsonl
+state/range_hunter_state.json
 # R&D backtest results (могут быть commited если важны, но обычно large)
 state/cascade_ginarea_v3_results.csv
 state/cascade_ginarea_v4_results.csv
