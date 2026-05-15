@@ -45,8 +45,19 @@ logger = logging.getLogger(__name__)
 JOURNAL_PATH = Path("state/range_hunter_signals.jsonl")
 
 
-def signal_id_from_ts(ts: datetime) -> str:
-    return "rh_" + ts.strftime("%Y%m%d_%H%M%S")
+def journal_path_for(symbol: str) -> Path:
+    """Per-symbol журнал. BTCUSDT → default path (backward compat), остальные →
+    state/range_hunter_signals_<SYMBOL>.jsonl."""
+    sym = symbol.upper()
+    if sym == "BTCUSDT":
+        return JOURNAL_PATH
+    return JOURNAL_PATH.parent / f"range_hunter_signals_{sym}.jsonl"
+
+
+def signal_id_from_ts(ts: datetime, symbol: str = "BTCUSDT") -> str:
+    sym = symbol.upper()
+    suffix = "" if sym == "BTCUSDT" else f"_{sym}"
+    return "rh_" + ts.strftime("%Y%m%d_%H%M%S") + suffix
 
 
 def append_signal(record: dict, *, path: Path = JOURNAL_PATH) -> None:

@@ -564,14 +564,9 @@ async def _run_weekly_self_report(stop_event: asyncio.Event, *, telegram_app=Non
     logger.info("weekly_self_report.stopped")
 
 
-async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=None) -> None:
-    """Range Hunter — TG-эмиттер semi-manual mean-revert стратегии.
-    Раз в минуту проверяет: range_4h <= 0.70%, ATR_1m <= 0.10%, trend <= 0.10%/ч.
-    При прохождении — шлёт карточку с BUY/SELL уровнями + inline кнопки.
-    Cooldown 2h. Walk-forward 2y: WR 66-70%, 4/4 folds positive."""
-    from services.range_hunter.loop import range_hunter_signal_loop
+def _build_rh_send_fn(telegram_app):
+    """Build send_fn that supports reply_markup for inline keyboards."""
     from services.telegram.channel_router import build_send_fn
-
     raw_send = build_send_fn(telegram_app, "SETUP_ON") if telegram_app else None
 
     def _send_with_kb(text, reply_markup=None, **kwargs):
@@ -585,18 +580,36 @@ async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=No
                 telegram_app.bot.send_message(cid, text, reply_markup=reply_markup)
         except Exception:
             logger.exception("range_hunter.send_with_kb_failed")
+    return _send_with_kb
 
-    await range_hunter_signal_loop(stop_event=stop_event, send_fn=_send_with_kb)
+
+async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=None,
+                                    symbol: str = "BTCUSDT") -> None:
+    """Range Hunter — TG-эмиттер semi-manual mean-revert стратегии.
+    Раз в минуту проверяет: range_4h <= 0.70%, ATR_1m <= 0.10%, trend <= 0.10%/ч.
+    Cooldown 2h. Multi-asset: symbol может быть BTCUSDT / ETHUSDT / XRPUSDT.
+    Walk-forward 2y backtests:
+      BTC: WR 66-70%  ETH: WR 70-77%  XRP: WR 66-81%."""
+    from services.range_hunter.loop import range_hunter_signal_loop
+    from services.range_hunter.signal import RangeHunterParams
+    params = RangeHunterParams(symbol=symbol)
+    await range_hunter_signal_loop(stop_event=stop_event,
+                                    send_fn=_build_rh_send_fn(telegram_app),
+                                    params=params)
 
 
-async def _run_range_hunter_outcome(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+async def _run_range_hunter_outcome(stop_event: asyncio.Event, *, telegram_app=None,
+                                     symbol: str = "BTCUSDT") -> None:
     """Outcome tracker: следит за placed signals, симулирует fill BUY/SELL/SL/timeout
-    на свежих 1m данных, пишет результат в journal. Плюс hedge advisor: при
-    single-leg fill >30мин шлёт TG-нудж с опциями (хедж / закрыть / ждать)."""
+    на свежих 1m данных, пишет результат в journal. Hedge advisor."""
     from services.range_hunter.loop import range_hunter_outcome_loop
+    from services.range_hunter.signal import RangeHunterParams
     from services.telegram.channel_router import build_send_fn
     hedge_send = build_send_fn(telegram_app, "SETUP_ON") if telegram_app else None
-    await range_hunter_outcome_loop(stop_event=stop_event, hedge_send_fn=hedge_send)
+    params = RangeHunterParams(symbol=symbol)
+    await range_hunter_outcome_loop(stop_event=stop_event,
+                                     hedge_send_fn=hedge_send,
+                                     params=params)
 
 
 async def _run_cliff_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
@@ -870,8 +883,12 @@ async def main(
     cascade_accuracy_task = asyncio.create_task(_run_cascade_accuracy_eval(stop_event, telegram_app=app), name="cascade_accuracy_eval")
     cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
     weekly_report_task = asyncio.create_task(_run_weekly_self_report(stop_event, telegram_app=app), name="weekly_self_report")
-    range_hunter_signal_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app), name="range_hunter_signal")
-    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app), name="range_hunter_outcome")
+    range_hunter_signal_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="BTCUSDT"), name="range_hunter_signal_btc")
+    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="BTCUSDT"), name="range_hunter_outcome_btc")
+    range_hunter_signal_eth_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="ETHUSDT"), name="range_hunter_signal_eth")
+    range_hunter_outcome_eth_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="ETHUSDT"), name="range_hunter_outcome_eth")
+    range_hunter_signal_xrp_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="XRPUSDT"), name="range_hunter_signal_xrp")
+    range_hunter_outcome_xrp_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="XRPUSDT"), name="range_hunter_outcome_xrp")
     liq_pre_cascade_task = asyncio.create_task(_run_liq_pre_cascade(stop_event, telegram_app=app), name="liq_pre_cascade")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
@@ -894,7 +911,11 @@ async def main(
         weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, range_hunter_signal_task, range_hunter_outcome_task, liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task,
+        range_hunter_signal_task, range_hunter_outcome_task,
+        range_hunter_signal_eth_task, range_hunter_outcome_eth_task,
+        range_hunter_signal_xrp_task, range_hunter_outcome_xrp_task,
+        liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0

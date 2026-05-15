@@ -37,6 +37,11 @@ class RangeHunterParams:
                                    # Если empirical DD < $300 за 14 дней — поднимем.
     contract: str = "XBTUSDT"      # linear
 
+    # Symbol для multi-asset support. Default BTCUSDT.
+    # ETH/XRP backtest показал ещё лучше WR (73-77%) при меньшей выборке —
+    # три независимых эмиттера дают ~3× signal flow на тех же $15K капитала.
+    symbol: str = "BTCUSDT"
+
 
 @dataclass
 class RangeHunterSignal:
