@@ -783,6 +783,14 @@ async def _run_watchlist(stop_event: asyncio.Event, *, telegram_app=None) -> Non
     await watchlist_loop(stop_event=stop_event, send_fn=send_fn)
 
 
+async def _run_play_outcome(stop_event: asyncio.Event) -> None:
+    """Forward-test outcome evaluator: каждые 30 мин проходит по play_journal,
+    проставляет realized_4h_pct и realized_24h_pct + TP/SL hit flags.
+    Без него все derivative watchlist plays слепые."""
+    from services.watchlist.loop import play_outcome_loop
+    await play_outcome_loop(stop_event=stop_event)
+
+
 async def _run_bitmex_account(stop_event: asyncio.Event) -> None:
     """BitMEX read-only account poll: auto-update margin (TZ-BITMEX-AUTO-MARGIN 2026-05-07).
 
@@ -874,6 +882,7 @@ async def main(
     grid_coordinator_intraday_task = asyncio.create_task(_run_grid_coordinator_intraday(stop_event, telegram_app=app), name="grid_coordinator_intraday")
     heartbeat_task = asyncio.create_task(_run_heartbeat(stop_event), name="heartbeat")
     watchlist_task = asyncio.create_task(_run_watchlist(stop_event, telegram_app=app), name="watchlist")
+    play_outcome_task = asyncio.create_task(_run_play_outcome(stop_event), name="play_outcome")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     # Critical tasks: their failure forces full shutdown.
@@ -885,7 +894,7 @@ async def main(
         weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, range_hunter_signal_task, range_hunter_outcome_task, liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, range_hunter_signal_task, range_hunter_outcome_task, liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0

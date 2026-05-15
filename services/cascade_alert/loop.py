@@ -91,6 +91,34 @@ EDGE_TEXT = {
 }
 
 
+# Inverted plays для long-cascade когда edge drift подтверждён.
+# В 2024 long-cascade был bounce up edge. В 2026 инвертировался: 65% pct_down
+# 4h на n=20 свежих событий (cascade_backtest_combined.json).
+# Когда edge_drift_guard.is_drifted("long", thr) == True, не подавляем сигнал
+# целиком — наоборот, шлём с инвертированным SHORT направлением.
+INVERTED_PLAYS = {
+    ("long", 5.0): {
+        "title": "🔄 LONG-cascade DRIFTED → INVERTED SHORT setup (>=5 BTC за 5 мин)",
+        "stats": "ИНВЕРСИЯ от 2024 bull regime (combined backtest 2024+2026):\n"
+                 "  2024 (n=103): 73% pct_up 4h, +0.91% — bounce edge\n"
+                 "  2026 (n=20):  35% pct_up 4h = 65% pct_DOWN, -0.17% mean\n"
+                 "  12h: 25% pct_up, -0.58% mean — drift подтверждён",
+        "play": "СЕТАП: SHORT на стабилизации (2026 regime continuation вниз).\n"
+                "⚠️ Малая выборка (n=20) — размер половинный.",
+        "entry_plan": {"dir": "SHORT", "tp1_pct": -0.40, "tp2_pct": -0.78, "stop_pct": +0.40,
+                        "note": "Half-size до n>=40. Inverted edge свежий — мониторим WR."},
+    },
+    ("long", 2.0): {
+        "title": "🔄 LONG-cascade (mid) DRIFTED → INVERTED SHORT setup",
+        "stats": "ИНВЕРСИЯ от 2024 regime. Сейчас drift подтверждён.\n"
+                 "  Тренд более слабый чем у 5+ BTC, но направление то же — вниз.",
+        "play": "СЕТАП: SHORT с tight стопом, half-size.",
+        "entry_plan": {"dir": "SHORT", "tp1_pct": -0.30, "tp2_pct": -0.55, "stop_pct": +0.35,
+                        "note": "Контекстный сетап. Half-size, рассматривай как hedge."},
+    },
+}
+
+
 def _format_entry_plan(plan: dict | None, last_price: float | None) -> list[str]:
     """Build concrete entry/SL/TP block from plan + live price. Empty list if not applicable."""
     if not plan or not last_price or last_price <= 0:
@@ -179,11 +207,35 @@ def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float
     try:
         from services.cascade_alert.edge_drift_guard import is_drifted
         drifted = is_drifted(side, threshold)
-        if drifted:
-            lines.append("⚠️ EDGE DRIFTED — историческая статистика ниже не подтверждается на live-данных. Не торговать как сетап.")
-            lines.append("")
     except Exception:
         logger.exception("cascade_alert.drift_check_failed")
+
+    # При drift'е long-cascade — переключаемся на inverted SHORT play.
+    # 2024→2026 edge inversion: long-cascade был bounce, стал continuation вниз.
+    # cascade_backtest_combined.json подтвердил инверсию (n=20 / 2026 live).
+    inverted = INVERTED_PLAYS.get((side, threshold)) if drifted else None
+    if inverted:
+        lines.append("🔄 EDGE INVERTED — старый bounce edge мёртв, торгуем по новому 2026-режиму.")
+        lines.append("")
+        lines.append(inverted["title"])
+        lines.append("")
+        lines.append(f"Ликвидировано: {qty_btc:.2f} BTC за {WINDOW_MINUTES} мин")
+        if last_price:
+            lines.append(f"Цена: ~${last_price:,.0f}")
+        lines.append("")
+        lines.append(inverted["stats"])
+        lines.append("")
+        lines.append(inverted["play"])
+        plan_lines = _format_entry_plan(inverted.get("entry_plan"), last_price)
+        if plan_lines:
+            lines.append("")
+            lines.extend(plan_lines)
+        return "\n".join(lines)
+
+    # Не drifted ИЛИ drift без inverted-карты (short-side, mega) — обычный путь.
+    if drifted:
+        lines.append("⚠️ EDGE DRIFTED — историческая статистика ниже не подтверждается на live-данных. Не торговать как сетап.")
+        lines.append("")
     lines.append(info["title"])
     lines.append("")
     lines.append(f"Ликвидировано: {qty_btc:.2f} BTC за {WINDOW_MINUTES} мин")

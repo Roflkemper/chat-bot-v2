@@ -6,7 +6,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from .rules import load_rules, save_rules, evaluate_rules
-from .play_templates import format_play
+from .play_templates import format_play, PLAYS
+from .play_journal import append_play_fire, evaluate_pending
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,22 @@ async def watchlist_loop(stop_event: asyncio.Event, *, send_fn=None, interval_se
                             send_fn(text)
                         except Exception:
                             logger.exception("watchlist.send_failed")
+                    # Forward-test journal: записываем каждый fire с play_meta для
+                    # последующей оценки 4h/24h forward returns.
+                    if rule.label and rule.label in PLAYS:
+                        try:
+                            from .play_templates import _last_btc_price
+                            price_now = _last_btc_price()
+                            if price_now:
+                                append_play_fire(
+                                    label=rule.label, rule_id=rule.id,
+                                    rule_field=rule.field, rule_op=rule.op,
+                                    rule_threshold=rule.threshold, trigger_value=value,
+                                    play_meta=PLAYS[rule.label],
+                                    price_at_fire=price_now, now=now,
+                                )
+                        except Exception:
+                            logger.exception("watchlist.play_journal_append_failed rule=%s", rule.id)
                     rule.last_fired = now.isoformat(timespec="seconds")
                     rule.fire_count += 1
                     changed = True
@@ -66,3 +83,24 @@ async def watchlist_loop(stop_event: asyncio.Event, *, send_fn=None, interval_se
             pass
 
     logger.info("watchlist.stopped")
+
+
+PLAY_OUTCOME_POLL_SEC = 1800  # раз в 30 мин достаточно
+
+
+async def play_outcome_loop(stop_event: asyncio.Event, *, interval_sec: int = PLAY_OUTCOME_POLL_SEC) -> None:
+    """Periodic evaluator: для каждой записи в play_journal с pending outcome
+    смотрит цену 4h/24h после fire и заполняет realized_pct + hit flags."""
+    logger.info("play_outcome.start interval=%ds", interval_sec)
+    while not stop_event.is_set():
+        try:
+            n = evaluate_pending()
+            if n > 0:
+                logger.info("play_outcome.resolved n=%d", n)
+        except Exception:
+            logger.exception("play_outcome.tick_failed")
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            continue
+    logger.info("play_outcome.stopped")
