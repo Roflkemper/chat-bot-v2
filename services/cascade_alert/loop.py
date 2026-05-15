@@ -46,14 +46,14 @@ EDGE_TEXT = {
                  "  +24ч: 64%, средний +1.50%",
         "play": "СЕТАП: BUY на стабилизации после каскада\n"
                 "EV после комиссий: ~+0.5% за сделку",
-        "entry_plan": {"dir": "LONG", "tp1_pct": +0.46, "tp2_pct": +1.14, "stop_pct": -0.50},
+        "entry_plan": {"dir": "LONG", "tp1_pct": +0.46, "tp2_pct": +1.14, "stop_pct": -0.50, "size_usd": 5000},
     },
     ("long", 2.0): {
         "title": "⚡ Каскад LONG-ликвидаций (>=2 BTC, среднее)",
         "stats": "Исторически (n=297):\n"
                  "  +12ч: 63% случаев выше, средний +0.68%",
         "play": "Слабее основного сетапа — рассматривай как контекст.",
-        "entry_plan": {"dir": "LONG", "tp1_pct": +0.35, "tp2_pct": +0.68, "stop_pct": -0.50, "note": "weak edge — половинный размер"},
+        "entry_plan": {"dir": "LONG", "tp1_pct": +0.35, "tp2_pct": +0.68, "stop_pct": -0.50, "size_usd": 2500, "note": "weak edge — половинный размер"},
     },
     ("short", 5.0): {
         "title": "⚡ КАСКАД SHORT-ликвидаций (>=5 BTC за 5 мин)",
@@ -79,14 +79,14 @@ EDGE_TEXT = {
         "play": "СЕТАП: следить за стабилизацией ниже current\n"
                 "Через 6-12ч обычно отскок 1.5-3%\n"
                 "БУДЬ ОСТОРОЖЕН — может быть продолжение каскада",
-        "entry_plan": {"dir": "LONG", "tp1_pct": +1.00, "tp2_pct": +2.50, "stop_pct": -0.80, "note": "после стабилизации (2-3 свечи без новых ликвидаций)"},
+        "entry_plan": {"dir": "LONG", "tp1_pct": +1.00, "tp2_pct": +2.50, "stop_pct": -0.80, "size_usd": 3000, "note": "после стабилизации (2-3 свечи без новых ликвидаций)"},
     },
     ("short", 10.0): {
         "title": "🌋 МЕГА-СПАЙК SHORT-ликвидаций (>=10 BTC за 1 мин)",
         "stats": "Очень редкое — local high индикатор.\n"
                  "Часто перед коррекцией 2-5%.",
         "play": "СЕТАП: SHORT с tight stop на стабилизации",
-        "entry_plan": {"dir": "SHORT", "tp1_pct": -1.00, "tp2_pct": -2.00, "stop_pct": +0.80, "note": "после стабилизации (2-3 свечи без новых ликвидаций)"},
+        "entry_plan": {"dir": "SHORT", "tp1_pct": -1.00, "tp2_pct": -2.00, "stop_pct": +0.80, "size_usd": 3000, "note": "после стабилизации (2-3 свечи без новых ликвидаций)"},
     },
 }
 
@@ -106,6 +106,7 @@ INVERTED_PLAYS = {
         "play": "СЕТАП: SHORT на стабилизации (2026 regime continuation вниз).\n"
                 "⚠️ Малая выборка (n=20) — размер половинный.",
         "entry_plan": {"dir": "SHORT", "tp1_pct": -0.40, "tp2_pct": -0.78, "stop_pct": +0.40,
+                        "size_usd": 2500,
                         "note": "Half-size до n>=40. Inverted edge свежий — мониторим WR."},
     },
     ("long", 2.0): {
@@ -114,6 +115,7 @@ INVERTED_PLAYS = {
                  "  Тренд более слабый чем у 5+ BTC, но направление то же — вниз.",
         "play": "СЕТАП: SHORT с tight стопом, half-size.",
         "entry_plan": {"dir": "SHORT", "tp1_pct": -0.30, "tp2_pct": -0.55, "stop_pct": +0.35,
+                        "size_usd": 1500,
                         "note": "Контекстный сетап. Half-size, рассматривай как hedge."},
     },
 }
@@ -130,9 +132,12 @@ def _format_entry_plan(plan: dict | None, last_price: float | None) -> list[str]
     risk = abs(plan["stop_pct"])
     rr1 = abs(plan["tp1_pct"]) / risk if risk else 0
     rr2 = abs(plan["tp2_pct"]) / risk if risk else 0
+    size_usd = plan.get("size_usd", 5000)
+    size_btc = size_usd / last_price if last_price else 0
     out = [
         "💰 ПЛАН ВХОДА",
         f"  Направление: {direction}",
+        f"  Размер:  ${size_usd:,} (≈{size_btc:.4f} BTC)",
         f"  Entry:  ~${last_price:,.0f}",
         f"  Stop:   ${stop:,.0f}   ({plan['stop_pct']:+.2f}%)",
         f"  TP1:    ${tp1:,.0f}   ({plan['tp1_pct']:+.2f}%, R:R 1:{rr1:.1f})",
@@ -161,13 +166,27 @@ def _save_dedup(d: dict) -> None:
 
 
 def _liquidation_window_sums(now_utc: datetime, window_min: int) -> tuple[float, float, float | None]:
-    """Read last N min from liquidations.csv. Returns (long_btc, short_btc, last_price)."""
+    """Wrapped legacy 3-tuple for backward compat. Use _liquidation_window_breakdown
+    для полной информации с per-exchange разбивкой."""
+    long_btc, short_btc, last_price, _ = _liquidation_window_breakdown(now_utc, window_min)
+    return long_btc, short_btc, last_price
+
+
+def _liquidation_window_breakdown(now_utc: datetime, window_min: int
+                                    ) -> tuple[float, float, float | None, dict]:
+    """Read last N min from liquidations.csv. Returns
+    (long_btc_total, short_btc_total, last_price, by_exchange).
+
+    by_exchange: {"bybit": {"long": float, "short": float}, "okx": {...}}.
+    Cross-exchange confirmation: если cascade на >1 бирже одновременно — high conviction.
+    """
     if not LIQ_CSV.exists():
-        return 0.0, 0.0, None
+        return 0.0, 0.0, None, {}
     cutoff = now_utc - timedelta(minutes=window_min)
     long_btc = 0.0
     short_btc = 0.0
     last_price = None
+    by_exchange: dict[str, dict[str, float]] = {}
     try:
         with LIQ_CSV.open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
@@ -189,18 +208,37 @@ def _liquidation_window_sums(now_utc: datetime, window_min: int) -> tuple[float,
                 if qty <= 0:
                     continue
                 side = (row.get("side") or "").lower()
+                exch = (row.get("exchange") or "unknown").lower()
+                by_exchange.setdefault(exch, {"long": 0.0, "short": 0.0})
                 if side == "long":
                     long_btc += qty
+                    by_exchange[exch]["long"] += qty
                 elif side == "short":
                     short_btc += qty
+                    by_exchange[exch]["short"] += qty
                 if price > 0:
                     last_price = price
     except OSError:
         logger.exception("cascade_alert.liq_read_failed")
-    return long_btc, short_btc, last_price
+    return long_btc, short_btc, last_price, by_exchange
 
 
-def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float | None) -> str:
+def _format_exchange_breakdown(side: str, by_exchange: dict, min_threshold: float = 0.3) -> str:
+    """Build per-exchange breakdown line. Cross-exchange (>1 биржа) = confirmation."""
+    contribs = []
+    for exch, sides in by_exchange.items():
+        v = sides.get(side, 0.0)
+        if v >= min_threshold:
+            contribs.append(f"{exch}={v:.2f}")
+    if len(contribs) >= 2:
+        return f"📡 Cross-exchange ({len(contribs)} бирж): " + ", ".join(contribs)
+    elif len(contribs) == 1:
+        return f"📡 Только {contribs[0]} BTC"
+    return ""
+
+
+def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float | None,
+                   by_exchange: dict | None = None) -> str:
     info = EDGE_TEXT.get((side, threshold)) or EDGE_TEXT.get((side, 5.0))
     lines: list[str] = []
     drifted = False
@@ -220,6 +258,10 @@ def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float
         lines.append(inverted["title"])
         lines.append("")
         lines.append(f"Ликвидировано: {qty_btc:.2f} BTC за {WINDOW_MINUTES} мин")
+        if by_exchange:
+            exch_line = _format_exchange_breakdown(side, by_exchange)
+            if exch_line:
+                lines.append(exch_line)
         if last_price:
             lines.append(f"Цена: ~${last_price:,.0f}")
         lines.append("")
@@ -239,6 +281,10 @@ def _format_alert(side: str, threshold: float, qty_btc: float, last_price: float
     lines.append(info["title"])
     lines.append("")
     lines.append(f"Ликвидировано: {qty_btc:.2f} BTC за {WINDOW_MINUTES} мин")
+    if by_exchange:
+        exch_line = _format_exchange_breakdown(side, by_exchange)
+        if exch_line:
+            lines.append(exch_line)
     if last_price:
         lines.append(f"Цена: ~${last_price:,.0f}")
     lines.append("")
@@ -356,7 +402,7 @@ async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interva
     while not stop_event.is_set():
         try:
             now = datetime.now(timezone.utc)
-            long_btc, short_btc, last_price = _liquidation_window_sums(now, WINDOW_MINUTES)
+            long_btc, short_btc, last_price, by_exchange = _liquidation_window_breakdown(now, WINDOW_MINUTES)
             # Mega tier: tighter window for rare 10+ BTC bursts
             mega_long, mega_short, _ = _liquidation_window_sums(now, MEGA_WINDOW_MINUTES)
             dedup = _load_dedup()
@@ -374,7 +420,7 @@ async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interva
                             continue
                     except ValueError:
                         pass
-                text = _format_alert(side, THRESHOLD_BTC_MEGA, mega_qty, last_price)
+                text = _format_alert(side, THRESHOLD_BTC_MEGA, mega_qty, last_price, by_exchange=by_exchange)
                 logger.info("cascade_alert.MEGA side=%s qty=%.2f", side, mega_qty)
                 if send_fn is not None:
                     try:
@@ -404,7 +450,7 @@ async def cascade_alert_loop(stop_event: asyncio.Event, *, send_fn=None, interva
                         pass
 
                 # Триггер alert
-                text = _format_alert(side, threshold, qty, last_price)
+                text = _format_alert(side, threshold, qty, last_price, by_exchange=by_exchange)
                 logger.info("cascade_alert.triggered side=%s threshold=%.1f qty=%.2f", side, threshold, qty)
                 if send_fn is not None:
                     try:

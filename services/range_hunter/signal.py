@@ -51,6 +51,13 @@ class RangeHunterParams:
     bar_minutes: int = 1
     variant_name: str = "1m"
 
+    # Time-of-day filter (опциональный). По умолчанию пусто = торгуем все часы.
+    # После 2 недель live данных оператор включит фильтры на bad windows:
+    # paper_trader_long_multi_divergence показал Friday 95% WR vs Mon/Wed/Sat
+    # в минусе. Для RH такого распределения пока нет — собираем данные.
+    skip_weekdays: tuple[str, ...] = ()         # ("Monday", "Wednesday", "Saturday")
+    skip_hours_utc: tuple[int, ...] = ()        # tuple of hour ints to skip
+
 
 @dataclass
 class RangeHunterSignal:
@@ -123,6 +130,17 @@ def compute_signal(window: pd.DataFrame, params: RangeHunterParams = DEFAULT_PAR
     if len(window) < needed:
         return None
     tail = window.iloc[-needed:]
+
+    # Time-of-day filter — отсекаем сигналы в bad weekdays/hours если задано
+    last_ts_pd = pd.Timestamp(tail.index[-1])
+    if last_ts_pd.tz is None:
+        last_ts_pd = last_ts_pd.tz_localize("UTC")
+    weekday_name = last_ts_pd.strftime("%A")
+    hour_utc = last_ts_pd.hour
+    if params.skip_weekdays and weekday_name in params.skip_weekdays:
+        return None
+    if params.skip_hours_utc and hour_utc in params.skip_hours_utc:
+        return None
 
     range_pct = _range_pct(tail)
     if range_pct > params.range_max_pct:
