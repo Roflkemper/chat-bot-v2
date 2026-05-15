@@ -822,6 +822,27 @@ async def _run_play_outcome(stop_event: asyncio.Event) -> None:
     await play_outcome_loop(stop_event=stop_event)
 
 
+async def _run_volume_nodes_refresh(stop_event: asyncio.Event) -> None:
+    """Раз в час пересчитывает local volume profile (POC/VAH/VAL/HVN/LVN) из
+    24h 1m OHLCV → пишет в state/manual_levels.json. TV-уровни приоритетнее
+    (не перезаписываются). Range Hunter snap'ится к VAL/VAH при отсутствии TV."""
+    from services.volume_nodes import refresh_local_levels
+    interval_sec = 3600
+    logger.info("volume_nodes.start interval=%ds", interval_sec)
+    while not stop_event.is_set():
+        try:
+            r = refresh_local_levels()
+            if r:
+                logger.info("volume_nodes.refreshed POC=%.0f VAH=%.0f VAL=%.0f",
+                            r['poc'], r['vah'], r['val'])
+        except Exception:
+            logger.exception("volume_nodes.tick_failed")
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            continue
+
+
 async def _run_daily_report(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Daily self-report (21:00 UTC): 24h digest BitMEX + RH + watchlist +
     confluence + vol regime + edge drift. Между weekly чтобы не летаешь
@@ -960,6 +981,7 @@ async def main(
     play_outcome_task = asyncio.create_task(_run_play_outcome(stop_event), name="play_outcome")
     confluence_task = asyncio.create_task(_run_confluence(stop_event, telegram_app=app), name="confluence")
     daily_report_task = asyncio.create_task(_run_daily_report(stop_event, telegram_app=app), name="daily_self_report")
+    volume_nodes_task = asyncio.create_task(_run_volume_nodes_refresh(stop_event), name="volume_nodes")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     # Critical tasks: their failure forces full shutdown.
@@ -978,7 +1000,7 @@ async def main(
         range_hunter_signal_5m_task, range_hunter_outcome_5m_task,
         range_hunter_signal_eth_5m_task, range_hunter_outcome_eth_5m_task,
         range_hunter_signal_xrp_5m_task, range_hunter_outcome_xrp_5m_task,
-        liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, confluence_task, daily_report_task, paper_trader_task, stale_monitor_task, stop_task,
+        liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, confluence_task, daily_report_task, volume_nodes_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
