@@ -588,7 +588,8 @@ def _rh_params_for(variant: str, symbol: str):
     from services.range_hunter.signal import RangeHunterParams
     if variant == "5m":
         # Walk-forward 2y: 70.6% WR, +$80.7K, DD per fold -$1533
-        # DD в 5× больше baseline → size = $2.5K (vs $5K на 1m)
+        # DD в 5× больше baseline → size = $2.5K (vs $5K на 1m).
+        # require_low_vol=True: защита от каскадных событий в hold-окне 24ч.
         return RangeHunterParams(
             symbol=symbol,
             lookback_h=12, range_max_pct=2.50, atr_pct_max=0.25,
@@ -596,6 +597,7 @@ def _rh_params_for(variant: str, symbol: str):
             width_pct=0.30, hold_h=24, stop_loss_pct=0.60,
             size_usd=2500.0, contract="XBTUSDT",
             bar_minutes=5, variant_name="5m",
+            require_low_vol=True,
         )
     # default 1m
     return RangeHunterParams(symbol=symbol)

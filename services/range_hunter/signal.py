@@ -58,6 +58,12 @@ class RangeHunterParams:
     skip_weekdays: tuple[str, ...] = ()         # ("Monday", "Wednesday", "Saturday")
     skip_hours_utc: tuple[int, ...] = ()        # tuple of hour ints to skip
 
+    # Volatility regime filter (опционально). Если True, Range Hunter сигналит
+    # ТОЛЬКО при vol_regime == 'low' (рынок спокойный — mean reversion работает).
+    # Defaults: 1m baseline = False (let edge naturally self-select),
+    #           5m wider = True (защита от каскадных событий в hold-окне 24ч).
+    require_low_vol: bool = False
+
 
 @dataclass
 class RangeHunterSignal:
@@ -141,6 +147,16 @@ def compute_signal(window: pd.DataFrame, params: RangeHunterParams = DEFAULT_PAR
         return None
     if params.skip_hours_utc and hour_utc in params.skip_hours_utc:
         return None
+
+    # Volatility regime filter (optional)
+    if params.require_low_vol:
+        try:
+            from services.volatility_regime import current_regime
+            regime, _ = current_regime(getattr(params, "symbol", "BTCUSDT"))
+            if regime != "low":
+                return None
+        except Exception:
+            pass  # graceful fallback if module missing
 
     range_pct = _range_pct(tail)
     if range_pct > params.range_max_pct:

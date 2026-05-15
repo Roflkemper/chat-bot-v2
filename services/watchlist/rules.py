@@ -47,6 +47,7 @@ class Rule:
     last_fired: Optional[str] = None  # iso ts
     fire_count: int = 0
     label: Optional[str] = None  # пользовательский тэг
+    symbol: str = "BTCUSDT"  # multi-asset support: BTCUSDT (default) / ETHUSDT / XRPUSDT
 
     def matches(self, value: float) -> bool:
         if self.op == ">":
@@ -134,8 +135,12 @@ def toggle_rule(rule_id: str) -> Rule | None:
     return None
 
 
-def _read_value(field: str) -> float | None:
-    """Read current value of a field from live state."""
+def _read_value(field: str, symbol: str = "BTCUSDT") -> float | None:
+    """Read current value of a field from live state.
+
+    symbol: BTCUSDT / ETHUSDT / XRPUSDT — для derivative полей из deriv_live.json.
+    Cascade/price/special fields ignore symbol (всегда BTC).
+    """
     import csv as _csv
     deriv_path = ROOT / "state" / "deriv_live.json"
     market_1m = ROOT / "market_live" / "market_1m.csv"
@@ -196,7 +201,7 @@ def _read_value(field: str) -> float | None:
         data = json.loads(deriv_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    btc = data.get("BTCUSDT", {}) or {}
+    btc = data.get(symbol.upper(), {}) or {}
     glob = data.get("global", {}) or {}
 
     if field == "funding":
@@ -236,7 +241,7 @@ def evaluate_rules(rules: list[Rule]) -> list[tuple[Rule, float]]:
     for rule in rules:
         if not rule.enabled:
             continue
-        v = _read_value(rule.field)
+        v = _read_value(rule.field, symbol=getattr(rule, "symbol", "BTCUSDT"))
         if v is None:
             continue
         if rule.matches(v):
