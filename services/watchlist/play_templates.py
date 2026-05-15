@@ -73,6 +73,46 @@ PLAYS: dict[str, dict] = {
         "exit_after_h": 4,
         "note": "Свежий edge на 2026 регим. Половинный размер до n>=40.",
     },
+    "taker_imbalance_long": {
+        "title": "📈 TAKER BUY > 58% → LONG continuation",
+        "edge": "n=109 (за 23 дня апр-май 2026): heavy_buy quintile\n"
+                "  +4ч: 68% pct_up, mean +0.27%\n"
+                "  +24ч: 70% pct_up, mean +0.63%\n"
+                "  ⚠ выборка короткая (23 дня), нужна валидация ≥3 мес",
+        "dir": "LONG",
+        "tp1_pct": +0.27,
+        "tp2_pct": +0.63,
+        "stop_pct": -0.40,
+        "exit_after_h": 4,
+        "note": "Triggered when binance_taker_buy_pct rolling > 58% (top quintile).",
+    },
+    "taker_imbalance_short": {
+        "title": "📉 TAKER BUY < 42% → SHORT continuation",
+        "edge": "n=110 (23 дня 2026): heavy_sell quintile\n"
+                "  +4ч: 62% pct_DOWN, mean -0.15%\n"
+                "  +24ч: 56% pct_up (mean reversion на 24h, слабее)\n"
+                "  ⚠ короткая выборка, валидация ≥3 мес",
+        "dir": "SHORT",
+        "tp1_pct": -0.15,
+        "tp2_pct": -0.40,
+        "stop_pct": +0.30,
+        "exit_after_h": 4,
+        "note": "Triggered when binance_taker_buy_pct rolling < 42% (bottom quintile).",
+    },
+    "topshort_divergence_long": {
+        "title": "📈 TOP-TRADERS shorting vs retail longing → LONG 24h (contrarian)",
+        "edge": "n=55 (top 10% top-bearish divergence, апр-май 2026):\n"
+                "  +24ч: 71% pct_up, mean +0.87%\n"
+                "  Парадокс: когда top-traders шортят, рынок идёт ВВЕРХ.\n"
+                "  Top-trader индикатор — контрарианский, не follow-the-money.\n"
+                "  ⚠ короткая выборка, нужна валидация ≥3 мес",
+        "dir": "LONG",
+        "tp1_pct": +0.40,
+        "tp2_pct": +0.87,
+        "stop_pct": -0.50,
+        "exit_after_h": 24,
+        "note": "Triggered when (top_trader_long_pct - global_long_pct) < -5pp.",
+    },
 }
 
 

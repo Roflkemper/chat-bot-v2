@@ -589,11 +589,14 @@ async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=No
     await range_hunter_signal_loop(stop_event=stop_event, send_fn=_send_with_kb)
 
 
-async def _run_range_hunter_outcome(stop_event: asyncio.Event) -> None:
+async def _run_range_hunter_outcome(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Outcome tracker: следит за placed signals, симулирует fill BUY/SELL/SL/timeout
-    на свежих 1m данных, пишет результат в journal."""
+    на свежих 1m данных, пишет результат в journal. Плюс hedge advisor: при
+    single-leg fill >30мин шлёт TG-нудж с опциями (хедж / закрыть / ждать)."""
     from services.range_hunter.loop import range_hunter_outcome_loop
-    await range_hunter_outcome_loop(stop_event=stop_event)
+    from services.telegram.channel_router import build_send_fn
+    hedge_send = build_send_fn(telegram_app, "SETUP_ON") if telegram_app else None
+    await range_hunter_outcome_loop(stop_event=stop_event, hedge_send_fn=hedge_send)
 
 
 async def _run_cliff_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
@@ -860,7 +863,7 @@ async def main(
     cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
     weekly_report_task = asyncio.create_task(_run_weekly_self_report(stop_event, telegram_app=app), name="weekly_self_report")
     range_hunter_signal_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app), name="range_hunter_signal")
-    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event), name="range_hunter_outcome")
+    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app), name="range_hunter_outcome")
     liq_pre_cascade_task = asyncio.create_task(_run_liq_pre_cascade(stop_event, telegram_app=app), name="liq_pre_cascade")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10

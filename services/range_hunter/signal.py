@@ -30,7 +30,11 @@ class RangeHunterParams:
     width_pct: float = 0.10        # ±0.10% от mid
     hold_h: int = 6                # окно жизни сделки
     stop_loss_pct: float = 0.20    # SL при single-leg
-    size_usd: float = 10_000.0     # размер каждой ноги
+    size_usd: float = 5_000.0      # размер каждой ноги. Снижен с 10K → 5K
+                                   # (Kelly-консервативный, защита от tail risk
+                                   # на первые 2 недели live; см. analysis в
+                                   # scripts/derivatives_edge_studies.py).
+                                   # Если empirical DD < $300 за 14 дней — поднимем.
     contract: str = "XBTUSDT"      # linear
 
 

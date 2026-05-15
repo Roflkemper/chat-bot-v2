@@ -333,9 +333,97 @@ def _resolve_no_fill(end_t: datetime) -> dict:
     }
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Hedge advisor — для single-leg ситуаций (3, 9 из ROADMAP)
+# ──────────────────────────────────────────────────────────────────────
+
+HEDGE_SUGGEST_MIN_AGE_MIN = 30  # single-leg >30min — пора хеджить
+
+
+def hedge_advice(record: dict, df: pd.DataFrame, *, now: Optional[datetime] = None) -> Optional[str]:
+    """Если у активного сетапа single-leg fill >30мин — вернуть TG-нудж.
+
+    Хедж-режим:
+      - LONG leg open (buy filled, sell ещё ждём) → советуем market SHORT
+        на встречной бирже того же объёма. Дельта → 0, ждём sell_fill либо
+        timeout. На timeout закрываем хедж + позицию (минус 2 taker, ~$8).
+      - Аналогично SELL leg open → market LONG хедж.
+    Vs текущий SL: вместо -$25.5 (SL hit + taker) кушаем -$8 (2×taker слиппедж).
+    Save ~$17 на single-leg событии. В бэктесте 609 такого за 2y → +$10K/2y.
+
+    TODO: автоматизация требует Binance/exchange API. Сейчас — только TG nudge.
+    Cross-strategy: если в этот момент cascade-сигнал в ту же сторону что и
+    наш orphan-leg — это free подтверждение, хедж НЕ нужен. (TODO: read
+    state/cascade_alert_dedup.json для проверки.)
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    try:
+        placed_at = datetime.fromisoformat(record.get("placed_at") or record["ts_signal"])
+    except (ValueError, TypeError, KeyError):
+        return None
+    if record.get("user_action") != "placed":
+        return None
+    if record.get("hedge_suggested_at"):
+        return None  # уже отправляли — не дублируем
+
+    buy_level = float(record["buy_level"])
+    sell_level = float(record["sell_level"])
+    size_usd = float(record["size_usd"])
+    mid_signal = float(record["mid_signal"])
+
+    window = df[(df.index >= placed_at) & (df.index <= now)]
+    if window.empty:
+        return None
+
+    buy_filled = (window["low"] <= buy_level).any()
+    sell_filled = (window["high"] >= sell_level).any()
+    if buy_filled and sell_filled:
+        return None  # обе fill — это уже pair_win, скоро resolve
+    if not buy_filled and not sell_filled:
+        return None  # нет fill — ничего хеджить
+
+    # Один leg висит. Сколько он висит?
+    if buy_filled:
+        fill_ts = window.index[(window["low"] <= buy_level).values][0]
+        side_open = "LONG"
+        fill_px = buy_level
+        hedge_dir = "SHORT"
+    else:
+        fill_ts = window.index[(window["high"] >= sell_level).values][0]
+        side_open = "SHORT"
+        fill_px = sell_level
+        hedge_dir = "LONG"
+
+    age_min = (now - fill_ts).total_seconds() / 60.0
+    if age_min < HEDGE_SUGGEST_MIN_AGE_MIN:
+        return None
+
+    last_close = float(window["close"].iloc[-1])
+    unrealized_pct = (last_close / fill_px - 1) * 100 * (1 if side_open == "LONG" else -1)
+
+    lines = [
+        f"⚠️ HEDGE ADVISORY  {record['signal_id']}",
+        f"Range Hunter: {side_open}-нога открыта {age_min:.0f} мин назад @ ${fill_px:,.0f}",
+        f"Текущая цена ${last_close:,.0f}  (unrealized {unrealized_pct:+.2f}%)",
+        f"Противоположная нога ${(sell_level if side_open=='LONG' else buy_level):,.0f} НЕ исполнена",
+        "",
+        f"Опция А (рекомендуем): захедж market {hedge_dir} ${size_usd:,.0f} на Binance.",
+        f"  → дельта → 0, ждём оставшуюся ногу или таймаут.",
+        f"  → cost: ~2× taker fee = ~$8 (vs SL hit ~$25).",
+        "",
+        f"Опция Б: закрыть {side_open}-ногу руками на market.",
+        f"  → лосс = текущий unrealized × size + taker fee.",
+        "",
+        f"Опция В: ждать дальше (по умолчанию). SL сработает при движении 0.20% против.",
+    ]
+    return "\n".join(lines)
+
+
 def check_outcomes(*, csv_path: Path = MARKET_1M_CSV,
                    journal_path: Path = JOURNAL_PATH,
-                   now: Optional[datetime] = None) -> int:
+                   now: Optional[datetime] = None,
+                   hedge_send_fn: Optional[Callable] = None) -> int:
     """One pass — try to resolve all pending signals. Returns count resolved."""
     if now is None:
         now = datetime.now(timezone.utc)
@@ -354,6 +442,18 @@ def check_outcomes(*, csv_path: Path = MARKET_1M_CSV,
             n_resolved += 1
             logger.info("range_hunter.outcome id=%s reason=%s pnl=%s",
                         rec["signal_id"], upd.get("exit_reason"), upd.get("pnl_usd"))
+            continue
+        # Сделка ещё не resolved — посмотрим, не пора ли советовать хедж
+        if hedge_send_fn is not None:
+            advice = hedge_advice(rec, df, now=now)
+            if advice:
+                try:
+                    hedge_send_fn(advice)
+                    update_record(rec["signal_id"],
+                                  {"hedge_suggested_at": now.isoformat(timespec="seconds")},
+                                  path=journal_path)
+                except Exception:
+                    logger.exception("range_hunter.hedge_send_failed")
     return n_resolved
 
 
@@ -380,11 +480,13 @@ async def range_hunter_signal_loop(stop_event: asyncio.Event, *,
 
 
 async def range_hunter_outcome_loop(stop_event: asyncio.Event, *,
+                                    hedge_send_fn: Optional[Callable] = None,
                                     interval_sec: int = POLL_INTERVAL_SEC) -> None:
-    logger.info("range_hunter.outcome_loop.start interval=%ds", interval_sec)
+    logger.info("range_hunter.outcome_loop.start interval=%ds hedge_advisor=%s",
+                interval_sec, "on" if hedge_send_fn else "off")
     while not stop_event.is_set():
         try:
-            n = check_outcomes()
+            n = check_outcomes(hedge_send_fn=hedge_send_fn)
             if n > 0:
                 logger.info("range_hunter.outcome_loop.resolved n=%d", n)
         except Exception:
