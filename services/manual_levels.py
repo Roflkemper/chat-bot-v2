@@ -134,32 +134,86 @@ def clear_symbol(symbol: str) -> bool:
 
 
 _CMD_RE = re.compile(r"(?i)(?:^|\s)(poc|vah|val|hvn|lvn|session_high|session_low|ttl_hours)\s*=\s*([\d.,\-eE]+)")
+# Plain number — supports $79,100.5 / 79100 / 79100.5 / "79,100"
+_NUMBER_RE = re.compile(r"\$?(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
+
+
+def _parse_number(s: str) -> Optional[float]:
+    s = s.replace("$", "").replace(",", "").replace(" ", "").strip()
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
 
 
 def parse_levels_text(text: str) -> tuple[Optional[str], dict]:
-    """Parse "BTCUSD poc=81500 vah=82200 val=80800 hvn=82100,81100" → (symbol, dict).
+    """Parse уровни в гибком формате. Понимает:
 
-    Symbol — first all-caps token if present, default None.
+      1. Named: "LEVELS BTCUSD poc=81500 vah=82200 val=80800"
+      2. Positional 3 числа: "LEVELS BTCUSD 79100 80500 78200" → poc,vah,val
+         автоматически нормализуем: max=vah, min=val, средний=poc
+      3. Positional 5 чисел: "LEVELS BTCUSD 79100 80500 78200 81000 78000"
+         → poc, vah, val, session_high, session_low
+      4. $ и запятые в числах: "$79,100 $80,500 $78,200" ОК
+      5. Префиксы /levels, LEVELS, TV:LEVELS, VPVR — все съедаются
+
+    Symbol — first all-caps token. Defaults to None (caller подставит "BTCUSD").
     """
     text = text.strip()
-    # Strip command prefix like "/levels" or "LEVELS"
     parts = text.split(maxsplit=2)
     symbol = None
     rest = text
     if parts:
-        first = parts[0].lstrip("/").upper()
-        if first in ("LEVELS", "TV", "VPVR"):
-            # Eat command word
+        first = parts[0].lstrip("/").upper().rstrip(":")
+        # Strip leading prefix word (LEVELS, TV, VPVR, TV:LEVELS, etc.)
+        if first in ("LEVELS", "TV", "VPVR") or first.startswith("TV"):
             text2 = text.split(maxsplit=1)
             rest = text2[1] if len(text2) > 1 else ""
-        # Try to find symbol
         m = re.match(r"^\s*([A-Z][A-Z0-9]+)\s+(.*)$", rest)
         if m:
             symbol = m.group(1).upper()
             rest = m.group(2)
+
+    # 1. Try named "key=value" pattern first
     levels: dict = {}
     for m in _CMD_RE.finditer(rest):
         levels[m.group(1).lower()] = m.group(2)
+    if levels:
+        return symbol, levels
+
+    # 2. Positional fallback — извлекаем все числа в порядке появления
+    numbers = []
+    for m in _NUMBER_RE.finditer(rest):
+        val = _parse_number(m.group(0))
+        if val is not None and val > 0:
+            numbers.append(val)
+
+    if not numbers:
+        return symbol, {}
+
+    # Assign by count:
+    #   3 → poc, vah, val (auto-normalized: max=vah, min=val, middle=poc)
+    #   2 → vah, val (max,min)
+    #   5+ → poc, vah, val, session_high, session_low
+    if len(numbers) == 3:
+        srt = sorted(numbers, reverse=True)
+        levels = {"vah": srt[0], "poc": srt[1], "val": srt[2]}
+    elif len(numbers) == 2:
+        srt = sorted(numbers, reverse=True)
+        levels = {"vah": srt[0], "val": srt[1]}
+    elif len(numbers) >= 5:
+        # explicit order: poc, vah, val, session_high, session_low
+        levels = {
+            "poc": numbers[0], "vah": numbers[1], "val": numbers[2],
+            "session_high": numbers[3], "session_low": numbers[4],
+        }
+    elif len(numbers) == 4:
+        # poc, vah, val + session_high (assume sorted descending session high > vah > poc > val)
+        srt = sorted(numbers, reverse=True)
+        levels = {"session_high": srt[0], "vah": srt[1], "poc": srt[2], "val": srt[3]}
+    elif len(numbers) == 1:
+        levels = {"poc": numbers[0]}
+
     return symbol, levels
 
 
