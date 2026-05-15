@@ -919,6 +919,10 @@ async def main(
     # Параллельно с 1m, не конкурирует. Size $2.5K (DD в 5× больше чем 1m → меньше size).
     range_hunter_signal_5m_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="BTCUSDT", variant="5m"), name="range_hunter_signal_btc_5m")
     range_hunter_outcome_5m_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="BTCUSDT", variant="5m"), name="range_hunter_outcome_btc_5m")
+    range_hunter_signal_eth_5m_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="ETHUSDT", variant="5m"), name="range_hunter_signal_eth_5m")
+    range_hunter_outcome_eth_5m_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="ETHUSDT", variant="5m"), name="range_hunter_outcome_eth_5m")
+    range_hunter_signal_xrp_5m_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="XRPUSDT", variant="5m"), name="range_hunter_signal_xrp_5m")
+    range_hunter_outcome_xrp_5m_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="XRPUSDT", variant="5m"), name="range_hunter_outcome_xrp_5m")
     liq_pre_cascade_task = asyncio.create_task(_run_liq_pre_cascade(stop_event, telegram_app=app), name="liq_pre_cascade")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
@@ -947,6 +951,8 @@ async def main(
         range_hunter_signal_eth_task, range_hunter_outcome_eth_task,
         range_hunter_signal_xrp_task, range_hunter_outcome_xrp_task,
         range_hunter_signal_5m_task, range_hunter_outcome_5m_task,
+        range_hunter_signal_eth_5m_task, range_hunter_outcome_eth_5m_task,
+        range_hunter_signal_xrp_5m_task, range_hunter_outcome_xrp_5m_task,
         liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, confluence_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 

@@ -31,6 +31,9 @@ SUPPORTED_FIELDS = {
     "price": "BTC mark price USD",
     "cascade_long_5min": "long-cascade BTC за 5 мин",
     "cascade_short_5min": "short-cascade BTC за 5 мин",
+    "top_minus_global_long": "top_trader_long_pct - global_long_pct (pp). "
+                              "Negative = top traders шортят пока retail лонгует "
+                              "→ контрарианский LONG-сигнал (n=55, 71% pct_up 24h)",
 }
 
 
@@ -217,6 +220,13 @@ def _read_value(field: str) -> float | None:
         return btc.get("oi_change_1h_pct")
     if field == "btc_d":
         return glob.get("btc_dominance_pct")
+    # Synthetic field: smart-money divergence (top - global longs in percentage points)
+    if field == "top_minus_global_long":
+        top_l = btc.get("top_trader_long_pct")
+        glob_l = btc.get("global_long_account_pct")
+        if top_l is None or glob_l is None:
+            return None
+        return float(top_l) - float(glob_l)
     return None
 
 
