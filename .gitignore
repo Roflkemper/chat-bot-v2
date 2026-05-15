@@ -265,3 +265,6 @@ data/exit_advisor/dedup_cache.json
 # 2026-05-14: страховка от случайного коммита бэкапов секретов
 .env*.bak*
 *.env.bak*
+
+# 2026-05-15: Range Hunter live journal (runtime state)
+state/range_hunter_signals.jsonl

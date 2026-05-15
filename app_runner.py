@@ -564,6 +564,38 @@ async def _run_weekly_self_report(stop_event: asyncio.Event, *, telegram_app=Non
     logger.info("weekly_self_report.stopped")
 
 
+async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Range Hunter — TG-эмиттер semi-manual mean-revert стратегии.
+    Раз в минуту проверяет: range_4h <= 0.70%, ATR_1m <= 0.10%, trend <= 0.10%/ч.
+    При прохождении — шлёт карточку с BUY/SELL уровнями + inline кнопки.
+    Cooldown 2h. Walk-forward 2y: WR 66-70%, 4/4 folds positive."""
+    from services.range_hunter.loop import range_hunter_signal_loop
+    from services.telegram.channel_router import build_send_fn
+
+    raw_send = build_send_fn(telegram_app, "SETUP_ON") if telegram_app else None
+
+    def _send_with_kb(text, reply_markup=None, **kwargs):
+        if telegram_app is None or raw_send is None:
+            return
+        if reply_markup is None:
+            raw_send(text)
+            return
+        try:
+            for cid in telegram_app.allowed_chat_ids:
+                telegram_app.bot.send_message(cid, text, reply_markup=reply_markup)
+        except Exception:
+            logger.exception("range_hunter.send_with_kb_failed")
+
+    await range_hunter_signal_loop(stop_event=stop_event, send_fn=_send_with_kb)
+
+
+async def _run_range_hunter_outcome(stop_event: asyncio.Event) -> None:
+    """Outcome tracker: следит за placed signals, симулирует fill BUY/SELL/SL/timeout
+    на свежих 1m данных, пишет результат в journal."""
+    from services.range_hunter.loop import range_hunter_outcome_loop
+    await range_hunter_outcome_loop(stop_event=stop_event)
+
+
 async def _run_cliff_monitor(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Cliff monitor: каждые 5 мин проверяет SHORT-T2 боты + bag aggregate.
     Per-bot пороги: WARNING −$1500, DANGER −$3000. Bag: суммы по всем SHORT."""
@@ -827,6 +859,8 @@ async def main(
     cascade_accuracy_task = asyncio.create_task(_run_cascade_accuracy_eval(stop_event, telegram_app=app), name="cascade_accuracy_eval")
     cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
     weekly_report_task = asyncio.create_task(_run_weekly_self_report(stop_event, telegram_app=app), name="weekly_self_report")
+    range_hunter_signal_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app), name="range_hunter_signal")
+    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event), name="range_hunter_outcome")
     liq_pre_cascade_task = asyncio.create_task(_run_liq_pre_cascade(stop_event, telegram_app=app), name="liq_pre_cascade")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
@@ -848,7 +882,7 @@ async def main(
         weekly_audit_task,
         decision_log_task, dashboard_task, dashboard_http_task, setup_detector_task,
         setup_tracker_task, exit_advisor_task, market_intelligence_task,
-        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
+        market_forward_task, deriv_live_task, bitmex_account_task, cascade_alert_task, cascade_accuracy_task, cliff_monitor_task, weekly_report_task, range_hunter_signal_task, range_hunter_outcome_task, liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
