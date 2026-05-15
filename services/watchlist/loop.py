@@ -6,6 +6,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from .rules import load_rules, save_rules, evaluate_rules
+from .play_templates import format_play
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,14 @@ async def watchlist_loop(stop_event: asyncio.Event, *, send_fn=None, interval_se
                         f"  Текущее значение: {value:.4f}\n"
                         f"  Rule ID: {rule.id}"
                     )
+                    # If this rule is tagged with a known play label, enrich with trade plan
+                    if rule.label:
+                        try:
+                            extra = format_play(rule.label, value)
+                            if extra:
+                                text = text + "\n" + extra
+                        except Exception:
+                            logger.exception("watchlist.play_template_failed rule=%s", rule.id)
                     logger.info("watchlist.fired rule=%s value=%.4f", rule.id, value)
                     if send_fn:
                         try:
