@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -334,10 +335,61 @@ def _resolve_no_fill(end_t: datetime) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Hedge advisor — для single-leg ситуаций (3, 9 из ROADMAP)
+# Hedge advisor + Cross-strategy confirmation
 # ──────────────────────────────────────────────────────────────────────
 
 HEDGE_SUGGEST_MIN_AGE_MIN = 30  # single-leg >30min — пора хеджить
+CASCADE_DEDUP_PATH = ROOT / "state" / "cascade_alert_dedup.json"
+CROSS_STRATEGY_MAX_AGE_MIN = 60  # cascade сработавший за час назад ещё актуален
+
+# Map: какие cascade-сигналы ↔ ожидаемое направление цены (2026 edge profile).
+# - SHORT cascade (shorts liquidated) → price continuation UP — survived в обоих периодах
+# - LONG cascade (longs liquidated) → 2026 INVERSION: price continuation DOWN
+#   (2024 был bounce up, edge инвертировался — см. cascade_backtest_combined)
+# Mega 10BTC исключаем — отдельный edge.
+CASCADE_BULL_SIGNALS = ("short_2.0", "short_5.0")     # → подтверждение LONG-orphan
+CASCADE_BEAR_SIGNALS = ("long_2.0", "long_5.0")        # → подтверждение SHORT-orphan
+
+
+def _check_cross_strategy_confirmation(orphan_side: str, *,
+                                       now: Optional[datetime] = None,
+                                       max_age_min: int = CROSS_STRATEGY_MAX_AGE_MIN,
+                                       dedup_path: Path = CASCADE_DEDUP_PATH,
+                                       ) -> list[dict]:
+    """Cross-strategy hedge intelligence: вернуть cascade-сигналы которые
+    подтверждают направление orphan-leg за последние max_age_min минут.
+
+    orphan_side: 'LONG' | 'SHORT'.
+
+    Возвращает список [{key, ts, age_min}, ...] или пустой список.
+
+    Логика: если у нас уже открыта LONG-нога Range Hunter и ровно в это
+    время бот зафаерил SHORT-cascade (= ожидание price up) — это
+    БЕСПЛАТНОЕ подтверждение, хедж НЕ нужен, держим. Аналогично SHORT-
+    нога + LONG-cascade (в 2026 это price down signal).
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    if not dedup_path.exists():
+        return []
+    try:
+        dedup = json.loads(dedup_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    candidates = CASCADE_BULL_SIGNALS if orphan_side == "LONG" else CASCADE_BEAR_SIGNALS
+    found = []
+    for key in candidates:
+        ts_str = dedup.get(key)
+        if not ts_str:
+            continue
+        try:
+            ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            continue
+        age_min = (now - ts).total_seconds() / 60.0
+        if 0 < age_min <= max_age_min:
+            found.append({"key": key, "ts": ts.isoformat(), "age_min": round(age_min, 1)})
+    return found
 
 
 def hedge_advice(record: dict, df: pd.DataFrame, *, now: Optional[datetime] = None) -> Optional[str]:
@@ -401,6 +453,24 @@ def hedge_advice(record: dict, df: pd.DataFrame, *, now: Optional[datetime] = No
 
     last_close = float(window["close"].iloc[-1])
     unrealized_pct = (last_close / fill_px - 1) * 100 * (1 if side_open == "LONG" else -1)
+
+    # Cross-strategy confirmation check (Layer 9 из ROADMAP).
+    # Если каскад в ту же сторону что и наш orphan — хедж НЕ нужен, держим.
+    confirms = _check_cross_strategy_confirmation(side_open, now=now)
+    if confirms:
+        keys = ", ".join(f"{c['key']} ({c['age_min']:.0f}мин назад)" for c in confirms)
+        return "\n".join([
+            f"🟢 CROSS-STRATEGY confirmation  {record['signal_id']}",
+            f"Range Hunter: {side_open}-нога открыта {age_min:.0f} мин @ ${fill_px:,.0f}",
+            f"Текущая цена ${last_close:,.0f}  (unrealized {unrealized_pct:+.2f}%)",
+            "",
+            f"⚡ Каскад-сигналы в ТУ ЖЕ сторону:",
+            f"  {keys}",
+            "",
+            f"→ Это БЕСПЛАТНОЕ подтверждение направления.",
+            f"→ Хедж НЕ нужен. Держим, ждём вторую ногу или таймаут.",
+            f"→ Risk остаётся: SL при движении 0.20% против.",
+        ])
 
     lines = [
         f"⚠️ HEDGE ADVISORY  {record['signal_id']}",
