@@ -822,6 +822,28 @@ async def _run_play_outcome(stop_event: asyncio.Event) -> None:
     await play_outcome_loop(stop_event=stop_event)
 
 
+async def _run_daily_report(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Daily self-report (21:00 UTC): 24h digest BitMEX + RH + watchlist +
+    confluence + vol regime + edge drift. Между weekly чтобы не летаешь
+    слепым 7 дней."""
+    from services.reports.daily_self_report import maybe_send_daily
+    from services.telegram.channel_router import build_send_fn
+    send_fn = build_send_fn(telegram_app, "ENGINE_ALERT") if telegram_app else None
+    interval_sec = 600  # 10 min poll; actual send 1×/day
+    while not stop_event.is_set():
+        try:
+            if send_fn is not None:
+                sent = maybe_send_daily(send_fn=send_fn)
+                if sent:
+                    logger.info("daily_self_report.sent")
+        except Exception:
+            logger.exception("daily_self_report.tick_failed")
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            continue
+
+
 async def _run_confluence(stop_event: asyncio.Event, *, telegram_app=None) -> None:
     """Confluence detector: раз в минуту смотрит play_journal + cascade_alerts,
     при 2+ сигналов в одну сторону за 5 мин — шлёт high-conviction карточку
@@ -937,6 +959,7 @@ async def main(
     watchlist_task = asyncio.create_task(_run_watchlist(stop_event, telegram_app=app), name="watchlist")
     play_outcome_task = asyncio.create_task(_run_play_outcome(stop_event), name="play_outcome")
     confluence_task = asyncio.create_task(_run_confluence(stop_event, telegram_app=app), name="confluence")
+    daily_report_task = asyncio.create_task(_run_daily_report(stop_event, telegram_app=app), name="daily_self_report")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     # Critical tasks: their failure forces full shutdown.
@@ -955,7 +978,7 @@ async def main(
         range_hunter_signal_5m_task, range_hunter_outcome_5m_task,
         range_hunter_signal_eth_5m_task, range_hunter_outcome_eth_5m_task,
         range_hunter_signal_xrp_5m_task, range_hunter_outcome_xrp_5m_task,
-        liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, confluence_task, paper_trader_task, stale_monitor_task, stop_task,
+        liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, confluence_task, daily_report_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0

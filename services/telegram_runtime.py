@@ -1592,6 +1592,87 @@ class TelegramBotApp:
                     chat_id, f"'{token}' was already disabled — no change."
                 )
 
+        @self.bot.message_handler(commands=['positions', 'pos'])
+        def handle_positions(message) -> None:
+            """/positions — снапшот BitMEX баланс + open positions + dist_liq +
+            активные Range Hunter ноги + статус edge_drift. Visibility без UI BitMEX."""
+            chat_id = int(message.chat.id)
+            if not self._is_allowed(chat_id):
+                self.bot.send_message(chat_id, '⛔ Доступ запрещён.')
+                return
+            import json as _json
+            from pathlib import Path as _Path
+            from datetime import datetime as _dt, timezone as _tz
+            ROOT = _Path('/Users/alexeychechikov/code/bot7')
+            lines = ["📊 СНАПШОТ ПОЗИЦИЙ"]
+            # 1) BitMEX margin
+            try:
+                margin_file = ROOT / 'state' / 'margin_automated.jsonl'
+                if margin_file.exists():
+                    last_margin = None
+                    with margin_file.open() as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                last_margin = line
+                    if last_margin:
+                        m = _json.loads(last_margin)
+                        lines.append(f"\n💰 BitMEX (последнее обновление {m.get('ts', '?')}):")
+                        lines.append(f"  Wallet balance:  ${m.get('wallet_balance_usd', 0):,.2f}")
+                        lines.append(f"  Margin balance:  ${m.get('margin_balance_usd', 0):,.2f}")
+                        lines.append(f"  Available:       ${m.get('available_margin_usd', 0):,.2f}")
+                        lines.append(f"  Used margin:     ${m.get('used_margin_usd', 0):,.2f}")
+                        lines.append(f"  Distance to liq: {m.get('distance_to_liquidation_pct', 0):.1f}%")
+                        lines.append(f"  Open positions:  {m.get('positions_count', 0)}")
+                        lines.append(f"  BTC mark price:  ${m.get('btc_mark_price', 0):,.0f}")
+            except Exception:
+                lines.append("  ❌ BitMEX state недоступен")
+            # 2) Range Hunter pending signals (placed legs)
+            try:
+                from services.range_hunter.journal import (
+                    read_all as _rh_read, journal_path_for as _rh_path,
+                )
+                lines.append("\n🎯 Range Hunter pending signals:")
+                any_rh = False
+                for sym in ("BTCUSDT", "ETHUSDT", "XRPUSDT"):
+                    for variant in ("1m", "5m"):
+                        path = _rh_path(sym, variant)
+                        rows = _rh_read(path=path)
+                        placed = [r for r in rows if r.get("user_action") == "placed" and r.get("exit_reason") is None]
+                        if placed:
+                            any_rh = True
+                            for r in placed[-3:]:
+                                lines.append(f"  [{sym} {variant}] {r['signal_id']} ${r['buy_level']:,.0f}/${r['sell_level']:,.0f}")
+                if not any_rh:
+                    lines.append("  (нет активных placed-сигналов)")
+            except Exception:
+                lines.append("  ❌ Range Hunter journal недоступен")
+            # 3) Edge drift status
+            try:
+                drift_file = ROOT / 'state' / 'cascade_edge_drift.json'
+                if drift_file.exists():
+                    drift = _json.loads(drift_file.read_text())
+                    lines.append("\n⚠️ Cascade edge drift:")
+                    for key, d in drift.items():
+                        if d.get('drifted'):
+                            lines.append(f"  ❌ {key}: acc {d.get('accuracy')}% (n={d.get('n')}) — DRIFTED")
+                        else:
+                            lines.append(f"  ✓ {key}: acc {d.get('accuracy')}% (n={d.get('n')})")
+            except Exception:
+                pass
+            # 4) Volatility regime
+            try:
+                from services.volatility_regime import current_regime
+                lines.append("\n🌊 Volatility regime (last 4h):")
+                for sym in ("BTCUSDT", "ETHUSDT", "XRPUSDT"):
+                    reg, vol = current_regime(sym)
+                    emoji = "🟢" if reg == "low" else "🟡" if reg == "medium" else "🔴"
+                    vol_s = f"{vol:.1f}%" if vol is not None else "N/A"
+                    lines.append(f"  {emoji} {sym}: {reg.upper()} ({vol_s} annualized)")
+            except Exception:
+                pass
+            self.bot.send_message(chat_id, "\n".join(lines))
+
         @self.bot.message_handler(commands=['levels'])
         def handle_levels(message) -> None:
             """/levels — показать текущие уровни VPVR.
