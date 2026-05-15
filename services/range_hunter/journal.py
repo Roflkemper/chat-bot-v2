@@ -45,19 +45,26 @@ logger = logging.getLogger(__name__)
 JOURNAL_PATH = Path("state/range_hunter_signals.jsonl")
 
 
-def journal_path_for(symbol: str) -> Path:
-    """Per-symbol журнал. BTCUSDT → default path (backward compat), остальные →
-    state/range_hunter_signals_<SYMBOL>.jsonl."""
+def journal_path_for(symbol: str, variant: str = "1m") -> Path:
+    """Per-(symbol, variant) журнал. BTCUSDT 1m → default path (backward compat),
+    остальные → state/range_hunter_signals_<SYMBOL>[_<variant>].jsonl."""
     sym = symbol.upper()
-    if sym == "BTCUSDT":
+    if sym == "BTCUSDT" and variant == "1m":
         return JOURNAL_PATH
-    return JOURNAL_PATH.parent / f"range_hunter_signals_{sym}.jsonl"
+    base = f"range_hunter_signals_{sym}"
+    if variant != "1m":
+        base += f"_{variant}"
+    return JOURNAL_PATH.parent / f"{base}.jsonl"
 
 
-def signal_id_from_ts(ts: datetime, symbol: str = "BTCUSDT") -> str:
+def signal_id_from_ts(ts: datetime, symbol: str = "BTCUSDT", variant: str = "1m") -> str:
     sym = symbol.upper()
-    suffix = "" if sym == "BTCUSDT" else f"_{sym}"
-    return "rh_" + ts.strftime("%Y%m%d_%H%M%S") + suffix
+    parts = ["rh_" + ts.strftime("%Y%m%d_%H%M%S")]
+    if sym != "BTCUSDT":
+        parts.append(sym)
+    if variant != "1m":
+        parts.append(variant)
+    return "_".join(parts)
 
 
 def append_signal(record: dict, *, path: Path = JOURNAL_PATH) -> None:

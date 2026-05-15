@@ -104,3 +104,24 @@ async def play_outcome_loop(stop_event: asyncio.Event, *, interval_sec: int = PL
         except asyncio.TimeoutError:
             continue
     logger.info("play_outcome.stopped")
+
+
+CONFLUENCE_POLL_SEC = 60
+
+
+async def confluence_loop(stop_event: asyncio.Event, *, send_fn=None,
+                            interval_sec: int = CONFLUENCE_POLL_SEC) -> None:
+    """Раз в минуту проверяет если 2+ сигнала в одну сторону сошлись за
+    последние 5 мин → шлёт high-conviction карточку с 2× size recommendation."""
+    from services.watchlist.confluence import check_and_emit_confluence
+    logger.info("confluence.start interval=%ds", interval_sec)
+    while not stop_event.is_set():
+        try:
+            check_and_emit_confluence(send_fn=send_fn)
+        except Exception:
+            logger.exception("confluence.tick_failed")
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_event.wait()), timeout=interval_sec)
+        except asyncio.TimeoutError:
+            continue
+    logger.info("confluence.stopped")

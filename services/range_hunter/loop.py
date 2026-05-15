@@ -51,13 +51,17 @@ POLL_INTERVAL_SEC = 60
 # ──────────────────────────────────────────────────────────────────────
 
 def _load_recent_1m(*, needed_bars: int, csv_path: Path = MARKET_1M_CSV,
-                    symbol: str = "BTCUSDT") -> Optional[pd.DataFrame]:
-    """Load recent 1m OHLCV.
+                    symbol: str = "BTCUSDT",
+                    bar_minutes: int = 1) -> Optional[pd.DataFrame]:
+    """Load recent OHLCV. bar_minutes=1 returns native 1m, bar_minutes>1
+    resamples 1m → bar_minutes.
 
-    BTCUSDT: читаем market_live/market_1m.csv (свежий Bybit WS stream).
-    Другие символы (ETHUSDT, XRPUSDT): fetch через core.data_loader (Binance REST,
-    12s cache TTL — достаточно для 60-секундного сигнального тика).
+    BTCUSDT 1m: market_live/market_1m.csv (Bybit WS stream).
+    Другие символы / 5m+: fetch через core.data_loader (Binance REST, 12s TTL).
     """
+    # Needed 1m bars: для 5m нужно needed_bars * 5 минутных баров
+    raw_needed = needed_bars * max(1, bar_minutes)
+
     if symbol.upper() == "BTCUSDT" and csv_path.exists():
         try:
             df = pd.read_csv(csv_path)
@@ -69,25 +73,30 @@ def _load_recent_1m(*, needed_bars: int, csv_path: Path = MARKET_1M_CSV,
         df["ts"] = pd.to_datetime(df["ts_utc"], utc=True, errors="coerce")
         df = df.dropna(subset=["ts"]).set_index("ts").sort_index()
         df = df[~df.index.duplicated(keep="last")]
-        return df.tail(needed_bars + 10)
+        df = df.tail(raw_needed + 20)
+    else:
+        try:
+            from core.data_loader import load_klines
+            df = load_klines(symbol=symbol.upper(), timeframe="1m",
+                              limit=max(raw_needed + 20, 300))
+        except Exception:
+            logger.exception("range_hunter.load_klines_failed symbol=%s", symbol)
+            return None
+        if df is None or df.empty:
+            return None
+        if not isinstance(df.index, pd.DatetimeIndex):
+            for col in ("ts", "ts_utc", "timestamp"):
+                if col in df.columns:
+                    df = df.set_index(pd.to_datetime(df[col], utc=True, errors="coerce"))
+                    break
+        df = df.sort_index()
 
-    # Multi-symbol path: тянем через data_loader
-    try:
-        from core.data_loader import load_klines
-        df = load_klines(symbol=symbol.upper(), timeframe="1m", limit=max(needed_bars + 10, 300))
-    except Exception:
-        logger.exception("range_hunter.load_klines_failed symbol=%s", symbol)
-        return None
-    if df is None or df.empty:
-        return None
-    # data_loader DataFrame columns могут отличаться: убедимся в стандартных
-    # OHLC + DatetimeIndex
-    if not isinstance(df.index, pd.DatetimeIndex):
-        for col in ("ts", "ts_utc", "timestamp"):
-            if col in df.columns:
-                df = df.set_index(pd.to_datetime(df[col], utc=True, errors="coerce"))
-                break
-    df = df.sort_index()
+    # Resample to bar_minutes if > 1
+    if bar_minutes > 1:
+        rule = f"{bar_minutes}min"
+        df = df.resample(rule).agg({
+            "open": "first", "high": "max", "low": "min", "close": "last"
+        }).dropna()
     return df.tail(needed_bars + 10)
 
 
@@ -103,12 +112,15 @@ def _last_signal_ts(*, journal_path: Path = JOURNAL_PATH) -> Optional[datetime]:
         return None
 
 
-def _build_signal_record(sig: RangeHunterSignal, *, symbol: str = "BTCUSDT") -> dict:
+def _build_signal_record(sig: RangeHunterSignal, *, symbol: str = "BTCUSDT",
+                          variant: str = "1m") -> dict:
     """Compose journal record from signal."""
     return {
-        "signal_id": signal_id_from_ts(datetime.fromisoformat(sig.ts), symbol=symbol),
+        "signal_id": signal_id_from_ts(datetime.fromisoformat(sig.ts),
+                                         symbol=symbol, variant=variant),
         "ts_signal": sig.ts,
         "symbol": symbol.upper(),
+        "variant": variant,
         "mid_signal": sig.mid,
         "buy_level": sig.buy_level,
         "sell_level": sig.sell_level,
@@ -145,7 +157,8 @@ def check_and_emit(*, send_fn: Optional[Callable] = None,
     if now is None:
         now = datetime.now(timezone.utc)
     if journal_path is None:
-        journal_path = journal_path_for(params.symbol)
+        journal_path = journal_path_for(params.symbol,
+                                         variant=getattr(params, "variant_name", "1m"))
 
     # Cooldown (per-symbol — журнал отдельный)
     last_ts = _last_signal_ts(journal_path=journal_path)
@@ -154,8 +167,10 @@ def check_and_emit(*, send_fn: Optional[Callable] = None,
         if elapsed < params.cooldown_h:
             return None  # too soon
 
-    needed = params.lookback_h * 60
-    df = _load_recent_1m(needed_bars=needed, csv_path=csv_path, symbol=params.symbol)
+    bar_min = getattr(params, "bar_minutes", 1) or 1
+    needed = params.lookback_h * 60 // bar_min  # bars в lookback с учётом TF
+    df = _load_recent_1m(needed_bars=needed, csv_path=csv_path,
+                          symbol=params.symbol, bar_minutes=bar_min)
     if df is None or len(df) < needed:
         return None
 
@@ -163,7 +178,8 @@ def check_and_emit(*, send_fn: Optional[Callable] = None,
     if sig is None:
         return None
 
-    record = _build_signal_record(sig, symbol=params.symbol)
+    record = _build_signal_record(sig, symbol=params.symbol,
+                                     variant=getattr(params, "variant_name", "1m"))
     append_signal(record, path=journal_path)
 
     if send_fn is not None:
@@ -521,6 +537,7 @@ def hedge_advice(record: dict, df: pd.DataFrame, *, now: Optional[datetime] = No
 def check_outcomes(*, csv_path: Path = MARKET_1M_CSV,
                    journal_path: Path = JOURNAL_PATH,
                    symbol: str = "BTCUSDT",
+                   bar_minutes: int = 1,
                    now: Optional[datetime] = None,
                    hedge_send_fn: Optional[Callable] = None) -> int:
     """One pass — try to resolve all pending signals. Returns count resolved."""
@@ -529,7 +546,10 @@ def check_outcomes(*, csv_path: Path = MARKET_1M_CSV,
     pendings = pending_signals(path=journal_path)
     if not pendings:
         return 0
-    df = _load_recent_1m(needed_bars=24 * 60, csv_path=csv_path, symbol=symbol)
+    # На 5m hold_h может быть 24 — даём 32h tail чтоб покрыть с запасом
+    tail_bars = 32 * 60 // bar_minutes if bar_minutes > 1 else 24 * 60
+    df = _load_recent_1m(needed_bars=tail_bars, csv_path=csv_path,
+                          symbol=symbol, bar_minutes=bar_minutes)
     if df is None or df.empty:
         return 0
     n_resolved = 0
@@ -583,12 +603,15 @@ async def range_hunter_outcome_loop(stop_event: asyncio.Event, *,
                                     interval_sec: int = POLL_INTERVAL_SEC) -> None:
     logger.info("range_hunter.outcome_loop.start symbol=%s interval=%ds hedge_advisor=%s",
                 params.symbol, interval_sec, "on" if hedge_send_fn else "off")
-    journal_path = journal_path_for(params.symbol)
+    journal_path = journal_path_for(params.symbol,
+                                      variant=getattr(params, "variant_name", "1m"))
+    bar_min = getattr(params, "bar_minutes", 1) or 1
     while not stop_event.is_set():
         try:
             n = check_outcomes(hedge_send_fn=hedge_send_fn,
                                 journal_path=journal_path,
-                                symbol=params.symbol)
+                                symbol=params.symbol,
+                                bar_minutes=bar_min)
             if n > 0:
                 logger.info("range_hunter.outcome_loop.resolved symbol=%s n=%d", params.symbol, n)
         except Exception:

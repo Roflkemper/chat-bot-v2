@@ -42,6 +42,15 @@ class RangeHunterParams:
     # три независимых эмиттера дают ~3× signal flow на тех же $15K капитала.
     symbol: str = "BTCUSDT"
 
+    # Timeframe variant: bar_minutes = размер бара. По умолчанию 1m, можно 5m.
+    # 5m даёт wider levels + longer hold для более крупного edge per trade.
+    # Walk-forward 2y BTC:
+    #   bar=1, lookback=4h, hold=6h, width=0.10%:  2066 trades, 68% WR, +$17.9K, DD -$283
+    #   bar=5, lookback=12h, hold=24h, width=0.30%: 3097 trades, 70% WR, +$80.7K, DD -$1533
+    # variant_name — суффикс для журнала (state/range_hunter_signals_<SYMBOL>_<variant>.jsonl)
+    bar_minutes: int = 1
+    variant_name: str = "1m"
+
 
 @dataclass
 class RangeHunterSignal:

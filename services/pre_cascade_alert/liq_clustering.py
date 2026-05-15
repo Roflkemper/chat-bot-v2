@@ -102,6 +102,40 @@ def _liq_window_sums(now_utc: datetime, window_min: int,
     return long_btc, short_btc
 
 
+def _read_last_btc_price() -> Optional[float]:
+    """Read latest close from market_live/market_1m.csv."""
+    market_1m = ROOT / "market_live" / "market_1m.csv"
+    if not market_1m.exists():
+        return None
+    last_close = None
+    try:
+        with market_1m.open(encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    last_close = float(row["close"])
+                except (ValueError, KeyError):
+                    continue
+    except OSError:
+        pass
+    return last_close
+
+
+# Entry plans для validated edge (n=20 short_side за 1 неделю live, 75% pct_up 4h):
+# - SHORT pre-cluster → LONG continuation play (validated)
+# - LONG pre-cluster → нет validated edge (long_4h drifted в 2026), defensive only
+PRE_CASCADE_ENTRY_PLANS = {
+    "short": {
+        "dir": "LONG",
+        "edge_note": "Validated n=20 (1 неделя live): 75% pct_up 4h, mean +0.70%",
+        "tp1_pct": +0.40,    # ~mean/2
+        "tp2_pct": +0.70,    # full mean expectation
+        "stop_pct": -0.35,   # tight stop
+        "exit_after_h": 4,
+    },
+}
+
+
 def _format_alert(side: str, qty_btc: float,
                   long_btc: float = 0.0, short_btc: float = 0.0,
                   now: Optional[datetime] = None) -> str:
@@ -112,7 +146,6 @@ def _format_alert(side: str, qty_btc: float,
         f"(baseline ~0.01 BTC за 5 мин)",
         "",
     ]
-    # Phase-2: weighted multi-feature score
     try:
         from services.pre_cascade_alert.multi_feature_score import (
             compute_score, is_high_confidence,
@@ -127,7 +160,32 @@ def _format_alert(side: str, qty_btc: float,
         logger.exception("liq_pre_cascade.score_failed")
 
     lines.append(f"R&D-сигнал: возможен каскад >=5 BTC через 10-20 мин в эту же сторону.")
-    lines.append(f"Совет: не открывать новые {direction_word}-позиции в ближайшие 20 мин.")
+    lines.append(f"⚠ НЕ открывать новые {direction_word}-позиции в ближайшие 20 мин.")
+    lines.append("")
+
+    # Validated offensive entry: SHORT pre-cluster → LONG continuation
+    plan = PRE_CASCADE_ENTRY_PLANS.get(side)
+    last_price = _read_last_btc_price()
+    if plan and last_price and last_price > 0:
+        tp1 = last_price * (1 + plan["tp1_pct"] / 100)
+        tp2 = last_price * (1 + plan["tp2_pct"] / 100)
+        stop = last_price * (1 + plan["stop_pct"] / 100)
+        risk = abs(plan["stop_pct"])
+        rr1 = abs(plan["tp1_pct"]) / risk if risk else 0
+        rr2 = abs(plan["tp2_pct"]) / risk if risk else 0
+        from datetime import timedelta as _td
+        exit_at = (now or datetime.now(timezone.utc)) + _td(hours=plan["exit_after_h"])
+        lines.append("💰 ОФФЕНСИВНАЯ опция (validated edge):")
+        lines.append(f"  {plan['edge_note']}")
+        lines.append(f"  Направление: {plan['dir']} (continuation после shorts liquidated)")
+        lines.append(f"  Entry:  ~${last_price:,.0f}")
+        lines.append(f"  Stop:   ${stop:,.0f}   ({plan['stop_pct']:+.2f}%)")
+        lines.append(f"  TP1:    ${tp1:,.0f}   ({plan['tp1_pct']:+.2f}%, R:R 1:{rr1:.1f})")
+        lines.append(f"  TP2:    ${tp2:,.0f}   ({plan['tp2_pct']:+.2f}%, R:R 1:{rr2:.1f})")
+        lines.append(f"  Exit by: {exit_at.strftime('%H:%M UTC')} (+{plan['exit_after_h']}h)")
+    elif side == "long":
+        lines.append("ℹ️ LONG pre-cluster: defensive only (edge инвертировался в 2026, см. cascade_long_reversal_short).")
+
     lines.append("")
     lines.append(f"Phase-2 score (liq+oi+funding+ls). См. PRE_CASCADE_SIGNAL_R&D.md.")
     return "\n".join(lines)

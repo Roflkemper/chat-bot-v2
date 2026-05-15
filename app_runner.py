@@ -583,30 +583,46 @@ def _build_rh_send_fn(telegram_app):
     return _send_with_kb
 
 
-async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=None,
-                                    symbol: str = "BTCUSDT") -> None:
-    """Range Hunter — TG-эмиттер semi-manual mean-revert стратегии.
-    Раз в минуту проверяет: range_4h <= 0.70%, ATR_1m <= 0.10%, trend <= 0.10%/ч.
-    Cooldown 2h. Multi-asset: symbol может быть BTCUSDT / ETHUSDT / XRPUSDT.
-    Walk-forward 2y backtests:
-      BTC: WR 66-70%  ETH: WR 70-77%  XRP: WR 66-81%."""
-    from services.range_hunter.loop import range_hunter_signal_loop
+def _rh_params_for(variant: str, symbol: str):
+    """Build params for 1m baseline or 5m second-tier variant."""
     from services.range_hunter.signal import RangeHunterParams
-    params = RangeHunterParams(symbol=symbol)
+    if variant == "5m":
+        # Walk-forward 2y: 70.6% WR, +$80.7K, DD per fold -$1533
+        # DD в 5× больше baseline → size = $2.5K (vs $5K на 1m)
+        return RangeHunterParams(
+            symbol=symbol,
+            lookback_h=12, range_max_pct=2.50, atr_pct_max=0.25,
+            trend_max_pct_per_h=0.20, cooldown_h=4,
+            width_pct=0.30, hold_h=24, stop_loss_pct=0.60,
+            size_usd=2500.0, contract="XBTUSDT",
+            bar_minutes=5, variant_name="5m",
+        )
+    # default 1m
+    return RangeHunterParams(symbol=symbol)
+
+
+async def _run_range_hunter_signal(stop_event: asyncio.Event, *, telegram_app=None,
+                                    symbol: str = "BTCUSDT", variant: str = "1m") -> None:
+    """Range Hunter — TG-эмиттер semi-manual mean-revert стратегии.
+    Multi-asset (BTC/ETH/XRP) × Multi-TF (1m / 5m).
+    Walk-forward 2y backtests:
+      1m baseline: BTC 68%, ETH 74%, XRP 77% WR
+      5m champion: 70% WR, $26/trade (vs $9 на 1m), 4.5× больше PnL"""
+    from services.range_hunter.loop import range_hunter_signal_loop
+    params = _rh_params_for(variant, symbol)
     await range_hunter_signal_loop(stop_event=stop_event,
                                     send_fn=_build_rh_send_fn(telegram_app),
                                     params=params)
 
 
 async def _run_range_hunter_outcome(stop_event: asyncio.Event, *, telegram_app=None,
-                                     symbol: str = "BTCUSDT") -> None:
+                                     symbol: str = "BTCUSDT", variant: str = "1m") -> None:
     """Outcome tracker: следит за placed signals, симулирует fill BUY/SELL/SL/timeout
-    на свежих 1m данных, пишет результат в journal. Hedge advisor."""
+    на свежих данных, пишет результат в journal. Hedge advisor."""
     from services.range_hunter.loop import range_hunter_outcome_loop
-    from services.range_hunter.signal import RangeHunterParams
     from services.telegram.channel_router import build_send_fn
     hedge_send = build_send_fn(telegram_app, "SETUP_ON") if telegram_app else None
-    params = RangeHunterParams(symbol=symbol)
+    params = _rh_params_for(variant, symbol)
     await range_hunter_outcome_loop(stop_event=stop_event,
                                      hedge_send_fn=hedge_send,
                                      params=params)
@@ -804,6 +820,16 @@ async def _run_play_outcome(stop_event: asyncio.Event) -> None:
     await play_outcome_loop(stop_event=stop_event)
 
 
+async def _run_confluence(stop_event: asyncio.Event, *, telegram_app=None) -> None:
+    """Confluence detector: раз в минуту смотрит play_journal + cascade_alerts,
+    при 2+ сигналов в одну сторону за 5 мин — шлёт high-conviction карточку
+    с 2× size recommendation. Dedup 30 мин per direction."""
+    from services.watchlist.loop import confluence_loop
+    from services.telegram.channel_router import build_send_fn
+    send_fn = build_send_fn(telegram_app, "SETUP_ON") if telegram_app else None
+    await confluence_loop(stop_event=stop_event, send_fn=send_fn)
+
+
 async def _run_bitmex_account(stop_event: asyncio.Event) -> None:
     """BitMEX read-only account poll: auto-update margin (TZ-BITMEX-AUTO-MARGIN 2026-05-07).
 
@@ -883,12 +909,16 @@ async def main(
     cascade_accuracy_task = asyncio.create_task(_run_cascade_accuracy_eval(stop_event, telegram_app=app), name="cascade_accuracy_eval")
     cliff_monitor_task = asyncio.create_task(_run_cliff_monitor(stop_event, telegram_app=app), name="cliff_monitor")
     weekly_report_task = asyncio.create_task(_run_weekly_self_report(stop_event, telegram_app=app), name="weekly_self_report")
-    range_hunter_signal_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="BTCUSDT"), name="range_hunter_signal_btc")
-    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="BTCUSDT"), name="range_hunter_outcome_btc")
-    range_hunter_signal_eth_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="ETHUSDT"), name="range_hunter_signal_eth")
-    range_hunter_outcome_eth_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="ETHUSDT"), name="range_hunter_outcome_eth")
-    range_hunter_signal_xrp_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="XRPUSDT"), name="range_hunter_signal_xrp")
-    range_hunter_outcome_xrp_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="XRPUSDT"), name="range_hunter_outcome_xrp")
+    range_hunter_signal_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="BTCUSDT", variant="1m"), name="range_hunter_signal_btc")
+    range_hunter_outcome_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="BTCUSDT", variant="1m"), name="range_hunter_outcome_btc")
+    range_hunter_signal_eth_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="ETHUSDT", variant="1m"), name="range_hunter_signal_eth")
+    range_hunter_outcome_eth_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="ETHUSDT", variant="1m"), name="range_hunter_outcome_eth")
+    range_hunter_signal_xrp_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="XRPUSDT", variant="1m"), name="range_hunter_signal_xrp")
+    range_hunter_outcome_xrp_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="XRPUSDT", variant="1m"), name="range_hunter_outcome_xrp")
+    # 5m second-tier: champion из multi-TF walkforward (+$80K за 2y vs $17K на 1m).
+    # Параллельно с 1m, не конкурирует. Size $2.5K (DD в 5× больше чем 1m → меньше size).
+    range_hunter_signal_5m_task = asyncio.create_task(_run_range_hunter_signal(stop_event, telegram_app=app, symbol="BTCUSDT", variant="5m"), name="range_hunter_signal_btc_5m")
+    range_hunter_outcome_5m_task = asyncio.create_task(_run_range_hunter_outcome(stop_event, telegram_app=app, symbol="BTCUSDT", variant="5m"), name="range_hunter_outcome_btc_5m")
     liq_pre_cascade_task = asyncio.create_task(_run_liq_pre_cascade(stop_event, telegram_app=app), name="liq_pre_cascade")
     spike_alert_task = asyncio.create_task(_run_spike_alert(stop_event, telegram_app=app), name="spike_alert")
     # test3_tpflat and test3_tpflat_b retired 2026-05-11 — see TZ-B10
@@ -900,6 +930,7 @@ async def main(
     heartbeat_task = asyncio.create_task(_run_heartbeat(stop_event), name="heartbeat")
     watchlist_task = asyncio.create_task(_run_watchlist(stop_event, telegram_app=app), name="watchlist")
     play_outcome_task = asyncio.create_task(_run_play_outcome(stop_event), name="play_outcome")
+    confluence_task = asyncio.create_task(_run_confluence(stop_event, telegram_app=app), name="confluence")
     stop_task = asyncio.create_task(stop_event.wait(), name="stop_event")
 
     # Critical tasks: their failure forces full shutdown.
@@ -915,7 +946,8 @@ async def main(
         range_hunter_signal_task, range_hunter_outcome_task,
         range_hunter_signal_eth_task, range_hunter_outcome_eth_task,
         range_hunter_signal_xrp_task, range_hunter_outcome_xrp_task,
-        liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, paper_trader_task, stale_monitor_task, stop_task,
+        range_hunter_signal_5m_task, range_hunter_outcome_5m_task,
+        liq_pre_cascade_task, spike_alert_task, regime_shadow_task, regime_narrator_task, pre_cascade_task, grid_coordinator_task, grid_coordinator_intraday_task, heartbeat_task, watchlist_task, play_outcome_task, confluence_task, paper_trader_task, stale_monitor_task, stop_task,
     }
 
     exit_code = 0
